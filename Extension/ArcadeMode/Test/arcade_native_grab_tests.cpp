@@ -14,6 +14,87 @@ using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
 void check(bool value,const char* why){++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
+void native_family_change_waits_for_exit() {
+    const native_grab::RetargetObservation nose{true,true,true,false,true,6,true};
+    const native_grab::RetargetObservation bs{true,true,true,false,true,2,true};
+    const native_grab::RetargetObservation clear{true,false,false,false,false,0,false};
+    for(unsigned hz:{30u,60u,120u}) {
+        const auto dt=(1000u+hz-1)/hz;
+        native_grab::Lease lease;
+        lease.request(ArcadeTrick::airwalk,1000,true);
+        check(lease.controls(nose,true).feet==0x2000,"Airwalk uses original both-feet input after Nose entry");
+        check(lease.acknowledge(0,3,0,3,true,true,true,12),"original Airwalk actor owns the first grab");
+        lease.observe_footer(1000,true,true,false);
+        lease.request(ArcadeTrick::christ_air,1100,true);
+        auto now=1100u;
+        for(unsigned frame=0;frame<hz;++frame) {
+            now+=dt;lease.refresh(now,true,true);lease.observe_footer(now,true,true,true);
+            const auto out=lease.controls(nose,true);
+            check(lease.changing_family() && out.hands==2 && out.y==-28000 && !out.feet,
+                "Christ Air request withdraws Airwalk feet but retains the original Nose hand through native catch");
+            check(!lease.acknowledge(0,2,0,2,true,true,true,6),
+                "a target tag or actor cannot acknowledge before the previous family exits");
+        }
+        now+=dt;lease.refresh(now,true,true);lease.observe_footer(now,true,false,false);
+        auto out=lease.controls(nose,true);
+        check(!out.hands && !out.selector() && !out.feet && lease.changing_family(),
+            "finished catch withdraws the original hand and selector");
+        for(unsigned fault=0;fault<4;++fault) {
+            auto incomplete=clear;
+            if(fault==0)incomplete.valid=false;
+            if(fault==1)incomplete.grabbing=true;
+            if(fault==2)incomplete.can_grab=true;
+            if(fault==3)incomplete.family=6;
+            check(!lease.controls(incomplete,true).hands && lease.changing_family(),
+                "unreadable state, an active owner, eligibility or stale family cannot admit the new grab");
+        }
+        out=lease.controls(clear,true);
+        check(!lease.changing_family() && out.hands==2 && !out.selector() && !out.feet,
+            "independently cleared native state admits neutral BS hand without borrowing the old foot input");
+        check(lease.controls(bs,true).feet==0x2000 &&
+            lease.acknowledge(0,3,0,3,true,true,true,6),"Christ Air requires its own BS admission, original feet and actor");
+        now+=dt;lease.refresh(now,false,true);lease.observe_footer(now,true,true,true);
+        check(lease.controls(bs,true).hands==2 && !lease.controls(bs,true).feet,
+            "new Christ Air keeps the existing native release ordering");
+        lease.observe_footer(now,true,false,false);
+        check(!lease.intent(now),"completed new catch withdraws all input");
+        lease.request(ArcadeTrick::basic_bs_grab,now,true);
+        lease.request(ArcadeTrick::method,now+dt,true);
+        check(!lease.changing_family() && lease.controls(bs,true).hands==2,
+            "BS to Method remains an immediate native same-family tweak");
+        lease.request(ArcadeTrick::indy,now+2*dt,true);
+        check(lease.changing_family(),"a different hand/family also requires original cleanup");
+        lease.refresh(now+3*dt,true,false);
+        check(!lease.intent(now+3*dt) && !lease.controls(clear,true).hands,
+            "landing or owner loss cancels a pending family change");
+        lease.request(ArcadeTrick::airwalk,3000,true);
+        lease.request(ArcadeTrick::christ_air,3100,true);
+        for(now=3100+dt;now<4500;now+=dt) {
+            lease.refresh(now,true,true);lease.observe_footer(now,true,true,true);
+            lease.controls(nose,true);
+        }
+        lease.refresh(now,true,true);lease.observe_footer(now,true,false,false);
+        lease.controls(clear,true);
+        const auto admitted=now;
+        for(unsigned frame=0;frame<hz/2;++frame) {
+            now+=dt;lease.refresh(now,true,true);lease.controls(bs,true);
+        }
+        check(now>3100+native_grab::Lease::initialization_limit_ms && lease.intent(now) &&
+            lease.acknowledge(0,3,0,3,true,true,true,6),
+            "target initialization starts after observed old-family cleanup, without expiring a valid new entry");
+        check(admitted<3100+native_grab::Lease::initialization_limit_ms,
+            "the old cleanup itself remains within its existing failure bound");
+        lease.cancel();lease.request(ArcadeTrick::airwalk,6000,true);
+        lease.request(ArcadeTrick::christ_air,6100,true);
+        for(now=6100+dt;now<=6100+native_grab::Lease::initialization_limit_ms+dt;now+=dt) {
+            lease.refresh(now,true,true);lease.controls(nose,true);
+        }
+        check(!lease.intent(now),"a family that never clears cannot hold or emit target inputs indefinitely");
+        lease.cancel();lease.request(ArcadeTrick::basic_bs_grab,8000,true);
+        lease.begin_transition();lease.request(ArcadeTrick::weddle,8100,true);
+        check(!lease.changing_family(),"verified BS-to-Weddle fingerflip return preserves its established destination");
+    }
+}
 void native_footer_exit_contract() {
     for(unsigned known=0;known<4;++known) for(unsigned active=0;active<4;++active) {
         unsigned reads{};
@@ -725,4 +806,4 @@ void repeated_grab_without_flip_selection() {
     }
 }
 }
-int main(){native_footer_exit_contract();current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){native_family_change_waits_for_exit();native_footer_exit_contract();current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}

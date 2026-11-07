@@ -161,6 +161,20 @@ public:
     bool request(ArcadeTrick trick,std::uint64_t now,bool held) noexcept {
         const auto* p=pilot(trick);
         if (!p) return false;
+        // A new family cannot reuse an entry chooser already owned by the
+        // previous family. Withdraw its foot, allow its native catch, then
+        // release its hand and wait for the original grab state to clear.
+        // Same-family tweaks keep their existing immediate retargeting.
+        // Nose -> Rocket already has a verified native double-hand entry.
+        // Preserve that transition rather than inserting an unrelated exit.
+        const bool nose_to_rocket=selected_ && !selected_->one_footer &&
+            selected_->family==6 && p->trick==ArcadeTrick::rocket_air;
+        // Verified fingerflip returns have already established their native
+        // destination; they must not exit it again as if this were a B request.
+        if (!retiring_ && selected_ && !transition_ && selected_->family!=p->family && !nose_to_rocket) {
+            retiring_=selected_;
+            retiring_footer_active_=footer_retained_;
+        }
         selected_=p; requested_=refreshed_=now; released_=!held; acknowledged_=false; feet_started_=false; transition_=false;
         footer_retained_=false;footer_observed_at_=0;
         return true;
@@ -175,7 +189,7 @@ public:
     }
     bool acknowledge(std::int32_t detail,float delta,float before,float after,
                      bool initialized,bool exact_actor,bool native_grabbing,std::int32_t one_footer=0) noexcept {
-        if (!selected_ || (selected_->one_footer ? !feet_started_ || one_footer!=selected_->one_footer : detail!=selected_->detail) ||
+        if (!selected_ || retiring_ || (selected_->one_footer ? !feet_started_ || one_footer!=selected_->one_footer : detail!=selected_->detail) ||
             !initialized || !exact_actor || !native_grabbing ||
             !std::isfinite(delta) || delta<=0 || !std::isfinite(before) || !std::isfinite(after) || after<=before) return false;
         acknowledged_=true;return true;
@@ -190,6 +204,7 @@ public:
     // CanGrab is lost. Withdraw the foot first and keep the original hand
     // through that native state, rather than truncating its catch animation.
     void observe_footer(std::uint64_t now,bool valid,bool one_foot_air,bool one_foot_exit) noexcept {
+        retiring_footer_active_=retiring_ && retiring_->one_footer && valid && (one_foot_air || one_foot_exit);
         footer_retained_=selected_ && selected_->one_footer && acknowledged_ && !transition_ &&
             valid && (one_foot_air || one_foot_exit);
         footer_observed_at_=now;
@@ -197,6 +212,10 @@ public:
             cancel();
     }
     bool releasing_footer() const noexcept {return released_ && acknowledged_ && footer_retained_;}
+    bool changing_family() const noexcept {return retiring_!=nullptr;}
+    bool observes_footer() const noexcept {
+        return (selected_ && selected_->one_footer) || (retiring_ && retiring_->one_footer);
+    }
     bool physical_hold(std::uint64_t now) const noexcept {return !released_ && intent(now);}
     // A separately verified native transition has its own admission deadline.
     // Keep only its physical hold, without falsely acknowledging the old pose.
@@ -204,6 +223,18 @@ public:
     bool acknowledged() const noexcept {return acknowledged_;}
     Control controls(const RetargetObservation& native,bool settings_applied) noexcept {
         if (!selected_) return {};
+        if (retiring_) {
+            if (!native.valid) return {};
+            if (retiring_footer_active_) return retiring_->control();
+            // Family alone may linger after landing or during an exit blend.
+            // Require the native owner and eligibility to clear as well; no
+            // elapsed pulse, enum reset or forced animation admits this change.
+            if (native.grabbing || native.can_grab || native.family!=0) return {};
+            retiring_=nullptr;
+            // This is the new native admission, after the old owner's exit.
+            // The physical event's original timestamp remains in the request.
+            requested_=refreshed_;
+        }
         auto out=selected_->control();
         if(releasing_footer())return out;
         // The native hand producer can run before its RS selector producer.
@@ -225,7 +256,8 @@ public:
     void cancel() noexcept {*this={};}
 private:
     const Pilot* selected_{};
+    const Pilot* retiring_{};
     std::uint64_t requested_{},refreshed_{},footer_observed_at_{};
-    bool released_{},acknowledged_{},feet_started_{},transition_{},footer_retained_{};
+    bool released_{},acknowledged_{},feet_started_{},transition_{},footer_retained_{},retiring_footer_active_{};
 };
 }

@@ -64,3 +64,29 @@ binding after native family clearance selected footer8, advanced its original
 Into/Loop/Exit and landed100. These are routing/state-context failures separate
 from the airtime problem. No enum reset, forced chooser or substitute actor is
 an acceptable repair. See the captures in rc3-native-high-footer-30.json.
+
+Family handoff correction under development
+
+The existing lease replaced its selected profile immediately on repeated B.
+Airwalk's Nose hand could therefore remain asserted while Christ Air waited
+for BS eligibility that this existing native chooser could not provide.
+The original Into chooser does not choose every update; the surveyed source
+and upstream/fork audit in native-grab-transition.md already distinguish its
+native reset/exit from changing a blendspace endpoint. No separate reusable
+family-handoff adapter was found in that audit.
+
+The pending correction withdraws the old feet first, retains the old hand and
+selector only while independently observed original footer tags remain active,
+then withdraws both. It waits for readable IsGrabbing=false, CanGrab=false and
+GrabType=None before applying the new profile through the existing producer.
+The new native initialization bound starts at that observed admission; the
+physical press timestamp is unchanged. The old cleanup remains bounded by
+the existing initialization timeout, owner/flight and heartbeat guards.
+Same-family BS/Melon/Method changes retain their current path. No new actor,
+forced chooser, enum reset, score write or physics change is introduced.
+
+Independent hardware acceptance still requires the repeated physical binding
+to show the old catch/exit, native family clearance, the correct Christ Air
+Into/Loop/Exit, hold/release and landing. Direct R3+B Christ Air is a separate
+control. A first grab from unrelated stale family state is also a separate
+unresolved case; this correction must not claim to clear arbitrary game state.

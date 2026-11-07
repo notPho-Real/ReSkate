@@ -381,7 +381,7 @@ FingerflipObservation finger_observation() noexcept {
 }
 void observe_footer_release(std::uint64_t now) noexcept {
     const auto* selected=session.lease.selected();
-    if(!selected || !selected->one_footer || session.finger.active())return;
+    if(!selected || !session.lease.observes_footer() || session.finger.active())return;
     const auto observed=sample_footer_state([](unsigned index,bool& value) noexcept {
         const auto at=address(index);
         return at && read(at,value);
@@ -712,7 +712,14 @@ Control controls(const NoBailSkater& owner,std::uint64_t episode,std::uint64_t t
         }
         return result;
     }
-    return session.lease.controls(retarget_observation(),foot_settings_applied(now));
+    const auto observed=retarget_observation();
+    const bool changing=session.lease.changing_family();
+    const auto result=session.lease.controls(observed,foot_settings_applied(now));
+    if(changing && !session.lease.changing_family())
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE GRAB FAMILY CLEAR: serial={} episode={} family={} grabbing={} can_grab={} valid={} native_actor_acceptance=false.",
+            session.serial,session.episode,observed.family,observed.grabbing,observed.can_grab,observed.valid);
+    return result;
 }
 bool fingerflip(const NoBailSkater& owner,std::uint64_t episode,std::uint8_t id,
                std::span<const AuthoredStickStep> steps,std::uint64_t tick,bool mirror) noexcept {
@@ -794,6 +801,7 @@ void before_transition(std::uintptr_t view,float delta) noexcept {
     // Native fingerflip entry temporarily leaves IsGrabbing. Its actor and
     // destination own this handoff; the old pose must not be reasserted here.
     if(session.finger.active()) {restore();return;}
+    if(session.lease.changing_family()) {restore();return;}
     if(session.lease.releasing_footer()) {restore();return;}
     if (session.lease.acknowledged()) {
         bool grabbing{};const auto at=address(4);
