@@ -601,7 +601,8 @@ void arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t cur
     note(10,"before_selection");
     std::uint64_t now{};
     const char* frame_reason="frame_not_read";
-    const auto frame=arcade_mode::native_wallplant_context(probe.native.owner,now,&frame_reason);
+    const auto execution=arcade_mode::native_wallplant_context(probe.native.owner,now,&frame_reason);
+    const auto& frame=execution.native;
     note(12,frame_reason);
     if(!frame.valid){note(15,"Wallplant selection native admission changed.");return;}
     if(state.busy.test_and_set(std::memory_order_acquire)){note(11,"selection_source_busy");return;}
@@ -633,9 +634,11 @@ void arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t cur
             selector_context,current,selected,now),"Wallplant selection frame or selector changed.");
         source_require(arcade_mode::wallplant_selection_current(frame,input_owner,selector,owned_selector,
             selector_context,current,selected,now),"Wallplant selection native admission changed.");
-        source_require(reader.value<std::uint32_t>(bodies.rig_wrapper,native::crouch_mode)==frame.mode &&
-            (reader.value<std::uint32_t>(bodies.context,native::request_words)&0x60u)==frame.stance_and_push &&
-            (reader.value<std::uint32_t>(bodies.context,native::request_words+4)&0xc000u)==frame.contacts,
+        arcade_mode::NativeRequestSample live{};live.valid=true;live.state=selected;
+        live.crouch_mode=reader.value<std::uint32_t>(bodies.rig_wrapper,native::crouch_mode);
+        live.words[0]=reader.value<std::uint32_t>(bodies.context,native::request_words);
+        live.words[1]=reader.value<std::uint32_t>(bodies.context,native::request_words+4);
+        source_require(arcade_mode::wallplant_execution_current(execution,input_owner,live,now),
             "Wallplant selection native sample changed after admission.");
         std::array<std::array<float,3>,32> velocities{},spins{};
         std::array<std::uint32_t,32> flags{};

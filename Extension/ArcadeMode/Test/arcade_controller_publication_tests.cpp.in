@@ -3,6 +3,7 @@
 #include "Extension/ArcadeMode/arcade_grind_change.h"
 #include "Extension/ArcadeMode/arcade_playback_packet.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
+#include "Extension/ArcadeMode/arcade_wallplant.h"
 #include "Extension/ArcadeMode/arcade_rotation.h"
 #include "Extension/Skater/no_bail.h"
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
@@ -271,7 +272,7 @@ void run(){
         std::unique_lock publisher(ollie_mutex);
         std::thread selector([&] {
             entered.store(true,std::memory_order_release);
-            acquired=native_wallplant_context(owner,acquired_at,&reason);
+            acquired=native_wallplant_context(owner,acquired_at,&reason).native;
         });
         while(!entered.load(std::memory_order_acquire))std::this_thread::yield();
         clock_ms=boundary==1?1151:1001;
@@ -297,6 +298,34 @@ void run(){
     mode_enabled=false;
     require(!native_air_context(1000,owner,sample,&cleanup,&diagnostic).valid&&cleanup.observed.valid,"OFF cannot revive command authority through independent cleanup proof");++checks;
     require(std::string_view(diagnostic)=="frame_disabled","writer diagnostic preserves OFF-before-route ordering");++checks;
+    for(unsigned boundary=0;boundary<7;++boundary) {
+        clock_ms=1000;mode_enabled=true;live_readable=true;native_input_state={};
+        arcade_input.enable(false);arcade_input.enable(true);controller_route.reset();
+        NativeRequestSample original{};original.valid=true;original.state=201;original.crouch_mode=2;
+        const auto air_frame=native_input_state.observe(1000,owner,original,{});
+        set_controller_source(1,1000);observe(controller_route,1,{true,1000,0,0,0,0,0,0,0});
+        controller_route.select(1000,3,true,air_frame);arcade_input.publish_native_context(air_frame);
+        arcade_input.publish_authority(1000,air_frame.owner_generation,1,true);
+        live_sample=original;live_sample.crouch_mode=1;live_sample.words[1]=0x8000;
+        clock_ms=1035;
+        if(boundary==1)mode_enabled=false;
+        if(boundary==2)controller_route.clear();
+        if(boundary==3)arcade_input.invalidate_authority();
+        if(boundary==4)clock_ms=1151;
+        if(boundary==5)live_sample.words[0]=0x20;
+        if(boundary==6)live_sample.state=100;
+        std::uint64_t acquired_at{};
+        const auto proof=native_wallplant_context(owner,acquired_at,&diagnostic);
+        require(proof.native.valid==(boundary==0),"production wallplant contact phase still requires controller, fresh frame, authority and exact native transition");++checks;
+        if(boundary==0) {
+            require(proof.imported_contact&&proof.native.mode==2&&proof.native.contacts==0&&
+                proof.native.sampled_at==1000&&proof.native.physics_step==air_frame.physics_step&&
+                proof.live.crouch_mode==1&&proof.live.words[1]==0x8000,
+                "production handoff separates unchanged original frame from live imported contact");++checks;
+            require(!native_air_context(acquired_at,owner,live_sample,nullptr,&diagnostic).valid,
+                "wallplant phase does not relax the ordinary motion accessor");++checks;
+        }
+    }
     std::cout<<checks<<" exact production binding API checks passed\n";
 }
 }

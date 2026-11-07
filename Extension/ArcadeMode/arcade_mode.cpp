@@ -1551,7 +1551,7 @@ NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& o
     }
     return native_air_context_locked(now,owner,sample,cleanup,diagnostic_reason);
 }
-NativeInputFrame native_wallplant_context(const NativeInputOwner& owner,std::uint64_t& now,
+WallplantExecutionProof native_wallplant_context(const NativeInputOwner& owner,std::uint64_t& now,
                                          const char** diagnostic_reason) noexcept {
     // Only the pending preselector handoff uses synchronous arbitration. Its
     // caller holds no source busy flag, runtime mutex or No Bail lease lock.
@@ -1567,19 +1567,26 @@ NativeInputFrame native_wallplant_context(const NativeInputOwner& owner,std::uin
         memory::peek(owner.context+native::request_words+4,sample.words[1]);
     sample.words[1]&=0xc000u;
     NativeInputCorrelation diagnostic{};
-    const auto frame=native_air_context_locked(now,owner,sample,nullptr,diagnostic_reason,&diagnostic);
+    auto frame=native_air_context_locked(now,owner,sample,nullptr,diagnostic_reason,&diagnostic);
+    bool imported_contact=false;
+    if(!frame.valid && wallplant_imported_contact_phase(diagnostic,sample) &&
+       diagnostic.observed.owner_generation==arcade_input.owner_epoch()) {
+        frame=diagnostic.observed; // Unchanged original frame, never re-observed or refreshed.
+        imported_contact=true;
+        if(diagnostic_reason)*diagnostic_reason="frame_wall_contact_phase";
+    }
     static unsigned reported{}; // Serialized by ollie_mutex; pending accessor only.
     if(diagnostic.mismatches && reported<64) {
         ++reported;
         const auto& original=diagnostic.observed;
         logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE WALLPLANT CORRELATION: ms={} mismatch={} owner={} owner_equal={} original_valid={} sample_valid={} step={} frame_ms={} age_valid={} age={} original_state={} live_state={} original_mode={} live_mode={} original_contacts={} live_contacts={} original_stance={} live_stance={}.",
+            "ARCADE WALLPLANT CORRELATION: ms={} mismatch={} owner={} owner_equal={} original_valid={} sample_valid={} step={} frame_ms={} age_valid={} age={} original_state={} live_state={} original_mode={} live_mode={} original_contacts={} live_contacts={} original_stance={} live_stance={} imported_contact_accepted={}.",
             now,diagnostic.mismatches,owner.core,owner==original.owner,original.valid,sample.valid,
             original.physics_step,original.sampled_at,now>=original.sampled_at,
             now>=original.sampled_at?now-original.sampled_at:0,original.state,sample.state,original.mode,sample.crouch_mode,
-            original.contacts,sample.words[1]&0xc000u,original.stance_and_push,sample.words[0]&0x60u);
+            original.contacts,sample.words[1]&0xc000u,original.stance_and_push,sample.words[0]&0x60u,imported_contact);
     }
-    return frame;
+    return {frame,sample,imported_contact};
 }
 // Controller route binding_context publication end.
 NativeInputFrame surface_geometry_native_frame(std::uint64_t now,const char** diagnostic_reason) noexcept {

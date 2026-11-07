@@ -13,6 +13,7 @@ struct NativeInputFrame;
 struct NativeInputOwner;
 struct NativeRequestSample;
 struct MotionCleanupProof;
+struct WallplantExecutionProof;
 struct GroundWriterEvidence;
 struct AngularWriterEvidence;
 AngularWriterEvidence begin_angular_writer_observation(std::uint64_t now,const NativeInputOwner& owner,
@@ -31,7 +32,7 @@ NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& o
 // Pending wallplant only, before native selection and before acquiring source
 // busy: serialize admission, then sample live state and time. Releases the
 // input lock before returning; caller must revalidate its owner/selector.
-NativeInputFrame native_wallplant_context(const NativeInputOwner& owner,std::uint64_t& now,
+WallplantExecutionProof native_wallplant_context(const NativeInputOwner& owner,std::uint64_t& now,
                                          const char** diagnostic_reason = nullptr) noexcept;
 // Bounded physics-side check; contention or changed native generation yields.
 bool native_manual_contact_current(const NativeManualContact& proof) noexcept;

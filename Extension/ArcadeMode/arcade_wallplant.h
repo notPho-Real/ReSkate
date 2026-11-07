@@ -3,6 +3,36 @@
 #include "arcade_surface_geometry.h"
 
 namespace dingosdk::arcade_mode {
+// Keep request provenance and current execution inputs separate. The native
+// input importer can publish wheel contact/mode before the chooser changes
+// selected AIR201. This is not a new physics observation or a landing receipt.
+struct WallplantExecutionProof {
+    NativeInputFrame native{};
+    NativeRequestSample live{};
+    bool imported_contact{};
+};
+inline bool wallplant_imported_contact_phase(const NativeInputCorrelation& correlation,
+        const NativeRequestSample& live) noexcept {
+    const auto& original=correlation.observed;
+    const auto contacts=live.words[1]&0xc000u;
+    // 1009c40 imports mode; 47d7ac0 imports the two wheel pairs, swapping
+    // them by stance. 929 HIL measured exactly mode2->1 and contact0->8000
+    // while selected state remained201. Both axle identities use this source
+    // path; both-axle contact and every additional mismatch remain rejected.
+    return correlation.mismatches==(NativeInputCorrelation::mode_changed|NativeInputCorrelation::contacts_changed) &&
+        original.valid && original.airborne && original.owner.valid() && original.state==201 &&
+        original.mode==2 && original.contacts==0 && live.valid && live.state==201 &&
+        live.crouch_mode==1 && (contacts==0x4000u || contacts==0x8000u);
+}
+inline bool wallplant_execution_current(const WallplantExecutionProof& proof,const NativeInputOwner& owner,
+        const NativeRequestSample& live,std::uint64_t now) noexcept {
+    return proof.native.valid && proof.native.airborne && owner.valid() && proof.native.owner==owner &&
+        now>=proof.native.sampled_at && now-proof.native.sampled_at<=InputTiming::native_sample_lease_ms &&
+        proof.live.valid && proof.live.state==proof.native.state && live.valid &&
+        live.state==proof.live.state && live.crouch_mode==proof.live.crouch_mode &&
+        (live.words[0]&0x60u)==(proof.live.words[0]&0x60u) &&
+        (live.words[1]&0xc000u)==(proof.live.words[1]&0xc000u);
+}
 // The existing native chooser receives the current state before its caller
 // commits the returned state. This proof admits only the already-observed AIR
 // owner at that seam; it never supplies or overrides the next native state.

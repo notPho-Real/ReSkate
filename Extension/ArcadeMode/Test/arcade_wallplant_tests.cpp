@@ -43,6 +43,52 @@ struct Fixture {
 };
 }
 int main() {
+    for(unsigned contacts:{0x4000u,0x8000u}) {
+        NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
+        NativeRequestSample original{};original.valid=true;original.state=201;original.crouch_mode=2;
+        const auto observed=producer.observe(1000,owner,original,{});
+        auto live=original;live.crouch_mode=1;live.words[1]=contacts;
+        NativeInputCorrelation correlation{};
+        check(!producer.correlate(1035,owner,live,&correlation).valid,"ordinary correlation remains strict at imported wall-wheel contact");
+        check(wallplant_imported_contact_phase(correlation,live),"only measured imported contact phase admits either native stance-swapped axle");
+        const WallplantExecutionProof proof{correlation.observed,live,true};
+        check(proof.native.mode==2&&proof.native.contacts==0&&proof.native.sampled_at==1000&&
+            proof.native.physics_step==observed.physics_step,"execution proof keeps original physics observation unchanged");
+        check(wallplant_execution_current(proof,owner,live,1035),"same live imported sample revalidates before the body transaction");
+        auto invalid=proof;invalid.native.state=100;
+        check(!wallplant_execution_current(invalid,owner,live,1035),"execution proof cannot pair different original and live selected states");
+        auto changed=live;changed.crouch_mode=2;
+        check(!wallplant_execution_current(proof,owner,changed,1035),"later mode change cannot use imported execution proof");
+        changed=live;changed.words[1]^=0xc000;
+        check(!wallplant_execution_current(proof,owner,changed,1035),"later wheel identity change cancels execution");
+        check(!wallplant_execution_current(proof,owner,live,1151)&&!wallplant_execution_current(proof,owner,live,999),
+            "imported phase never extends or backdates the original frame lease");
+        auto replaced=owner;++replaced.context;
+        check(!wallplant_execution_current(proof,replaced,live,1035),"execution retains exact original local owner");
+        for(unsigned fault=0;fault<14;++fault) {
+            auto input=live,base=original;auto reader=owner;std::uint64_t now=1035;
+            NativeInputState state;
+            switch(fault) {
+            case 0:input.state=100;break;
+            case 1:input.state=200;break;
+            case 2:input.state=504;break;
+            case 3:input.crouch_mode=0;break;
+            case 4:input.crouch_mode=2;break;
+            case 5:input.words[1]=0xc000;break;
+            case 6:input.words[1]=0;break;
+            case 7:input.words[0]=0x20;break;
+            case 8:input.valid=false;break;
+            case 9:++reader.rig;break;
+            case 10:now=1151;break;
+            case 11:now=999;break;
+            case 12:base.state=200;input.state=200;break;
+            case 13:base.crouch_mode=0;break;
+            }
+            state.observe(1000,owner,base,{});NativeInputCorrelation rejected{};
+            (void)state.correlate(now,reader,input,&rejected);
+            check(!wallplant_imported_contact_phase(rejected,input),"other native transitions and additional mismatches cannot borrow wallplant execution");
+        }
+    }
     {
         Fixture f;f.frame.native.state=201;f.sync();
         auto owner=f.frame.native.owner;
