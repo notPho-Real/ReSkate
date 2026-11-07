@@ -36,6 +36,21 @@ std::mutex diagnostic_mutex;
 struct DiagnosticSeen {std::uint64_t contact{},stages{};};
 std::array<DiagnosticSeen,6> diagnostic_seen{};
 unsigned diagnostic_count{};
+unsigned query_diagnostic_count{};
+void diagnose_query(const char* query,const SurfaceGeometryTrace& trace,const Raw& source,
+        const NativeInputFrame& f,std::uint64_t identity) noexcept {
+    try {
+        std::lock_guard lock(diagnostic_mutex);
+        if(query_diagnostic_count>=64)return;
+        ++query_diagnostic_count;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT QUERY: query={} reason={} ms={} step={} state={} owner_generation={} contact={} raw={} ray={} attempt={} hits={} shape_world={} shape={} generation={} entity={} start={},{},{} end={},{},{} point={},{},{} value={}.",
+            query,trace.reason,GetTickCount64(),f.physics_step,f.state,f.owner_generation,identity,source.serial,
+            trace.ray,trace.attempt,trace.hits,trace.shape.world,trace.shape.index,trace.shape.generation,trace.entity,
+            trace.start[0],trace.start[1],trace.start[2],trace.end[0],trace.end[1],trace.end[2],
+            trace.point[0],trace.point[1],trace.point[2],trace.value);
+    } catch(...) {}
+}
 void diagnose(unsigned phase,unsigned stage,const char* reason,const Raw& source,
         const NativeInputFrame& f,std::uint64_t now,std::uint64_t identity,
         std::uint64_t flags=0,float value=0,float extra=0,
@@ -181,7 +196,7 @@ void observe_physics(const NativeInputFrame& f) noexcept {
     contact_active=true;raw=contacts;raw_frame=f;
     retention(6,"retained");
 }
-void publish_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
+void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const SurfaceGeometryContext& ctx,
         const NativeInputFrame& f,SurfaceGeometryVector root,const SurfaceGeometrySample& ground) noexcept {
     Raw source{};NativeInputFrame origin{};std::uint64_t identity{};
     {
@@ -192,6 +207,12 @@ void publish_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryC
         }
         source=raw;origin=raw_frame;identity=contact_identity;
     }
+    // Map collision owners are native world objects, not necessarily ECS
+    // entities. Opt in only here, after real airborne collision retention.
+    auto api=supplied_api;
+    api.static_world_owner=[](void*,const SurfaceGeometryBody& shape,SurfaceGeometryWorldOwner& owner) noexcept {
+        return native_wall_contact::static_world_owner(shape,owner);
+    };
     const auto geometry=[&](unsigned stage,const char* reason,std::uint64_t now,
             std::uint64_t flags=0,float value=0,float extra=0) {
         diagnose(1,stage,reason,source,f,now,identity,flags,value,extra);
@@ -207,8 +228,11 @@ void publish_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryC
     }
     auto clearance_ground=ground;
     const bool ground_reused=clearance_ground.fresh_for(ctx,now);
-    if(!ground_reused)
-        clearance_ground=query_surface_geometry(api,ctx,wallplant_clearance_request(root));
+    if(!ground_reused) {
+        SurfaceGeometryTrace trace;
+        clearance_ground=query_surface_geometry(api,ctx,wallplant_clearance_request(root),&trace);
+        if(!clearance_ground.valid)diagnose_query("clearance",trace,source,f,identity);
+    }
     if(!clearance_ground.fresh_for(ctx,now)) {
         geometry(3,"ground_freshness",now,(clearance_ground.valid?1ull:0ull)|(ground_reused?2ull:0ull)|
             (clearance_ground.context.native.fresh(now)?4ull:0ull)|
@@ -233,7 +257,9 @@ void publish_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryC
             geometry(8,"approach",now,0,approach,speed);continue;
         }
         const SurfaceGeometryBody shape{hit.shape.world,hit.shape.index,hit.shape.generation};
-        const auto wall=query_wall_geometry(api,ctx,shape,hit.point,hit.normal);
+        SurfaceGeometryTrace trace;
+        const auto wall=query_wall_geometry(api,ctx,shape,hit.point,hit.normal,&trace);
+        if(!wall.valid)diagnose_query("wall",trace,source,f,identity);
         if(!wall.valid){geometry(9,"broad_wall",now);continue;}
         if(!native_wall_contact::current(hit,ctx.world)){geometry(10,"hit_current_after_query",now);continue;}
         if(!api.current(api.user,ctx)){geometry(11,"world_current_after_query",now);continue;}

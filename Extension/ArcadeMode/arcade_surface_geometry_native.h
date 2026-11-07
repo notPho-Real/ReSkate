@@ -24,13 +24,27 @@ struct SurfaceGeometryNativeApi {
     // Existing bounded memory::read_bytes, limited here to query-owned result
     // storage and its published allocator. Tests supply fixture storage only.
     bool (*read_bytes)(std::uintptr_t, void*, std::size_t) noexcept{};
+    // Opt-in only for wallplant geometry. Must validate an allocated shape,
+    // its current static body, and a complete non-ECS native owner stamp.
+    bool (*static_world_owner)(void*, const SurfaceGeometryBody&, SurfaceGeometryWorldOwner&) noexcept{};
+};
+// Optional copied receipts from calls already made by a geometry query. Never
+// issues another native query or changes its admission/cleanup behavior.
+struct SurfaceGeometryTrace {
+    const char* reason{"not_started"};
+    unsigned ray{}, attempt{}, hits{};
+    SurfaceGeometryBody shape{};
+    std::uint64_t entity{};
+    SurfaceGeometryVector start{}, end{}, point{};
+    float value{};
 };
 SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
-                                             const SurfaceGeometryRequest&) noexcept;
+                                             const SurfaceGeometryRequest&, SurfaceGeometryTrace* = nullptr) noexcept;
 // Corroborates the broad vertical face around an independently recorded real
 // collision. This is geometry only; it must never create a wall-contact event.
 SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
-    SurfaceGeometryBody contacted_body, SurfaceGeometryVector point, SurfaceGeometryVector normal) noexcept;
+    SurfaceGeometryBody contacted_body, SurfaceGeometryVector point, SurfaceGeometryVector normal,
+    SurfaceGeometryTrace* = nullptr) noexcept;
 // Call only in the same supported client/park callback contract. Never renews
 // queried_at; physics/input consumers receive the copied publication only.
 bool revalidate_surface_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,

@@ -31,6 +31,9 @@ struct Fixture {
     float last_x{};
     bool self_hit{};
     bool wall{}, upper_gap{}, lower_gap{};
+    bool allow_world_owner{}, reject_world_owner{}, changing_world_owner{};
+    unsigned world_owner_calls{};
+    SurfaceGeometryWorldOwner world_owner{{7,70,50331648},77,69,50331648,0,1234};
     SurfaceGeometryVector wall_normal{0,0,1}, wall_point{0,1.5f,0};
     Fixture() { running=this; table[1]=reinterpret_cast<std::uintptr_t>(&pop); allocator=reinterpret_cast<std::uintptr_t>(table.data()); }
     static std::uint64_t now(void* user) noexcept { return static_cast<Fixture*>(user)->time; }
@@ -62,6 +65,13 @@ struct Fixture {
         auto& b=*static_cast<SurfaceGeometryBody*>(out);
         b={f.live.world, f.self_hit ? static_cast<std::uint32_t>(100+f.calls) : f.seam && f.last_x>0 ? 2u : 1u,f.generation};
         return out;
+    }
+    static bool static_owner(void* user,const SurfaceGeometryBody&,SurfaceGeometryWorldOwner& owner) noexcept {
+        auto& f=*static_cast<Fixture*>(user);
+        if(f.reject_world_owner)return false;
+        owner=f.world_owner;
+        if(f.changing_world_owner)owner.generation+=++f.world_owner_calls;
+        return true;
     }
     static void* ray(std::uintptr_t world_value,editor::NativeSurfaceResult* result,const editor::NativeSurfaceRay* ray_value,const char*) {
         auto& f=*running; ++f.calls; f.time+=f.delay;
@@ -100,6 +110,7 @@ struct Fixture {
         api.surface={&world,&ray,[]() -> std::uintptr_t {return reinterpret_cast<std::uintptr_t>(&running->allocator);},&release,true};
         api.picking.hit_body=&hit_body; api.picking.body_valid=&valid; api.picking.body_entity=&entity; api.picking.ready=true;
         api.user=this; api.now=&now; api.current=&current; api.read_bytes=&surface_geometry_test_read;
+        if(allow_world_owner)api.static_world_owner=&static_owner;
         return api;
     }
     static SurfaceGeometryRequest request() {
@@ -175,6 +186,31 @@ int main() {
     }
     { Fixture f; f.self=true; check(f.query().valid && f.calls==6,"fresh exact self body excluded natively once"); }
     { Fixture f; f.many_self=true; check(!f.query().valid && f.calls==9,"self exclusion bounded to eight exact shapes"); }
+    {
+        Fixture f;f.unknown=true;f.allow_world_owner=true;
+        const auto sample=f.query();
+        check(sample.valid && sample.body_owner==0 && sample.world_owner==f.world_owner,
+            "verified non-ECS world geometry retains its full owner stamp without inventing an entity ID");
+        check(revalidate_surface_geometry(f.api(),f.live,sample),"unchanged static world owner revalidates");
+        for(unsigned change=0;change<6;++change) {
+            const auto original=f.world_owner;
+            switch(change) {
+            case 0:++f.world_owner.index;break;case 1:++f.world_owner.generation;break;
+            case 2:++f.world_owner.kind;break;case 3:++f.world_owner.value;break;
+            case 4:++f.world_owner.body.generation;break;case 5:++f.world_owner.store;break;
+            }
+            check(!revalidate_surface_geometry(f.api(),f.live,sample),"world owner/body incarnation changes revoke geometry");
+            f.world_owner=original;
+        }
+        auto ordinary=f.api();ordinary.static_world_owner=nullptr;
+        check(!revalidate_surface_geometry(ordinary,f.live,sample),"world-owner opt-in cannot escape to ordinary surface consumers");
+    }
+    { Fixture f;f.unknown=true;f.allow_world_owner=true;f.reject_world_owner=true;
+      check(!f.query().valid,"unknown or moving owner remains rejected"); }
+    { Fixture f;f.unknown=true;f.allow_world_owner=true;f.changing_world_owner=true;
+      check(!f.query().valid,"world owner changing during the query is rejected"); }
+    { Fixture f;f.unknown=true;f.allow_world_owner=true;
+      check(f.query_wall().valid,"verified non-ECS wall supports the same broad geometry query"); }
     for (unsigned failure=0;failure<12;++failure) {
         Fixture f; auto sample=f.query();
         switch(failure) {

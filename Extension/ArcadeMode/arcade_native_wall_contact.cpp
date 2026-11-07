@@ -1,5 +1,6 @@
 #include "arcade_native_wall_contact.h"
 #include "arcade_contact_owner.h"
+#include "arcade_static_world_owner.h"
 #include "Engine/Core/Hooks/hooks.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
@@ -221,6 +222,7 @@ bool start(std::uintptr_t base) noexcept {
     image=base;
     for(const auto& contract:c::contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:c::board_contracts)if(!fingerprint(contract))return false;
+    for(const auto& contract:game::build::v20260929::physics_owner::contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:b::contracts)if(!fingerprint(contract))return false;
     if(!fingerprint(rc::shape_valid)||!fingerprint(rc::body_valid)||
        !fingerprint(r::shape_in_categories)||!fingerprint(c::motion_fixed_contract))return false;
@@ -264,5 +266,20 @@ bool current(const Contact& contact,std::uintptr_t expected_world) noexcept {
     auto again=contact;
     return qualify(again)&&again.world_store==contact.world_store&&again.body==contact.body&&again.static_body==contact.static_body&&
         again.categories_known==contact.categories_known&&again.categories==contact.categories;
+}
+bool static_world_owner(const SurfaceGeometryBody& shape,SurfaceGeometryWorldOwner& out) noexcept {
+    out={};
+    try {
+        Contact first{};first.shape={shape.world,shape.index,shape.generation};
+        if(!qualify(first) || !first.static_body || !first.categories_known)return false;
+        const auto current_owner=[&] {
+            auto again=first;
+            return qualify(again) && again.static_body && again.categories_known &&
+                again.world_store==first.world_store && again.body==first.body && again.categories==first.categories;
+        };
+        return static_world_owner_detail::observe(shape,
+            SurfaceGeometryBody{first.body.world,first.body.index,first.body.generation},first.world_store,
+            [](auto at,auto& value){return read(at,value);},current_owner,out);
+    } catch(...) {out={};return false;}
 }
 }

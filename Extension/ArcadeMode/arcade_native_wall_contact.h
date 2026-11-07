@@ -1,6 +1,7 @@
 #pragma once
 #include "Extension/Skater/no_bail.h"
 #include "Engine/Game/World/body_hit_identity.h"
+#include "arcade_surface_geometry.h"
 #include <array>
 
 namespace dingosdk::arcade_mode::native_wall_contact {
@@ -36,4 +37,7 @@ Snapshot observe(const NoBailSkater& owner,std::uint64_t now) noexcept;
 // Caller must independently validate its current local-world incarnation and
 // the same observed physics step. This only rechecks the native target handle.
 bool current(const Contact& contact,std::uintptr_t expected_world) noexcept;
+// A valid static native owner can have no ECS entity. Never admits an unknown
+// owner or moving body; returns the complete source-backed owner incarnation.
+bool static_world_owner(const SurfaceGeometryBody&,SurfaceGeometryWorldOwner&) noexcept;
 }
