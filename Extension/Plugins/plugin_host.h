@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <map>
 #include <memory>
-#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -132,6 +131,9 @@ private:
     // A plugin that stopped itself (a limit, its errors) is closed and its commands released.
     void collect(Entry& entry);
     void release_commands(std::string_view id);
+    // The chat "/" commands the player typed, to their plugins; and the list to the chat when it changed.
+    void run_chat_commands();
+    void publish_chat_commands();
     Entry* find(std::string_view id);
 
     void log(std::string_view plugin, LogLevel level, std::string_view text) override;
@@ -140,6 +142,7 @@ private:
     std::string level() override;
     std::filesystem::path storage_file(std::string_view plugin) override;
     std::string claim_command(std::string_view plugin, std::string_view name) override;
+    std::string claim_chat_command(std::string_view plugin, std::string_view name) override;
     std::optional<SkaterState> skater() override { return environment_.skater(); }
     Teleport teleport(std::string_view plugin, const Vec3& position, float heading, std::optional<bool> on_board = std::nullopt) override {
         return environment_.teleport(plugin, position, heading, on_board);
@@ -178,6 +181,8 @@ private:
     std::string suffix_;
     std::map<std::string, Entry, std::less<>> entries_;
     std::map<std::string, std::string, std::less<>> commands_; // command name: plugin id
+    std::map<std::string, std::string, std::less<>> chat_commands_; // chat "/" command name: plugin id
+    bool chat_commands_changed_{};
     std::string level_;
     double next_save_{};
     SessionState session_;
@@ -190,6 +195,7 @@ private:
     };
     std::vector<Emitted> events_; // emitted since the last tick
     std::optional<std::uint32_t> skater_state_;
+    std::optional<Game::MenuState> menu_state_; // as last read, while a plugin has the menu permission
     std::uint64_t wipeouts_{};
     bool wipeouts_known_{};
     std::uint64_t chat_seen_{};

@@ -258,47 +258,6 @@ void move_existing(std::uint64_t entity, const profile::PlacedObject &object) {
     e.transform_move(query.data(), pose.data(), source);
     placement_adapters::edited(entity, pose, false);
 }
-struct WorldRays {
-    struct Ray {
-        std::array<float, 3> origin{}, end{};
-    };
-    std::mutex mutex;
-    std::map<std::uint32_t, Ray> pending;
-    std::map<std::uint32_t, WorldRayHit> answers;
-};
-WorldRays &world_rays() {
-    static auto *value = new WorldRays;
-    return *value;
-}
-// Casts the queued outside rays on the client update, where the client physics context resolves.
-void cast_world_rays() {
-    auto &w = world_rays();
-    std::map<std::uint32_t, WorldRays::Ray> rays;
-    {
-        std::lock_guard lock(w.mutex);
-        rays.swap(w.pending);
-    }
-    if (rays.empty())
-        return;
-    auto &e = editor_state();
-    auto &r = placements_runtime();
-    std::array<std::uintptr_t, 2> context{};
-    if (r.context)
-        r.context(context.data());
-    const auto world = e.surface_api.ready && context[0] ? e.surface_api.world(context[0]) : 0;
-    const auto now = GetTickCount64();
-    for (const auto &[id, ray] : rays) {
-        WorldRayHit answer{true, false, {}, now};
-        answer.available = world != 0;
-        if (world)
-            if (const auto hit = editor::cast_surface(e.surface_api, world, ray.origin, ray.end)) {
-                answer.hit = true;
-                answer.at = *hit;
-            }
-        std::lock_guard lock(w.mutex);
-        w.answers[id] = answer;
-    }
-}
 } // namespace
 void initialize_park_editor(const std::filesystem::path &directory) {
     auto &e = editor_state();
@@ -332,12 +291,6 @@ void set_park_mods_root(const std::filesystem::path &data_root) {
 }
 void reset_park_editor() {
     auto &e = editor_state();
-    {
-        auto &w = world_rays();
-        std::lock_guard lock(w.mutex);
-        w.pending.clear();
-        w.answers.clear();
-    }
     ++e.generation;
     ++e.revision;
     e.transaction.reset();
@@ -706,99 +659,3 @@ std::optional<EditorSurfaceHit> read_local_park_surface(const EditorSurfaceReque
         return {};
     return query_park_surface(request);
 }
-void queue_world_ray(std::uint32_t id, const std::array<float, 3> &origin, const std::array<float, 3> &direction, float length) {
-    for (int i = 0; i < 3; ++i)
-        if (!std::isfinite(origin[i]) || !std::isfinite(direction[i]) || std::abs(origin[i]) > 100000)
-            return;
-    const float size = std::sqrt(direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2]);
-    if (size < 0.5f || !(length > 0) || length > 2000)
-        return;
-    std::array<float, 3> end{};
-    for (int i = 0; i < 3; ++i)
-        end[i] = origin[i] + direction[i] / size * length;
-    auto &w = world_rays();
-    std::lock_guard lock(w.mutex);
-    w.pending[id] = {origin, end};
-}
-WorldRayHit world_ray(std::uint32_t id) {
-    auto &w = world_rays();
-    std::lock_guard lock(w.mutex);
-    const auto it = w.answers.find(id);
-    return it == w.answers.end() ? WorldRayHit{} : it->second;
-}
-void tick_local_world_rays() noexcept {
-    PreserveError preserve;
-    try {
-        std::lock_guard lock(local_runtime().native_mutex);
-        if (!local_runtime().active || cosmetic_runtime().update_thread != GetCurrentThreadId())
-            return;
-        cast_world_rays();
-    } catch (...) {
-        // A mode's optional aim query must not fail or disable park editing.
-    }
-}
-void tick_local_park_editor() noexcept {
-    PreserveError preserve;
-    try {
-        std::lock_guard lock(local_runtime().native_mutex);
-        if (!local_runtime().active || cosmetic_runtime().update_thread != GetCurrentThreadId())
-            return;
-        // Mode placement uses the client physics world even before the park
-        // placement store/server manager becomes ready.
-        cast_world_rays();
-        update_placement_restore();
-    } catch (...) {
-        std::lock_guard lock(local_runtime().native_mutex);
-        fail("Park editing stopped after a native update error.");
-    }
-}
-void set_park_mod_list_visible(bool visible) noexcept { park_mod_list_visible.store(visible, std::memory_order_relaxed); }
-ParkEditorModel local_park_editor() {
-    std::lock_guard lock(local_runtime().native_mutex);
-    const auto &r = placements_runtime();
-    auto &e = editor_state();
-    ParkEditorModel model;
-    model.available = lobby_object_placement_allowed() && local_runtime().active && r.store && !r.failed && !r.save_failed && !r.map.empty() &&
-                      e.native_ready && r.enabled;
-    model.busy = e.transaction.has_value() || r.clearing || r.inflight.has_value() || !r.restore.empty();
-    model.failed = e.failed || r.restore_failed;
-    model.generation = e.generation;
-    model.revision = e.revision;
-    model.map = r.map;
-    model.can_undo = idle() && !e.undo.empty();
-    model.can_redo = idle() && !e.redo.empty();
-    model.assets = e.assets;
-    if (park_mod_list_visible.load(std::memory_order_relaxed)) poll_park_mods();
-    for (const auto &mod : e.park_mods)
-        model.park_mods.push_back({mod.folder, mod.details.title, mod.details.author, mod.details.version,
-                                   mod.details.description, mod.enabled,
-                                   std::find(mod.maps.begin(), mod.maps.end(), r.map) != mod.maps.end(), mod.maps});
-    model.legacy_parks = e.legacy_parks;
-    model.project = e.project;
-    model.can_load_parks = !is_lobby_guest();
-    model.surface = e.surface;
-    model.object_sets = e.object_sets;
-    if (e.transaction && e.transaction->preview)
-        model.preview_token = e.transaction->preview->token;
-    model.status = e.status;
-    if (!model.available)
-        model.status = !r.enabled ? "Enable object persistence to edit parks."
-                                  : "Load a supported local level to edit parks.";
-    if (!e.native_ready)
-        model.status = "Park editor move contract is unavailable for this build.";
-    if (r.save_failed)
-        model.status = "Object autosave failed. Check objects.sqlite3 before editing again.";
-    if (!lobby_object_placement_allowed())
-        model.status = "The host has disabled object placement for you in this session.";
-    std::set<std::uint64_t> spawned;
-    for (const auto &row : r.rows)
-        if (row.spawned)
-            spawned.insert(row.saved_id);
-    if (const auto it = r.document.maps.find(r.map); it != r.document.maps.end())
-        for (const auto &object : it->second) {
-            model.objects.push_back(
-                {object.id, object.item, object.position, object.rotation, spawned.contains(object.id), object.scale});
-        }
-    return model;
-}
-} // namespace dingosdk

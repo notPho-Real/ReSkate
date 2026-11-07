@@ -928,11 +928,25 @@ void category_tabs(SkateMenu& menu, int& selected, std::span<const char* const> 
     }
     ImGui::PushID(id);
     const float gap = px(6);
-    const float tab_width = (ImGui::GetContentRegionAvail().x - gap * (tabs.size() - 1)) / tabs.size();
     const float height = px(34);
+    // As many rows as it takes for every label to fit (two rows of three, say), the tabs of
+    // each row as wide as each other.
+    const int count = static_cast<int>(tabs.size());
+    const float avail = ImGui::GetContentRegionAvail().x;
+    float widest = 0;
+    for (const char* label : tabs) widest = std::max(widest, menu.bold->CalcTextSizeA(px(15), FLT_MAX, 0, label).x);
+    int columns = count;
+    for (int rows = 1; rows <= count; ++rows) {
+        columns = (count + rows - 1) / rows;
+        if ((avail - gap * static_cast<float>(columns - 1)) / static_cast<float>(columns) >= widest + px(16)) break;
+    }
+    const int rows = (count + columns - 1) / columns;
+    const float tab_width = (avail - gap * static_cast<float>(columns - 1)) / static_cast<float>(columns);
+    const auto start = ImGui::GetCursorScreenPos();
     auto* draw = ImGui::GetWindowDrawList();
-    for (int i = 0; i < static_cast<int>(tabs.size()); ++i) {
-        if (i) ImGui::SameLine(0, gap);
+    for (int i = 0; i < count; ++i) {
+        ImGui::SetCursorScreenPos(ImVec2(start.x + static_cast<float>(i % columns) * (tab_width + gap),
+                                         start.y + static_cast<float>(i / columns) * (height + gap)));
         const auto at = ImGui::GetCursorScreenPos();
         ImGui::PushID(i);
         if (ImGui::InvisibleButton("##tab", ImVec2(tab_width, height), ImGuiButtonFlags_EnableNav) && selected != i) {
@@ -953,6 +967,8 @@ void category_tabs(SkateMenu& menu, int& selected, std::span<const char* const> 
             on ? skate_theme::black : paper, label);
         draw->PopClipRect();
     }
+    ImGui::SetCursorScreenPos(ImVec2(start.x, start.y + static_cast<float>(rows) * height + static_cast<float>(rows - 1) * gap));
+    ImGui::Dummy(ImVec2(0, 0));
     ImGui::PopID();
     ImGui::Dummy(ImVec2(0, px(6)));
 }
@@ -977,11 +993,11 @@ ImFont* embedded_font(const wchar_t* name, float size, const ImWchar* ranges) {
 }
 
 constexpr std::array<const char*, page_count> page_names{
-    "HOME", "MAP", "BUILD", "SKATER", "SANDBOX", "ADDONS", "PLUGINS", "ONLINE", "PROGRESS", "MODS", "SETTINGS", "DEVELOPER"};
+    "HOME", "MAP", "BUILD", "SKATER", "SANDBOX", "ADDONS", "PLUGINS", "ONLINE", "PROGRESS", "MODS", "SETTINGS"};
 constexpr std::array<const char*, page_count> page_subtitles{
     "Everything, a button away.", "Pick your spot. Set the vibe.", "Make the park yours.", "Ride it your way.",
     "Tune it. Drill it.", "What ReSkate adds to skate.", "What your plugins add.", "Bring your crew.", "Pick up where you want.",
-    "Bring your own.", "Your controls, your screen.", "Under the hood."};
+    "Bring your own.", "Your controls, your screen."};
 constexpr std::array<const char*, addon_count> addon_names{"ADDONS", "MUSIC"};
 constexpr std::array<const char*, addon_count> addon_subtitles{"What ReSkate adds to skate.", "Your sound, in the game."};
 // The side rail's groups: the heading above the page that starts each.
@@ -1057,9 +1073,8 @@ void open_page(SkateMenu& menu, int page, int addon) {
 
 namespace {
 bool page_hidden(const SkateMenu& menu, const Model& model, int page) {
-    // Developer (the network view) is hidden for now; offline there is no Online. HOME is the
-    // full screen menu's: a window has its side rail instead.
-    return page == page_developer || (page == page_home && !menu.fullscreen_drawn) || (model.steam_offline && page == page_online);
+    // Offline there is no Online. HOME is the full screen menu's: a window has its side rail instead.
+    return (page == page_home && !menu.fullscreen_drawn) || (model.steam_offline && page == page_online);
 }
 // A plugin's page is titled with its name, and says whose it is.
 const char* page_title(SkateMenu& menu) {
@@ -1177,17 +1192,11 @@ void draw_page_body(SkateMenu& menu, const Model& model, const CallbacksV3& call
         break;
     case page_progress: progression_page(menu, model, callbacks); break;
     case page_mods:
-        // The SCRIPTS tab (custom Lua scripts, modding_menu.cpp) is not offered for now:
-        // nothing uses them. The page is the installed mods.
-        menu.mods_tab = 0;
-        ImGui::PushID(menu.mods_tab);
         ImGui::BeginChild("mods-tab", ImVec2(0, page_body_height(menu)), ImGuiChildFlags_NavFlattened);
-        draw_modding_menu(menu, menu.mods_tab, model, callbacks);
+        draw_modding_menu(menu, model, callbacks);
         ImGui::EndChild();
-        ImGui::PopID();
         break;
     case page_settings: settings_page(menu, model, callbacks); break;
-    case page_developer: developer_page(menu, model, callbacks); break;
     }
     if (menu.rail_indent > 0) {
         ImGui::Unindent(menu.rail_indent);
