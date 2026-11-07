@@ -20,7 +20,17 @@ jobs:
       - name: Build crash reporter regression before the full runtime
         run: cmake --build --preset release --parallel 4 --target dingosdk_crash_report_tests
       - name: Check crash capture and post-exit metadata
+        id: crash_capture
         run: ctest --test-dir build/vs2022-x64 -C Release -R '^crash_report$' --repeat until-fail:3 --output-on-failure --no-tests=error
+      - name: Preserve early crash-capture failure before the full build
+        if: failure() && steps.crash_capture.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: integration-early-crash-failure-${{ github.sha }}
+          path: |
+            build/vs2022-x64/Testing/Temporary/LastTest.log
+            build/vs2022-x64/Testing/Temporary/LastTestsFailed.log
+          if-no-files-found: warn
       - name: Build all configured targets with upstream warning policy
         # A crash-fixture failure must still fail the job, but must not prevent
         # independent runtime compilation and regression evidence.
