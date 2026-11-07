@@ -1553,7 +1553,7 @@ NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& o
 }
 WallplantExecutionProof native_wallplant_context(const NativeInputOwner& owner,std::uint64_t& now,
                                          const char** diagnostic_reason) noexcept {
-    // Only the pending preselector handoff uses synchronous arbitration. Its
+    // Only the retained-contact preselector uses synchronous arbitration. Its
     // caller holds no source busy flag, runtime mutex or No Bail lease lock.
     // Refresh both time and native inputs AFTER acquiring authority; waiting
     // never extends a frame, physical press or controller lease.
@@ -1575,7 +1575,7 @@ WallplantExecutionProof native_wallplant_context(const NativeInputOwner& owner,s
         imported_contact=true;
         if(diagnostic_reason)*diagnostic_reason="frame_wall_contact_phase";
     }
-    static unsigned reported{}; // Serialized by ollie_mutex; pending accessor only.
+    static unsigned reported{}; // Serialized by ollie_mutex; contact-scoped accessor only.
     if(diagnostic.mismatches && reported<64) {
         ++reported;
         const auto& original=diagnostic.observed;

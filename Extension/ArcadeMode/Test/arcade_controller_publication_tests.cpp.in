@@ -454,6 +454,56 @@ void run(){
                 "native transition while waiting is returned honestly for existing callback provenance rejection");++checks;
         }
     }
+    struct SelectionProbe {std::uint64_t input{},contact{},raw{};NativeInputFrame native{};};
+    {
+        unsigned synchronized{},read_pending{};WallplantExecutionProof execution{};
+        const auto absent=wallplant_pending_after_arbitration(SelectionProbe{},execution,[&] {
+            ++synchronized;return WallplantExecutionProof{};
+        },[&] {++read_pending;return SelectionProbe{};});
+        require(!absent.input&&!synchronized&&!read_pending,
+            "no retained collision keeps selection arbitration entirely inactive");++checks;
+    }
+    for(unsigned boundary=0;boundary<10;++boundary) {
+        clock_ms=1000;mode_enabled=true;live_readable=true;native_input_state={};
+        NativeRequestSample air_sample{};air_sample.valid=true;air_sample.state=201;air_sample.crouch_mode=2;
+        live_sample=air_sample;
+        const auto original=native_input_state.observe(1000,owner,air_sample,{});
+        controller_route.reset();arcade_input.enable(false);arcade_input.enable(true);
+        set_controller_source(1,1000);observe(controller_route,1,{true,1000,0,0,0,0,0,0,0});
+        controller_route.select(1000,3,true,original);arcade_input.publish_native_context(original);
+        arcade_input.publish_authority(1000,original.owner_generation,1,true);
+        const SelectionProbe retained{0,3,14935,original};
+        SelectionProbe pending{},admitted{};WallplantExecutionProof execution{};
+        std::uint64_t acquired_at{};const char* reason{};std::atomic<bool> entered{};
+        std::unique_lock publisher(ollie_mutex);
+        std::thread selector([&] {
+            admitted=wallplant_pending_after_arbitration(retained,execution,[&] {
+                entered.store(true,std::memory_order_release);
+                return native_wallplant_context(owner,acquired_at,&reason);
+            },[&] {return pending;});
+        });
+        while(!entered.load(std::memory_order_acquire))std::this_thread::yield();
+        require(!pending.input,"pending is genuinely absent before serialized dispatch completes");++checks;
+        clock_ms=boundary==8?1151:1001;
+        pending={29,retained.contact,retained.raw,original};
+        if(boundary==1)pending={}; // No A was admitted by the existing dispatcher.
+        if(boundary==2)++pending.native.owner.core;
+        if(boundary==3)++pending.raw;
+        if(boundary==4)++pending.contact;
+        if(boundary==5)++pending.native.physics_step;
+        if(boundary==6)live_sample.state=100;
+        if(boundary==7)mode_enabled=false;
+        if(boundary==8)observe(controller_route,1,{true,clock_ms,0,0,0,0,0,0,0});
+        if(boundary==9)arcade_input.invalidate_authority();
+        publisher.unlock();selector.join();
+        require(admitted.input==(boundary==0?29u:0u),
+            "arbitration sees published A only with exact retained owner/contact/frame and live admission");++checks;
+        require(acquired_at==clock_ms,"selection arbitration validates time after acquiring input ownership");++checks;
+        if(boundary==0) {
+            require(wallplant_same_observation(execution.native,original)&&admitted.native.sampled_at==1000,
+                "waiting for dispatch neither renews the original AIR frame nor manufactures a newer episode");++checks;
+        }
+    }
     std::cout<<checks<<" exact production binding API checks passed\n";
 }
 }

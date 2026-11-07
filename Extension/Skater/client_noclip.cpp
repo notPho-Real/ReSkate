@@ -604,8 +604,12 @@ std::uint64_t arcade_wallplant_before_selection(std::uintptr_t selector,std::uin
     wallplant_selection_phase(selector,current,0,"before_selection");
     auto& handoff=wallplant_handoff();
     if(handoff.ticket.selector==selector)handoff={};
-    const auto probe=arcade_mode::wallplant_runtime::writer_probe();
-    if(!probe.input)return 0;
+    auto retained=arcade_mode::wallplant_runtime::writer_probe();
+    if(!retained.input) {
+        const auto contact=arcade_mode::wallplant_runtime::geometry_probe();
+        if(!contact.contact)return 0;
+        retained={0,contact.contact,contact.raw,contact.native};
+    }
     SourceLastError error;
     auto& state=source_state();
     if(!state.initialized.load(std::memory_order_acquire) ||
@@ -613,15 +617,25 @@ std::uint64_t arcade_wallplant_before_selection(std::uintptr_t selector,std::uin
        !state.motion_original.load(std::memory_order_acquire))return 0;
     // Foreign selectors must neither consume a pending request nor its receipt.
     std::uintptr_t core_selector{};
-    if(!memory::peek(probe.native.owner.core+0x440,core_selector) || core_selector!=selector)return 0;
+    if(!memory::peek(retained.native.owner.core+0x440,core_selector) || core_selector!=selector)return 0;
     handoff={};
+    std::uint64_t now{};
+    const char* frame_reason="frame_not_read";
+    arcade_mode::WallplantExecutionProof execution{};
+    // remap_xinput holds ollie_mutex through request publication. The chooser
+    // must arbitrate before deciding that no pending A exists, or it can pass
+    // native201 while that same dispatch is still publishing the request.
+    const auto probe=arcade_mode::wallplant_pending_after_arbitration(retained,execution,[&] {
+        return arcade_mode::native_wallplant_context(retained.native.owner,now,&frame_reason);
+    },[] {return arcade_mode::wallplant_runtime::writer_probe();});
+    if(!probe.input) {
+        arcade_mode::wallplant_runtime::writer_event(retained,12,frame_reason,current,true,retained.native.owner.core);
+        return 0;
+    }
     const auto note=[&](unsigned stage,const char* reason) {
         arcade_mode::wallplant_runtime::writer_event(probe,stage,reason,current,true,probe.native.owner.core);
     };
     note(10,"before_selection");
-    std::uint64_t now{};
-    const char* frame_reason="frame_not_read";
-    const auto execution=arcade_mode::native_wallplant_context(probe.native.owner,now,&frame_reason);
     const auto& frame=execution.native;
     note(12,frame_reason);
     if(!frame.valid){note(15,"Wallplant selection native admission changed.");return 0;}

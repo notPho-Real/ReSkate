@@ -67,6 +67,20 @@ inline bool wallplant_same_observation(const NativeInputFrame& a,const NativeInp
         a.physics_step==b.physics_step && a.sampled_at==b.sampled_at && a.state==b.state &&
         a.airborne && b.airborne && a.airborne_episode==b.airborne_episode && a.air_departure==b.air_departure;
 }
+// A retained collision only scopes arbitration with an in-progress input
+// dispatch. Read pending AFTER that serialized dispatch completes; neither a
+// retained collision nor the synchronized frame can manufacture an A request.
+template<class Probe,class Synchronize,class Pending>
+Probe wallplant_pending_after_arbitration(const Probe& retained,WallplantExecutionProof& execution,
+        Synchronize&& synchronize,Pending&& pending) {
+    if(!retained.contact || !retained.raw || !retained.native.valid)return {};
+    execution=synchronize();
+    if(!wallplant_same_observation(retained.native,execution.native))return {};
+    const auto request=pending();
+    if(!request.input || request.contact!=retained.contact || request.raw!=retained.raw ||
+       !wallplant_same_observation(execution.native,request.native))return {};
+    return request;
+}
 inline bool wallplant_reconstruction_current(const WallplantSelectionTicket& ticket,
         const WallplantExecutionProof& proof,const NativeInputOwner& owner,std::uintptr_t selector,
         std::uint32_t previous,const NativeRequestSample& live,std::uint64_t now) noexcept {
