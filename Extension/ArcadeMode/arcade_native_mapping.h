@@ -8,22 +8,8 @@ namespace dingosdk::arcade_mode {
 // confirmed current-game authored labels (Impossible: regular 36, nollie 38).
 // Zero means no established exact mapping, never permission to substitute.
 constexpr std::uint8_t native_flip_id(ArcadeTrick trick, bool nollie) noexcept {
-    switch (trick) {
-    case ArcadeTrick::kickflip: return nollie ? 17 : 2;
-    case ArcadeTrick::impossible: return nollie ? 38 : 36;
-    case ArcadeTrick::heelflip: return nollie ? 18 : 3;
-    case ArcadeTrick::pop_shove_it: return nollie ? 19 : 4;
-    case ArcadeTrick::hardflip: return nollie ? 20 : 9;
-    case ArcadeTrick::inward_heelflip: return nollie ? 24 : 6;
-    case ArcadeTrick::varial_kickflip: return nollie ? 23 : 5;
-    case ArcadeTrick::varial_heelflip: return nollie ? 21 : 8;
-    case ArcadeTrick::shove_it_360: return nollie ? 28 : 10;
-    case ArcadeTrick::hardflip_360: return nollie ? 26 : 15;
-    case ArcadeTrick::inward_heelflip_360: return nollie ? 30 : 12;
-    case ArcadeTrick::flip_360: return nollie ? 29 : 11;
-    case ArcadeTrick::heelflip_360: return nollie ? 27 : 14;
-    default: return 0;
-    }
+    const auto* definition=trick_definition(trick);
+    return definition?(nollie?definition->nollie_flip:definition->native_flip):0;
 }
 // Only ordinary basic flips admitted by the same-flight proof may retain an
 // existing Ollie trajectory. This grants neither trick admission nor an impulse.

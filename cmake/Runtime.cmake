@@ -306,6 +306,7 @@ target_link_libraries(dingosdk_custom_level_manifest PUBLIC dingosdk_json)
 target_link_libraries(dingosdk_runtime PRIVATE dingosdk_custom_level_manifest)
 
 set_target_properties(dingosdk_runtime PROPERTIES OUTPUT_NAME "ReSkate" PREFIX "")
+include("${PROJECT_SOURCE_DIR}/cmake/ArcadeEvidence.cmake")
 
 # The game as a Spotify Connect device (Extension/Music/spotify_device.h): SpotifyHelper/, a
 # Rust library on librespot, built by cargo and linked into ReSkate.dll. Without cargo the DLL

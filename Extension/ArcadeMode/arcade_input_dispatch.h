@@ -373,7 +373,7 @@ public:
     const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
     bool pending_stick() const noexcept {
         if (previous_context_ == InputContext::air) for (const auto& event : events_.history().events())
-            if (event.sequence > air_flip_after_ && event.token == InputToken{InputSource::buttons,14,InputEdge::press} &&
+            if (event.sequence > air_flip_after_ && event.token == InputToken{InputSource::buttons,TrickControls::flip,InputEdge::press} &&
                 !(event.owners & ordinary_reject) && event.at <= last_ && last_ - event.at < 500) return true;
         for (const auto& request : pending_.slots()) if (request.action == InputAction::flip) return true;
         return false;
@@ -556,14 +556,14 @@ public:
             // Preserve the physical RT edge while balance publication catches
             // up. The auxiliary dispatcher still requires independently current
             // manual admission; recognition itself grants no native actuator.
-            if (environment.auxiliary_enabled && event.token.source == InputSource::triggers && event.token.code == 1 &&
+            if (environment.auxiliary_enabled && event.token.source == InputSource::triggers && event.token.code == TrickControls::revert_trigger &&
                 event.token.edge == InputEdge::press && (environment.context == InputContext::ground ||
                     environment.context == InputContext::balance))
                 { const auto match = consume(event); enqueue(InputAction::revert, now, 1, environment,1,0,0,0,{},&match); }
             if (event.token.source != InputSource::buttons || event.owners) continue;
             const auto code = event.token.code;
-            if (code == 14 && event.token.edge == InputEdge::release) flip_release = event.sequence;
-            if (code == 12) {
+            if (code == TrickControls::flip && event.token.edge == InputEdge::release) flip_release = event.sequence;
+            if (code == TrickControls::ollie) {
                 if (event.token.edge == InputEdge::press && environment.ollie_allowed && environment.context != InputContext::foot) {
                     if (environment.native_footplants && environment.context==InputContext::ground &&
                         !environment.nollie && recognize_footplant(now,environment,event)) continue;
@@ -581,35 +581,34 @@ public:
                 }
             }
             if (event.token.edge != InputEdge::press) continue;
-            if(code==14 && environment.context==InputContext::air && environment.native_fingerflips &&
-                (physical.buttons&0x2000u)) {
+            if(code==TrickControls::flip && environment.context==InputContext::air && environment.native_fingerflips &&
+                (physical.buttons&TrickControls::mask(TrickControls::grab))) {
                 // The original physical X edge belongs to the held grab, even
                 // if its native entry is not ready. Never fall back to an Ollie
                 // bridge or an ordinary flip after this contextual request.
                 const auto direction=events_.held_direction();
-                const auto variant=direction==6?3u:direction==2?4u:direction==8?7u:
-                    direction==0 || direction==4?2u:0u;
+                const auto variant=fingerflip_input(air_trick_direction(direction));
                 const auto match=consume(event);
                 pending_.cancel(InputAction::flip);
                 if(variant)enqueue(InputAction::flip,now,1,environment,1,static_cast<std::uint8_t>(variant),
                     0,0,{},&match,InputForm::grab_transition);
                 continue;
             }
-            if(code==13 && environment.native_ground_grabs && environment.context==InputContext::ground &&
-                (physical.buttons&0x2080u)==0x2080u) {
+            if(code==TrickControls::grab && environment.native_ground_grabs && environment.context==InputContext::ground &&
+                (physical.buttons&(TrickControls::mask(TrickControls::grab)|TrickControls::mask(TrickControls::grab_layer)))==(TrickControls::mask(TrickControls::grab)|TrickControls::mask(TrickControls::grab_layer))) {
                 const auto direction=events_.held_direction();
-                const unsigned variant=direction==4?2u:direction==6?1u:direction==2?4u:direction==0?3u:0u;
+                const unsigned variant=ground_grab_variant(air_trick_direction(direction));
                 if(variant) {
                     const auto match=consume(event);
                     enqueue(InputAction::ground_grab,now,1,environment,1,static_cast<std::uint8_t>(variant),0,0,{},&match);
                 }
                 continue;
             }
-            if (code==13) {grab_choice_event_=event.sequence;grab_choice_=environment.selected_grab;}
-            if (environment.context == InputContext::air && (code == 14 || code == 13)) {
-                grab_pressed = grab_pressed || (code == 13 && environment.auxiliary_enabled);
+            if (code==TrickControls::grab) {grab_choice_event_=event.sequence;grab_choice_=environment.selected_grab;}
+            if (environment.context == InputContext::air && (code == TrickControls::flip || code == TrickControls::grab)) {
+                grab_pressed = grab_pressed || (code == TrickControls::grab && environment.auxiliary_enabled);
             }
-            if (code == 15 && !(environment.surface.fresh && environment.surface.can_push) && environment.rail.phase == InputRailPhase::unavailable && (environment.context == InputContext::ground ||
+            if (code == TrickControls::grind && !(environment.surface.fresh && environment.surface.can_push) && environment.rail.phase == InputRailPhase::unavailable && (environment.context == InputContext::ground ||
                 environment.context == InputContext::air || environment.context == InputContext::rail || environment.context == InputContext::lip))
                 {
                     InputMatch press{}; press.count = 1; press.events[0] = event.sequence;
@@ -624,7 +623,7 @@ public:
         // ordinary match; observed context transitions still cancel it.
         if (environment.context == InputContext::air) {
             if (environment.auxiliary_enabled) recognize_contextual(now,environment,InputAirTableKind::grab_extra);
-            if (!(environment.native_fingerflips && (physical.buttons&0x2000u)) &&
+            if (!(environment.native_fingerflips && (physical.buttons&TrickControls::mask(TrickControls::grab))) &&
                 !recognize_contextual(now,environment,InputAirTableKind::pressure)) recognize_flip(now, environment, flip_release);
             if (environment.auxiliary_enabled && (grab_pressed || (environment.named_grabs && !environment.deferred_grabs)))
                 recognize_grab(now, environment);
@@ -732,9 +731,9 @@ private:
                 action == InputAction::jump_variant ||
                 (!environment.policy.bounded_handoff && (action == InputAction::flip || action == InputAction::grab)), modifier,
             environment.rail.geometry_index(), environment.rail.geometry_known, environment.rail.generation, InputHistory::direction_token(inherited) ? inherited.source : direction_source_,
-            static_cast<std::uint16_t>(action == InputAction::grab ? 0x2000u : action == InputAction::flip ? 0x4000u :
-                action == InputAction::crouch || action == InputAction::ollie_release || action == InputAction::jump_variant ? 0x1000u :
-                action == InputAction::ground_turn ? 0x0200u :
+            static_cast<std::uint16_t>(action == InputAction::grab ? TrickControls::mask(TrickControls::grab) : action == InputAction::flip ? TrickControls::mask(TrickControls::flip) :
+                action == InputAction::crouch || action == InputAction::ollie_release || action == InputAction::jump_variant ? TrickControls::mask(TrickControls::ollie) :
+                action == InputAction::ground_turn ? TrickControls::mask(trick_definition(ArcadeTrick::ground_half_turn)->bindings[0].first_button) :
                 action == InputAction::board_toggle ? (environment.board_binding.pattern == InputBoardPattern::shoulder_overlap ? 0x0300u : environment.board_binding.control_mask) : 0u),
             action == InputAction::crouch || action == InputAction::ollie_release || action == InputAction::jump_variant ? crouch_at_ : now,
             action == InputAction::ollie_release || action == InputAction::jump_variant ? now : 0, InputHistory::direction_token(inherited), environment.named_grabs, environment.surface.generation,
@@ -751,7 +750,7 @@ private:
             if (action==InputAction::flip && form==InputForm::held_repeat) request.generation_mask=1;
         }
         if (action == InputAction::rail_request || action == InputAction::lip_request) {
-            request.control = 0x8000;
+            request.control = static_cast<std::uint16_t>(TrickControls::mask(TrickControls::grind));
             request.physical_pressed_at = footprint ? footprint->first_at : now;
             request.input_sequence = footprint && footprint->count ? footprint->events[footprint->count-1] : 0;
         }
@@ -768,7 +767,10 @@ private:
             // withdrawal or landing; do not expire it before genuine takeoff.
             request.unbounded=environment.native_pop_transition && request.pop_release_at!=0;
         }
-        if (action == InputAction::ground_turn) { request.direction = 2; request.direction_source = InputSource::direction; }
+        if (action == InputAction::ground_turn) {
+            for(const auto row:air_direction_rows)if(row.direction==trick_definition(ArcadeTrick::ground_half_turn)->bindings[0].direction)request.direction=row.code;
+            request.direction_source = InputSource::direction;
+        }
         if (form == InputForm::repeated_direction || ((action == InputAction::flip || action == InputAction::grab) && defined_direction)) {
             request.direction = defined_direction; request.direction_source = InputSource::direction;
             request.direction_inherited = false;
@@ -850,13 +852,15 @@ private:
         }
     }
     bool recognize_footplant(std::uint64_t now,InputEnvironment environment,const InputEvent& terminal) noexcept {
-        const InputToken up{InputSource::direction,8,InputEdge::press};
-        const InputToken a{InputSource::buttons,12,InputEdge::press};
+        const InputToken a{InputSource::buttons,TrickControls::ollie,InputEdge::press};
         for (const unsigned count:{2u,1u}) {
+            const auto* definition=binding_for(count==2?ArcadeTrick::boneless:ArcadeTrick::no_comply,BindingPattern::footplant);
+            if(!definition || definition->presses!=count)continue;
+            const InputToken up{InputSource::direction,direction_code(definition->direction),InputEdge::press};
             const std::array double_steps{up,up,a};
             const std::array single_steps{up,a};
             const auto steps=count==2 ? std::span<const InputToken>(double_steps) : std::span<const InputToken>(single_steps);
-            auto match=events_.history().match({steps,count==2?500u:300u,ordinary_reject},now);
+            auto match=events_.history().match({steps,count==2?footplant_repeat_ms:footplant_single_ms,ordinary_reject},now);
             if (!match || match.events[match.count-1]!=terminal.sequence) continue;
             bool conflict=false;
             for (const auto& edge:events_.history().events()) {
@@ -877,7 +881,7 @@ private:
         if (binding != InputJumpBinding::single_release && binding != InputJumpBinding::repeated_release) return false;
         const unsigned count = binding == InputJumpBinding::single_release ? 1u : 2u;
         const auto match = events_.history().release_after_presses({InputSource::direction,8,InputEdge::press},
-            {InputSource::buttons,12,InputEdge::release}, count, count == 1 ? 300u : 500u, now, ordinary_reject);
+            {InputSource::buttons,TrickControls::ollie,InputEdge::release}, count, count == 1 ? 300u : 500u, now, ordinary_reject);
         if (!match || !events_.history().consume(match,InputConsumption::regular,ordinary_reject)) return false;
         environment.nollie = false;
         enqueue(InputAction::jump_variant,now,0,environment,1,static_cast<std::uint8_t>(binding),0,0,{},&match);
@@ -903,9 +907,17 @@ private:
     InputMatch directional_prefix(InputAction action, InputContext context, std::uint64_t now, std::int16_t& selected) const noexcept {
         // Ordinary rows precede base directional actions. Repeating a direction
         // is distinct from a face press within an installed parent's extra table.
+        if(action==InputAction::ground_turn && context==InputContext::ground) {
+            const auto& binding=trick_definition(ArcadeTrick::ground_half_turn)->bindings[0];
+            for(const auto row:air_direction_rows)if(row.direction==binding.direction) {
+                const InputToken token{InputSource::direction,row.code,InputEdge::press};
+                const auto match=events_.history().triple(token,token,{InputSource::buttons,binding.first_button,InputEdge::press},binding.parameter,2,now,ordinary_reject);
+                if(match){selected=row.code;return match;}
+            }
+            return {};
+        }
         struct Definition { InputAction action; InputContext context; std::int16_t direction, terminal; std::uint64_t window; };
         static constexpr std::array definitions{
-            Definition{InputAction::ground_turn,InputContext::ground,2,9,333},
             Definition{InputAction::flip,InputContext::air,4,14,300},
             Definition{InputAction::flip,InputContext::air,6,14,300},
             Definition{InputAction::flip,InputContext::air,8,14,300},
@@ -991,13 +1003,13 @@ private:
     void recognize_grab(std::uint64_t now, InputEnvironment environment) noexcept {
         unsigned presses = 1;
         auto selected = now >= direction_at_ && now - direction_at_ <= InputTiming::direction_ms ? direction_ : std::int16_t{0};
-        const InputToken face{InputSource::buttons,13,InputEdge::press};
+        const InputToken face{InputSource::buttons,TrickControls::grab,InputEdge::press};
         const std::array face_tokens{face};
         const auto physical_press=events_.history().match({face_tokens,InputTiming::readiness_ms,ordinary_reject},now);
         bool extended=false;
         if(environment.native_grab_transition && physical_press) {
             for(const auto& event:events_.history().events())
-                if(event.sequence==physical_press.events[0] && (event.physical_buttons&0x80u)) {
+                if(event.sequence==physical_press.events[0] && (event.physical_buttons&TrickControls::mask(TrickControls::grab_layer))) {
                     if (event.sequence!=grab_choice_event_) return;
                     environment.selected_grab=grab_choice_;
                     extended=true; selected=event.physical_direction; break;
@@ -1014,7 +1026,7 @@ private:
             match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);
             // Native admission may wait after recognition. Repetition belongs
             // to the two physical B edges, never to either dispatch timestamp.
-            if (match && (match.last_at < grab_pressed_at_ || match.last_at-grab_pressed_at_ > 250)) match = {};
+            if (match && (match.last_at < grab_pressed_at_ || match.last_at-grab_pressed_at_ > grab_repeat_ms)) match = {};
             if (match) presses = active_grab_count_ < std::numeric_limits<unsigned>::max() ? active_grab_count_ + 1 : active_grab_count_;
         }
         if (!match && !environment.deferred_grabs) {
@@ -1077,7 +1089,7 @@ private:
         // The session's observed released-Ollie proof carries the physical
         // edge into real AIR; mode 2 and selection retirement are not required
         // to present the next native stick gesture after the pop flick ends.
-        const InputToken face{InputSource::buttons,14,InputEdge::press};
+        const InputToken face{InputSource::buttons,TrickControls::flip,InputEdge::press};
         InputMatch match{}; unsigned presses = 1;
         InputForm form{}; std::int16_t defined_direction{};
         const bool held_child=environment.native_held_flip && active_flip_ && active_flip_count_==1 &&
@@ -1091,7 +1103,7 @@ private:
         }
         const bool child = active_flip_count_ == 1 || (active_flip_count_ == 2 &&
             (flip_direction_ == 2 || flip_direction_ == 4 || flip_direction_ == 6 || flip_direction_ == 8));
-        if (!match && active_flip_ && child && now - flip_started_ <= 233) {
+        if (!match && active_flip_ && child && now - flip_started_ <= flip_repeat_ms) {
             const auto definition = air_selection(TrickFamily::flip,flip_direction_,active_flip_count_ + 1);
             const std::array tokens{face};
             match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);
@@ -1143,7 +1155,7 @@ private:
         if (!surface.fresh || environment.context == InputContext::foot) return;
         if (surface_clocked_ && surface.generation == surface_generation_ && surface.physics_step == surface_step_) return;
         surface_clocked_ = true; surface_generation_ = surface.generation; surface_step_ = surface.physics_step;
-        const InputToken jump{InputSource::buttons,12,InputEdge::press};
+        const InputToken jump{InputSource::buttons,TrickControls::ollie,InputEdge::press};
         if (surface.can_plant) {
             for (auto code : {std::int16_t{2},std::int16_t{1},std::int16_t{3}})
                 for (bool reverse : {false,true}) {
@@ -1155,7 +1167,7 @@ private:
                     }
                 }
         }
-        if (surface.can_push && events_.held({InputSource::buttons,15,InputEdge::press})) {
+        if (surface.can_push && events_.held({InputSource::buttons,TrickControls::grind,InputEdge::press})) {
             enqueue(InputAction::wall_command,now,1,environment,1,2); return;
         }
         if (surface.can_transfer && surface.transfer_buttons &&
@@ -1172,7 +1184,7 @@ private:
         const auto& rail = environment.rail;
         if (!rail.fresh || !rail.ready) return;
         if (environment.context != InputContext::rail && environment.context != InputContext::lip) return;
-        constexpr InputToken y{InputSource::buttons, 15, InputEdge::press};
+        constexpr InputToken y{InputSource::buttons, TrickControls::grind, InputEdge::press};
         if (rail.phase == InputRailPhase::early) {
             constexpr std::array<std::int16_t, 8> front{9, 3, 1, 7, 8, 6, 4, 2};
             constexpr std::array<std::int16_t, 8> back{9, 3, 1, 7, 8, 6, 2, 4};
@@ -1186,15 +1198,9 @@ private:
                 }
             }
         }
-        struct Pair { std::int16_t first, second; std::uint8_t target; };
-        constexpr auto named = [](std::int16_t first,std::int16_t second,GrindChangeTarget target) {
-            return Pair{first,second,grind_change_variant(target)};
-        };
-        using Target = GrindChangeTarget;
-        constexpr std::array front{
-            named(15,15,Target::grind_50_50), named(15,14,Target::noseslide), named(15,13,Target::nosegrind),
-            named(13,13,Target::crooked), named(13,14,Target::bluntslide), named(13,15,Target::nosebluntslide),
-            named(14,14,Target::smith), named(14,13,Target::grind_5_0), named(14,15,Target::tailslide)};
+        using Pair=GrindBindingPair;
+        using Target=GrindChangeTarget;
+        constexpr auto front=grind_change_bindings;
         constexpr std::array back{front[0],front[1],front[2],front[3],front[4],front[5],front[8],front[6],front[7]};
         constexpr std::array lips{Pair{13,13,40}, Pair{13,14,41}, Pair{14,14,42}, Pair{14,13,43},
             Pair{15,15,44}, Pair{15,14,45}, Pair{15,13,46}};
@@ -1223,7 +1229,7 @@ private:
             enqueue(action, now, 0, environment, 1, pair.target,0,0,{},&match); return true;
         };
         if (rail.phase == InputRailPhase::established) {
-            for (auto pair : rail.frontside ? front : back) if (query(pair, 300, InputAction::rail_change)) return;
+            for (auto pair : rail.frontside ? front : back) if (query(pair, InputTiming::extra_press_ms, InputAction::rail_change)) return;
         } else if (rail.phase == InputRailPhase::lip_established) {
             if (rail.lip_table == 0) { for (auto pair : lips) if (query(pair, 300, InputAction::lip_change)) return; }
             else if (rail.lip_table == 1) { for (auto pair : inverted) if (query(pair, 300, InputAction::lip_change)) return; }
@@ -1234,7 +1240,7 @@ private:
         if (environment.context == InputContext::ground || environment.context == InputContext::air) {
             for (auto direction : {std::int16_t{8}, std::int16_t{2}}) {
                 const InputToken token{InputSource::direction, direction, InputEdge::press};
-                const auto match = events_.history().triple(token, token, {InputSource::buttons, 15, InputEdge::press}, 400, 2, now, ~manual_owner);
+                const auto match = events_.history().triple(token, token, {InputSource::buttons, TrickControls::grind, InputEdge::press}, 400, 2, now, ~manual_owner);
                 if (match && events_.history().consume(match, rail_owner, ~manual_owner))
                     enqueue(InputAction::rail_select, now, 1000, environment, 1, direction == 8 ? 20 : 21,0,0,{},&match);
             }
@@ -1260,7 +1266,7 @@ private:
                 enqueue(InputAction::lip_select,now,0,environment,1,static_cast<std::uint8_t>(direction),0,0,{},&match); lip_had_input_ = true;
             }
         }
-        const std::array token{InputToken{InputSource::buttons,15,InputEdge::press}};
+        const std::array token{InputToken{InputSource::buttons,TrickControls::grind,InputEdge::press}};
         const auto match = events_.history().match({token,1000,~(rail_owner | manual_owner)},now);
         if (match && events_.history().consume(match,InputConsumption::regular,~(rail_owner | manual_owner))) {
             enqueue(InputAction::lip_select,now,0,environment,1,0,0,0,{},&match); lip_had_input_ = true;
@@ -1385,7 +1391,7 @@ private:
             }
             if (rule.kind == 2) {
                 return events_.history().triple({InputSource::direction, rule.first, InputEdge::press},
-                    {InputSource::direction, rule.second, InputEdge::press}, {InputSource::buttons, 14, InputEdge::press},
+                    {InputSource::direction, rule.second, InputEdge::press}, {InputSource::buttons, TrickControls::flip, InputEdge::press},
                     rule.window, 2, now, ~manual_owner);
             }
             const std::array tokens{InputToken{InputSource::buttons, rule.first, InputEdge::press},
@@ -1475,8 +1481,9 @@ private:
             // the pair's recognition to a different throw.
             auto match=InputMatch::single(*prior);
             match.events[match.count++]=latest->sequence;match.last_at=latest->at;
-            if(match && events_.history().consume(match,manual_owner,reject))
-                enqueue(sign(latest)>0?InputAction::nose_manual:InputAction::manual,now,
+            const auto selected=manual_pair_trick(sign(prior),sign(latest));
+            if(selected!=ArcadeTrick::none && match && events_.history().consume(match,manual_owner,reject))
+                enqueue(selected==ArcadeTrick::nose_manual?InputAction::nose_manual:InputAction::manual,now,
                     environment.context==InputContext::air?InputTiming::air_request_ms:0,environment,1,0,0,0,{},&match);
         }
         diagnostic_.suppress_reverse = environment.context == InputContext::ground && physical.y < -11000 &&

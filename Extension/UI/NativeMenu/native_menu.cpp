@@ -1,4 +1,5 @@
 #include "native_menu.h"
+#include "Extension/ArcadeMode/arcade_mode.h"
 #include "native_menu_internal.h"
 #include "native_menu_dump.h"
 #include "throwdown_menu.h"
@@ -194,6 +195,7 @@ std::atomic<std::uint64_t> page_seen{};
 std::atomic<int> page_shown{}; // 0: Multiplayer, 1: Mod Options, 2: Mod Manager
 std::atomic<bool> game_in_menu{};
 std::atomic<bool> back_wanted{}; // hold_native_menu_back
+#include "native_trickpedia.inl"
 // Returns the key of the tab the pause menu has selected (0: none of ours can be told).
 std::uint32_t restore_last_tab(const Context& context, Value menu) {
     static std::uint32_t remembered{};
@@ -593,6 +595,7 @@ void tick_page(std::uintptr_t base, bool loading) noexcept {
         s.base = base; s.manager = manager;
         const Context context(base, manager);
         game::ModelWriteLock lock(manager);
+        if(!s.slot)update_trickpedia(context,now);
         Root active;
         const auto populated = [&](Value candidate) {
             if (!candidate.handle || context.type_of(candidate.handle) != candidate.type) return false;
@@ -647,7 +650,7 @@ void tick_page(std::uintptr_t base, bool loading) noexcept {
             page_shown.store(static_cast<int>(shown_slot), std::memory_order_relaxed);
             page_seen.store(on_screen ? now : 0, std::memory_order_relaxed);
         }
-        if (s.slot == menu_view::mods_page && active.model.handle == s.core.handle && s.page.handle &&
+        if ((s.slot == menu_view::mods_page || s.slot == menu_view::tools_page) && active.model.handle == s.core.handle && s.page.handle &&
             context.type_of(s.page.handle) == s.page.type && back_wanted.load(std::memory_order_relaxed) != s.back_held)
             hold_back(context, s, !s.back_held);
         bool pending{};
@@ -692,6 +695,15 @@ void tick_page(std::uintptr_t base, bool loading) noexcept {
 }
 bool prepare_native_menu_level_load(std::uintptr_t base) noexcept {
     if (!release_native_throwdown_menu(base, true)) return false;
+    if(trickpedia_page.manager) {
+        try {
+            const auto ui=read<Address>(base+addr::engine::ui_manager);
+            const auto manager=ui?read<Address>(ui+0x140):0;
+            if(!manager)return false;
+            const Context context(base,manager);game::ModelWriteLock lock(manager);
+            if(!restore_trickpedia(context))return false;
+        } catch(...) {return false;}
+    }
     if (std::all_of(page_slots.begin(), page_slots.end(), [](unsigned slot) { return page_state(slot).owned_models.empty(); }))
         return true;
     try {
@@ -779,6 +791,8 @@ void native_menu_before_level_transition(std::uintptr_t base, unsigned next) noe
     });
 }
 overlay::HubPage native_menu_page() noexcept {
+    const auto trick_seen=trickpedia_seen.load(std::memory_order_acquire);
+    if(arcade_mode::enabled() && trick_seen && GetTickCount64()-trick_seen<250)return {true,3};
     // Seen every 50 ms while it is up; a little longer than that and it has gone.
     const auto seen = page_seen.load(std::memory_order_relaxed);
     if (!seen || GetTickCount64() - seen > 200) return {};
