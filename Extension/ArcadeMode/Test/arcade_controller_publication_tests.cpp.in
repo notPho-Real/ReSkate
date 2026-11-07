@@ -315,12 +315,12 @@ void run(){
         if(boundary==5)live_sample.words[0]=0x20;
         if(boundary==6)live_sample.state=100;
         std::uint64_t acquired_at{};
-        const auto proof=native_wallplant_context(owner,acquired_at,&diagnostic);
-        require(proof.native.valid==(boundary==0),"production wallplant contact phase still requires controller, fresh frame, authority and exact native transition");++checks;
+        const auto execution_proof=native_wallplant_context(owner,acquired_at,&diagnostic);
+        require(execution_proof.native.valid==(boundary==0),"production wallplant contact phase still requires controller, fresh frame, authority and exact native transition");++checks;
         if(boundary==0) {
-            require(proof.imported_contact&&proof.native.mode==2&&proof.native.contacts==0&&
-                proof.native.sampled_at==1000&&proof.native.physics_step==air_frame.physics_step&&
-                proof.live.crouch_mode==1&&proof.live.words[1]==0x8000,
+            require(execution_proof.imported_contact&&execution_proof.native.mode==2&&execution_proof.native.contacts==0&&
+                execution_proof.native.sampled_at==1000&&execution_proof.native.physics_step==air_frame.physics_step&&
+                execution_proof.live.crouch_mode==1&&execution_proof.live.words[1]==0x8000,
                 "production handoff separates unchanged original frame from live imported contact");++checks;
             require(!native_air_context(acquired_at,owner,live_sample,nullptr,&diagnostic).valid,
                 "wallplant phase does not relax the ordinary motion accessor");++checks;
