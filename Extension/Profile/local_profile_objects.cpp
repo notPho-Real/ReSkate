@@ -1,6 +1,7 @@
 #include "Extension/ArcadeMode/arcade_mode.h"
 #include "Extension/ArcadeMode/arcade_native_input_state.h"
 #include "Extension/ArcadeMode/arcade_surface_geometry_native.h"
+#include "Extension/ArcadeMode/arcade_wallplant_runtime.h"
 #include "Extension/Objects/ParkEditor/park_editor_internal.h"
 #include "Extension/Customization/local_customization_runtime.h"
 #include "Extension/Skater/no_bail.h"
@@ -312,7 +313,9 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
    {pose[8]+offsets[i][0],pose[9]-2.f,pose[10]+offsets[i][1]}};
   auto sample=query_surface_geometry(api,origin,request);
   if(sample.valid&&!revalidate_surface_geometry(api,origin,sample))sample={};
-  publish_surface_geometry(sample);callback.entered=false;
+  publish_surface_geometry(sample);
+  wallplant_runtime::publish_geometry(api,origin,frame,{pose[8],pose[9],pose[10]},sample);
+  callback.entered=false;
  }catch(...){arcade_mode::invalidate_surface_geometry();}
 }
 

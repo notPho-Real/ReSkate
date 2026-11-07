@@ -208,6 +208,7 @@ add_library(dingosdk_runtime SHARED
     Extension/ArcadeMode/arcade_native_held_flip.cpp
     Extension/ArcadeMode/arcade_native_manual_pose.cpp
     Extension/ArcadeMode/arcade_native_ground_input.cpp
+    Extension/ArcadeMode/arcade_wallplant_runtime.cpp
     Extension/ArcadeMode/arcade_native_grind_transition.cpp
     Extension/ArcadeMode/arcade_authored_gestures.cpp
     Extension/ArcadeMode/arcade_score_probe.cpp
@@ -311,6 +312,12 @@ target_link_libraries(dingosdk_custom_level_manifest PUBLIC dingosdk_json)
 target_link_libraries(dingosdk_runtime PRIVATE dingosdk_custom_level_manifest)
 
 set_target_properties(dingosdk_runtime PROPERTIES OUTPUT_NAME "ReSkate" PREFIX "")
+if(DINGOSDK_ARCADE_WALLPLANTS)
+    target_compile_definitions(dingosdk_runtime PRIVATE DINGOSDK_ARCADE_WALLPLANTS)
+    target_sources(dingosdk_runtime PRIVATE
+        Extension/ArcadeMode/arcade_native_wall_contact.cpp
+        Extension/ArcadeMode/arcade_wallplant_animation.cpp)
+endif()
 include("${PROJECT_SOURCE_DIR}/cmake/ArcadeEvidence.cmake")
 
 # The game as a Spotify Connect device (Extension/Music/spotify_device.h): SpotifyHelper/, a

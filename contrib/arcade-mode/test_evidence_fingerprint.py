@@ -26,12 +26,15 @@ class EvidenceFingerprintTests(unittest.TestCase):
             gameplay = arcade / "arcade_trick_registry.h"
             gameplay.write_bytes(b"binding = A;\nhandler = native;\n")
 
-            def fingerprint():
-                subprocess.run(["cmake", "-S", str(root), "-B", str(root / "build")],
+            def fingerprint(wallplants="OFF"):
+                subprocess.run(["cmake", "-S", str(root), "-B", str(root / "build"),
+                                "-DDINGOSDK_ARCADE_WALLPLANTS=" + wallplants],
                                check=True, capture_output=True, text=True)
                 return (root / "build/arcade-gameplay-fingerprint.txt").read_text().strip()
 
             original = fingerprint()
+            self.assertNotEqual(original, fingerprint("ON"))
+            self.assertEqual(original, fingerprint("OFF"))
             for name in ("arcade_trick_evidence.inl", "arcade_trick_capture_data.inl",
                          "arcade_trick_acceptance.inl", "arcade_evidence_types.h",
                          "arcade_trickpedia.h", "arcade_registry_validation.h"):

@@ -4,6 +4,13 @@ file(GLOB_RECURSE arcade_evidence_sources CONFIGURE_DEPENDS
     "${PROJECT_SOURCE_DIR}/Extension/ArcadeMode/*.h"
     "${PROJECT_SOURCE_DIR}/Extension/ArcadeMode/*.cpp"
     "${PROJECT_SOURCE_DIR}/Extension/ArcadeMode/*.inl"
+    "${PROJECT_SOURCE_DIR}/Extension/Skater/*.h"
+    "${PROJECT_SOURCE_DIR}/Extension/Skater/*.cpp"
+    "${PROJECT_SOURCE_DIR}/Extension/Profile/*.h"
+    "${PROJECT_SOURCE_DIR}/Extension/Profile/*.cpp"
+    "${PROJECT_SOURCE_DIR}/Extension/Objects/*.h"
+    "${PROJECT_SOURCE_DIR}/Extension/Objects/*.cpp"
+    "${PROJECT_SOURCE_DIR}/Runtime/*.cpp"
     "${PROJECT_SOURCE_DIR}/Engine/*.h"
     "${PROJECT_SOURCE_DIR}/Engine/*.cpp"
     "${PROJECT_SOURCE_DIR}/Engine/*.inl")
@@ -12,6 +19,15 @@ list(FILTER arcade_evidence_sources EXCLUDE REGEX "/arcade_(trick_evidence|trick
 list(FILTER arcade_evidence_sources EXCLUDE REGEX "/arcade_(evidence_types|trickpedia|registry_validation)\\.h$")
 list(SORT arcade_evidence_sources)
 set(arcade_source_manifest "")
+if(DINGOSDK_ARCADE_WALLPLANTS)
+    string(APPEND arcade_source_manifest "wallplants:ON\n")
+    set(arcade_wallplants_json true)
+else()
+    string(APPEND arcade_source_manifest "wallplants:OFF\n")
+    set(arcade_wallplants_json false)
+endif()
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/arcade-build-features.json"
+    "{\"wallplants\":${arcade_wallplants_json},\"game_build\":20260929}\n")
 foreach(source IN LISTS arcade_evidence_sources)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${source}")
     file(RELATIVE_PATH relative "${PROJECT_SOURCE_DIR}" "${source}")

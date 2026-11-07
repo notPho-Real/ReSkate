@@ -1202,8 +1202,10 @@ void on_board_render(std::uintptr_t animation_interface, std::uintptr_t /*render
 }
 
 bool hooked{};
+bool playback_requested{};
 std::string failure;
 std::uint64_t serial{};
+std::uint64_t borrowed_play{};
 }
 
 void watch_room(bool on) noexcept { room_watch.store(on, std::memory_order_release); }
@@ -1213,12 +1215,32 @@ void show_in_room(bool on) noexcept {
     if (room_shown.exchange(on, std::memory_order_acq_rel) && !on) room_restore_until.store(now_seconds() + 3, std::memory_order_release);
 }
 void play(std::optional<Play> clip) {
+    borrowed_play = 0;
     plan_draft.play = std::move(clip);
     plan_draft.started = now_seconds();
     plan_draft.from = plan_draft.play ? plan_draft.play->at : 0;
     plan_draft.held = plan_draft.play && plan_draft.play->paused ? std::optional(plan_draft.from) : std::nullopt;
     plan_draft.serial = ++serial;
     publish();
+}
+std::uint64_t try_play(Play clip) {
+    if (!can_play() || !clip.clip || clip.clip->empty() ||
+        !std::isfinite(clip.speed) || clip.speed <= 0 || !std::isfinite(clip.blend) || clip.blend < 0 ||
+        !std::isfinite(clip.at) || clip.at < 0 || clip.at >= clip.clip->duration() ||
+        clip.loop || clip.paused || serial == UINT64_MAX) return 0;
+    play(std::move(clip));
+    borrowed_play = plan_draft.serial;
+    return borrowed_play;
+}
+bool can_play() noexcept {
+    return hooked && plan_draft.allowed && live().component.load(std::memory_order_acquire) && !playing();
+}
+void prepare_playback() noexcept { playback_requested = true; }
+bool owns_play(std::uint64_t ticket) noexcept {
+    return ticket && borrowed_play == ticket && plan_draft.serial == ticket && playing();
+}
+void cancel_play(std::uint64_t ticket) {
+    if (ticket && borrowed_play == ticket && plan_draft.serial == ticket) play(std::nullopt);
 }
 std::optional<float> play_time() {
     if (!plan_draft.play || !plan_draft.play->clip) return std::nullopt;
@@ -1231,6 +1253,7 @@ std::optional<float> play_time() {
 }
 void seek(float seconds) {
     if (!plan_draft.play || !plan_draft.play->clip) return;
+    borrowed_play = 0;
     const float t = std::clamp(seconds, 0.0f, plan_draft.play->clip->duration());
     if (plan_draft.held) plan_draft.held = t;
     else {
@@ -1243,6 +1266,7 @@ void seek(float seconds) {
 }
 void pause(bool paused) {
     if (!plan_draft.play || !plan_draft.play->clip || paused == plan_draft.held.has_value()) return;
+    borrowed_play = 0;
     if (paused) plan_draft.held = play_time();
     else {
         const float t = *plan_draft.held;
@@ -1378,7 +1402,7 @@ void tick(std::uintptr_t base, std::uintptr_t component, bool allowed) {
         publish();
     }
     const double now = now_seconds();
-    const bool wanted = plan_draft.play || !plan_draft.replacements.empty() || recording() ||
+    const bool wanted = playback_requested || plan_draft.play || !plan_draft.replacements.empty() || recording() ||
                         (plan_draft.reach && now < plan_draft.reach_until) || (plan_draft.carry && now < plan_draft.carry_until) ||
                         now < plan_draft.joints_until || now < preview_until.load(std::memory_order_acquire) ||
                         (!plan_draft.offsets.empty() && now < plan_draft.offsets_until) || room_watch.load(std::memory_order_acquire) ||

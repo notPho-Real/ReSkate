@@ -47,6 +47,14 @@ struct Replacement {
 // Client thread throughout.
 void play(std::optional<Play> clip);
 bool playing() noexcept; // a clip of play() has not finished
+// A bounded client may borrow the idle clip player without replacing another
+// caller's clip. The ticket only owns this submission; ordinary play(), seek()
+// or pause() revoke it. Cancellation cannot stop a newer caller's playback.
+std::uint64_t try_play(Play clip);
+void prepare_playback() noexcept; // requests the existing hooks at the next client tick
+bool can_play() noexcept;
+bool owns_play(std::uint64_t ticket) noexcept;
+void cancel_play(std::uint64_t ticket);
 // The clip of play(), moved to `seconds` (clamped to it), held there or playing on from it.
 void seek(float seconds);
 void pause(bool paused);

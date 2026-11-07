@@ -27,6 +27,10 @@ struct SurfaceGeometryNativeApi {
 };
 SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
                                              const SurfaceGeometryRequest&) noexcept;
+// Corroborates the broad vertical face around an independently recorded real
+// collision. This is geometry only; it must never create a wall-contact event.
+SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
+    SurfaceGeometryBody contacted_body, SurfaceGeometryVector point, SurfaceGeometryVector normal) noexcept;
 // Call only in the same supported client/park callback contract. Never renews
 // queried_at; physics/input consumers receive the copied publication only.
 bool revalidate_surface_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
