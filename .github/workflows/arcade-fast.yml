@@ -1,22 +1,16 @@
 name: Arcade Mode targeted tests
 on:
-  push:
-    branches: [arcade-mode, 'arcade-stage-*']
-    paths:
-      - 'Extension/ArcadeMode/**'
-      - 'contrib/arcade-mode/ci/**'
-      - '.github/workflows/arcade-fast.yml'
-  pull_request:
-    paths:
-      - 'Extension/ArcadeMode/**'
-      - 'contrib/arcade-mode/ci/**'
-      - '.github/workflows/arcade-fast.yml'
+  workflow_call:
+    inputs:
+      full_integration:
+        type: boolean
+        default: false
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: arcade-fast-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-targeted-${{ github.event_name }}-${{ github.ref }}-${{ (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/arcade-stage-') || github.ref == 'refs/heads/ci-optimization/arcade') && !inputs.full_integration && !contains(github.event.head_commit.message, '[full integration]') && !contains(github.event.head_commit.message, '[release candidate]')) && 'development' || format('{0}-{1}', github.run_id, github.run_attempt) }}
+  cancel-in-progress: ${{ github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/arcade-stage-') || github.ref == 'refs/heads/ci-optimization/arcade') && !inputs.full_integration && !contains(github.event.head_commit.message, '[full integration]') && !contains(github.event.head_commit.message, '[release candidate]') }}
 jobs:
   targeted:
     runs-on: windows-2022

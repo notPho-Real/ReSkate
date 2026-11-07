@@ -156,6 +156,17 @@ class WorkflowSecurity(unittest.TestCase):
                         'actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830',
                         'actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830'])
                     self.assertNotIn('credentials', composite)
+                elif action in (
+                    './.github/workflows/arcade-validation.yml',
+                    './.github/workflows/arcade-fast.yml',
+                ):
+                    # Local calls use the caller's exact commit; the called graphs
+                    # have no write token, secrets inheritance or hardware runner.
+                    called = (ROOT / action[2:]).read_text()
+                    self.assertIn('workflow_call:', called)
+                    self.assertNotIn('contents: write', called)
+                    self.assertNotIn('secrets: inherit', called)
+                    self.assertNotIn('self-hosted', called)
                 else:
                     self.assertRegex(action, r'^actions/(checkout|upload-artifact|download-artifact)@[0-9a-f]{40}$')
             for part in re.split(r'(?m)^  (?=[a-z][a-z-]*:\s*$)', jobs):
@@ -169,7 +180,11 @@ class WorkflowSecurity(unittest.TestCase):
                     self.assertNotIn('actions/checkout@', part)
                     self.assertNotIn('python3 contrib/', part)
                     self.assertIn('cmp artifacts/channel.json', part)
-                    self.assertIn('needs: [build, windows-tests, linux-tests, macos-lab, deck]', part)
+                    self.assertIn('needs: [validation]', part)
+                    self.assertIn("needs.validation.outputs.full == 'true'", part)
+                    graph = (ROOT / '.github/workflows/arcade-validation.yml').read_text()
+                    self.assertIn('needs: [policy, targeted, build, windows-tests, linux-tests, macos-lab, deck, linux-integration]', graph)
+                    self.assertIn("all(g['result'] == 'success'", graph)
 
     def test_repository_has_no_execution_allowlist(self):
         self.assertNotIn('decision = "allow"', (ROOT / '.codex/rules/arcade-lab.rules').read_text())

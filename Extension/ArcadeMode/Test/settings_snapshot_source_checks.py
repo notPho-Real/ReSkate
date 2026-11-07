@@ -79,7 +79,9 @@ class ReadOnlySettingsSource(unittest.TestCase):
 
 
     def test_required_windows_gate_selects_snapshot_tests(self):
-        workflow = (ROOT / '.github/workflows/arcade-dev.yml').read_text()
+        entry = (ROOT / '.github/workflows/arcade-dev.yml').read_text()
+        self.assertIn('uses: ./.github/workflows/arcade-validation.yml', entry)
+        workflow = (ROOT / '.github/workflows/arcade-validation.yml').read_text()
         required = workflow.split('  windows-test-diagnostic:', 1)[0]
         configure = next(line for line in required.splitlines() if 'run: cmake --preset' in line)
         for option in ('DINGOSDK_BUILD_PARK_EDITOR_TESTS', 'DINGOSDK_BUILD_ARCADE_MODE_TESTS'):

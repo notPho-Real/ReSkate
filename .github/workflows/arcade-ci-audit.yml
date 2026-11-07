@@ -1,0 +1,40 @@
+name: Arcade CI cache audit
+on:
+  push:
+    branches: ['ci-optimization/arcade']
+    paths:
+      - '.github/actions/spotify-cache/action.yml'
+      - '.github/workflows/arcade-ci-audit.yml'
+      - 'contrib/arcade-mode/ci/audit_cargo.ps1'
+      - 'contrib/arcade-mode/ci/archive_fingerprint.py'
+      - 'contrib/arcade-mode/ci/test_archive_fingerprint.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cargo-clean-versus-cached:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    env:
+      CARGO_HOME: ${{ github.workspace }}/.ci-cargo
+      CARGO_TARGET_DIR: ${{ github.workspace }}/SpotifyHelper/target
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/spotify-cache
+        with:
+          build-cache: 'true'
+      - name: Compare validated cache outputs with a clean Cargo rebuild
+        shell: pwsh
+        run: ./contrib/arcade-mode/ci/audit_cargo.ps1
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: cargo-cache-audit-${{ github.sha }}
+          path: |
+            artifacts/cargo-audit.json
+            artifacts/spotify-*.lib
+          retention-days: 7
+          if-no-files-found: error
+

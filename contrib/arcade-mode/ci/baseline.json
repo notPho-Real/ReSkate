@@ -1,0 +1,1460 @@
+{
+  "captured_at": "2026-11-06T23:47:00Z",
+  "sample": "Latest 100 runs; success, push, attempt 1 for workflow medians. updated_at is an elapsed-time proxy; use job times for precise computation.",
+  "workflow_summary": {
+    "arcade-stage-rc3-gameplay/Arcade Mode targeted tests": {
+      "n": 24,
+      "median_seconds": 84.5,
+      "min_seconds": 60,
+      "max_seconds": 149
+    },
+    "arcade-stage-trickpedia/Arcade Mode targeted tests": {
+      "n": 1,
+      "median_seconds": 95,
+      "min_seconds": 95,
+      "max_seconds": 95
+    },
+    "arcade-stage-rc3-gameplay/Arcade upstream integration": {
+      "n": 21,
+      "median_seconds": 2374,
+      "min_seconds": 1482,
+      "max_seconds": 2439
+    },
+    "arcade-stage-rc3-gameplay/Arcade Mode development": {
+      "n": 26,
+      "median_seconds": 1270.5,
+      "min_seconds": 839,
+      "max_seconds": 1484
+    },
+    "arcade-stage-wallplant-rc4/Arcade Mode development": {
+      "n": 3,
+      "median_seconds": 1538,
+      "min_seconds": 1346,
+      "max_seconds": 2224
+    },
+    "arcade-stage-wallplant-rc4/Arcade Mode targeted tests": {
+      "n": 2,
+      "median_seconds": 88.5,
+      "min_seconds": 87,
+      "max_seconds": 90
+    },
+    "arcade-stage-wallplant-rc4/Arcade upstream integration": {
+      "n": 2,
+      "median_seconds": 2326,
+      "min_seconds": 2308,
+      "max_seconds": 2344
+    }
+  },
+  "runs": [
+    {
+      "id": 42312179196,
+      "name": "Arcade Mode targeted tests",
+      "head_branch": "arcade-stage-trickpedia",
+      "head_sha": "ef9c819cc1ddb058ad69503183806781d1d3cc59",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-06T23:28:55Z",
+      "updated_at": "2026-11-06T23:30:30Z",
+      "run_started_at": "2026-11-06T23:28:55Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 42312179189,
+      "name": "Arcade Mode development",
+      "head_branch": "arcade-stage-trickpedia",
+      "head_sha": "ef9c819cc1ddb058ad69503183806781d1d3cc59",
+      "event": "push",
+      "status": "in_progress",
+      "conclusion": null,
+      "created_at": "2026-11-06T23:28:55Z",
+      "updated_at": "2026-11-06T23:28:58Z",
+      "run_started_at": "2026-11-06T23:28:55Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 42307231757,
+      "name": "Arcade upstream integration",
+      "head_branch": "arcade-stage-rc3-gameplay",
+      "head_sha": "9906af3b5d4816c15d4506430d51afb7d860b970",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-06T22:46:40Z",
+      "updated_at": "2026-11-06T23:26:45Z",
+      "run_started_at": "2026-11-06T22:46:40Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 42307227449,
+      "name": "Arcade Mode development",
+      "head_branch": "arcade-stage-rc3-gameplay",
+      "head_sha": "9906af3b5d4816c15d4506430d51afb7d860b970",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-06T22:46:38Z",
+      "updated_at": "2026-11-06T23:08:02Z",
+      "run_started_at": "2026-11-06T22:46:38Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 42307227214,
+      "name": "Arcade Mode targeted tests",
+      "head_branch": "arcade-stage-rc3-gameplay",
+      "head_sha": "9906af3b5d4816c15d4506430d51afb7d860b970",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-06T22:46:38Z",
+      "updated_at": "2026-11-06T22:48:05Z",
+      "run_started_at": "2026-11-06T22:46:38Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 42304893652,
+      "name": "Arcade Mode development",
+      "head_branch": "arcade-stage-wallplant-rc4",
+      "head_sha": "5925ac58bd35594310376e9453b8b321aac8741e",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-06T22:27:49Z",
+      "updated_at": "2026-11-06T22:53:27Z",
+      "run_started_at": "2026-11-06T22:27:49Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 42304893633,
+      "name": "Arcade Mode targeted tests",
+      "head_branch": "arcade-stage-wallplant-rc4",
+      "head_sha": "5925ac58bd35594310376e9453b8b321aac8741e",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-06T22:27:49Z",
+      "updated_at": "2026-11-06T22:29:19Z",
+      "run_started_at": "2026-11-06T22:27:49Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 42303229087,
+      "name": "Arcade upstream integration",
+      "head_branch": "arcade-stage-wallplant-rc4",
+      "head_sha": "a062f3b6084ea657f681c80dabbff0b06c3cd32b",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-06T22:14:59Z",
+      "updated_at": "2026-11-06T22:54:03Z",
+      "run_started_at": "2026-11-06T22:14:59Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 42302702515,
+      "name": "Arcade Mode development",
+      "head_branch": "arcade-stage-rc3-gameplay",
+      "head_sha": "2c2ce125d0a71d01e0decd73c8ec6ba4688660f7",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-06T22:11:01Z",
+      "updated_at": "2026-11-06T22:32:46Z",
+      "run_started_at": "2026-11-06T22:11:01Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 42298523890,
+      "name": "Arcade Mode development",
+      "head_branch": "arcade-stage-rc3-gameplay",
+      "head_sha": "7516e810cc421a7a46945ad70044ccdc0122503d",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-06T21:39:30Z",
+      "updated_at": "2026-11-06T22:00:05Z",
+      "run_started_at": "2026-11-06T21:39:30Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 42155978931,
+      "name": "Arcade Mode development",
+      "head_branch": "arcade-stage-wallplant-rc4",
+      "head_sha": "74f678eac05fbf295bfa27f6eee5ccadc4a8c425",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-06T03:20:48Z",
+      "updated_at": "2026-11-06T03:57:52Z",
+      "run_started_at": "2026-11-06T03:20:48Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 42155898173,
+      "name": "Arcade Mode development",
+      "head_branch": "arcade-stage-wallplant-rc4",
+      "head_sha": "2a3254a73f43b9950c39cae876027585e32331bf",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-06T03:20:03Z",
+      "updated_at": "2026-11-06T03:42:29Z",
+      "run_started_at": "2026-11-06T03:20:03Z",
+      "run_attempt": 1
+    }
+  ],
+  "jobs": {
+    "42307227449": [
+      {
+        "id": 128199513132,
+        "name": "linux-tests",
+        "queue_seconds": 2,
+        "elapsed_seconds": 50,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 31
+          },
+          {
+            "name": "Deck, lab and bounded trick-batch simulations",
+            "seconds": 12
+          },
+          {
+            "name": "Neutral repository naming",
+            "seconds": 1
+          },
+          {
+            "name": "Shell syntax",
+            "seconds": 0
+          }
+        ]
+      },
+      {
+        "id": 128199513326,
+        "name": "build",
+        "queue_seconds": 2,
+        "elapsed_seconds": 1249,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 17
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 2
+          },
+          {
+            "name": "Configure",
+            "seconds": 22
+          },
+          {
+            "name": "Build runtime and release tools",
+            "seconds": 1188
+          },
+          {
+            "name": "Stage tested scoring metadata inspector",
+            "seconds": 1
+          },
+          {
+            "name": "Upload tested scoring metadata inspector",
+            "seconds": 1
+          },
+          {
+            "name": "Stage development DLL",
+            "seconds": 0
+          },
+          {
+            "name": "Upload development DLL",
+            "seconds": 3
+          },
+          {
+            "name": "Stage tested recovery launcher",
+            "seconds": 0
+          },
+          {
+            "name": "Upload tested recovery launcher",
+            "seconds": 2
+          }
+        ]
+      },
+      {
+        "id": 128199513360,
+        "name": "macos-lab",
+        "queue_seconds": 2,
+        "elapsed_seconds": 170,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 91
+          },
+          {
+            "name": "Mac lab, trick-batch cleanup, bootstrap and fake Deck tests (no hardware)",
+            "seconds": 66
+          },
+          {
+            "name": "Python and shell syntax",
+            "seconds": 1
+          }
+        ]
+      },
+      {
+        "id": 128199513362,
+        "name": "windows-tests",
+        "queue_seconds": 2,
+        "elapsed_seconds": 468,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 12
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 2
+          },
+          {
+            "name": "Configure",
+            "seconds": 19
+          },
+          {
+            "name": "Compile Windows test preflight",
+            "seconds": 395
+          },
+          {
+            "name": "Run Windows test preflight",
+            "seconds": 23
+          },
+          {
+            "name": "Check bounded session records",
+            "seconds": 1
+          },
+          {
+            "name": "Check optional asset regeneration",
+            "seconds": 4
+          }
+        ]
+      },
+      {
+        "id": 128207835819,
+        "name": "deck",
+        "queue_seconds": 2,
+        "elapsed_seconds": 28,
+        "steps": [
+          {
+            "name": "Test installer and updater",
+            "seconds": 12
+          },
+          {
+            "name": "Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+            "seconds": 3
+          },
+          {
+            "name": "Verify and package this tested build",
+            "seconds": 2
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "seconds": 3
+          }
+        ]
+      }
+    ],
+    "42302702515": [
+      {
+        "id": 128184215710,
+        "name": "macos-lab",
+        "queue_seconds": 5,
+        "elapsed_seconds": 211,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 94
+          },
+          {
+            "name": "Mac lab, trick-batch cleanup, bootstrap and fake Deck tests (no hardware)",
+            "seconds": 95
+          },
+          {
+            "name": "Python and shell syntax",
+            "seconds": 1
+          }
+        ]
+      },
+      {
+        "id": 128184216134,
+        "name": "build",
+        "queue_seconds": 2,
+        "elapsed_seconds": 1281,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 21
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 2
+          },
+          {
+            "name": "Configure",
+            "seconds": 24
+          },
+          {
+            "name": "Build runtime and release tools",
+            "seconds": 1208
+          },
+          {
+            "name": "Stage tested scoring metadata inspector",
+            "seconds": 0
+          },
+          {
+            "name": "Upload tested scoring metadata inspector",
+            "seconds": 2
+          },
+          {
+            "name": "Stage development DLL",
+            "seconds": 0
+          },
+          {
+            "name": "Upload development DLL",
+            "seconds": 4
+          },
+          {
+            "name": "Stage tested recovery launcher",
+            "seconds": 1
+          },
+          {
+            "name": "Upload tested recovery launcher",
+            "seconds": 2
+          }
+        ]
+      },
+      {
+        "id": 128184216135,
+        "name": "linux-tests",
+        "queue_seconds": 2,
+        "elapsed_seconds": 36,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 20
+          },
+          {
+            "name": "Deck, lab and bounded trick-batch simulations",
+            "seconds": 7
+          },
+          {
+            "name": "Neutral repository naming",
+            "seconds": 1
+          },
+          {
+            "name": "Shell syntax",
+            "seconds": 0
+          }
+        ]
+      },
+      {
+        "id": 128184216390,
+        "name": "windows-tests",
+        "queue_seconds": 2,
+        "elapsed_seconds": 616,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 12
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 2
+          },
+          {
+            "name": "Configure",
+            "seconds": 21
+          },
+          {
+            "name": "Compile Windows test preflight",
+            "seconds": 533
+          },
+          {
+            "name": "Run Windows test preflight",
+            "seconds": 29
+          },
+          {
+            "name": "Check bounded session records",
+            "seconds": 1
+          },
+          {
+            "name": "Check optional asset regeneration",
+            "seconds": 5
+          }
+        ]
+      },
+      {
+        "id": 128193588798,
+        "name": "deck",
+        "queue_seconds": 1,
+        "elapsed_seconds": 21,
+        "steps": [
+          {
+            "name": "Test installer and updater",
+            "seconds": 10
+          },
+          {
+            "name": "Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+            "seconds": 1
+          },
+          {
+            "name": "Verify and package this tested build",
+            "seconds": 2
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "seconds": 2
+          }
+        ]
+      }
+    ],
+    "42298523890": [
+      {
+        "id": 128169946758,
+        "name": "windows-tests",
+        "queue_seconds": 2,
+        "elapsed_seconds": 515,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 11
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 2
+          },
+          {
+            "name": "Configure",
+            "seconds": 19
+          },
+          {
+            "name": "Compile Windows test preflight",
+            "seconds": 441
+          },
+          {
+            "name": "Run Windows test preflight",
+            "seconds": 23
+          },
+          {
+            "name": "Check bounded session records",
+            "seconds": 2
+          },
+          {
+            "name": "Check optional asset regeneration",
+            "seconds": 4
+          }
+        ]
+      },
+      {
+        "id": 128169946884,
+        "name": "linux-tests",
+        "queue_seconds": 3,
+        "elapsed_seconds": 41,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 24
+          },
+          {
+            "name": "Deck, lab and bounded trick-batch simulations",
+            "seconds": 9
+          },
+          {
+            "name": "Neutral repository naming",
+            "seconds": 1
+          },
+          {
+            "name": "Shell syntax",
+            "seconds": 0
+          }
+        ]
+      },
+      {
+        "id": 128169946921,
+        "name": "macos-lab",
+        "queue_seconds": 4,
+        "elapsed_seconds": 177,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 73
+          },
+          {
+            "name": "Mac lab, trick-batch cleanup, bootstrap and fake Deck tests (no hardware)",
+            "seconds": 88
+          },
+          {
+            "name": "Python and shell syntax",
+            "seconds": 0
+          }
+        ]
+      },
+      {
+        "id": 128169947097,
+        "name": "build",
+        "queue_seconds": 1,
+        "elapsed_seconds": 1206,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 23
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 2
+          },
+          {
+            "name": "Configure",
+            "seconds": 23
+          },
+          {
+            "name": "Build runtime and release tools",
+            "seconds": 1134
+          },
+          {
+            "name": "Stage tested scoring metadata inspector",
+            "seconds": 0
+          },
+          {
+            "name": "Upload tested scoring metadata inspector",
+            "seconds": 2
+          },
+          {
+            "name": "Stage development DLL",
+            "seconds": 0
+          },
+          {
+            "name": "Upload development DLL",
+            "seconds": 4
+          },
+          {
+            "name": "Stage tested recovery launcher",
+            "seconds": 0
+          },
+          {
+            "name": "Upload tested recovery launcher",
+            "seconds": 2
+          }
+        ]
+      },
+      {
+        "id": 128179074590,
+        "name": "deck",
+        "queue_seconds": 2,
+        "elapsed_seconds": 24,
+        "steps": [
+          {
+            "name": "Test installer and updater",
+            "seconds": 10
+          },
+          {
+            "name": "Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+            "seconds": 2
+          },
+          {
+            "name": "Verify and package this tested build",
+            "seconds": 2
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "seconds": 3
+          }
+        ]
+      }
+    ],
+    "42304893652": [
+      {
+        "id": 128191634041,
+        "name": "windows-tests",
+        "queue_seconds": 2,
+        "elapsed_seconds": 601,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 10
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 2
+          },
+          {
+            "name": "Configure",
+            "seconds": 20
+          },
+          {
+            "name": "Compile Windows test preflight",
+            "seconds": 524
+          },
+          {
+            "name": "Run Windows test preflight",
+            "seconds": 26
+          },
+          {
+            "name": "Check bounded session records",
+            "seconds": 1
+          },
+          {
+            "name": "Check optional asset regeneration",
+            "seconds": 5
+          }
+        ]
+      },
+      {
+        "id": 128191634384,
+        "name": "macos-lab",
+        "queue_seconds": 2,
+        "elapsed_seconds": 97,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 31
+          },
+          {
+            "name": "Mac lab, trick-batch cleanup, bootstrap and fake Deck tests (no hardware)",
+            "seconds": 55
+          },
+          {
+            "name": "Python and shell syntax",
+            "seconds": 1
+          }
+        ]
+      },
+      {
+        "id": 128191634407,
+        "name": "linux-tests",
+        "queue_seconds": 2,
+        "elapsed_seconds": 43,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 25
+          },
+          {
+            "name": "Deck, lab and bounded trick-batch simulations",
+            "seconds": 10
+          },
+          {
+            "name": "Neutral repository naming",
+            "seconds": 1
+          },
+          {
+            "name": "Shell syntax",
+            "seconds": 0
+          }
+        ]
+      },
+      {
+        "id": 128191634506,
+        "name": "build",
+        "queue_seconds": 2,
+        "elapsed_seconds": 1503,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 13
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 2
+          },
+          {
+            "name": "Configure",
+            "seconds": 23
+          },
+          {
+            "name": "Build runtime and release tools",
+            "seconds": 1438
+          },
+          {
+            "name": "Stage tested scoring metadata inspector",
+            "seconds": 0
+          },
+          {
+            "name": "Upload tested scoring metadata inspector",
+            "seconds": 2
+          },
+          {
+            "name": "Stage development DLL",
+            "seconds": 0
+          },
+          {
+            "name": "Upload development DLL",
+            "seconds": 3
+          },
+          {
+            "name": "Stage tested recovery launcher",
+            "seconds": 1
+          },
+          {
+            "name": "Upload tested recovery launcher",
+            "seconds": 2
+          }
+        ]
+      },
+      {
+        "id": 128202026548,
+        "name": "deck",
+        "queue_seconds": 2,
+        "elapsed_seconds": 28,
+        "steps": [
+          {
+            "name": "Test installer and updater",
+            "seconds": 12
+          },
+          {
+            "name": "Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+            "seconds": 3
+          },
+          {
+            "name": "Verify and package this tested build",
+            "seconds": 2
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "seconds": 3
+          }
+        ]
+      }
+    ],
+    "42155978931": [
+      {
+        "id": 127690100273,
+        "name": "windows-tests",
+        "queue_seconds": 1,
+        "elapsed_seconds": 638,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 7
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 9
+          },
+          {
+            "name": "Configure",
+            "seconds": 24
+          },
+          {
+            "name": "Compile Windows test preflight",
+            "seconds": 545
+          },
+          {
+            "name": "Run Windows test preflight",
+            "seconds": 30
+          },
+          {
+            "name": "Check bounded session records",
+            "seconds": 1
+          },
+          {
+            "name": "Check optional asset regeneration",
+            "seconds": 5
+          }
+        ]
+      },
+      {
+        "id": 127690100450,
+        "name": "build",
+        "queue_seconds": 2,
+        "elapsed_seconds": 1574,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 7
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 8
+          },
+          {
+            "name": "Configure",
+            "seconds": 22
+          },
+          {
+            "name": "Build runtime and release tools",
+            "seconds": 1503
+          },
+          {
+            "name": "Stage tested scoring metadata inspector",
+            "seconds": 1
+          },
+          {
+            "name": "Upload tested scoring metadata inspector",
+            "seconds": 1
+          },
+          {
+            "name": "Stage development DLL",
+            "seconds": 1
+          },
+          {
+            "name": "Upload development DLL",
+            "seconds": 4
+          },
+          {
+            "name": "Stage tested recovery launcher",
+            "seconds": 0
+          },
+          {
+            "name": "Upload tested recovery launcher",
+            "seconds": 3
+          }
+        ]
+      },
+      {
+        "id": 127690100633,
+        "name": "macos-lab",
+        "queue_seconds": 3,
+        "elapsed_seconds": 138,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 55
+          },
+          {
+            "name": "Mac lab, trick-batch cleanup, bootstrap and fake Deck tests (no hardware)",
+            "seconds": 66
+          },
+          {
+            "name": "Python and shell syntax",
+            "seconds": 0
+          }
+        ]
+      },
+      {
+        "id": 127690100834,
+        "name": "linux-tests",
+        "queue_seconds": 2,
+        "elapsed_seconds": 50,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 31
+          },
+          {
+            "name": "Deck, lab and bounded trick-batch simulations",
+            "seconds": 13
+          },
+          {
+            "name": "Neutral repository naming",
+            "seconds": 1
+          },
+          {
+            "name": "Shell syntax",
+            "seconds": 0
+          }
+        ]
+      },
+      {
+        "id": 127698613448,
+        "name": "deck",
+        "queue_seconds": 2,
+        "elapsed_seconds": 24,
+        "steps": [
+          {
+            "name": "Test installer and updater",
+            "seconds": 10
+          },
+          {
+            "name": "Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+            "seconds": 2
+          },
+          {
+            "name": "Verify and package this tested build",
+            "seconds": 2
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "seconds": 2
+          }
+        ]
+      }
+    ],
+    "42155898173": [
+      {
+        "id": 127689825053,
+        "name": "build",
+        "queue_seconds": 2,
+        "elapsed_seconds": 1312,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 28
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 13
+          },
+          {
+            "name": "Configure",
+            "seconds": 23
+          },
+          {
+            "name": "Build runtime and release tools",
+            "seconds": 1215
+          },
+          {
+            "name": "Stage tested scoring metadata inspector",
+            "seconds": 0
+          },
+          {
+            "name": "Upload tested scoring metadata inspector",
+            "seconds": 2
+          },
+          {
+            "name": "Stage development DLL",
+            "seconds": 0
+          },
+          {
+            "name": "Upload development DLL",
+            "seconds": 4
+          },
+          {
+            "name": "Stage tested recovery launcher",
+            "seconds": 1
+          },
+          {
+            "name": "Upload tested recovery launcher",
+            "seconds": 2
+          }
+        ]
+      },
+      {
+        "id": 127689825304,
+        "name": "linux-tests",
+        "queue_seconds": 1,
+        "elapsed_seconds": 41,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 24
+          },
+          {
+            "name": "Deck, lab and bounded trick-batch simulations",
+            "seconds": 10
+          },
+          {
+            "name": "Neutral repository naming",
+            "seconds": 1
+          },
+          {
+            "name": "Shell syntax",
+            "seconds": 0
+          }
+        ]
+      },
+      {
+        "id": 127689825337,
+        "name": "macos-lab",
+        "queue_seconds": 3,
+        "elapsed_seconds": 131,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 55
+          },
+          {
+            "name": "Mac lab, trick-batch cleanup, bootstrap and fake Deck tests (no hardware)",
+            "seconds": 62
+          },
+          {
+            "name": "Python and shell syntax",
+            "seconds": 1
+          }
+        ]
+      },
+      {
+        "id": 127689825355,
+        "name": "windows-tests",
+        "queue_seconds": 2,
+        "elapsed_seconds": 614,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 6
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 7
+          },
+          {
+            "name": "Configure",
+            "seconds": 22
+          },
+          {
+            "name": "Compile Windows test preflight",
+            "seconds": 524
+          },
+          {
+            "name": "Run Windows test preflight",
+            "seconds": 29
+          },
+          {
+            "name": "Check bounded session records",
+            "seconds": 1
+          },
+          {
+            "name": "Check optional asset regeneration",
+            "seconds": 5
+          }
+        ]
+      },
+      {
+        "id": 127697000067,
+        "name": "deck",
+        "queue_seconds": 3,
+        "elapsed_seconds": 27,
+        "steps": [
+          {
+            "name": "Test installer and updater",
+            "seconds": 10
+          },
+          {
+            "name": "Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+            "seconds": 3
+          },
+          {
+            "name": "Verify and package this tested build",
+            "seconds": 2
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "seconds": 5
+          }
+        ]
+      }
+    ],
+    "42307231757": [
+      {
+        "id": 128199527679,
+        "name": "upstream-windows-tests",
+        "queue_seconds": 2,
+        "elapsed_seconds": 2401,
+        "steps": [
+          {
+            "name": "Fetch native build dependencies",
+            "seconds": 43
+          },
+          {
+            "name": "Configure complete upstream regression groups",
+            "seconds": 20
+          },
+          {
+            "name": "Build crash reporter regression before the full runtime",
+            "seconds": 239
+          },
+          {
+            "name": "Check crash capture and post-exit metadata",
+            "seconds": 4
+          },
+          {
+            "name": "Build all configured targets with upstream warning policy",
+            "seconds": 2042
+          },
+          {
+            "name": "Run all tests that do not require a separately supplied game installation",
+            "seconds": 40
+          },
+          {
+            "name": "Preserve complete test results",
+            "seconds": 1
+          }
+        ]
+      },
+      {
+        "id": 128199527845,
+        "name": "linux-server-and-arcade",
+        "queue_seconds": 2,
+        "elapsed_seconds": 212,
+        "steps": [
+          {
+            "name": "Build upstream Linux server",
+            "seconds": 155
+          },
+          {
+            "name": "Compile and run portable native Arcade regressions",
+            "seconds": 50
+          }
+        ]
+      }
+    ],
+    "42303229087": [
+      {
+        "id": 128186024390,
+        "name": "linux-server-and-arcade",
+        "queue_seconds": 2,
+        "elapsed_seconds": 199,
+        "steps": [
+          {
+            "name": "Build upstream Linux server",
+            "seconds": 143
+          },
+          {
+            "name": "Compile and run portable native Arcade regressions",
+            "seconds": 49
+          }
+        ]
+      },
+      {
+        "id": 128186024748,
+        "name": "upstream-windows-tests",
+        "queue_seconds": 2,
+        "elapsed_seconds": 2341,
+        "steps": [
+          {
+            "name": "Fetch native build dependencies",
+            "seconds": 26
+          },
+          {
+            "name": "Configure complete upstream regression groups",
+            "seconds": 18
+          },
+          {
+            "name": "Build crash reporter regression before the full runtime",
+            "seconds": 235
+          },
+          {
+            "name": "Check crash capture and post-exit metadata",
+            "seconds": 2
+          },
+          {
+            "name": "Build all configured targets with upstream warning policy",
+            "seconds": 2004
+          },
+          {
+            "name": "Run all tests that do not require a separately supplied game installation",
+            "seconds": 39
+          },
+          {
+            "name": "Preserve complete test results",
+            "seconds": 1
+          }
+        ]
+      }
+    ],
+    "42307227214": [
+      {
+        "id": 128199512829,
+        "name": "targeted",
+        "queue_seconds": 1,
+        "elapsed_seconds": 84,
+        "steps": [
+          {
+            "name": "Configure standalone existing tests",
+            "seconds": 13
+          },
+          {
+            "name": "Build targeted tests",
+            "seconds": 57
+          },
+          {
+            "name": "Run targeted tests",
+            "seconds": 1
+          }
+        ]
+      }
+    ],
+    "42304893633": [
+      {
+        "id": 128191634232,
+        "name": "targeted",
+        "queue_seconds": 2,
+        "elapsed_seconds": 86,
+        "steps": [
+          {
+            "name": "Configure standalone existing tests",
+            "seconds": 13
+          },
+          {
+            "name": "Build targeted tests",
+            "seconds": 59
+          },
+          {
+            "name": "Run targeted tests",
+            "seconds": 2
+          }
+        ]
+      }
+    ],
+    "42312179196": [
+      {
+        "id": 128216067570,
+        "name": "targeted",
+        "queue_seconds": 2,
+        "elapsed_seconds": 91,
+        "steps": [
+          {
+            "name": "Configure standalone existing tests",
+            "seconds": 22
+          },
+          {
+            "name": "Build targeted tests",
+            "seconds": 50
+          },
+          {
+            "name": "Run targeted tests",
+            "seconds": 2
+          }
+        ]
+      }
+    ],
+    "42312179189": [
+      {
+        "id": 128216067350,
+        "name": "windows-tests",
+        "queue_seconds": 1,
+        "elapsed_seconds": 652,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 11
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 14
+          },
+          {
+            "name": "Configure",
+            "seconds": 37
+          },
+          {
+            "name": "Compile Windows test preflight",
+            "seconds": 534
+          },
+          {
+            "name": "Run Windows test preflight",
+            "seconds": 28
+          },
+          {
+            "name": "Check bounded session records",
+            "seconds": 2
+          },
+          {
+            "name": "Check optional asset regeneration",
+            "seconds": 5
+          }
+        ]
+      },
+      {
+        "id": 128216067669,
+        "name": "build",
+        "queue_seconds": 2,
+        "elapsed_seconds": 990,
+        "steps": [
+          {
+            "name": "Restore Spotify dependencies and build cache",
+            "seconds": 8
+          },
+          {
+            "name": "Fetch native dependencies required at configure time",
+            "seconds": 6
+          },
+          {
+            "name": "Configure",
+            "seconds": 18
+          },
+          {
+            "name": "Build runtime and release tools",
+            "seconds": 930
+          },
+          {
+            "name": "Stage tested scoring metadata inspector",
+            "seconds": 1
+          },
+          {
+            "name": "Upload tested scoring metadata inspector",
+            "seconds": 1
+          },
+          {
+            "name": "Stage development DLL",
+            "seconds": 0
+          },
+          {
+            "name": "Upload development DLL",
+            "seconds": 3
+          },
+          {
+            "name": "Stage tested recovery launcher",
+            "seconds": 0
+          },
+          {
+            "name": "Upload tested recovery launcher",
+            "seconds": 2
+          }
+        ]
+      },
+      {
+        "id": 128216067698,
+        "name": "linux-tests",
+        "queue_seconds": 2,
+        "elapsed_seconds": 42,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 24
+          },
+          {
+            "name": "Deck, lab and bounded trick-batch simulations",
+            "seconds": 10
+          },
+          {
+            "name": "Neutral repository naming",
+            "seconds": 1
+          },
+          {
+            "name": "Shell syntax",
+            "seconds": 0
+          }
+        ]
+      },
+      {
+        "id": 128216067708,
+        "name": "macos-lab",
+        "queue_seconds": 2,
+        "elapsed_seconds": 119,
+        "steps": [
+          {
+            "name": "Native input and animation-ownership contract regressions (no hardware)",
+            "seconds": 59
+          },
+          {
+            "name": "Mac lab, trick-batch cleanup, bootstrap and fake Deck tests (no hardware)",
+            "seconds": 48
+          },
+          {
+            "name": "Python and shell syntax",
+            "seconds": 0
+          }
+        ]
+      },
+      {
+        "id": 128221960409,
+        "name": "deck",
+        "queue_seconds": 2,
+        "elapsed_seconds": 22,
+        "steps": [
+          {
+            "name": "Test installer and updater",
+            "seconds": 10
+          },
+          {
+            "name": "Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+            "seconds": 1
+          },
+          {
+            "name": "Verify and package this tested build",
+            "seconds": 2
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "seconds": 3
+          }
+        ]
+      }
+    ]
+  }
+}
