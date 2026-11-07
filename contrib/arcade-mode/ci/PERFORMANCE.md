@@ -107,9 +107,14 @@ rather than granting validation write permissions. Obsolete ordinary Windows
 jobs were actually cancelled on subsequent pushes.
 
 The Cargo audit records restored, immediate warm and clean SHA-256 plus elapsed
-time in cargo-audit.json. It fails on unequal static libraries. Immediate warm
+time in cargo-audit.json. The initial raw-byte audit failed (run 42314303730): restored/warm output and
+the clean archive have different raw hashes. A follow-up audit retains raw hashes
+and compares every byte except documented COFF/archive timestamp fields. Unknown
+formats are hashed in full; negative tests ensure code/flags/name changes are
+still detected. A passing normalized audit would establish content equivalence,
+not raw timestamp reproducibility. Raw installer DLL checksums remain unchanged. Immediate warm
 is an in-job no-change measurement, not a second hosted cache restore. Retained
-Cargo caches must pass the audit; native outputs remain clean CMake builds.
+Cargo caches must pass that content audit; native outputs remain clean CMake builds.
 
 The final optimized timing comparison, audit hashes and exact hosted run links
 are recorded in the PR description after validation completes. Recording those

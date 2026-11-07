@@ -40,6 +40,8 @@ def verify(directory, full=False):
             raise ValueError("Artifact provenance mismatch: " + key)
     if not re.fullmatch(r"[0-9a-f]{64}", record.get("toolchain", "")):
         raise ValueError("Missing compiler fingerprint")
+    if record["toolchain"] != os.environ["ARCADE_TOOLCHAIN"]:
+        raise ValueError("Artifact compiler fingerprint mismatch")
     if record.get("accepted") is not False:
         raise ValueError("Build output must not declare acceptance")
     if full and record.get("validation") != "integration-built":

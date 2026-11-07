@@ -5,6 +5,8 @@ on:
     paths:
       - '.github/workflows/arcade-ci-audit.yml'
       - 'contrib/arcade-mode/ci/audit_cargo.ps1'
+      - 'contrib/arcade-mode/ci/archive_fingerprint.py'
+      - 'contrib/arcade-mode/ci/test_archive_fingerprint.py'
   workflow_dispatch:
 permissions:
   contents: read

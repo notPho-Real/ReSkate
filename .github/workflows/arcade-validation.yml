@@ -73,6 +73,8 @@ jobs:
       group: ${{ github.workflow }}-build-${{ github.event_name }}-${{ github.ref }}-${{ (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/arcade-stage-') || github.ref == 'refs/heads/ci-optimization/arcade') && !inputs.full_integration && !contains(github.event.head_commit.message, '[full integration]') && !contains(github.event.head_commit.message, '[release candidate]')) && 'development' || format('{0}-{1}', github.run_id, github.run_attempt) }}
       cancel-in-progress: ${{ github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/arcade-stage-') || github.ref == 'refs/heads/ci-optimization/arcade') && !inputs.full_integration && !contains(github.event.head_commit.message, '[full integration]') && !contains(github.event.head_commit.message, '[release candidate]') }}
     needs: [policy]
+    outputs:
+      toolchain: ${{ steps.cache.outputs.toolchain }}
     timeout-minutes: 60
     runs-on: windows-2022
     env:
@@ -83,6 +85,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Restore Spotify dependencies and build cache
+        id: cache
         uses: ./.github/actions/spotify-cache
         with:
           build-cache: 'true'
@@ -231,6 +234,7 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check PyYAML==6.0.2
           python3 contrib/arcade-mode/ci/test_policy.py -v
+          python3 contrib/arcade-mode/ci/test_archive_fingerprint.py -v
           python3 contrib/arcade-mode/ci/test_native_failures.py -v
       - name: Neutral repository naming
         run: |
@@ -278,6 +282,8 @@ jobs:
           name: ReSkate-arcade-dev-${{ github.sha }}
           path: artifacts/runtime
       - name: Verify and package this tested build
+        env:
+          ARCADE_TOOLCHAIN: ${{ needs.build.outputs.toolchain }}
         run: |
           python3 contrib/arcade-mode/ci/provenance.py verify artifacts/runtime
           cd artifacts/runtime
@@ -335,4 +341,6 @@ jobs:
           persist-credentials: false
           path: source
       - name: Verify the candidate DLL identity
+        env:
+          ARCADE_TOOLCHAIN: ${{ needs.build.outputs.toolchain }}
         run: python3 source/contrib/arcade-mode/ci/provenance.py verify artifacts/runtime --full

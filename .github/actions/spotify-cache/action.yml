@@ -1,5 +1,9 @@
 name: Spotify Cargo cache
 description: Cache only registry data and toolchain-compatible Spotify build outputs
+outputs:
+  toolchain:
+    description: Exact Rust, MSVC and runner image fingerprint
+    value: ${{ steps.toolchain.outputs.digest }}
 inputs:
   build-cache:
     description: Restore/save compiled outputs only for the runtime job

@@ -69,7 +69,11 @@ The toolchain fingerprint is now retained in runtime provenance.
 
 arcade-ci-audit.yml is a read-only, hosted Windows benchmark. It compares
 restored-cache, immediate warm and clean Cargo release libraries by SHA-256,
-records durations and fails on any mismatch. Automatic audit runs are limited
+records durations and fails on any content mismatch. Both raw hashes and hashes
+excluding only documented archive/COFF timestamp fields are retained; no library
+bytes used by the build are changed. Unknown object formats are hashed in full.
+This verifies content equivalence, not byte-for-byte reproducibility of timestamped
+archives. The checksum used for installation is always the raw DLL SHA-256. Automatic audit runs are limited
 to changes to the audit itself on ci-optimization/arcade. It never installs,
 publishes or marks a candidate accepted.
 

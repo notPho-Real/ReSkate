@@ -140,6 +140,11 @@ class ProvenanceTests(unittest.TestCase):
             (self.path / "provenance.json").write_text(json.dumps(record))
             with self.assertRaises(ValueError):
                 provenance.verify(self.path)
+        record = json.loads(original)
+        record["toolchain"] = "c" * 64
+        (self.path / "provenance.json").write_text(json.dumps(record))
+        with self.assertRaises(ValueError):
+            provenance.verify(self.path)
         (self.path / "provenance.json").write_text(original)
         (self.path / "ReSkate.dll").write_bytes(b"modified")
         with self.assertRaises(ValueError):
