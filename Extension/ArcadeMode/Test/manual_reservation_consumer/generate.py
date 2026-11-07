@@ -59,6 +59,8 @@ def generate(root,variant='current'):
         raise ValueError('current scalar reservation consumer is absent')
     commit=module.between(noclip,'        const auto commit_motion = [&](bool linear,bool angular) {',
                           '        const auto release_turn = ')
+    body_writer=module.between(noclip,'template<class Parts,class Vectors,class Flags,class Completed>',
+                               '\n}\nvoid debug_stop_noclip')
 
     def once(old,new):
         nonlocal source
@@ -173,6 +175,7 @@ def generate(root,variant='current'):
     float scalar_seconds{1.f/60.f};
     void body_write(std::uintptr_t,const std::array<float,3>&){++linear_writes;}
     void body_write(std::uintptr_t,std::uint32_t flags){source_require(flags==8,"linear batch preserves native dirty-bit contract");++dirty_writes;}
+    BODY_WRITER
     namespace dingosdk {bool no_bail_skater(NoBailSkater& value)noexcept{value=::owner;return true;}}
     struct ScalarWorld{GroundResistance ground_resistance;GroundMotionStep ground_steps;};
     float FUNCTION(ScalarWorld& a){
@@ -197,6 +200,7 @@ def generate(root,variant='current'):
     scalar_template=scalar_template.replace('struct ScalarWorld{', 'struct ScalarReader{void verify(){}template<class T>T value(std::uintptr_t,std::uintptr_t){return T{};}};\nstruct ScalarWorld{')
     scalar_template=scalar_template.replace(' struct Reader{template<class T>T value(std::uintptr_t,std::uintptr_t){return T{};}};','')
     scalar_template=scalar_template.replace(' Reader reader;',' ScalarReader reader;')
+    scalar_template=scalar_template.replace('BODY_WRITER',body_writer)
     if not has_ground_step:scalar_template=scalar_template.replace('GroundMotionStep ground_steps;','')
     baseline_scalar=scalar_template.replace('NATIVE_CURRENT',native_current).replace('FUNCTION','before_scalar').replace('RESISTANCE',resistance).replace('COMMIT',commit)
     # The positive candidate uses the exact current consumer and encoded
@@ -556,7 +560,7 @@ def generate(root,variant='current'):
       'control_owner':control_owner,'final_controls':final_controls,'action_delivery':action_delivery,
       'reverse_mask':reverse_mask,'drive_and_reservation_publication':drive,'correction':correction,'manual_publication':manual_publication,
       'native_manual_current':native_current,'resistance_current':resistance_current,
-      'resistance_before':resistance,'commit_motion':commit,'carrier_store':store,'carrier_load':load,
+      'resistance_before':resistance,'commit_motion':commit,'body_writer':body_writer,'carrier_store':store,'carrier_load':load,
       'fixture_carrier_store':fixture_store}.items()},
      'fixture_binding_map':{'active':'fixture_transport_active'},'remap_fixture_form':remap_form,
      'fixture_sha256':hashlib.sha256(source.encode()).hexdigest(),
