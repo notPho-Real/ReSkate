@@ -30,7 +30,10 @@ class NativeFailureTests(unittest.TestCase):
             self.assertNotEqual(test_bad.returncode, 0, test_bad.stdout)
             self.assertIn("Failed", test_bad.stdout)
             (source / "control.cpp").write_text('int main() { return 0; }\n')
-            self.assertEqual(run("cmake", "--build", str(build), "--config", "Release").returncode, 0)
+            # Some Make generators compare whole-second timestamps. This edit
+            # can otherwise reuse the return-1 binary from the negative control.
+            self.assertEqual(run("cmake", "--build", str(build), "--config", "Release",
+                                 "--clean-first").returncode, 0)
             test_good = run("ctest", "--test-dir", str(build), "-C", "Release",
                             "--output-on-failure", "--no-tests=error")
             self.assertEqual(test_good.returncode, 0, test_good.stdout)
