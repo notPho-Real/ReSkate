@@ -5,6 +5,7 @@
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_rotation.h"
 #include "Extension/Skater/no_bail.h"
+#include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include <atomic>
 #include <cstdlib>
 #include <iostream>
@@ -167,6 +168,21 @@ bool mode=true,push{},air{};
 std::atomic<bool> mode_enabled{true};
 NativeInputState native_input_state,motion_cleanup_state;
 std::uint64_t clock_ms=1000;
+namespace game=dingosdk::game;
+NativeRequestSample live_sample;
+bool live_readable=true;
+namespace memory {
+bool peek(std::uintptr_t address,std::uint32_t& value) {
+    if(!live_readable)return false;
+    namespace native=game::build::v20260929::arcade_native_probe;
+    if(address==4+native::selected_state)value=live_sample.state;
+    else if(address==5+native::crouch_mode)value=live_sample.crouch_mode;
+    else if(address==4+native::request_words)value=live_sample.words[0];
+    else if(address==4+native::request_words+4)value=live_sample.words[1];
+    else return false;
+    return true;
+}
+}
 bool enabled(){return mode;}
 std::uint64_t GetTickCount64(){return clock_ms;}
 void set_arcade_push_intent(bool value){push=value;}
@@ -235,6 +251,39 @@ void run(){
         consumer.join();
     }
     require(contention_reported,"writer contention copies its reason without waiting, retrying or granting cleanup authority");++checks;
+    // Extracted production accessor: a pending preselector waits for the
+    // publisher, then samples time/state and all existing admission gates.
+    // No sleep or retry budget; the publisher owns the mutex throughout edits.
+    for(unsigned boundary=0;boundary<7;++boundary) {
+        clock_ms=1000;mode_enabled=true;live_readable=true;live_sample=sample;
+        controller_route.reset();arcade_input.enable(false);arcade_input.enable(true);
+        set_controller_source(1,1000);observe(controller_route,1,{true,1000,0,0,0,0,0,0,0});
+        controller_route.select(1000,3,true,frame);arcade_input.publish_native_context(frame);
+        arcade_input.publish_authority(1000,frame.owner_generation,1,true);
+        NativeInputFrame acquired{};std::uint64_t acquired_at{};const char* reason{};
+        std::atomic<bool> entered{};
+        std::unique_lock publisher(ollie_mutex);
+        std::thread selector([&] {
+            entered.store(true,std::memory_order_release);
+            acquired=native_wallplant_context(owner,acquired_at,&reason);
+        });
+        while(!entered.load(std::memory_order_acquire))std::this_thread::yield();
+        clock_ms=boundary==1?1151:1001;
+        if(boundary==1)observe(controller_route,1,{true,clock_ms,0,0,0,0,0,0,0});
+        if(boundary==2)mode_enabled=false;
+        if(boundary==3)controller_route.clear();
+        if(boundary==4)live_sample.state=201;
+        if(boundary==5)live_readable=false;
+        if(boundary==6)arcade_input.invalidate_authority();
+        publisher.unlock();selector.join();
+        require(acquired_at==clock_ms,"preselector refreshes time after serialized acquisition");++checks;
+        require(acquired.valid==(boundary==0),"contention must not bypass stale/state/read/route/OFF/authority rejection");++checks;
+        if(boundary==0) {
+            require(acquired.sampled_at==1000&&acquired.physics_step==frame.physics_step&&
+                std::string_view(reason)=="frame_valid","serialized handoff returns the unchanged original native frame");++checks;
+        }
+    }
+    clock_ms=1000;mode_enabled=true;live_readable=true;live_sample=sample;
     controller_route.clear();
     require(!native_air_context(1000,owner,sample,&cleanup,&diagnostic).valid&&cleanup.observed.valid,"route withdrawal suppresses motion command without destroying cleanup proof");++checks;
     require(std::string_view(diagnostic)=="frame_route","writer diagnostic copies physical route rejection");++checks;

@@ -1526,13 +1526,9 @@ bool set_input_capture(unsigned duration_ms,unsigned required_sources,bool angul
 }
 
 // Controller route binding_context publication begin.
-NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
-                                   const NativeRequestSample& sample, MotionCleanupProof* cleanup,
-                                   const char** diagnostic_reason) noexcept {
-    if (cleanup) *cleanup={};
-    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+static NativeInputFrame native_air_context_locked(std::uint64_t now,const NativeInputOwner& owner,
+        const NativeRequestSample& sample,MotionCleanupProof* cleanup,const char** diagnostic_reason) noexcept {
     const auto unavailable=[&](const char* reason) {if(diagnostic_reason)*diagnostic_reason=reason;return NativeInputFrame{};};
-    if (!lock.owns_lock()) return unavailable("frame_lock_busy");
     if (cleanup) *cleanup=MotionCleanupProof{motion_cleanup_state.correlate(now,owner,sample)};
     if (!mode_enabled.load(std::memory_order_acquire))return unavailable("frame_disabled");
     if (!controller_route.physical(now).valid)return unavailable("frame_route");
@@ -1542,6 +1538,34 @@ NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& o
     if(frame.owner_generation!=arcade_input.owner_epoch())return unavailable("frame_owner_generation");
     if(diagnostic_reason)*diagnostic_reason="frame_valid";
     return frame;
+}
+NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
+                                   const NativeRequestSample& sample, MotionCleanupProof* cleanup,
+                                   const char** diagnostic_reason) noexcept {
+    if (cleanup) *cleanup={};
+    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+    if (!lock.owns_lock()) {
+        if(diagnostic_reason)*diagnostic_reason="frame_lock_busy";
+        return {};
+    }
+    return native_air_context_locked(now,owner,sample,cleanup,diagnostic_reason);
+}
+NativeInputFrame native_wallplant_context(const NativeInputOwner& owner,std::uint64_t& now,
+                                         const char** diagnostic_reason) noexcept {
+    // Only the pending preselector handoff uses synchronous arbitration. Its
+    // caller holds no source busy flag, runtime mutex or No Bail lease lock.
+    // Refresh both time and native inputs AFTER acquiring authority; waiting
+    // never extends a frame, physical press or controller lease.
+    std::lock_guard lock(ollie_mutex);
+    now=GetTickCount64();
+    namespace native=game::build::v20260929::arcade_native_probe;
+    NativeRequestSample sample{};
+    sample.valid=memory::peek(owner.context+native::selected_state,sample.state) &&
+        memory::peek(owner.rig+native::crouch_mode,sample.crouch_mode) &&
+        memory::peek(owner.context+native::request_words,sample.words[0]) &&
+        memory::peek(owner.context+native::request_words+4,sample.words[1]);
+    sample.words[1]&=0xc000u;
+    return native_air_context_locked(now,owner,sample,nullptr,diagnostic_reason);
 }
 // Controller route binding_context publication end.
 NativeInputFrame surface_geometry_native_frame(std::uint64_t now,const char** diagnostic_reason) noexcept {
