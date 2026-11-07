@@ -236,6 +236,7 @@ jobs:
           python3 contrib/arcade-mode/ci/test_policy.py -v
           python3 contrib/arcade-mode/ci/test_archive_fingerprint.py -v
           python3 contrib/arcade-mode/ci/test_native_failures.py -v
+          python3 Extension/ArcadeMode/Test/settings_snapshot_source_checks.py
       - name: Neutral repository naming
         run: |
           git log -1 --format=%B > "$RUNNER_TEMP/arcade-commit-message.txt"
