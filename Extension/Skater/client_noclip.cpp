@@ -749,7 +749,9 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         // Consume once, using actual reconstructed velocities and the unchanged
         // original AIR observation. The current native100 state is only a
         // completion phase of this recorded selector invocation, never admission.
-        command=arcade_mode::wallplant_runtime::consume(now,handoff.execution.native,velocities[0],handoff.ticket.input);
+        const arcade_mode::WallplantReconstructionProof reconstruction{
+            handoff.ticket,handoff.execution,live,selector,previous,handoff.probe.contact};
+        command=arcade_mode::wallplant_runtime::consume(now,handoff.execution.native,velocities[0],handoff.ticket.input,&reconstruction);
         note(17,command?"reconstruction_command_ready":"reconstruction_consume_empty",live.state);
         if(!command)return;
         source_require(arcade_mode::AirMotion::apply_bodies(command.motion,velocities,spins,bodies.up),

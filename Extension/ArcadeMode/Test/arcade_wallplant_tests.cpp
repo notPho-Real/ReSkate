@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <string_view>
 using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
@@ -44,6 +45,73 @@ struct Fixture {
 };
 }
 int main() {
+    {
+        const auto setup=[](Fixture& f) {
+            f.frame.native.state=201;f.frame.native.mode=2;f.frame.native.contacts=0;f.sync();
+            f.contact.normal={0,0,1};f.contact.approach_velocity={-5.1398554f,-1.3409811f,-9.839134f};
+            f.frame.velocity={-5.6444554f,-1.2829007f,.13112003f};
+            NativeRequestSample imported{};imported.valid=true;imported.state=201;
+            imported.crouch_mode=1;imported.words[1]=0x8000;
+            auto reconstructed=imported;reconstructed.state=100;
+            return WallplantReconstructionProof{{7,f.press.sequence,10,201,100,true},
+                {f.frame.native,imported,true},reconstructed,10,201,f.contact.identity};
+        };
+        Fixture f;const auto reconstruction=setup(f);WallplantPolicyDecision decision{};
+        const auto command=f.policy.step(f.frame,f.contact,f.press,&reconstruction,&decision);
+        check(bool(command)&&decision.reconstruction&&near(decision.current_normal,.13112003f),
+            "recorded native reconstruction corroborates its small original solver response");
+        check(near(command.after[2],5.08f)&&near(command.after[1],12.7f)&&near(command.after[0],f.frame.velocity[0])&&
+            command.after[2]>command.before[2],"one bounded exit replaces solver normal speed and preserves tangent");
+        check(!f.policy.step(f.frame,f.contact,f.press,&reconstruction),"same physical input cannot replay reconstructed response");
+        ++f.press.sequence;
+        auto repeated=reconstruction;repeated.ticket.input=f.press.sequence;
+        check(!f.policy.step(f.frame,f.contact,f.press,&repeated),"fresh A cannot repeat the same unresolved contact");
+        for(unsigned fault=0;fault<21;++fault) {
+            Fixture invalid;auto proof=setup(invalid);
+            switch(fault) {
+            case 0:proof={};break;
+            case 1:++proof.ticket.input;break;
+            case 2:++proof.contact;break;
+            case 3:++proof.execution.native.physics_step;break;
+            case 4:proof.ticket.chosen=201;break;
+            case 5:++proof.selector;break;
+            case 6:proof.previous=100;break;
+            case 7:proof.execution.imported_contact=false;break;
+            case 8:proof.execution.live.state=100;break;
+            case 9:proof.live.state=201;break;
+            case 10:++proof.execution.native.owner.core;break;
+            case 11:proof.ticket.selected=false;break;
+            case 12:proof.ticket.before=200;break;
+            case 13:++proof.execution.native.airborne_episode;break;
+            case 14:++proof.execution.native.sampled_at;break;
+            case 15:proof.live.crouch_mode=2;break;
+            case 16:proof.live.words[1]=0xc000;break;
+            case 17:proof.execution.native.valid=false;break;
+            case 18:proof.contact=0;break;
+            case 19:proof.ticket.selector=0;break;
+            case 20:proof.ticket.invocation=0;break;
+            }
+            WallplantPolicyDecision rejected{};
+            check(!invalid.policy.step(invalid.frame,invalid.contact,invalid.press,&proof,&rejected)&&
+                !rejected.reconstruction,"malformed or unrelated reconstruction never admits outward motion");
+        }
+        for(float speed:{5.08f,6.0f}) {
+            Fixture faster;const auto proof=setup(faster);faster.frame.velocity[2]=speed;
+            WallplantPolicyDecision rejected{};
+            check(!faster.policy.step(faster.frame,faster.contact,faster.press,&proof,&rejected)&&
+                rejected.reconstruction&&std::string_view(rejected.reason)=="policy_exit_already_reached",
+                "native outward speed at or above computed exit cannot receive a second kick");
+        }
+        Fixture ordinary;setup(ordinary);WallplantPolicyDecision rejected{};
+        check(!ordinary.policy.step(ordinary.frame,ordinary.contact,ordinary.press,nullptr,&rejected)&&
+            std::string_view(rejected.reason)=="policy_outward_unproven",
+            "ordinary outward velocity remains rejected with its exact same-call reason");
+        // The established independent second approach is still admitted after
+        // separation, a different collision and a new physical press.
+        f.frame.separated=true;f.advance(1001);f.frame.velocity={-5,-2,-10};f.sync();
+        f.frame.separated=true;f.contact.identity=2;f.press.sequence=3;
+        check(bool(f.run()),"legitimate separated new contact and press remain eligible");
+    }
     {
         NativeInputState producer;const NativeInputOwner owner{1,2,3,4,5};
         NativeRequestSample sample{};sample.valid=true;sample.state=201;sample.crouch_mode=2;

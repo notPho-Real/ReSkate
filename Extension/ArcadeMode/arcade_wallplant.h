@@ -97,6 +97,29 @@ inline bool wallplant_reconstruction_current(const WallplantSelectionTicket& tic
     // the previous-state field never authorizes a ground request by itself.
     return proof.imported_contact && ticket.before==201 && ticket.chosen==100 && previous==201;
 }
+// Original collision resolution may already produce outward normal velocity.
+// Only the recorded AIR201 -> native100 reconstruction can corroborate that
+// response; a generic outward frame remains ineligible for a new kick.
+struct WallplantReconstructionProof {
+    WallplantSelectionTicket ticket{};
+    WallplantExecutionProof execution{};
+    NativeRequestSample live{};
+    std::uintptr_t selector{};
+    std::uint32_t previous{};
+    std::uint64_t contact{};
+    bool matches(const NativeInputFrame& frame,std::uint64_t input,std::uint64_t identity,
+            std::uint64_t now) const noexcept {
+        return input && ticket.input==input && contact==identity && contact &&
+            ticket.before==201 && ticket.chosen==100 && execution.imported_contact &&
+            wallplant_same_observation(execution.native,frame) &&
+            wallplant_reconstruction_current(ticket,execution,frame.owner,selector,previous,live,now);
+    }
+};
+struct WallplantPolicyDecision {
+    const char* reason{"not_evaluated"};
+    float current_normal{},target_normal{};
+    bool reconstruction{};
+};
 // A real riding collision supplies this record. SurfaceGeometrySample (a ray
 // query) deliberately cannot be converted into a collision record here.
 struct WallplantContact {
@@ -178,10 +201,16 @@ public:
     void reset() noexcept { *this=WallplantPolicy(parameters_); }
     void cancel() noexcept { separated_=false; }
     WallplantCommand step(const WallplantFrame& frame,const WallplantContact& contact,
-                          const WallplantPress& press) noexcept {
+                          const WallplantPress& press,const WallplantReconstructionProof* reconstruction=nullptr,
+                          WallplantPolicyDecision* diagnostic=nullptr) noexcept {
+        if(diagnostic)*diagnostic={};
+        const auto reject=[&](const char* reason) {
+            if(diagnostic)diagnostic->reason=reason;
+            return WallplantCommand{};
+        };
         const bool fresh_edge=press.fresh_a && press.sequence && press.sequence>seen_input_;
         if(press.sequence>seen_input_)seen_input_=press.sequence;
-        if(!frame_ready(frame) || !parameters_.valid()) { cancel(); return {}; }
+        if(!frame_ready(frame) || !parameters_.valid()) { cancel(); return reject("policy_frame"); }
         if(owner_!=frame.native.owner || generation_!=frame.native.owner_generation) {
             owner_=frame.native.owner; generation_=frame.native.owner_generation;
             used_=false; separated_=false;
@@ -196,15 +225,15 @@ public:
            press.native.physics_step>frame.native.physics_step || press.pressed_at>frame.now ||
            frame.now-press.pressed_at>parameters_.contact_lease_ms ||
            press.pressed_at<frame.native.airborne_started_at ||
-           !contact_ready(frame,contact))return {};
+           !contact_ready(frame,contact))return reject("policy_press_contact");
         if(used_ && (!separated_ || contact.identity==used_contact_ || frame.now<used_at_ ||
-                    frame.now-used_at_<parameters_.repeat_ms || contact.sampled_at<=used_at_))return {};
+                    frame.now-used_at_<parameters_.repeat_ms || contact.sampled_at<=used_at_))return reject("policy_repeat");
 
         auto normal=contact.normal;
         const float length=std::hypot(normal[0],normal[1],normal[2]);
-        if(!std::isfinite(length) || std::abs(length-1)> .01f)return {};
+        if(!std::isfinite(length) || std::abs(length-1)> .01f)return reject("policy_normal");
         for(float& v:normal)v/=length;
-        if(std::abs(normal[1])>parameters_.maximum_normal_y)return {};
+        if(std::abs(normal[1])>parameters_.maximum_normal_y)return reject("policy_wall_normal");
         // Reflect about the horizontal wall normal; the independently bounded
         // upward kick must not turn a slightly sloping wall into speed gain.
         normal[1]=0;
@@ -213,30 +242,37 @@ public:
         const auto dot=[&](SurfaceGeometryVector v){return v[0]*normal[0]+v[2]*normal[2];};
         const float incoming=-dot(contact.approach_velocity);
         const float approach_speed=std::hypot(contact.approach_velocity[0],contact.approach_velocity[2]);
+        const float current_normal=dot(frame.velocity);
+        const bool response=reconstruction && reconstruction->matches(frame.native,press.sequence,contact.identity,frame.now);
+        if(diagnostic){diagnostic->current_normal=current_normal;diagnostic->reconstruction=response;}
         if(!(incoming>0) || !(approach_speed>0) ||
-           incoming/approach_speed<parameters_.minimum_approach_sine || dot(frame.velocity)>0)return {};
+           incoming/approach_speed<parameters_.minimum_approach_sine)return reject("policy_approach");
+        if(current_normal>0 && !response)return reject("policy_outward_unproven");
         // The original collision may have stopped inward root velocity before
         // A is processed. Its fresh pre-impact approach remains necessary;
         // already outward travel is rejected without response provenance.
-        const float current_incoming=-dot(frame.velocity);
+        const float current_incoming=-current_normal;
         const SurfaceGeometryVector tangent{frame.velocity[0]+current_incoming*normal[0],0,
                                              frame.velocity[2]+current_incoming*normal[2]};
         const float tangent_speed=std::hypot(tangent[0],tangent[2]);
-        if(tangent_speed>=parameters_.maximum_speed)return {};
+        if(tangent_speed>=parameters_.maximum_speed)return reject("policy_tangent_speed");
         const float available=std::sqrt(parameters_.maximum_speed*parameters_.maximum_speed-tangent_speed*tangent_speed);
         const float exit=std::min(available,std::max(parameters_.minimum_exit_speed,
                                                   incoming-parameters_.normal_speed_loss));
+        if(diagnostic)diagnostic->target_normal=exit;
+        if(current_normal>0 && current_normal>=exit)return reject("policy_exit_already_reached");
         WallplantCommand result{};
         result.native=frame.native;result.geometry=frame.geometry;result.body=contact.body;
         result.point=contact.point;result.normal=normal;result.before=frame.velocity;
         result.after={tangent[0]+exit*normal[0],
             std::min(parameters_.vertical_exit_speed,parameters_.maximum_vertical_speed),tangent[2]+exit*normal[2]};
-        if(!finite_velocity(result.after))return {};
+        if(!finite_velocity(result.after))return reject("policy_result");
         result.motion.ready=true;result.motion.vertical=true;result.motion.horizontal=true;
         result.motion.velocity_y=result.after[1];result.motion.delta_x=result.after[0]-frame.velocity[0];
         result.motion.delta_z=result.after[2]-frame.velocity[2];
         result.contact=contact.identity;result.input_sequence=press.sequence;result.issued_at=frame.now;
         used_=true;separated_=false;used_contact_=contact.identity;used_at_=frame.now;used_step_=frame.native.physics_step;
+        if(diagnostic)diagnostic->reason="command_ready";
         return result;
     }
     // Recheck immediately before the atomic native-body commit. A caller must

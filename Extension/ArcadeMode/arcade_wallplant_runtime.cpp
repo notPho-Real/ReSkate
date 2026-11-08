@@ -420,7 +420,7 @@ InputDisposition request(const InputRequest& request,std::uint64_t now,const Nat
     return InputDisposition::started;
 }
 WallplantCommand consume(std::uint64_t now,const NativeInputFrame& f,SurfaceGeometryVector velocity,
-        std::uint64_t expected_input) noexcept {
+        std::uint64_t expected_input,const WallplantReconstructionProof* reconstruction) noexcept {
     std::lock_guard lock(mutex);
     if(!pending.sequence)return {};
     // A selector handoff is valid only before another original physics
@@ -433,8 +433,10 @@ WallplantCommand consume(std::uint64_t now,const NativeInputFrame& f,SurfaceGeom
     };
     if(!ready(now,f)){consumption(0,"consume_not_ready");return {};}
     auto current_frame=frame(now,f,velocity);
-    in_flight=policy.step(current_frame,candidate.contact,press);
-    consumption(in_flight?2u:1u,in_flight?"command_ready":"policy_empty");
+    WallplantPolicyDecision decision{};
+    in_flight=policy.step(current_frame,candidate.contact,press,reconstruction,&decision);
+    diagnose(5,in_flight?2u:1u,decision.reason,raw,f,now,contact_identity,
+        decision.reconstruction?1u:0u,decision.current_normal,decision.target_normal,press.sequence,press.pressed_at);
     return in_flight;
 }
 bool current(const WallplantCommand& command,std::uint64_t now,const NativeInputFrame& f,SurfaceGeometryVector velocity) noexcept {
