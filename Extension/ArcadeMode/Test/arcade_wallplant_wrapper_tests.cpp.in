@@ -225,14 +225,22 @@ void run(){
   const std::array<float,16> supplied{1,0,0,11,0,.8f,.6f,12,0,-.6f,.8f,13,2,3,4,1};
   std::array<float,16> target{};
   check(wallplant_hold_target_matrix(command,supplied,target),"actual target helper accepts measured orthonormal pitched basis");
+  const std::array<float,3> upright{0,1,0};
   for(unsigned axis=0;axis<3;++axis){
-   check(target[4+axis]==supplied[4+axis],"local up/pitch-roll basis remains unchanged");
-   check(std::abs(target[8+axis]-supplied[axis])<.00001f,"target forward follows exact local-yaw projection");
+   check(target[4+axis]==upright[axis],"plant target resets incoming pitch and roll to world up");
+   check(std::abs(target[8+axis]-command.hold_forward[axis])<.00001f,"target forward follows outgoing horizontal travel");
    check(target[12+axis]==command.anchor[axis],"only supplied verified anchor sets target translation");
   }
   for(unsigned lane:{3u,7u,11u,15u})check(target[lane]==supplied[lane],"native fourth lanes unchanged");
   check(supplied[12]==2&&supplied[13]==3&&supplied[14]==4,"input matrix remains immutable");
-  for(unsigned fault=0;fault<5;++fault){
+  // A banked incoming frame must not tilt or redirect a diagonal exit.
+  command.hold_forward={-3,0,4};
+  check(wallplant_hold_target_matrix(command,supplied,target),"nonunit horizontal direction is normalized");
+  check(std::abs(target[8]+.6f)<.00001f && target[9]==0 && std::abs(target[10]-.8f)<.00001f,
+        "diagonal exit remains in the world horizontal plane");
+  check(std::abs(target[0]-.8f)<.00001f && target[1]==0 && std::abs(target[2]-.6f)<.00001f,
+        "right basis is world up cross outgoing forward");
+  for(unsigned fault=0;fault<6;++fault){
    auto bad=command;auto matrix=supplied;target.fill(123);
    switch(fault){
    case 0:bad.anchor_verified=false;break;
@@ -240,6 +248,7 @@ void run(){
    case 2:bad.hold_forward={0,0,0};break;
    case 3:bad.hold_forward[0]=std::numeric_limits<float>::quiet_NaN();break;
    case 4:matrix[0]=2;break;
+   case 5:bad.hold_forward[1]=.1f;break;
    }
    check(!wallplant_hold_target_matrix(bad,matrix,target),"unverified anchor/invalid orientation cannot emit target");
    check(target[0]==123&&target[12]==123,"failed target admission leaves caller output unchanged");
@@ -309,7 +318,7 @@ std::string cancelled;
 std::uint64_t clock_ms{110};
 unsigned originals{},target_calls{},copies{},reads{},state_id{100};
 float passed_seconds{};
-bool stock{},writable{true},current{true},allow_target{true},change_snapshot{},fail_verify{},expire{};
+bool stock{},writable{true},fixture_current{true},allow_target{true},change_snapshot{},fail_verify{},expire{},fixture_stale_query{};
 unsigned fail_copy{},fail_read{};
 std::uintptr_t native_context{3};
 bool competition_stock_physics(){return stock;}
@@ -320,7 +329,7 @@ using WallplantHoldContinuity=dingosdk::arcade_mode::WallplantHoldContinuity;
 NativeInputFrame native_wallplant_hold_context(const dingosdk::arcade_mode::NativeInputOwner&,std::uint64_t){return {};}
 namespace wallplant_runtime {
 Command held_command(){return held_value;}
-bool hold_current(const Command&,std::uint64_t,const NativeInputFrame&){return current;}
+bool hold_current(const Command&,std::uint64_t,const NativeInputFrame&,bool* stale=nullptr){if(stale)*stale=fixture_stale_query;return fixture_current && !fixture_stale_query;}
 }
 }
 struct SourceReader {
@@ -363,7 +372,7 @@ void reset(){
  held_value={};held_value.motion.ready=true;held_value.input_sequence=7;held_value.native.owner.rig=2;held_value.native.owner.context=3;
  held_value.anchor_verified=true;held_value.anchor={7,8,9};held_value.hold_forward={1,0,0};physical_hold={held_value,100};
  wallplant_hold_core=1;cancelled.clear();clock_ms=110;originals=target_calls=copies=reads=0;state_id=100;
- passed_seconds=0;stock=change_snapshot=fail_verify=expire=false;writable=current=allow_target=true;
+ passed_seconds=0;stock=change_snapshot=fail_verify=expire=fixture_stale_query=false;writable=fixture_current=allow_target=true;
  fail_copy=fail_read=0;native_context=3;prepared={};stored={};
  for(unsigned t=0;t<3;++t)for(unsigned a=0;a<4;++a)prepared[t*16+a*5]=1;
  for(unsigned a=0;a<3;++a){prepared[12+a]=-world_origin[a];prepared[16+12+a]=0;prepared[32+12+a]=0;}
@@ -374,6 +383,10 @@ void run(){
  check(stored[28]==7&&stored[29]==8&&stored[30]==9,"ground uses bounded hold anchor");
  check(std::abs(stored[16+8]-1)<.00001f&&std::abs(stored[16+10])<.00001f,"ground target faces outgoing direction");
  check(!ground_state.busy.test_and_set(),"successful callback releases busy ownership");ground_state.busy.clear();
+ reset();fixture_stale_query=true;noclip_ground_target(2,.03333333f);
+ check(originals==1 && copies==0 && stored==prepared && cancelled.empty() && wallplant_hold_core.load()==1,
+       "overtaken final target reader forwards native preparation without writing or canceling newer hold");
+ check(physical_hold.started==100,"deferred target cannot restart planted duration");
  for(unsigned mode=0;mode<10;++mode){
   reset();
   switch(mode){
@@ -389,7 +402,7 @@ void run(){
  for(unsigned mode=0;mode<8;++mode){
   reset();
   switch(mode){
-   case 0:native_context=99;break;case 1:writable=false;break;case 2:current=false;break;
+   case 0:native_context=99;break;case 1:writable=false;break;case 2:fixture_current=false;break;
    case 3:expire=true;break;case 4:physical_hold.command.input_sequence=8;break;
    case 5:fail_verify=true;break;case 6:change_snapshot=true;break;case 7:fail_read=1;break;
   }

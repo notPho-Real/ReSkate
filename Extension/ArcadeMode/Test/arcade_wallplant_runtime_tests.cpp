@@ -172,5 +172,30 @@ int main(){
         check(!validate(c,1195,ground(c,1195)),"expired physical phase cannot release late");
         finish_at(c,true,1195);check(!latest_completed(),"expired release cannot publish success");
     }
+    {
+        auto c=setup();check(enter(c,1000),"interleaved reader fixture enters");
+        const auto reader_frame=ground(c,1033);observe_at(reader_frame);
+        const auto newer=ground(c,1066);observe_at(newer);
+        fixture::now=1070;std::uint64_t at=1033;bool stale=false;
+        const bool authorized=hold_current(c,at,reader_frame,&stale);
+        check(bool(held_command()) && hold.started_at()==1000 && hold.deadline()==1160,
+            "stale query preserves newer hold without extending its deadline");
+        check(!authorized && stale,"reader overtaken by original physics cannot authorize a target");
+        check(hold_current(c,at,newer,&stale) && !stale,
+            "fresh reader can use the independently published newer frame");
+        fixture::now=1195;
+        check(!hold_current(c,at,reader_frame,&stale) && !stale && !held_command(),
+            "expired hold cancels even when reader is stale");
+    }
+    for(unsigned fault=0;fault<3;++fault) {
+        auto c=setup();check(enter(c,1000),"stale query safety fixture enters");
+        auto older=ground(c,1033);observe_at(ground(c,1066));
+        if(fault==0)++older.owner_generation;
+        if(fault==1)older.state=504;
+        if(fault==2)fixture::hit_current=false;
+        fixture::now=1070;std::uint64_t at=1070;bool stale=true;
+        check(!hold_current(c,at,older,&stale) && !stale && !held_command(),
+            "owner, bail and collision loss cannot hide behind stale-query deferral");
+    }
     std::cout<<fixture::checks<<" actual runtime hold lifecycle checks passed\n";
 }

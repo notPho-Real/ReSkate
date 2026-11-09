@@ -18,7 +18,8 @@ bool current(const WallplantCommand&,std::uint64_t now,const NativeInputFrame&,S
 void completed(const WallplantCommand&,bool applied) noexcept;
 WallplantCommand latest_completed() noexcept;
 bool begin_hold(const WallplantCommand&,std::uint64_t& now) noexcept;
-bool hold_current(const WallplantCommand&,std::uint64_t& now,const NativeInputFrame&) noexcept;
+bool hold_current(const WallplantCommand&,std::uint64_t& now,const NativeInputFrame&,
+    bool* stale_query=nullptr) noexcept;
 void finish_hold(const WallplantCommand&,bool released,std::uint64_t now) noexcept;
 WallplantCommand held_command() noexcept;
 std::uint64_t hold_started_at() noexcept;

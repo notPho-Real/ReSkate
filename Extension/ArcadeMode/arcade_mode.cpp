@@ -1610,7 +1610,21 @@ NativeInputFrame native_wallplant_hold_context(const NativeInputOwner& owner,std
        action_mode.load(std::memory_order_acquire)!=ActionExperiment::classic || grind_change.active() ||
        !physical.valid || physical.lt>30 || physical.rt>30 || (physical.buttons&conflicts) ||
        !arcade_input.admitted(0,now) || !arcade_input.wallplant_controls_unowned(0) ||
-       !live.valid || live.owner!=owner || live.owner_generation!=arcade_input.owner_epoch())return {};
+       !live.valid || live.owner!=owner || live.owner_generation!=arcade_input.owner_epoch()) {
+        const auto command=wallplant_runtime::held_command();
+        static std::uint64_t reported_input{};
+        if(command && command.native.owner==owner && reported_input!=command.input_sequence) {
+            reported_input=command.input_sequence;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE WALLPLANT HOLD CONTEXT: occurrence={} ms={} enabled={} classic={} grind={} physical={} lt={} rt={} buttons={} conflicts={} admitted={} unowned={} valid={} owner_same={} generation_same={} state={} step={} sampled={}.",
+                command.input_sequence,now,mode_enabled.load(std::memory_order_acquire),
+                action_mode.load(std::memory_order_acquire)==ActionExperiment::classic,grind_change.active(),
+                physical.valid,physical.lt,physical.rt,physical.buttons,conflicts,
+                arcade_input.admitted(0,now),arcade_input.wallplant_controls_unowned(0),live.valid,
+                live.owner==owner,live.owner_generation==arcade_input.owner_epoch(),live.state,live.physics_step,live.sampled_at);
+        }
+        return {};
+    }
     return live;
 }
 static NativeInputFrame surface_geometry_native_frame_locked(std::uint64_t now,const char** diagnostic_reason) noexcept {
@@ -2447,7 +2461,11 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const auto grind_frame=arcade_input.native_context(now);
         const bool plant_grind_excluded=wallplant_runtime::excludes_grind(grind_frame,now);
         const auto plant_command=wallplant_runtime::held_command();
-        const bool plant_holding=plant_command && wallplant_runtime::hold_current(plant_command,now,grind_frame);
+        bool plant_query_stale{};
+        const bool plant_current=plant_command && wallplant_runtime::hold_current(plant_command,now,grind_frame,&plant_query_stale);
+        // A deferred reader cannot launch a ground action into a newer hold.
+        // This only withholds controls; it grants no physics-write authority.
+        const bool plant_holding=plant_current || plant_query_stale;
         if(plant_holding)
             arcade_input.acknowledge_wallplant_entry(now,plant_command.native,plant_command.input_sequence,plant_command.issued_at);
         const bool grind_permitted=game_input && owns_controls && !offboard && !releasing_manual && !plant_grind_excluded &&

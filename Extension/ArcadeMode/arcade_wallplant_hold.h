@@ -20,6 +20,15 @@ public:
     std::uint64_t started_at() const noexcept { return started_; }
     std::uint64_t deadline() const noexcept { return deadline_; }
     const char* reason() const noexcept { return reason_; }
+    // A reader may lose a race with the original physics publisher. This is
+    // not permission to write: leave the newer hold untouched and defer.
+    bool stale_query(const NativeInputFrame& frame,std::uint64_t now) const noexcept {
+        return active() && now>=last_now_ && now<=deadline_+grace_ &&
+            frame.valid && frame.owner==last_.owner && frame.owner_generation==last_.owner_generation &&
+            !frame.rail_family && (frame.state==100 || frame.state==200 || frame.state==201) &&
+            now>=frame.sampled_at && now-frame.sampled_at<=InputTiming::native_sample_lease_ms &&
+            frame.physics_step<last_.physics_step && frame.sampled_at<=last_.sampled_at;
+    }
     void cancel(const char* reason="cancel") noexcept {
         command_={};last_={};started_=deadline_=grace_=last_now_=bridge_until_=0;
         contact_=resumed_=false;reason_=reason;

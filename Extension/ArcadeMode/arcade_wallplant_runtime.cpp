@@ -175,12 +175,23 @@ WallplantFrame frame(std::uint64_t now,const NativeInputFrame& f,SurfaceGeometry
     out.takeoff_observed=takeoff;out.clearance_known=candidate.valid;out.separated=separated;
     return out;
 }
+void hold_rejected(const WallplantCommand& command,const NativeInputFrame& frame,
+        std::uint64_t now,const char* reason) noexcept {
+    logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE WALLPLANT HOLD REJECTION: occurrence={} contact={} ms={} reason={} permitted={} valid={} state={} owner={} owner_generation={} action_generation={} step={} sampled={} episode={} departure={} flip_known={} flip={} selection={}.",
+        command.input_sequence,command.contact,now,reason,permitted,frame.valid,frame.state,
+        frame.owner.core,frame.owner_generation,frame.action_generation,frame.physics_step,frame.sampled_at,
+        frame.airborne_episode,frame.air_departure,frame.flip_known,frame.flip_id,frame.selection_object);
+}
 void withdraw(const char* reason,const NativeInputFrame* frame=nullptr) noexcept {
     if(pending.sequence)diagnose(6,0,reason,raw,frame?*frame:observed,GetTickCount64(),contact_identity,
         0,0,0,pending.sequence,pending.pressed_at);
     retained_contact_hint.store(false,std::memory_order_release);
     candidate={};raw={};raw_frame={};pending={};in_flight={};
-    if(hold.active())hold_stop=hold.command();
+    if(hold.active()) {
+        hold_stop=hold.command();
+        hold_rejected(hold.command(),frame?*frame:observed,GetTickCount64(),reason);
+    }
     hold.cancel(reason);combo_bridge.cancel(reason);hold_play={};held_hit={};
     pending_writer_input.store(0,std::memory_order_release);
     takeoff=grounded=separated=contact_active=animation_ready=false;policy.cancel();
@@ -257,6 +268,7 @@ void observe_physics(const NativeInputFrame& f) noexcept {
            native_wall_contact::current(held_hit,hold.command().geometry.world)) {
             observed=f;return;
         }
+        if(!hold.active())hold_rejected(active_command,f,GetTickCount64(),hold.reason());
         hold_stop=active_command;withdraw("hold_observation",&f);stop_pose.store(true,std::memory_order_release);
     }
     if(combo_bridge.active()) {
@@ -490,11 +502,20 @@ bool begin_hold(const WallplantCommand& command,std::uint64_t& now) noexcept {
     grind_exclusion=command;grind_exclusion_started=now;
     separated=false;animation_ready=false;return true;
 }
-bool hold_current(const WallplantCommand& command,std::uint64_t& now,const NativeInputFrame& live) noexcept {
+bool hold_current(const WallplantCommand& command,std::uint64_t& now,const NativeInputFrame& live,bool* stale_query) noexcept {
     std::lock_guard lock(mutex);
     now=GetTickCount64();
+    if(stale_query)*stale_query=false;
     if(!hold.active() || !same_command(command,hold.command(),true))return false;
-    if(permitted && native_wall_contact::current(held_hit,command.geometry.world) && hold.observe(live,now))return true;
+    const bool contact_current=permitted && native_wall_contact::current(held_hit,command.geometry.world);
+    if(contact_current) {
+        if(hold.stale_query(live,now)) {
+            if(stale_query)*stale_query=true;
+            return false;
+        }
+        if(hold.observe(live,now))return true;
+    }
+    hold_rejected(command,live,now,!permitted?"not_permitted":!contact_current?"contact_changed":hold.reason());
     hold_stop=command;hold.cancel("hold_invalid");hold_play={};held_hit={};return false;
 }
 void finish_hold(const WallplantCommand& command,bool released,std::uint64_t now) noexcept {
