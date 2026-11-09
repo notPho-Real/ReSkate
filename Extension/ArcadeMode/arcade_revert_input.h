@@ -77,7 +77,7 @@ public:
         // At 30/60/120 Hz every geometric waypoint is presented. Repeated
         // reads at one timestamp cannot advance; a long missed poll cancels
         // instead of replaying a stale path or jumping over the bottom corner.
-        if (elapsed >= 1000 || now_ms-step_at_>150+recipe_[index_].duration_ms) { cancel(); return {}; }
+        if (elapsed >= 1000 || now_ms-step_at_>150u+recipe_[index_].duration_ms) { cancel(); return {}; }
         if (new_poll && elapsed>=deadline_) {
             if (++index_==recipe_.size()) { cancel(); return {}; }
             step_at_=now_ms;

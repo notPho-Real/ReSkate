@@ -385,6 +385,16 @@ Native seed observation now snapshots and revalidates one owner generation
 under its existing mutex, including board-holder changes, before publishing
 a pose. It cannot tag an old evaluation with a new owner's entity.
 
+The first hosted candidate passed targeted MSVC Casper/input tests. Full CI
+also exposed two GCC signedness warnings in the shared revert/board headers and
+a missing disabled custom-animation boundary in the Manual source-composition
+fixture. The follow-up preserves strict warnings and the production call
+extraction: the existing Manual fixture supplies no custom-animation authority.
+Local strict builds pass 689,573 lifecycle and 698,774 reservation checks; all
+five reservation rollback controls still fail at their intended assertions.
+The focused Casper/input/motion suites also pass again. Hosted validation of
+the corrected candidate remains required.
+
 Before gameplay, require the exact candidate's successful Windows runtime build
 and CI tests, and record source SHA, run/attempt/artifact ID and DLL SHA-256.
 The hosted CI artifact is a candidate for testing, not gameplay acceptance.

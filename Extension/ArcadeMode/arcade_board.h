@@ -28,7 +28,7 @@ public:
             }
         }
         if (waiting_ && now - first_ > window_ms) latched_ = true;
-        if (consumed_) out.buttons &= ~pair;
+        if (consumed_) out.buttons &= static_cast<std::uint16_t>(~pair);
         if (!permitted || now - began_ >= pulse_ms) pulsing_ = false;
         if (pulsing_) { out.buttons |= native_y; out.pulse = true; }
         return out;

@@ -110,6 +110,13 @@ void observe_physics(const NativeInputFrame&)noexcept{}
 InputSurfaceState surface(std::uint64_t,const NativeInputFrame&)noexcept{return {};}
 bool current(const WallplantCommand&,std::uint64_t,const NativeInputFrame&,SurfaceGeometryVector)noexcept{return false;}
 }
+// Manual fixtures supply no custom-animation receipt or motion authority.
+namespace dingosdk::arcade_mode::custom_flatland_runtime {
+void cancel()noexcept{}
+CustomFlatlandBinding observe(CustomFlatlandContext)noexcept{return {};}
+CustomFlatland::Motion consume(const NativeInputFrame&,std::uint64_t,
+ const std::array<float,3>&,bool)noexcept{return {};}
+}
 NativeFlipRequest normal_flip{};
 NativeGrabRequest normal_grab{};
 NativeGroundGrabRequest ground_grab{};
@@ -117,6 +124,7 @@ NativeFootplantRequest footplant{}; // Manual fixtures cannot admit native footp
 #include "Extension/ArcadeMode/arcade_grind_change.h"
 GrindChange grind_change;
 InputAdapter grind_adapter{}; // Native backend cannot execute in this fixture.
+const CustomFlatlandBinding flatland_binding{}; // No custom animation owner is supplied by manual fixtures.
 HeldFlipObservation held_flip{}; // No native held-flip evidence is supplied by manual tests.
 namespace dingosdk::arcade_mode::native_grind {void cancel()noexcept{}}
 namespace dingosdk::logging{
