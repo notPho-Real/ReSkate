@@ -63,12 +63,26 @@ bool cleanup(const SurfaceGeometryNativeApi& api, editor::NativeSurfaceResult& r
     catch (...) { ok = false; }
     return ok;
 }
-struct Hit { SurfaceGeometryVector point; SurfaceGeometryBody body; std::uint64_t owner; SurfaceGeometryWorldOwner world_owner; };
-struct Exclusions { std::array<SurfaceGeometryBody,8> bodies{}; std::size_t count{}; };
+struct Hit {
+    SurfaceGeometryVector point; SurfaceGeometryBody body; std::uint64_t owner;
+    SurfaceGeometryWorldOwner world_owner; bool local_component{};
+};
+struct Exclusions {
+    std::array<SurfaceGeometryBody,8> bodies{};
+    std::array<SurfaceGeometryWorldOwner,8> local_components{};
+    std::size_t count{};
+};
 bool exclusions_current(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContext& ctx,
                         const Exclusions& exclusions,SurfaceGeometryTrace* trace=nullptr) {
     if (!current(api,ctx,trace)) return false;
     for (std::size_t i = 0; i < exclusions.count; ++i) {
+        if(exclusions.local_components[i].value) {
+            SurfaceGeometryWorldOwner again{};
+            if(!api.local_component_owner ||
+               !api.local_component_owner(api.user,ctx,exclusions.bodies[i],again) ||
+               again!=exclusions.local_components[i] || !current(api,ctx,trace))return false;
+            continue;
+        }
         std::uint64_t owner{};
         if (!body_owner(api,ctx,exclusions.bodies[i],owner,trace) || owner != ctx.self_entity) return false;
     }
@@ -139,13 +153,24 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
                 SurfaceGeometryWorldOwner world_owner{};
                 if (api.picking.hit_body(descriptor.data(),&body) != &body) return fail("hit_shape");
                 if(trace)trace->shape=body;
-                if (!body_owner(api,ctx,body,owner,trace,&world_owner)) return {};
+                bool local_component=false;
+                if(clear && api.local_component_owner && body.world==ctx.world &&
+                   api.picking.body_valid(&body)) {
+                    SurfaceGeometryWorldOwner first{},again{};
+                    if(api.local_component_owner(api.user,ctx,body,first)) {
+                        if(!first.value || !api.local_component_owner(api.user,ctx,body,again) ||
+                           first!=again || !api.picking.body_valid(&body) || !current(api,ctx,trace))
+                            return fail("local_component_changed");
+                        world_owner=first;local_component=true;
+                    }
+                }
+                if (!local_component && !body_owner(api,ctx,body,owner,trace,&world_owner)) return {};
                 if(trace)trace->entity=owner;
                 SurfaceGeometryVector point{};
                 for (std::size_t i = 0; i < 3; ++i) point[i] = segment.start[i]+(segment.end[i]-segment.start[i])*closest;
                 if(trace)trace->point=point;
                 if (!finite(point)) return fail("point_invalid");
-                return Hit{point,body,owner,world_owner};
+                return Hit{point,body,owner,world_owner,local_component};
             };
             try { hit = inspect(); } catch (...) { hit = fail("query_exception"); }
         }
@@ -156,10 +181,11 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
         }
         if (!hit) return {};
         if (!exclusions_current(api,ctx,excluded,trace)) return fail("exclusions_changed");
-        if (hit->owner != ctx.self_entity) {if(trace)trace->reason="hit";return hit;} // unknown nearer owner never skipped
+        if (!hit->local_component && hit->owner != ctx.self_entity) {if(trace)trace->reason="hit";return hit;} // unknown nearer owner never skipped
         if (excluded.count == excluded.bodies.size() ||
             std::find(excluded.bodies.begin(),excluded.bodies.begin()+static_cast<std::ptrdiff_t>(excluded.count),hit->body) !=
                 excluded.bodies.begin()+static_cast<std::ptrdiff_t>(excluded.count)) return fail("self_exclusion_limit");
+        if(hit->local_component)excluded.local_components[excluded.count]=hit->world_owner;
         excluded.bodies[excluded.count++] = hit->body;
     }
     return {};

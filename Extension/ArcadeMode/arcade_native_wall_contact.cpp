@@ -1,6 +1,7 @@
 #include "arcade_native_wall_contact.h"
 #include "arcade_contact_owner.h"
 #include "arcade_static_world_owner.h"
+#include "Engine/Game/World/physics_component_owner.h"
 #include "Engine/Core/Hooks/hooks.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
@@ -223,6 +224,7 @@ bool start(std::uintptr_t base) noexcept {
     for(const auto& contract:c::contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:c::board_contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:game::build::v20260929::physics_owner::contracts)if(!fingerprint(contract))return false;
+    for(const auto& contract:game::build::v20260929::physics_owner::component_contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:b::contracts)if(!fingerprint(contract))return false;
     if(!fingerprint(rc::shape_valid)||!fingerprint(rc::body_valid)||
        !fingerprint(r::shape_in_categories)||!fingerprint(c::motion_fixed_contract))return false;
@@ -281,5 +283,31 @@ bool static_world_owner(const SurfaceGeometryBody& shape,SurfaceGeometryWorldOwn
             SurfaceGeometryBody{first.body.world,first.body.index,first.body.generation},first.world_store,
             [](auto at,auto& value){return read(at,value);},current_owner,out);
     } catch(...) {out={};return false;}
+}
+bool local_component_owner(const SurfaceGeometryBody& shape,std::uintptr_t entity,SurfaceGeometryWorldOwner& out) noexcept {
+    out={};
+    try {
+        NoBailSkater local{};
+        if(!no_bail_skater(local) || local.base!=image || local.entity!=entity)return false;
+        Contact first{};first.shape={shape.world,shape.index,shape.generation};
+        if(!qualify(first))return false;
+        const auto current_owner=[&] {
+            NoBailSkater again{};auto contact=first;
+            return no_bail_skater(again) && again==local && qualify(contact) &&
+                contact.world_store==first.world_store && contact.body==first.body &&
+                contact.categories_known==first.categories_known && contact.categories==first.categories;
+        };
+        const auto reader=[](auto at,auto& value){return read(at,value);};
+        const auto observe=[&](SurfaceGeometryWorldOwner& stamp) {
+            return static_world_owner_detail::observe(shape,
+                SurfaceGeometryBody{first.body.world,first.body.index,first.body.generation},first.world_store,
+                reader,current_owner,stamp) &&
+                physics_component_owner::belongs_to(image,entity,stamp.value,
+                    Handle{shape.world,stamp.index,stamp.generation},reader,current_owner);
+        };
+        SurfaceGeometryWorldOwner before{},after{};
+        if(!observe(before) || !observe(after) || before!=after || !current_owner())return false;
+        out=before;return true;
+    }catch(...){out={};return false;}
 }
 }

@@ -305,6 +305,10 @@ void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const Surface
     api.static_world_owner=[](void*,const SurfaceGeometryBody& shape,SurfaceGeometryWorldOwner& owner) noexcept {
         return native_wall_contact::static_world_owner(shape,owner);
     };
+    api.local_component_owner=[](void*,const SurfaceGeometryContext& context,
+            const SurfaceGeometryBody& shape,SurfaceGeometryWorldOwner& owner) noexcept {
+        return native_wall_contact::local_component_owner(shape,context.owner[1],owner);
+    };
     const auto geometry=[&](unsigned stage,const char* reason,std::uint64_t now,
             std::uint64_t flags=0,float value=0,float extra=0) {
         diagnose(1,stage,reason,source,f,now,identity,flags,value,extra);

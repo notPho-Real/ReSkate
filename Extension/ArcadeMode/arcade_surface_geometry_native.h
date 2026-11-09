@@ -30,6 +30,10 @@ struct SurfaceGeometryNativeApi {
     bool (*static_world_owner)(void*, const SurfaceGeometryBody&, SurfaceGeometryWorldOwner&) noexcept{};
     // Copied diagnostic from the existing current() callback, never a retry.
     const char* (*current_failure)(void*) noexcept{};
+    // Clearance-only opt-in. Resolve a non-ECS shape owner to a registered
+    // component of context.owner[1], retaining its complete owner incarnation.
+    bool (*local_component_owner)(void*,const SurfaceGeometryContext&,const SurfaceGeometryBody&,
+        SurfaceGeometryWorldOwner&) noexcept{};
 };
 // Optional copied receipts from calls already made by a geometry query. Never
 // issues another native query or changes its admission/cleanup behavior.

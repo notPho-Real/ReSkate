@@ -25,6 +25,7 @@ void enable(bool) noexcept{}
 Snapshot observe(const NoBailSkater&,std::uint64_t) noexcept{return {};}
 bool current(const Contact&,std::uintptr_t) noexcept{return fixture::hit_current;}
 bool static_world_owner(const SurfaceGeometryBody&,SurfaceGeometryWorldOwner&) noexcept{return false;}
+bool local_component_owner(const SurfaceGeometryBody&,std::uintptr_t,SurfaceGeometryWorldOwner&) noexcept{return false;}
 }
 namespace dingosdk::arcade_mode::wallplant_animation {
 void tick(bool) noexcept{}

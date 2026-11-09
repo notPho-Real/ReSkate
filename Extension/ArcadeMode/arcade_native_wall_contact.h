@@ -40,4 +40,5 @@ bool current(const Contact& contact,std::uintptr_t expected_world) noexcept;
 // A valid static native owner can have no ECS entity. Never admits an unknown
 // owner or moving body; returns the complete source-backed owner incarnation.
 bool static_world_owner(const SurfaceGeometryBody&,SurfaceGeometryWorldOwner&) noexcept;
+bool local_component_owner(const SurfaceGeometryBody&,std::uintptr_t entity,SurfaceGeometryWorldOwner&) noexcept;
 }

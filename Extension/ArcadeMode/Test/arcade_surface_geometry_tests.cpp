@@ -1,9 +1,12 @@
 #include "Extension/ArcadeMode/arcade_surface_geometry_native.h"
+#include "Engine/Game/World/physics_component_owner.h"
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <map>
+#include <vector>
 
 using namespace dingosdk;
 using namespace dingosdk::arcade_mode;
@@ -30,6 +33,8 @@ struct Fixture {
     std::uintptr_t allocator{};
     float last_x{};
     bool self_hit{};
+    bool native_self{}, foreign_component{}, changing_component{};
+    unsigned component_calls{}, reject_component_at{};
     bool wall{}, upper_gap{}, lower_gap{};
     bool anchor{}, malformed_empty{}, unreadable_fraction_lane{};
     unsigned anchor_block_at{};
@@ -66,7 +71,7 @@ struct Fixture {
         auto& f=*running;
         const auto& body=*static_cast<const SurfaceGeometryBody*>(ptr);
         auto& value=*static_cast<std::array<std::uint64_t,2>*>(out);
-        value={body.index>=100 ? f.live.self_entity : f.unknown ? 0u : 20u,0};
+        value={body.index>=100 ? (f.native_self ? 0u : f.live.self_entity) : f.unknown ? 0u : 20u,0};
         if (f.changed_owner && ++f.entities%2==0) ++value[0];
         return out;
     }
@@ -84,6 +89,16 @@ struct Fixture {
         if(f.reject_world_owner || call==f.reject_owner_at)return false;
         owner=f.world_owner;
         if(f.changing_world_owner)owner.generation+=call;
+        return true;
+    }
+    static bool component_owner(void* user,const SurfaceGeometryContext& context,
+        const SurfaceGeometryBody& body,SurfaceGeometryWorldOwner& owner) noexcept {
+        auto& f=*static_cast<Fixture*>(user);
+        const auto call=++f.component_calls;
+        if(context!=f.live || body.index<100 || !f.native_self || f.foreign_component ||
+           call==f.reject_component_at)return false;
+        owner=f.world_owner;
+        if(f.changing_component)owner.generation+=call;
         return true;
     }
     static void* ray(std::uintptr_t world_value,editor::NativeSurfaceResult* result,const editor::NativeSurfaceRay* ray_value,const char*) {
@@ -139,6 +154,7 @@ struct Fixture {
         api.picking.hit_body=&hit_body; api.picking.body_valid=&valid; api.picking.body_entity=&entity; api.picking.ready=true;
         api.user=this; api.now=&now; api.current=&current; api.read_bytes=&surface_geometry_test_read;
         if(allow_world_owner)api.static_world_owner=&static_owner;
+        if(native_self)api.local_component_owner=&component_owner;
         api.current_failure=[](void*)noexcept{return "fixture_frame_lock_busy";};
         return api;
     }
@@ -194,6 +210,70 @@ bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) no
 }
 }
 int main() {
+    {
+        namespace p=game::build::v20260929::physics_owner;
+        using Handle=body_hit_identity::NativeHandle;
+        constexpr std::uintptr_t base=0x140000000,entity=0x200000000,component=0x300000000,collection=0x400000000;
+        const Handle owner{0x500000000,138,50331648};
+        std::map<std::uintptr_t,std::vector<unsigned char>> memory;
+        const auto put=[&]<class T>(std::uintptr_t at,const T& value) {
+            auto& bytes=memory[at];bytes.resize(sizeof value);std::memcpy(bytes.data(),&value,sizeof value);
+        };
+        const auto reset=[&] {
+            memory.clear();put(component,base+p::component_vtable);
+            put(component+p::component_collection,collection);put(entity+p::entity_collection,collection);
+            put(component+p::component_slot,std::uint8_t{5});
+            put(collection+p::collection_entries+5*p::collection_entry_size,component);
+            put(component+p::component_world,owner.world);put(component+p::component_owner_handle,owner);
+        };
+        unsigned reads{},reject_read{},currents{},reject_current{};
+        const auto read=[&]<class T>(std::uintptr_t at,T& value) {
+            if(++reads==reject_read)return false;
+            const auto found=memory.find(at);
+            if(found==memory.end() || found->second.size()!=sizeof value)return false;
+            std::memcpy(&value,found->second.data(),sizeof value);return true;
+        };
+        const auto current=[&] {return ++currents!=reject_current;};
+        const auto valid=[&] {reads=currents=0;return physics_component_owner::belongs_to(base,entity,component,owner,read,current);};
+        reset();check(valid(),"native component requires matching entity collection, registry, world and owner handle");
+        const auto total_reads=reads,total_currents=currents;
+        for(unsigned i=1;i<=total_reads;++i) {reset();reject_read=i;check(!valid(),"every component proof read is required");}
+        reject_read=0;
+        for(unsigned i=1;i<=total_currents;++i) {reset();reject_current=i;check(!valid(),"component proof cannot outlive current local owner");}
+        reject_current=0;
+        for(unsigned failure=0;failure<8;++failure) {
+            reset();
+            switch(failure) {
+            case 0:put(component,base+p::component_vtable+8);break;
+            case 1:put(component+p::component_collection,collection+8);break;
+            case 2:put(entity+p::entity_collection,collection+8);break;
+            case 3:put(component+p::component_slot,std::uint8_t{6});break;
+            case 4:put(collection+p::collection_entries+5*p::collection_entry_size,component+8);break;
+            case 5:put(component+p::component_world,owner.world+8);break;
+            case 6:put(component+p::component_owner_handle,Handle{owner.world,owner.index+1,owner.generation});break;
+            case 7:put(component+p::component_owner_handle,Handle{owner.world,owner.index,owner.generation+1});break;
+            }
+            check(!valid(),"foreign or recycled component never authenticates as local");
+        }
+        reset();
+        unsigned observations{};
+        const auto recycled=[&] {
+            if(++observations==2) {
+                put(component+p::component_collection,collection+0x1000);
+                put(entity+p::entity_collection,collection+0x1000);
+                put(collection+0x1000+p::collection_entries+5*p::collection_entry_size,component);
+            }
+            return true;
+        };
+        check(!physics_component_owner::belongs_to(base,entity,component,owner,read,recycled),
+              "two individually valid snapshots cannot hide component collection replacement");
+        reset();
+        for(auto address:{std::uintptr_t{},std::numeric_limits<std::uintptr_t>::max()}) {
+            check(!physics_component_owner::belongs_to(address,entity,component,owner,read,current),"invalid image bounds reject");
+            check(!physics_component_owner::belongs_to(base,address,component,owner,read,current),"invalid entity bounds reject");
+            check(!physics_component_owner::belongs_to(base,entity,address,owner,read,current),"invalid component bounds reject");
+        }
+    }
     for(bool wall:{false,true}) {
         Fixture f;f.clock_step=1;
         const auto api=f.api();const auto admitted_at=api.now(api.user);
@@ -494,6 +574,24 @@ int main() {
       check(!f.query_anchor().valid,"invalid obstacle fraction never becomes clear"); }
     { Fixture f;f.self=true;
       check(f.query_anchor().valid&&f.calls==5,"only authenticated native local-player shape may be excluded"); }
+    { Fixture f;f.self=true;f.native_self=true;
+      check(f.query_anchor().valid&&f.calls==5&&f.component_calls>2,
+            "non-ECS local component is excluded and revalidated across all clearance rays"); }
+    { Fixture f;f.self=true;f.native_self=true;f.foreign_component=true;
+      check(!f.query_anchor().valid&&f.calls==1,"foreign non-ECS component remains an obstacle"); }
+    { Fixture f;f.self=true;f.native_self=true;f.changing_component=true;
+      check(!f.query_anchor().valid&&f.calls==1,"recycled native component stamp rejects before exclusion"); }
+    for(unsigned failure=2;failure<=6;++failure) {
+        Fixture f;f.self=true;f.native_self=true;f.reject_component_at=failure;
+        check(!f.query_anchor().valid,"local component must remain authenticated after exclusion");
+    }
+    { Fixture f;f.many_self=true;f.native_self=true;
+      check(!f.query_anchor().valid&&f.calls==9,"native component exclusions retain the eight-shape limit"); }
+    for(bool wall:{false,true}) {
+        Fixture f;f.self=true;f.native_self=true;
+        check(!(wall?f.query_wall():f.query()).valid&&f.component_calls==0,
+              "clearance-only native component exclusion cannot broaden wall or ground qualification");
+    }
     { Fixture f;f.many_self=true;
       check(!f.query_anchor().valid&&f.calls==9,"anchor uses existing bounded self-exclusion lifecycle"); }
     { Fixture f;f.unknown=true;f.allow_world_owner=true;

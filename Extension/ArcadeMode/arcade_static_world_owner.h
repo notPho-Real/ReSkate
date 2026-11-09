@@ -5,8 +5,9 @@
 #include <limits>
 
 namespace dingosdk::arcade_mode::static_world_owner_detail {
-// The caller proves the allocated shape-to-body association and static motion
-// before/after every snapshot. Native non-ECS identity is never an invented ECS ID.
+// The caller proves the allocated shape-to-body association before/after every
+// snapshot, and separately proves static motion or authenticated local component
+// ownership. Native non-ECS identity is never an invented ECS ID.
 template<class Read,class Current>
 bool observe(SurfaceGeometryBody shape,SurfaceGeometryBody body,std::uintptr_t store,
         Read&& read,Current&& current,SurfaceGeometryWorldOwner& out) {
