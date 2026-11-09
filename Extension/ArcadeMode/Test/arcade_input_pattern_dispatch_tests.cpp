@@ -228,6 +228,9 @@ void contextual_predicates() {
  for (bool grab : {false,true}) for (auto age : {299u,300u,301u}) for (bool released : {false,true}) {
   UnifiedInput input; Capture sink; sink.result=InputDisposition::unsupported;
   InputEnvironment env{InputContext::air,true}; env.auxiliary_enabled=false;
+  // Isolate the table query window. Production's immediate neutral X flip
+  // already consumes this face before a table installed 299 ms later exists.
+  env.policy=InputPolicy::strict();
   const auto kind=grab?InputAirTableKind::grab_extra:InputAirTableKind::pressure;
   const auto poll=[&](std::uint64_t now,PhysicalInputSample physical,bool install) {
    env.native_context={true,true,{1,1,1},now+1,now,false,true,1,1};

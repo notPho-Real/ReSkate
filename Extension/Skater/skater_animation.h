@@ -51,6 +51,12 @@ bool playing() noexcept; // a clip of play() has not finished
 // caller's clip. The ticket only owns this submission; ordinary play(), seek()
 // or pause() revoke it. Cancellation cannot stop a newer caller's playback.
 std::uint64_t try_play(Play clip);
+// An owned, externally clocked pose. Only this ticket can move its held time;
+// ordinary play/seek/pause still revoke ownership. Caller must cancel on loss
+// of its gameplay lease. No physics body or contact is changed.
+std::uint64_t try_play_controlled(Play clip);
+bool seek_owned(std::uint64_t ticket, float seconds);
+bool controlled_play_current(std::uint64_t ticket) noexcept; // any thread; no client state read
 void prepare_playback() noexcept; // requests the existing hooks at the next client tick
 bool can_play() noexcept;
 bool owns_play(std::uint64_t ticket) noexcept;
@@ -65,6 +71,16 @@ void set_replacements(std::vector<Replacement> list);
 bool record(float seconds);
 bool recording() noexcept;
 std::shared_ptr<const Clip> take_recording();
+// Short-lived observation of the local native pose BEFORE overrides. This does
+// not take the recording slot. Requests keep observation awake for 0.15 s.
+struct NativePose {
+    std::vector<anim_studio::Joint> joints;
+    anim_studio::Joint board; // placement-relative mount
+    std::uintptr_t base{}, entity{};
+    double age{};
+    std::uint64_t sequence{};
+};
+std::optional<NativePose> native_pose();
 // Who sees a pose, a carry or a reach: everyone (the pose drawn here and sent), only the other players
 // (sent, not drawn: you look through a camera your skater is seen holding), or only you (drawn, not sent).
 enum class Shown : std::uint8_t { everyone, others, me };

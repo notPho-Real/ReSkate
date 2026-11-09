@@ -32,6 +32,10 @@ run(common + ["-c", str(root / "Extension/AnimationStudio/anim_core.cpp"), "-o",
 test = out / "casper_spike_tests"
 run(common + strict + [str(Path(__file__).with_name("flatland_tests.cpp")), str(core), "-o", str(test)])
 run([str(test)])
+runtime = out / "casper_runtime_tests"
+run(common + strict + ["-DDINGOSDK_DEV_TOOLS", str(Path(__file__).with_name("runtime_tests.cpp")),
+    str(root / "Extension/ArcadeMode/arcade_custom_flatland_runtime.cpp"), str(core), "-o", str(runtime)])
+run([str(runtime)])
 if args.integration:
     # Relevant boundaries only, not the exhaustive Arcade campaign.
     results = []

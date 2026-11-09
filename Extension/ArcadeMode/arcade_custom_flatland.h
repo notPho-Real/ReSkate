@@ -15,6 +15,7 @@ struct CustomTrickPlayback {
     std::uint64_t (*begin)(void*,std::shared_ptr<const anim_studio::Clip>){};
     bool (*owns)(void*,std::uint64_t){};
     void (*cancel)(void*,std::uint64_t){};
+    void (*seek)(void*,std::uint64_t,float){}; // Optional native-time player; holds entry at 0.3 s.
     bool available() const noexcept {return begin && owns && cancel;}
 };
 enum class FlatlandSurface { unknown, ordinary, rough, sealed, slick };
@@ -81,8 +82,8 @@ public:
             !playback_.owns(playback_.context,ticket_))cancel();
     }
     InputAdapter adapter() noexcept {return {this,receive};}
-    // Call in the existing native writer transaction in a future live adapter.
-    // The portable harness calls this with simulated original observations.
+    // Called only within the existing native writer transaction. The portable
+    // harness supplies original-step observations at the same boundary.
     Motion step(CustomFlatlandContext context,const std::array<float,3>& velocity,
             const FlatlandSurfaceEvidence& surface={}) noexcept {
         observe(context);
@@ -97,8 +98,10 @@ public:
         }
         if(step.baseline)resistance_.reset();
         elapsed_+=step.seconds;
+        if(playback_.seek && phase_!=Phase::flip_exit)elapsed_=std::min(elapsed_,.3f);
         if(elapsed_>=duration_) {cancel();return {};}
         if(phase_==Phase::entry && elapsed_>=.3f)phase_=Phase::hold;
+        if(playback_.seek)playback_.seek(playback_.context,ticket_,elapsed_);
         const float speed=std::hypot(velocity[0],velocity[2]);
         const float change=resistance_.step(step.seconds,speed,false,false,true,
             flatland_friction(context.frame,surface));

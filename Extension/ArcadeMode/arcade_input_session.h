@@ -41,7 +41,7 @@ struct InputAdmission {
     NativeFootplantRequest footplant{};
     NativeGroundGrabRequest ground_grab{};
     // Opt-in visual flatland adapter, never native trick/result admission.
-    // The spike has no runtime producer for this capability.
+    // The dev runtime supplies a leased presentation capability.
     bool custom_flatland{};
     unsigned custom_flatland_branch{}; // Leased presentation context, never native identity.
 };

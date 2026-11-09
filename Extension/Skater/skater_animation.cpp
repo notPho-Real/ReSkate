@@ -261,6 +261,7 @@ std::string pop_of(float air) {
 struct Plan {
     std::optional<Play> play;
     double started{};
+    double controlled_until{};
     float from{};               // the clip's seconds at `started`
     std::optional<float> held;  // paused at these seconds of the clip
     std::uint64_t serial{};
@@ -302,6 +303,13 @@ struct PreviewSample {
     std::uint64_t sequence{};
 };
 std::mutex preview_mutex;
+std::atomic<double> native_pose_until{};
+std::atomic<std::uint64_t> controlled_ticket{};
+std::atomic<double> controlled_until{};
+std::atomic<std::uintptr_t> native_pose_entity{};
+std::mutex native_pose_mutex;
+NativePose native_pose_sample;
+double native_pose_at{};
 std::array<PreviewSample, 2> preview_samples;
 // The joints asked for as last evaluated (joint()), for the client thread.
 std::mutex joints_mutex;
@@ -603,7 +611,8 @@ void on_animation(std::uintptr_t component) noexcept {
         const bool posing = !snap->offsets.empty() && now < snap->offsets_until;
         const bool carrying = snap->carry && now < snap->carry_until;
         const bool in_room = room_shown.load(std::memory_order_acquire);
-        if (!busy && !reaching && !carrying && !joints_wanted && !posing && !in_room &&
+        const bool pose_wanted = now < native_pose_until.load(std::memory_order_acquire);
+        if (!busy && !reaching && !carrying && !joints_wanted && !posing && !in_room && !pose_wanted &&
             (!snap->allowed || (!snap->play && snap->replacements.empty()))) {
             std::lock_guard lock(pending().mutex);
             pending().bones.clear();
@@ -656,6 +665,20 @@ void on_animation(std::uintptr_t component) noexcept {
         }
         const double at = now_seconds();
         const auto air = in_the_air(base, component);
+        if (pose_wanted && l.board_ok) {
+            const auto placement = world(l.pose, placement_joint);
+            const auto board = relative(placement, compose(board_parent(l.board), joint_of(l.board[board_mount])));
+            const auto entity = native_pose_entity.load(std::memory_order_acquire);
+            if (entity && finite(board) && std::all_of(l.pose.begin(), l.pose.end(), [](const auto& j) { return finite(j); })) {
+                std::lock_guard lock(native_pose_mutex);
+                native_pose_sample.joints = l.pose;
+                native_pose_sample.board = board;
+                native_pose_sample.base = base;
+                native_pose_sample.entity = entity;
+                ++native_pose_sample.sequence;
+                native_pose_at = at;
+            }
+        }
         // Recording: the pose as the game animated it, before anything here changes it.
         if (wants_record) {
             l.record_serial.store(snap->record_serial, std::memory_order_release);
@@ -680,7 +703,8 @@ void on_animation(std::uintptr_t component) noexcept {
 
         const Clip* clip = nullptr;
         float t = -1, weight = 0;
-        if (snap->allowed && snap->play && snap->play->clip && !snap->play->clip->empty()) {
+        if (snap->allowed && snap->play && snap->play->clip && !snap->play->clip->empty() &&
+            (!snap->controlled_until || at < snap->controlled_until)) {
             // A clip played in place from when it was asked for.
             const auto& p = *snap->play;
             clip = p.clip.get();
@@ -1215,7 +1239,9 @@ void show_in_room(bool on) noexcept {
     if (room_shown.exchange(on, std::memory_order_acq_rel) && !on) room_restore_until.store(now_seconds() + 3, std::memory_order_release);
 }
 void play(std::optional<Play> clip) {
+    controlled_ticket.store(0,std::memory_order_release);
     borrowed_play = 0;
+    plan_draft.controlled_until = 0;
     plan_draft.play = std::move(clip);
     plan_draft.started = now_seconds();
     plan_draft.from = plan_draft.play ? plan_draft.play->at : 0;
@@ -1235,9 +1261,47 @@ std::uint64_t try_play(Play clip) {
 bool can_play() noexcept {
     return hooked && plan_draft.allowed && live().component.load(std::memory_order_acquire) && !playing();
 }
+std::uint64_t try_play_controlled(Play clip) {
+    clip.paused = false;
+    const auto ticket = try_play(std::move(clip));
+    if (ticket) {
+        plan_draft.held = plan_draft.from;
+        plan_draft.controlled_until = now_seconds() + .15;
+        controlled_until.store(plan_draft.controlled_until,std::memory_order_release);
+        controlled_ticket.store(ticket,std::memory_order_release);
+        publish();
+    }
+    return ticket;
+}
+bool seek_owned(std::uint64_t ticket, float seconds) {
+    if (!owns_play(ticket) || !plan_draft.held || !std::isfinite(seconds) || seconds < 0 ||
+        seconds > plan_draft.play->clip->duration()) return false;
+    plan_draft.held = seconds;
+    plan_draft.controlled_until = now_seconds() + .15;
+    controlled_until.store(plan_draft.controlled_until,std::memory_order_release);
+    publish();
+    return true;
+}
+bool controlled_play_current(std::uint64_t ticket) noexcept {
+    return ticket && controlled_ticket.load(std::memory_order_acquire)==ticket &&
+        now_seconds()<controlled_until.load(std::memory_order_acquire) &&
+        controlled_ticket.load(std::memory_order_acquire)==ticket;
+}
+std::optional<NativePose> native_pose() {
+    const double now = now_seconds();
+    native_pose_until.store(now + .15, std::memory_order_release);
+    prepare_playback();
+    std::lock_guard lock(native_pose_mutex);
+    if (!native_pose_sample.sequence || now < native_pose_at || now-native_pose_at > .15 ||
+        native_pose_sample.entity != native_pose_entity.load(std::memory_order_acquire)) return std::nullopt;
+    auto sample = native_pose_sample;
+    sample.age = now-native_pose_at;
+    return sample;
+}
 void prepare_playback() noexcept { playback_requested = true; }
 bool owns_play(std::uint64_t ticket) noexcept {
-    return ticket && borrowed_play == ticket && plan_draft.serial == ticket && playing();
+    return ticket && borrowed_play == ticket && plan_draft.serial == ticket && playing() &&
+        (!plan_draft.controlled_until || now_seconds() < plan_draft.controlled_until);
 }
 void cancel_play(std::uint64_t ticket) {
     if (ticket && borrowed_play == ticket && plan_draft.serial == ticket) play(std::nullopt);
@@ -1254,6 +1318,7 @@ std::optional<float> play_time() {
 void seek(float seconds) {
     if (!plan_draft.play || !plan_draft.play->clip) return;
     borrowed_play = 0;
+    controlled_ticket.store(0,std::memory_order_release);
     const float t = std::clamp(seconds, 0.0f, plan_draft.play->clip->duration());
     if (plan_draft.held) plan_draft.held = t;
     else {
@@ -1267,6 +1332,7 @@ void seek(float seconds) {
 void pause(bool paused) {
     if (!plan_draft.play || !plan_draft.play->clip || paused == plan_draft.held.has_value()) return;
     borrowed_play = 0;
+    controlled_ticket.store(0,std::memory_order_release);
     if (paused) plan_draft.held = play_time();
     else {
         const float t = *plan_draft.held;
@@ -1277,7 +1343,8 @@ void pause(bool paused) {
     publish();
 }
 bool playing() noexcept {
-    return plan_draft.play.has_value() && finished_serial.load(std::memory_order_acquire) != plan_draft.serial;
+    return plan_draft.play.has_value() && finished_serial.load(std::memory_order_acquire) != plan_draft.serial &&
+        (!plan_draft.controlled_until || now_seconds() < plan_draft.controlled_until);
 }
 void pose(std::vector<PoseOffset> offsets, float weight, Shown shown) {
     plan_draft.offsets = std::move(offsets);
@@ -1358,16 +1425,19 @@ std::string current_trick() noexcept {
 
 void tick(std::uintptr_t base, std::uintptr_t component, bool allowed) {
     auto& l = live();
+    std::uintptr_t pose_entity{};
     if (component && base) {
         // The skater's board (its own entity, with a 16-bone rig): its animation holder.
         std::uintptr_t holder{};
         try {
             const auto collection = read<std::uintptr_t>(component + 0x18).value_or(0);
             const auto entity = collection ? read<std::uintptr_t>(collection).value_or(0) : 0;
+            pose_entity = entity;
             if (entity) holder = multiplayer::read_native_board(peek, base, entity).holder;
         } catch (...) {}
         l.board_holder.store(holder, std::memory_order_release);
     }
+    native_pose_entity.store(pose_entity, std::memory_order_release);
     if (component != l.component.load(std::memory_order_acquire)) {
         l.base.store(base, std::memory_order_release);
         l.component.store(component, std::memory_order_release);

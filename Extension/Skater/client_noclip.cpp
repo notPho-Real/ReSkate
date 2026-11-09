@@ -19,6 +19,7 @@
 #include "Extension/ArcadeMode/arcade_ground_writer_observation.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_wallplant_runtime.h"
+#include "Extension/ArcadeMode/arcade_custom_flatland_runtime.h"
 #include "Extension/ArcadeMode/arcade_ground_rotation.h"
 #include "free_flight.h"
 #include "Engine/Game/Multiplayer/session_competition.h"
@@ -757,8 +758,13 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             const bool selected_brake = controls_current && controls.known ? controls.trying_to_brake(total_speed,facing_dot) : braking;
             writer_observation.selected(selected_brake); // Ground writer observation.
             const arcade_mode::GroundFriction friction{!controls_current || !controls.known || controls.auto_kick,false};
-            const float change = a.ground_resistance.step(ground_step.seconds, speed,
-                physics == 103 && push_speed().arcade_crouched.load(std::memory_order_relaxed), selected_brake, balancing,friction);
+            const auto flatland=arcade_mode::custom_flatland_runtime::consume(native_frame,now,velocities[0],balancing);
+            const float change = flatland.admitted ? -std::hypot(flatland.x,flatland.z) :
+                a.ground_resistance.step(ground_step.seconds, speed,
+                    physics == 103 && push_speed().arcade_crouched.load(std::memory_order_relaxed), selected_brake, balancing,friction);
+            // The next ordinary step starts from actual post-Casper velocity.
+            // No second resistance budget or global rolling-friction mutation.
+            if(flatland.admitted)a.ground_resistance.reset();
             writer_row.requested_resistance=change; // Ground writer observation.
             if (change < 0 && speed > 0) {
                 const float dx = velocities[0][0] / speed * change, dz = velocities[0][2] / speed * change;

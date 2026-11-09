@@ -1,4 +1,5 @@
 #pragma once
+#include "arcade_custom_flatland_runtime.h"
 #include "arcade_input_session.h"
 #include "arcade_balance_input.h"
 #include "arcade_native_input_state.h"
@@ -250,7 +251,7 @@ public:
             bool offboard = false, bool action_busy = false, bool flip_ready = true, bool neutral_ready = false,
             std::uint8_t lt = 0, std::uint8_t rt = 0, ActionExperiment mode = ActionExperiment::off,
             bool action_fresh = false, bool inspected_stance = false, bool manual_balance_admitted = false,
-            NativeFlipRequest normal_flip = {}, NativeGrabRequest normal_grab = {}, InputRailState rail = {}, InputAdapter extensions = {}, HeldFlipObservation held_flip = {}, NativeFootplantRequest footplant = {}, NativeGroundGrabRequest ground_grab = {}, InputSurfaceState surface = {}) noexcept {
+            NativeFlipRequest normal_flip = {}, NativeGrabRequest normal_grab = {}, InputRailState rail = {}, InputAdapter extensions = {}, HeldFlipObservation held_flip = {}, NativeFootplantRequest footplant = {}, NativeGroundGrabRequest ground_grab = {}, InputSurfaceState surface = {}, CustomFlatlandBinding flatland = {}) noexcept {
         if (!enabled_ || user >= sessions_.size() || (native_bound_ && user != 0)) return {buttons, rx, ry};
         if (native_bound_ && (!focused_ || now < authority_at_ || now-authority_at_ > 150 || !game_input)) {
             cancel_commands(); game_input = false;
@@ -274,6 +275,9 @@ public:
         admission.rail=rail;
         admission.extensions=extensions;
         admission.surface=surface;
+        admission.custom_flatland=flatland.enabled;
+        admission.custom_flatland_branch=flatland.branch;
+        if(flatland.enabled)admission.branch_ready=flatland.ready;
         admission.input_policy = policy_;
         admission.export_rail_requests = native_bound_;
         const auto native = native_context(now);
