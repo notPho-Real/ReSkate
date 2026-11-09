@@ -302,8 +302,10 @@ bool local_component_owner(const SurfaceGeometryBody& shape,std::uintptr_t entit
             return static_world_owner_detail::observe(shape,
                 SurfaceGeometryBody{first.body.world,first.body.index,first.body.generation},first.world_store,
                 reader,current_owner,stamp) &&
-                physics_component_owner::belongs_to(image,entity,stamp.value,
-                    Handle{shape.world,stamp.index,stamp.generation},reader,current_owner);
+                (physics_component_owner::belongs_to(image,entity,stamp.value,
+                    Handle{shape.world,stamp.index,stamp.generation},reader,current_owner) ||
+                 physics_component_owner::belongs_to_board(image,entity,stamp.value,
+                    Handle{shape.world,stamp.index,stamp.generation},reader,current_owner));
         };
         SurfaceGeometryWorldOwner before{},after{};
         if(!observe(before) || !observe(after) || before!=after || !current_owner())return false;

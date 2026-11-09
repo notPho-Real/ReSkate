@@ -31,7 +31,8 @@ struct SurfaceGeometryNativeApi {
     // Copied diagnostic from the existing current() callback, never a retry.
     const char* (*current_failure)(void*) noexcept{};
     // Clearance-only opt-in. Resolve a non-ECS shape owner to a registered
-    // component of context.owner[1], retaining its complete owner incarnation.
+    // component of context.owner[1] or its authenticated board entity, retaining
+    // the complete owner incarnation and reciprocal local association.
     bool (*local_component_owner)(void*,const SurfaceGeometryContext&,const SurfaceGeometryBody&,
         SurfaceGeometryWorldOwner&) noexcept{};
 };

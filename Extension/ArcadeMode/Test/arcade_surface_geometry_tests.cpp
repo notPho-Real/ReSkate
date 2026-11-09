@@ -280,6 +280,69 @@ int main() {
             check(!physics_component_owner::belongs_to(base,entity,address,owner,read,current),"invalid component bounds reject");
         }
     }
+    {
+        namespace p=game::build::v20260929::physics_owner;
+        namespace e=game::build::v20260929::engine;
+        using Handle=body_hit_identity::NativeHandle;
+        constexpr std::uintptr_t base=0x140000000,skater=0x200000000,board=0x210000000;
+        constexpr std::uintptr_t skater_collection=0x220000000,board_collection=0x230000000;
+        constexpr std::uintptr_t skater_component=0x240000000,board_component=0x250000000,physics=0x260000000;
+        const Handle owner{0x500000000,139,50331648};
+        std::map<std::uintptr_t,std::vector<unsigned char>> memory;
+        const auto put=[&]<class T>(std::uintptr_t at,const T& value) {
+            auto& bytes=memory[at];bytes.resize(sizeof value);std::memcpy(bytes.data(),&value,sizeof value);
+        };
+        const auto register_component=[&](std::uintptr_t entity,std::uintptr_t collection,std::uintptr_t value,std::uint8_t slot) {
+            put(entity+p::entity_collection,collection);put(collection,entity);
+            put(value+p::component_collection,collection);put(value+p::component_slot,slot);
+            put(collection+p::collection_entries+std::uintptr_t(slot)*p::collection_entry_size,value);
+        };
+        const auto reset=[&] {
+            memory.clear();put(skater,base+e::skater_entity_vtable);put(board,base+e::board_entity_vtable);
+            put(skater_component,base+e::skater_component_vtable);put(board_component,base+e::board_component_vtable);
+            put(skater+p::entity_context,std::uintptr_t{0x270000000});put(board+p::entity_context,std::uintptr_t{0x270000000});
+            put(skater+p::skater_component,skater_component);put(skater_component+p::skater_board_component,board_component);
+            put(board_component+p::board_skater_component,skater_component);
+            register_component(skater,skater_collection,skater_component,4);
+            register_component(board,board_collection,board_component,2);
+            register_component(board,board_collection,physics,1);
+            put(physics,base+p::component_vtable);put(physics+p::component_world,owner.world);
+            put(physics+p::component_owner_handle,owner);
+        };
+        unsigned reads{},reject_read{},currents{},reject_current{};
+        const auto read=[&]<class T>(std::uintptr_t at,T& value) {
+            if(++reads==reject_read)return false;
+            const auto found=memory.find(at);
+            if(found==memory.end() || found->second.size()!=sizeof value)return false;
+            std::memcpy(&value,found->second.data(),sizeof value);return true;
+        };
+        const auto current=[&] {return ++currents!=reject_current;};
+        const auto valid=[&] {reads=currents=0;return physics_component_owner::belongs_to_board(base,skater,physics,owner,read,current);};
+        reset();check(valid(),"separate local board physics requires reciprocal skater association and both registrations");
+        check(!physics_component_owner::belongs_to(base,skater,physics,owner,read,current),
+              "board component reproduces the former direct-skater-only ownership rejection");
+        check(valid(),"board association remains valid after direct skater rejection");
+        const auto total_reads=reads,total_currents=currents;
+        for(unsigned i=1;i<=total_reads;++i) {reset();reject_read=i;check(!valid(),"every board association read is required");}
+        reject_read=0;
+        for(unsigned i=1;i<=total_currents;++i) {reset();reject_current=i;check(!valid(),"board association cannot outlive the local owner");}
+        reject_current=0;reset();const auto original=memory;
+        for(const auto& [address,bytes]:original) {
+            reset();memory[address][0]^=0x80;
+            check(!valid(),"foreign context, association, registration or recycled physics owner fails closed");
+            (void)bytes;
+        }
+        reset();unsigned board_observations{};
+        const auto changed=[&]<class T>(std::uintptr_t at,T& value) {
+            if(at==skater+p::skater_component && ++board_observations==2)
+                put(board_component+p::board_skater_component,skater_component+8);
+            return read(at,value);
+        };
+        check(!physics_component_owner::belongs_to_board(base,skater,physics,owner,changed,current),
+              "board reassociation between snapshots invalidates the exclusion");
+        reset();check(!physics_component_owner::belongs_to_board(base,skater,physics+8,owner,read,current),
+              "another nearby physics component is not the authenticated board component");
+    }
     for(bool wall:{false,true}) {
         Fixture f;f.clock_step=1;
         const auto api=f.api();const auto admitted_at=api.now(api.user);
