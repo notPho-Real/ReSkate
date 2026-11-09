@@ -67,7 +67,6 @@ struct Rig {
     CustomFlatlandContext input_context(unsigned physical_buttons=0)const{
         const bool game_input=enabled,owns_controls=controls_owned;
         [[maybe_unused]] const bool authored=catalog_loaded;
-        constexpr unsigned classic_a=0x1000u;
         struct Grind {bool owned;bool active()const{return owned;}} grind_change{grind_owned};
         const auto& grind_frame=frame;
         const auto flatland_context=[&](std::uint64_t at,const NativeInputFrame& native,bool permitted){
