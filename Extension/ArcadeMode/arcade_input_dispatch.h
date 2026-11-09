@@ -1096,11 +1096,17 @@ private:
         }
         if (!match) {
             if (!environment.deferred_grabs && (selected || environment.named_grabs)) {
+                bool directional = selected != 0;
+                for (const auto& event : events_.history().events())
+                    if (event.token.source == InputSource::direction && event.token.edge == InputEdge::press &&
+                        now >= event.at && now-event.at < InputTiming::direction_ms) directional = true;
                 const auto binding = match_air_direction(events_,TrickFamily::grab,now,ordinary_reject);
                 match = binding.match; selected = binding.direction;
                 // A neutral first grab is valid. An expired named-grab extra
                 // remains buffered for a genuine direction; never relabel it.
-                if (!match && !selected && (!grab_repeat_available_ || !grab_direction_)) {
+                // A rejected directional prefix must not consume the same B
+                // as a neutral grab (for example after an intervening press).
+                if (!match && !directional && (!grab_repeat_available_ || !grab_direction_)) {
                     const std::array tokens{face};
                     match=events_.history().match({tokens,500,ordinary_reject},now);
                 }

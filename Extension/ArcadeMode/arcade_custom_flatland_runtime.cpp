@@ -15,7 +15,7 @@ struct State {
     std::uint64_t serial{},logical{},submitted{},ticket{},client_at{};
     std::shared_ptr<const anim_studio::Clip> clip;
     float time{};
-    bool ready{};
+    bool enabled{},ready{};
     std::unique_ptr<CustomFlatland> trick;
     bool client_current() const noexcept {
         return client_at && context.now>=client_at && context.now-client_at<150;
@@ -43,14 +43,28 @@ struct State {
     }
 };
 State& state(){static auto* s=new State;return *s;}
-void observe_locked(State& s,CustomFlatlandContext context) noexcept {
+void observe_locked(State& s,CustomFlatlandContext& context) noexcept {
+    context.enabled=context.enabled && s.enabled;
     s.context=context;
     if(s.trick)s.trick->observe(context);
-    if(!context.valid() || !s.seed_current()) {
+    if(!context.valid() || !s.seed_current() ||
+        (s.ticket && !skater_animation::controlled_play_current(s.ticket))) {
         if(s.trick)s.trick->cancel();
         s.ready=false;
     }
 }
+}
+void set_enabled(bool enabled) noexcept {
+    auto& s=state();std::lock_guard lock(s.mutex);
+    if(s.enabled==enabled)return;
+    if(s.trick)s.trick->cancel();
+    s.enabled=enabled;s.ready=false;s.context.enabled=false;
+}
+Status status() noexcept {
+    auto& s=state();std::lock_guard lock(s.mutex);
+    return {s.enabled,s.ready && s.client_current(),
+        s.ticket && skater_animation::controlled_play_current(s.ticket),
+        s.trick?s.trick->phase():CustomFlatland::Phase::manual};
 }
 CustomFlatlandBinding observe(CustomFlatlandContext context) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);observe_locked(s,context);
@@ -82,10 +96,21 @@ void tick(CustomFlatlandContext context) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
     try {
         observe_locked(s,context); // Expire a missed heartbeat before renewing it.
-        if(s.ticket && (s.submitted!=s.logical || !skater_animation::owns_play(s.ticket))) {
-            const bool lost=s.submitted==s.logical;
+        if(s.ticket && !skater_animation::owns_play(s.ticket)) {
+            // Losing the old clip also invalidates a queued phase transition.
+            // It must never acquire a fresh ticket after another owner wins.
             skater_animation::cancel_play(s.ticket);s.ticket=s.submitted=0;
-            if(lost && s.trick)s.trick->cancel();
+            if(s.trick)s.trick->cancel();
+            s.ready=false;
+        }
+        if(s.ticket && s.submitted!=s.logical) {
+            if(s.logical && skater_animation::replace_owned(s.ticket,s.clip,s.time)) {
+                s.submitted=s.logical;
+            } else {
+                if(s.trick)s.trick->cancel();
+                skater_animation::cancel_play(s.ticket);s.ticket=s.submitted=0;
+                s.ready=false;
+            }
         }
         s.client_at=context.now;
         if(!context.valid()){s.ready=false;return;}
@@ -129,6 +154,8 @@ void tick(CustomFlatlandContext context) noexcept {
 }
 #else
 namespace dingosdk::arcade_mode::custom_flatland_runtime {
+void set_enabled(bool) noexcept {}
+Status status() noexcept {return {};}
 void tick(CustomFlatlandContext) noexcept {}
 CustomFlatlandBinding observe(CustomFlatlandContext) noexcept {return {};}
 InputDisposition request(const InputRequest&) noexcept {return InputDisposition::unsupported;}

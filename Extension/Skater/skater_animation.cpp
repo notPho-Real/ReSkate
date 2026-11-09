@@ -310,6 +310,7 @@ std::atomic<std::uintptr_t> native_pose_entity{};
 std::mutex native_pose_mutex;
 NativePose native_pose_sample;
 double native_pose_at{};
+std::uint64_t native_pose_generation{}, native_pose_sample_generation{}; // native_pose_mutex
 std::array<PreviewSample, 2> preview_samples;
 // The joints asked for as last evaluated (joint()), for the client thread.
 std::mutex joints_mutex;
@@ -620,7 +621,18 @@ void on_animation(std::uintptr_t component) noexcept {
             SetLastError(error);
             return;
         }
-        const auto base = l.base.load(std::memory_order_acquire);
+        std::uintptr_t base{}, pose_entity{};
+        std::uint64_t pose_generation{};
+        {
+            std::lock_guard lock(native_pose_mutex);
+            if (component != l.component.load(std::memory_order_acquire)) {
+                SetLastError(error);
+                return;
+            }
+            base = l.base.load(std::memory_order_acquire);
+            pose_entity = native_pose_entity.load(std::memory_order_acquire);
+            pose_generation = native_pose_generation;
+        }
         const auto holder = read<std::uintptr_t>(component + 0xa0);
         if (!holder || !*holder) throw std::runtime_error("the skater has no animation yet");
         const auto layout = multiplayer::read_native_pose_layout(peek, base, *holder, 512);
@@ -668,15 +680,19 @@ void on_animation(std::uintptr_t component) noexcept {
         if (pose_wanted && l.board_ok) {
             const auto placement = world(l.pose, placement_joint);
             const auto board = relative(placement, compose(board_parent(l.board), joint_of(l.board[board_mount])));
-            const auto entity = native_pose_entity.load(std::memory_order_acquire);
-            if (entity && finite(board) && std::all_of(l.pose.begin(), l.pose.end(), [](const auto& j) { return finite(j); })) {
+            if (pose_entity && finite(board) && std::all_of(l.pose.begin(), l.pose.end(), [](const auto& j) { return finite(j); })) {
                 std::lock_guard lock(native_pose_mutex);
-                native_pose_sample.joints = l.pose;
-                native_pose_sample.board = board;
-                native_pose_sample.base = base;
-                native_pose_sample.entity = entity;
-                ++native_pose_sample.sequence;
-                native_pose_at = at;
+                // A client owner change during evaluation cannot relabel the
+                // old body/board pose as the new skater's seed.
+                if (pose_generation == native_pose_generation) {
+                    native_pose_sample.joints = l.pose;
+                    native_pose_sample.board = board;
+                    native_pose_sample.base = base;
+                    native_pose_sample.entity = pose_entity;
+                    ++native_pose_sample.sequence;
+                    native_pose_sample_generation = pose_generation;
+                    native_pose_at = at;
+                }
             }
         }
         // Recording: the pose as the game animated it, before anything here changes it.
@@ -1274,9 +1290,22 @@ std::uint64_t try_play_controlled(Play clip) {
     return ticket;
 }
 bool seek_owned(std::uint64_t ticket, float seconds) {
-    if (!owns_play(ticket) || !plan_draft.held || !std::isfinite(seconds) || seconds < 0 ||
-        seconds > plan_draft.play->clip->duration()) return false;
+    if (!controlled_play_current(ticket) || !owns_play(ticket) || !plan_draft.held ||
+        !std::isfinite(seconds) || seconds < 0 || seconds > plan_draft.play->clip->duration()) return false;
     plan_draft.held = seconds;
+    plan_draft.controlled_until = now_seconds() + .15;
+    controlled_until.store(plan_draft.controlled_until,std::memory_order_release);
+    publish();
+    return true;
+}
+bool replace_owned(std::uint64_t ticket, std::shared_ptr<const Clip> clip, float seconds) {
+    if (!controlled_play_current(ticket) || !owns_play(ticket) || !plan_draft.held ||
+        !clip || clip->empty() || !std::isfinite(clip->duration()) || clip->duration() <= 0 ||
+        !std::isfinite(seconds) || seconds < 0 || seconds > clip->duration()) return false;
+    plan_draft.play->clip = std::move(clip);
+    plan_draft.held = seconds;
+    // Keep started: blending again from the native pose would flash through
+    // that pose between two continuous externally authored phases.
     plan_draft.controlled_until = now_seconds() + .15;
     controlled_until.store(plan_draft.controlled_until,std::memory_order_release);
     publish();
@@ -1292,7 +1321,7 @@ std::optional<NativePose> native_pose() {
     native_pose_until.store(now + .15, std::memory_order_release);
     prepare_playback();
     std::lock_guard lock(native_pose_mutex);
-    if (!native_pose_sample.sequence || now < native_pose_at || now-native_pose_at > .15 ||
+    if (!native_pose_sample.sequence || native_pose_sample_generation != native_pose_generation || now < native_pose_at || now-native_pose_at > .15 ||
         native_pose_sample.entity != native_pose_entity.load(std::memory_order_acquire)) return std::nullopt;
     auto sample = native_pose_sample;
     sample.age = now-native_pose_at;
@@ -1319,6 +1348,7 @@ void seek(float seconds) {
     if (!plan_draft.play || !plan_draft.play->clip) return;
     borrowed_play = 0;
     controlled_ticket.store(0,std::memory_order_release);
+    plan_draft.controlled_until = 0;
     const float t = std::clamp(seconds, 0.0f, plan_draft.play->clip->duration());
     if (plan_draft.held) plan_draft.held = t;
     else {
@@ -1330,9 +1360,14 @@ void seek(float seconds) {
     publish();
 }
 void pause(bool paused) {
-    if (!plan_draft.play || !plan_draft.play->clip || paused == plan_draft.held.has_value()) return;
+    if (!plan_draft.play || !plan_draft.play->clip) return;
     borrowed_play = 0;
     controlled_ticket.store(0,std::memory_order_release);
+    plan_draft.controlled_until = 0;
+    if (paused == plan_draft.held.has_value()) {
+        publish();
+        return;
+    }
     if (paused) plan_draft.held = play_time();
     else {
         const float t = *plan_draft.held;
@@ -1425,7 +1460,7 @@ std::string current_trick() noexcept {
 
 void tick(std::uintptr_t base, std::uintptr_t component, bool allowed) {
     auto& l = live();
-    std::uintptr_t pose_entity{};
+    std::uintptr_t pose_entity{}, pose_holder{};
     if (component && base) {
         // The skater's board (its own entity, with a 16-bone rig): its animation holder.
         std::uintptr_t holder{};
@@ -1435,10 +1470,24 @@ void tick(std::uintptr_t base, std::uintptr_t component, bool allowed) {
             pose_entity = entity;
             if (entity) holder = multiplayer::read_native_board(peek, base, entity).holder;
         } catch (...) {}
-        l.board_holder.store(holder, std::memory_order_release);
+        pose_holder = holder;
     }
-    native_pose_entity.store(pose_entity, std::memory_order_release);
-    if (component != l.component.load(std::memory_order_acquire)) {
+    if (plan_draft.controlled_until &&
+        (!allowed || base != l.base.load(std::memory_order_acquire) ||
+         component != l.component.load(std::memory_order_acquire) ||
+         pose_entity != native_pose_entity.load(std::memory_order_acquire) ||
+         now_seconds() >= plan_draft.controlled_until)) {
+        // Gameplay/owner loss revokes the cross-thread receipt immediately;
+        // the physics consumer need not wait for its next client callback.
+        play(std::nullopt);
+    }
+    {
+        std::lock_guard lock(native_pose_mutex);
+        if (base != l.base.load(std::memory_order_acquire) || component != l.component.load(std::memory_order_acquire) ||
+            pose_entity != native_pose_entity.load(std::memory_order_acquire) ||
+            pose_holder != l.board_holder.load(std::memory_order_acquire)) ++native_pose_generation;
+        native_pose_entity.store(pose_entity, std::memory_order_release);
+        l.board_holder.store(pose_holder, std::memory_order_release);
         l.base.store(base, std::memory_order_release);
         l.component.store(component, std::memory_order_release);
     }

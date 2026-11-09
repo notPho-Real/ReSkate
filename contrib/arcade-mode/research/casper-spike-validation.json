@@ -114,5 +114,206 @@
     }
   ],
   "hardware_trials": 0,
-  "windows_builds": 0
+  "windows_builds": 0,
+  "continuation": {
+    "checkpoint": "c610705daec398f6b29d3b989bd2d74eb555cd38",
+    "branch": "arcade-stage-casper-spike",
+    "baseline": {
+      "flatland_checks": 4006,
+      "runtime_checks": 1248,
+      "integration": [
+        {
+          "name": "arcade_input_pattern_dispatch_tests",
+          "build": 0,
+          "run": 1,
+          "output": "FAIL: a failed category/adjacency query leaves the fresh face footprint unconsumed\n"
+        },
+        {
+          "name": "arcade_ground_motion_step_tests",
+          "build": 0,
+          "run": 0,
+          "output": "3751 ground motion ownership and physical trace checks passed\n"
+        },
+        {
+          "name": "arcade_ground_control_tests",
+          "build": 0,
+          "run": 0,
+          "output": "5000 ground control checks passed\n"
+        },
+        {
+          "name": "arcade_input_session_tests",
+          "build": 0,
+          "run": 0,
+          "output": "326 jump-idle input checks passed\n6485 production input session checks passed\n"
+        },
+        {
+          "name": "arcade_manual_balance_lifecycle_tests",
+          "build": 0,
+          "run": 0,
+          "output": "285 composed physical balance lifecycle checks passed\n"
+        },
+        {
+          "name": "arcade_combo_trace_tests",
+          "build": 0,
+          "run": 0,
+          "output": "1736 interleaved combo trace checks passed\n"
+        }
+      ]
+    },
+    "regression_before_fix": "FAIL: flip replaces the owned clip without reborrowing or restarting its blend",
+    "updated": {
+      "flatland_checks": 4798,
+      "runtime_checks": 1318,
+      "release_disabled_link_and_run": true,
+      "integration": [
+        {
+          "name": "arcade_input_pattern_dispatch_tests",
+          "build": 0,
+          "run": 1,
+          "output": "FAIL: a failed category/adjacency query leaves the fresh face footprint unconsumed\n"
+        },
+        {
+          "name": "arcade_ground_motion_step_tests",
+          "build": 0,
+          "run": 0,
+          "output": "3751 ground motion ownership and physical trace checks passed\n"
+        },
+        {
+          "name": "arcade_ground_control_tests",
+          "build": 0,
+          "run": 0,
+          "output": "5000 ground control checks passed\n"
+        },
+        {
+          "name": "arcade_input_session_tests",
+          "build": 0,
+          "run": 0,
+          "output": "326 jump-idle input checks passed\n6485 production input session checks passed\n"
+        },
+        {
+          "name": "arcade_manual_balance_lifecycle_tests",
+          "build": 0,
+          "run": 0,
+          "output": "285 composed physical balance lifecycle checks passed\n"
+        },
+        {
+          "name": "arcade_combo_trace_tests",
+          "build": 0,
+          "run": 0,
+          "output": "1736 interleaved combo trace checks passed\n"
+        }
+      ]
+    },
+    "source_sha256": {
+      "Extension/ArcadeMode/arcade_custom_flatland_runtime.cpp": "682036e1d9c41c148deff9302d3edd7398a1e8266f14aa1cd9147270e2fe6875",
+      "Extension/Skater/skater_animation.cpp": "1fb9e44a68f063f8d42ecd63871a89fdf322907b2e370e78f7bbe207a8c4f446",
+      "Extension/Skater/skater_animation.h": "597b895afc97fb98c4106c4b1fe544a5b73c0d622562a35556e16c42631c23b4",
+      "Extension/ArcadeMode/Test/custom_flatland/flatland_tests.cpp": "7cf3d7deea05205d0906b546c581fd26c991c35a44844f7544ca2ddc4e5c895f",
+      "Extension/ArcadeMode/Test/custom_flatland/runtime_tests.cpp": "59672eb43c99c89b08733300510a7971726f80828440bd5bd5480fc382b943a9",
+      "Extension/ArcadeMode/Test/custom_flatland/release_tests.cpp": "9ab48b6116acfb2d00f1885cb2b4f69fb9293728cf69b58f99b4ae609d068c6a",
+      "Extension/ArcadeMode/Test/custom_flatland/run.py": "ac268e834ef7ab2b0900312f46b86cce72a7b22116cc6d0d0343c7929c1e8b3a",
+      "Extension/ArcadeMode/Test/custom_flatland/CMakeLists.txt": "caaffdb0146a040351ed1d3df58037fa4e6a3d6aefa962215d2e0c89d6250ae1"
+    },
+    "compiler": "Apple clang 15.0.0 clang-1500.3.9.4; arm64-apple-darwin24.6.0; macOS14.4 SDK",
+    "portable_runtime_endpoint": "simulated; production mailbox and clip authoring executed",
+    "not_compiled_by_portable_runner": [
+      "Extension/Skater/skater_animation.cpp",
+      "Extension/ArcadeMode/arcade_mode.cpp",
+      "Extension/Skater/client_noclip.cpp"
+    ],
+    "windows_builds": 0,
+    "hardware_trials": 0,
+    "native_gameplay_verified": false,
+    "integration_passed": false
+  },
+  "test_candidate": {
+    "flatland_checks": 4798,
+    "runtime_checks": 1352,
+    "release_disabled_link_and_run": true,
+    "integration_passed": true,
+    "integration": [
+      {
+        "name": "arcade_input_pattern_dispatch_tests",
+        "build": 0,
+        "run": 0,
+        "output": "9174 pattern dispatcher checks passed\n"
+      },
+      {
+        "name": "arcade_ground_motion_step_tests",
+        "build": 0,
+        "run": 0,
+        "output": "3751 ground motion ownership and physical trace checks passed\n"
+      },
+      {
+        "name": "arcade_ground_control_tests",
+        "build": 0,
+        "run": 0,
+        "output": "5000 ground control checks passed\n"
+      },
+      {
+        "name": "arcade_input_session_tests",
+        "build": 0,
+        "run": 0,
+        "output": "326 jump-idle input checks passed\n6485 production input session checks passed\n"
+      },
+      {
+        "name": "arcade_manual_balance_lifecycle_tests",
+        "build": 0,
+        "run": 0,
+        "output": "285 composed physical balance lifecycle checks passed\n"
+      },
+      {
+        "name": "arcade_combo_trace_tests",
+        "build": 0,
+        "run": 0,
+        "output": "1736 interleaved combo trace checks passed\n"
+      }
+    ],
+    "adjacent_input": [
+      {
+        "name": "native_grab",
+        "returncode": 0,
+        "output": "20465 native grab source/contract checks passed (gameplay unverified)\n"
+      },
+      {
+        "name": "neutral_flip_release",
+        "returncode": 0,
+        "output": "Native motion-entry boundary and preservation checks passed\nflip_timing hz=120 delay=0 recognition=0 load=75 flick=117 ms\nflip_timing hz=120 delay=17 recognition=0 load=58 flick=100 ms\nflip_timing hz=120 delay=33 recognition=0 load=41 flick=83 ms\nflip_timing hz=120 delay=66 recognition=0 load=33 flick=75 ms\nflip_timing hz=120 delay=100 recognition=0 load=34 flick=75 ms\nflip_timing hz=120 delay=250 recognition=0 load=34 flick=75 ms\nflip_timing hz=120 delay=500 recognition=0 load=34 flick=75 ms\nflip_timing hz=120 delay=650 recognition=0 load=34 flick=75 ms\nflip_timing hz=60 delay=0 recognition=0 load=84 flick=134 ms\nflip_timing hz=60 delay=17 recognition=0 load=67 flick=117 ms\nflip_timing hz=60 delay=33 recognition=0 load=50 flick=100 ms\nflip_timing hz=60 delay=66 recognition=0 load=33 flick=83 ms\nflip_timing hz=60 delay=100 recognition=0 load=34 flick=84 ms\nflip_timing hz=60 delay=250 recognition=0 load=34 flick=84 ms\nflip_timing hz=60 delay=500 recognition=0 load=34 flick=84 ms\nflip_timing hz=60 delay=650 recognition=0 load=34 flick=84 ms\nflip_timing hz=30 delay=0 recognition=0 load=100 flick=167 ms\nflip_timing hz=30 delay=17 recognition=0 load=66 flick=133 ms\nflip_timing hz=30 delay=33 recognition=0 load=66 flick=133 ms\nflip_timing hz=30 delay=66 recognition=0 load=33 flick=100 ms\nflip_timing hz=30 delay=100 recognition=0 load=34 flick=100 ms\nflip_timing hz=30 delay=250 recognition=0 load=33 flick=100 ms\nflip_timing hz=30 delay=500 recognition=0 load=34 flick=100 ms\nflip_timing hz=30 delay=650 recognition=0 load=33 flick=100 ms\n9014 neutral flip release production checks passed\n"
+      },
+      {
+        "name": "control_state",
+        "returncode": 0,
+        "output": "67111 control state checks passed\n"
+      },
+      {
+        "name": "input_consolidation",
+        "returncode": 0,
+        "output": "1015 input consolidation checks passed\n"
+      },
+      {
+        "name": "action_dispatch",
+        "returncode": 0,
+        "output": "124 action dispatch checks passed\n"
+      }
+    ],
+    "source_sha256": {
+      "Extension/ArcadeMode/arcade_custom_flatland_runtime.cpp": "12ea786179e07a52966b4eea061edae04fe58ca9d0acc9745568a6b96a542573",
+      "Extension/Skater/skater_animation.cpp": "49965ff22339f8bd2f7591951137cd722626a25eb1f3f186e4c0539e03d5cc27",
+      "Extension/Skater/skater_animation.h": "597b895afc97fb98c4106c4b1fe544a5b73c0d622562a35556e16c42631c23b4",
+      "Extension/ArcadeMode/Test/custom_flatland/flatland_tests.cpp": "7cf3d7deea05205d0906b546c581fd26c991c35a44844f7544ca2ddc4e5c895f",
+      "Extension/ArcadeMode/Test/custom_flatland/runtime_tests.cpp": "a81b96681ef376fbcf33b3b0b0bc14eea5c35f297bcbe749c5274ae01f6d49a4",
+      "Extension/ArcadeMode/Test/custom_flatland/release_tests.cpp": "d5bae893f024347698c140c0ff23ed416245ec6a5753efde2a3ec86b49e4e865",
+      "Extension/ArcadeMode/Test/custom_flatland/run.py": "ac268e834ef7ab2b0900312f46b86cce72a7b22116cc6d0d0343c7929c1e8b3a",
+      "Extension/ArcadeMode/Test/custom_flatland/CMakeLists.txt": "caf959f7f36d17f7d980114379a82ddc4b446dabfad711716c0dd125a487a571",
+      "Extension/ArcadeMode/arcade_custom_flatland_runtime.h": "af11178eb0af6eb7ebde4bb5d036b58024f50415ffd5528cb9950efbc7db5299",
+      "Extension/ArcadeMode/arcade_input_dispatch.h": "262f88113f286d35ec9651778453d9ad850cdc9ea11228ad55cb6bd71aabc6c9",
+      "Extension/ArcadeMode/Test/arcade_input_pattern_dispatch_tests.cpp": "90c8962c143ca9537cfa9f22b8b1362e87154562017e177944d9f8dce79de8d9",
+      "Extension/Console/commands.cpp": "d8b88f81298b9f81687ebb51899535fc81db40d58f2b3a656efb7468e2a992ae",
+      "CMakeLists.txt": "5e4826107042bbf3b2f9dab3474fb69d01fe1f270317fb58a665fd0501a49b94",
+      "contrib/arcade-mode/ci/targeted/CMakeLists.txt": "82ff753e787b19f7b2afa8c39ea6db336ae286028f1f19ea7679e68ab28330ad"
+    },
+    "windows_ci": "required; exact-run result retained separately after candidate commit",
+    "native_gameplay_verified": false,
+    "hardware_trials": 0
+  }
 }

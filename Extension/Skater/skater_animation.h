@@ -56,6 +56,9 @@ std::uint64_t try_play(Play clip);
 // of its gameplay lease. No physics body or contact is changed.
 std::uint64_t try_play_controlled(Play clip);
 bool seek_owned(std::uint64_t ticket, float seconds);
+// Replace only a current externally clocked clip, retaining its ticket and
+// blend progress. The caller supplies a continuous pose at the phase boundary.
+bool replace_owned(std::uint64_t ticket, std::shared_ptr<const Clip> clip, float seconds = 0);
 bool controlled_play_current(std::uint64_t ticket) noexcept; // any thread; no client state read
 void prepare_playback() noexcept; // requests the existing hooks at the next client tick
 bool can_play() noexcept;

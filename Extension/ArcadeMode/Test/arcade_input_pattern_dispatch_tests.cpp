@@ -21,6 +21,17 @@ void active_session() {
   check(out.unsupported && !out.authored_playback && !out.action.owned,"a recognized directional triple with no native mapping must not substitute a simpler ordinary Flip or Grab");
  }
 }
+void neutral_grab_fallback() {
+ for(bool expired:{false,true}) {
+  UnifiedInput input;Capture capture;InputEnvironment env{InputContext::air,true};
+  env.policy=InputPolicy::strict();env.named_grabs=true;
+  input.poll(0,{},env,capture.adapter());
+  if(expired){input.poll(10,direction(8),env,capture.adapter());input.poll(20,{},env,capture.adapter());}
+  input.poll(expired?511:10,{0x2000},env,capture.adapter());
+  check(capture.calls==1 && capture.last.action==InputAction::grab && capture.last.direction==0,
+   "neutral grab remains available without a direction or after directional history expires");
+ }
+}
 void manual_prefix_reuse() {
  struct Receiver {
   unsigned air_calls{};InputRequest last{};
@@ -305,4 +316,4 @@ void contextual_predicates() {
 }
 
 }
-int main(){contextual_predicates();recognition_observation_lineage();active_session();manual_prefix_reuse();session_manual_prefix();other_category_prefixes();prefix_boundaries();sampled_prefixes();ground_prefixes();simultaneous_final_pair();extra_priority_and_waiting();std::cout<<checks<<" pattern dispatcher checks passed\n";}
+int main(){neutral_grab_fallback();contextual_predicates();recognition_observation_lineage();active_session();manual_prefix_reuse();session_manual_prefix();other_category_prefixes();prefix_boundaries();sampled_prefixes();ground_prefixes();simultaneous_final_pair();extra_priority_and_waiting();std::cout<<checks<<" pattern dispatcher checks passed\n";}

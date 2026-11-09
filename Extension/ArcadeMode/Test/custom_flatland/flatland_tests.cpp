@@ -211,6 +211,19 @@ void animation(){
     check(near(pose[1].position[0],3) && near(pose[1].position[2],4),"native placement seed remains unchanged");
     check(std::abs(pose[342].rotation[0])>.1f,"new authored body pose changes knee joint");
     check(rotate(board.rotation,{0,1,0})[1]<-.99f,"held rendered board is inverted");
+    std::array<Joint,skeleton_joints> flip_start{};
+    Joint flip_board;
+    c.flip_exit->sample(0,flip_start);c.flip_exit->sample_board(0,flip_board);
+    for(std::size_t i=0;i<pose.size();++i){
+        check(pose[i].position==flip_start[i].position && pose[i].scale==flip_start[i].scale,
+            "owned phase replacement preserves every body position and scale");
+        float dot=0;for(unsigned j=0;j<4;++j)dot+=pose[i].rotation[j]*flip_start[i].rotation[j];
+        check(near(std::abs(dot),1),"owned phase replacement preserves every body rotation");
+    }
+    check(board.position==flip_board.position && board.scale==flip_board.scale,
+        "owned phase replacement preserves board placement");
+    float board_dot=0;for(unsigned j=0;j<4;++j)board_dot+=board.rotation[j]*flip_board.rotation[j];
+    check(near(std::abs(board_dot),1),"owned phase replacement preserves the inverted board rotation");
     c.flip_exit->sample_board(.6f,board);check(rotate(board.rotation,{0,1,0})[1]>.99f,"flip returns board upright");
     c.flip_exit->sample(.6f,pose);check(near(pose[342].rotation[3],1),"flip body exits to Manual seed");
     float total=0;Quat previous{};bool first=true;

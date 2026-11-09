@@ -1,5 +1,8 @@
 #include "commands.h"
 #include "Extension/ArcadeMode/arcade_mode.h"
+#if defined(DINGOSDK_DEV_TOOLS)
+#include "Extension/ArcadeMode/arcade_custom_flatland_runtime.h"
+#endif
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Core/Platform/path_text.h"
 #include "Engine/Game/Input/controller_bindings.h"
@@ -40,6 +43,23 @@ void register_console_commands(Commands &registry) {
         out(arcade_mode::enabled() ? "Arcade Mode ON" : "Arcade Mode OFF");
     };
     registry.add(std::move(arcade));
+#if defined(DINGOSDK_DEV_TOOLS)
+    auto flatland = action("arcadeflatland", "Unsaved Casper test; OFF by default. Reports presentation, not native trick acceptance",
+        Group::gameplay, {argument("on|off", Type::boolean, true)});
+    flatland.run = [](const Model&, const Values& values, const Output& out) {
+        namespace flatland_runtime = arcade_mode::custom_flatland_runtime;
+        if (!values.empty()) flatland_runtime::set_enabled(std::get<bool>(values[0]));
+        const auto state = flatland_runtime::status();
+        using Phase = arcade_mode::CustomFlatland::Phase;
+        const char* phase = state.phase == Phase::entry ? "entry" : state.phase == Phase::hold ? "hold" :
+            state.phase == Phase::flip_exit ? "flip exit" : "manual";
+        out(std::string("Casper experiment ") + (state.enabled ? "ON" : "OFF") + "; phase=" + phase +
+            "; seed=" + (state.ready ? "ready" : "waiting") +
+            "; animation=" + (state.animation_current ? "current" : "none") +
+            ". Close the console before input; opening it cancels gameplay ownership.");
+    };
+    registry.add(std::move(flatland));
+#endif
     auto runtime_reset = action("arcaderuntimereset", "Reset transient Arcade state without changing runtime mode or saved preferences", Group::gameplay);
     runtime_reset.run = [](const Model&, const Values&, const Output& out) {
         out(request_arcade_runtime_reset());

@@ -36,6 +36,10 @@ runtime = out / "casper_runtime_tests"
 run(common + strict + ["-DDINGOSDK_DEV_TOOLS", str(Path(__file__).with_name("runtime_tests.cpp")),
     str(root / "Extension/ArcadeMode/arcade_custom_flatland_runtime.cpp"), str(core), "-o", str(runtime)])
 run([str(runtime)])
+release = out / "casper_release_tests"
+run(common + strict + [str(Path(__file__).with_name("release_tests.cpp")),
+    str(root / "Extension/ArcadeMode/arcade_custom_flatland_runtime.cpp"), "-o", str(release)])
+run([str(release)])
 if args.integration:
     # Relevant boundaries only, not the exhaustive Arcade campaign.
     results = []
@@ -54,6 +58,6 @@ if args.integration:
         results.append(result)
         print(json.dumps(result), flush=True)
     (out / "integration-results.json").write_text(json.dumps(results, indent=2))
-    # Keep the known RC5 recognizer failure visible; do not turn it green.
+    # Keep existing recognizer failures visible; do not turn them green.
     if any(item["build"] or item["run"] for item in results):
         sys.exit(1)

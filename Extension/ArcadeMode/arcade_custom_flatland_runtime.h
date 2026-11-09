@@ -4,6 +4,13 @@
 namespace dingosdk::arcade_mode {
 struct CustomFlatlandBinding { bool enabled{}; unsigned branch{}; bool ready{}; };
 namespace custom_flatland_runtime {
+// Unsaved opt-in for the dev candidate; release builds always remain disabled.
+struct Status {
+    bool enabled{}, ready{}, animation_current{};
+    CustomFlatland::Phase phase{};
+};
+void set_enabled(bool) noexcept;
+Status status() noexcept;
 // Client thread performs animation calls; input/physics only touch the mailbox.
 void tick(CustomFlatlandContext) noexcept;
 CustomFlatlandBinding observe(CustomFlatlandContext) noexcept;

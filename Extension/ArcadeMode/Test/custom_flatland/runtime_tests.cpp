@@ -10,9 +10,9 @@ unsigned checks{};
 void check(bool ok,const char* why){++checks;if(!ok){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
 struct Player {
     std::uint64_t serial{},ticket{},now{},until{};
-    unsigned starts{},cancels{};
+    unsigned starts{},cancels{},replacements{};
     float time{};
-    bool occupied{},seed_available{true},seed_wrong_owner{};
+    bool occupied{},seed_available{true},seed_wrong_owner{},reject_replace{};
     std::uintptr_t entity{2};
 } player;
 }
@@ -27,6 +27,11 @@ void cancel_play(std::uint64_t id){if(id && id==player.ticket){player.ticket=0;+
 std::uint64_t try_play_controlled(Play play){
     if(!can_play() || !play.clip || play.clip->empty())return 0;
     ++player.starts;player.until=player.now+150;return player.ticket=++player.serial;
+}
+bool replace_owned(std::uint64_t id,std::shared_ptr<const Clip> clip,float seconds){
+    if(!owns_play(id) || player.reject_replace || !clip || clip->empty() ||
+        seconds<0 || seconds>clip->duration())return false;
+    ++player.replacements;player.time=seconds;player.until=player.now+150;return true;
 }
 bool seek_owned(std::uint64_t id,float seconds){
     if(!owns_play(id))return false;
@@ -48,7 +53,8 @@ struct Rig {
     float dt{1.f/60};
     bool enabled{true},balanced{true};
     Rig(){
-        custom_flatland_runtime::cancel();player.occupied=false;player.seed_available=true;player.seed_wrong_owner=false;
+        custom_flatland_runtime::set_enabled(true);
+        custom_flatland_runtime::cancel();player.occupied=false;player.seed_available=true;player.seed_wrong_owner=false;player.reject_replace=false;
         next();tick();next();tick();
         check(binding().enabled,"a fresh matching native seed enables the dev bridge");
         InputAdmission a=admission();session.poll(now,{},0,0,a);
@@ -97,13 +103,34 @@ void slice(){
     check(player.starts==starts+1,"holding beyond 15 seconds never restarts or duplicates animation");
     r.next();const auto first=r.step();const auto repeat=r.step();
     check(first.admitted && !repeat.admitted && repeat.x==0 && repeat.z==0,"one original step cannot apply drag twice");r.tick();
+    const auto ticket=player.ticket;const auto replacements=player.replacements;const auto cancels=player.cancels;
     r.poll(0x4000);r.poll(0);check(r.poll(0x4000).manual.owns,"flip retains existing Manual actuator");
-    r.tick();check(player.starts==starts+2,"flip borrows a new ticket after releasing own entry");
+    check(!r.step().admitted,"pending replacement cannot authorize drag before client acceptance");
+    r.tick();check(player.starts==starts+1 && player.ticket==ticket && player.replacements==replacements+1 &&
+        player.cancels==cancels,"flip replaces the owned clip without reborrowing or restarting its blend");
     for(unsigned i=0;i<40;++i){r.next();r.step();r.tick();}
     check(!player.ticket && r.binding().branch==0 && r.poll(0).manual.owns,"flip blends to seed and returns to continuing Manual");
 }
+void replacement_loss(){
+    for(bool stolen:{false,true}){
+        Rig r;r.enter();r.hold();
+        r.poll(0x4000);r.poll(0);r.poll(0x4000);
+        const auto starts=player.starts;const auto replacements=player.replacements;
+        const auto original=player.ticket;
+        if(stolen){
+            player.ticket=++player.serial;player.occupied=true;
+            check(!r.binding().enabled,"lost player withdraws input readiness before the next client tick");
+        }
+        else player.reject_replace=true;
+        r.tick();
+        check(!r.step().admitted && r.binding().branch==0,"failed replacement withdraws the custom phase and drag");
+        check(player.starts==starts && player.replacements==replacements,"failed replacement cannot fall back to borrowing a new player");
+        if(stolen){check(player.ticket!=0 && player.ticket!=original,"replacement failure preserves the competing animation");player.ticket=0;player.occupied=false;}
+        else check(!player.ticket,"rejected replacement retires only its own old clip");
+    }
+}
 void cleanup(){
-    for(unsigned reason=0;reason<7;++reason){
+    for(unsigned reason=0;reason<8;++reason){
         Rig r;r.enter();r.hold();const auto ticket=player.ticket;
         if(reason==0)r.enabled=false;
         if(reason==1)r.balanced=false;
@@ -112,6 +139,7 @@ void cleanup(){
         if(reason==4){player.ticket=++player.serial;player.occupied=true;}
         if(reason==5){auto c=r.context();c.ollie=true;custom_flatland_runtime::observe(c);}
         if(reason==6)custom_flatland_runtime::cancel();
+        if(reason==7)custom_flatland_runtime::set_enabled(false);
         custom_flatland_runtime::observe(r.context());
         const auto motion=r.step();check(!motion.admitted,"OFF/bail/owner/stale/player/Ollie/reset revoke friction immediately");
         r.tick();check(player.ticket!=ticket,"client cleans up the cancelled animation ticket");
@@ -127,4 +155,6 @@ void seed_and_pending(){
     player.occupied=false;
 }
 }
-int main(){slice();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}
+int main(){
+    check(!custom_flatland_runtime::status().enabled,"dev experiment defaults OFF");
+    slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

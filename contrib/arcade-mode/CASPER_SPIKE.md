@@ -4,6 +4,8 @@ Source checkpoint: `b12327c3ee302e6be5e9d0e5478157581434d23a` on
 `arcade-stage-unified-rc5`; isolated branch `arcade-stage-casper-spike`.
 The checkpoint passed [integration run 42341810077](https://github.com/notPho-Real/ReSkate/actions/runs/42341810077).
 This is experimental source work, not an accepted runtime or native gameplay result.
+Sections 1–7 record the original portable prototype. The continuation section
+below supersedes their runtime-status and playback-transition statements.
 
 ## Audit scope and hypotheses
 
@@ -301,3 +303,112 @@ of unused assets and vendor trees. Only bounded compiler outputs were generated;
 their hashes and source provenance are retained in the validation receipt before
 removing regenerable binaries/objects. No source evidence was downloaded twice
 or copied into production code.
+
+## Continuation from the preserved runtime checkpoint
+
+Continued the existing clean `arcade-stage-casper-spike` worktree at
+`c610705daec398f6b29d3b989bd2d74eb555cd38`, preserving both that WIP and
+`99f06938686d9f01e95979107cfb9cdb22c49f9b`. Reused the source survey above;
+no new implementation or investigation branch was created.
+
+The WIP already wires the admitted Manual context through arcade_mode.cpp,
+the client/native mailbox, the existing resistance writer in client_noclip.cpp,
+and skater_animation's native seed observation and controlled playback.
+The bridge is compiled live only with DINGOSDK_DEV_TOOLS. Its release symbols
+remain inert. The controlled player holds the authored entry at 0.3 seconds
+and advances the flip by admitted native dt; the finite portable wrapper remains
+available for the original tests.
+
+The demonstrated gap was transition timing/ownership: the mailbox cancelled
+and reborrowed the entry ticket for the flip, restarting the player's blend from
+the native pose. Added generic `skater_animation::replace_owned` to replace a
+current externally clocked clip while retaining its ticket and blend progress.
+The existing authored hold and flip-start poses match across all body joints and
+the board. A failed or stolen replacement cancels the custom phase, cannot
+reborrow the player, and cannot authorize drag. Animation loss now also withdraws
+input readiness before the next client tick.
+
+Ordinary seek/pause revoke the controlled ticket and clear its heartbeat expiry
+so the ordinary player's continued playback is not timed out by the former
+owner. Even a redundant pause revokes the ticket. Animation tick revokes a
+controlled play on gameplay disable, owner change or timeout. These native
+animation changes require the Windows build and live render validation; the
+portable endpoint is simulated and does not prove those code paths.
+
+Validation before edits: 4,006 flatland and 1,248 runtime checks passed. The new
+transition regression then failed on the unchanged runtime, and passed after
+the fix. Updated focused results: 4,798 flatland checks, 1,318 runtime checks,
+and the release-disabled link/run check. Five related suites pass: ground
+motion (3,751), ground controls (5,000), input session (6,485 plus 326 jump-idle),
+Manual balance lifecycle (285), and combo traces (1,736).
+The input-pattern suite fails `a failed category/adjacency query leaves the
+fresh face footprint unconsumed` on both the preserved checkpoint and the
+continuation. The WIP's earlier fixture-policy edit already moves execution
+past the historical 300 ms failure; this continuation does not modify that
+suite or claim an all-green integration run.
+
+The Python runner builds the portable code with its existing strict warnings
+as errors. No supported MSVC/Windows runtime toolchain is available in this
+local macOS session; no Windows runtime build or hardware trial was performed.
+This remains an unaccepted dev candidate. Next gates are a clean supported
+Windows build, the unresolved recognizer integration failure, and the native
+acceptance/negative controls already specified above (including verified Mega
+Park, real clock/cached dt, render continuity and physical support).
+The outer runtime call sites and native animation implementation are not
+covered by the portable executable. Live support-material detection remains
+absent; all native surfaces use the existing unknown/default choice.
+
+
+## Candidate test procedure
+
+The next candidate preserves the same implementation and adds an explicit,
+unsaved `arcadeflatland on/off` dev switch. It starts OFF on every process launch.
+`arcadeflatland` reports the switch, last phase, seed readiness and current
+animation receipt; those fields describe presentation ownership, not native
+trick acceptance. Opening the console cancels gameplay ownership.
+
+The input-pattern integration failure is resolved. A failed directional grab
+query discarded its selected direction, allowing the neutral fallback to consume
+the same B press. The fallback now consults recent canonical direction history
+even if another action cleared the cached direction. The existing rejection
+tests pass, with additional positive controls for actual neutral grabs and
+expired directional history. All six focused integration suites pass, including
+9,174 input-pattern checks. The Casper suites pass 4,798 flatland checks and
+1,352 adapter checks plus the release-disabled check. Adjacent regressions pass:
+native grabs (20,465), neutral flip release (9,014), control state (67,111),
+input consolidation (1,015), and action dispatch (124).
+
+Full and targeted CMake builds now include the three Casper executables.
+The targeted Windows lane also runs the input-pattern suite. The release test
+explicitly undefines the dev macro inherited from a full dev build.
+Native seed observation now snapshots and revalidates one owner generation
+under its existing mutex, including board-holder changes, before publishing
+a pose. It cannot tag an old evaluation with a new owner's entity.
+
+Before gameplay, require the exact candidate's successful Windows runtime build
+and CI tests, and record source SHA, run/attempt/artifact ID and DLL SHA-256.
+The hosted CI artifact is a candidate for testing, not gameplay acceptance.
+Use the existing reviewed installation/handoff procedure; do not replace the
+trusted runner's pins or use hardware occupied by RC4.
+
+1. Verify Skate build 20260929 and that Skate 3 Mega Park is loaded. Start on
+   flat ground in regular stance, with ordinary Manual working.
+2. Enable Arcade Mode with `arcademode on`, then `arcadeflatland on`. Close
+   the console, release the buttons, and establish a fresh ordinary Manual.
+3. Tap X, then Y within 300 ms while retaining Manual. The rendered board should
+   turn into Casper and hold. Native Manual support/balance must continue.
+4. After entry settles, tap X twice within 200 ms. The board should perform the
+   authored flip exit and return to the continuing Manual without a pose flash.
+   Repeat X then Y during the hold to return directly. A should exit immediately
+   through the normal launch path.
+5. Repeat with `arcadeflatland off`, plain Y, an expired X prefix, focus loss,
+   bail and another animation owner. These must not leave a Casper pose or drag.
+   Retain native contact/owner and original-step evidence independently of HUD
+   labels. For drag comparisons verify actual clock cadence and cached dt first.
+
+First-test scope is regular, flat-ground presentation and cancellation. Goofy,
+banks, moving supports, shoulder-spin compatibility and surface-specific drag
+remain separate gameplay questions. The authored pose is a rough prototype;
+body/board clearance still requires visual review. No custom native score is
+claimed. Rollback is the switch OFF plus the existing validated DLL rollback
+procedure if required, preserving all stock/development backup bytes.
