@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "base": "b12327c3ee302e6be5e9d0e5478157581434d23a",
+  "base_validation_run": 42341810077,
+  "reference": "SwagSoftware original implementation supplied in assignment @98b4e24921446ccd4b157453e25697f9574f0053",
+  "compiler": "Apple clang 15.0.0 clang-1500.3.9.4; arm64-apple-darwin24.6.0; macOS14.4 SDK",
+  "spike": {
+    "build": 0,
+    "run": 0,
+    "checks": 4006,
+    "native_gameplay_verified": false,
+    "player": "simulated; native playback wrapper compiled only"
+  },
+  "integration": [
+    {
+      "name": "arcade_input_pattern_dispatch_tests",
+      "build": 0,
+      "run": 1,
+      "output": "FAIL: context-selected press age is strictly younger than300ms, including released buffered faces\n"
+    },
+    {
+      "name": "arcade_ground_motion_step_tests",
+      "build": 0,
+      "run": 0,
+      "output": "3751 ground motion ownership and physical trace checks passed\n"
+    },
+    {
+      "name": "arcade_ground_control_tests",
+      "build": 0,
+      "run": 0,
+      "output": "5000 ground control checks passed\n"
+    },
+    {
+      "name": "arcade_input_session_tests",
+      "build": 0,
+      "run": 0,
+      "output": "326 jump-idle input checks passed\n6485 production input session checks passed\n"
+    },
+    {
+      "name": "arcade_manual_balance_lifecycle_tests",
+      "build": 0,
+      "run": 0,
+      "output": "285 composed physical balance lifecycle checks passed\n"
+    },
+    {
+      "name": "arcade_combo_trace_tests",
+      "build": 0,
+      "run": 0,
+      "output": "1736 interleaved combo trace checks passed\n"
+    }
+  ],
+  "baseline_reproduction": {
+    "name": "arcade_input_pattern_dispatch_tests",
+    "run": 1,
+    "same_failure": true,
+    "replacement_header_sha256": "13dbe7c445dd5f233979b51fc53f593957ba5c4978355253f31b80b13c0da76e",
+    "otherwise": "all baseline dependencies unchanged; test executes UnifiedInput directly"
+  },
+  "source_sha256": {
+    "Extension/ArcadeMode/arcade_input_dispatch.h": "8dd1e7b6a85ab87e903db3dbe7ce94c77625742f1f97c4baca3b52d78ebbb1c7",
+    "Extension/ArcadeMode/arcade_input_session.h": "a9237a26c54122491a32addf24657c8606e54adaf9b2ad120da1825671773cd0",
+    "Extension/ArcadeMode/arcade_custom_flatland.h": "03fe91da3a2625ff0348a06590d83f48ad0d9109336b88f50d48d3d141c970e6",
+    "Extension/ArcadeMode/arcade_custom_flatland_clips.h": "33140901b0b7acaedf868cfad3c9d0fa9703b56d4f3140546cc44af3c525c63a",
+    "Extension/ArcadeMode/arcade_custom_flatland_playback.h": "c92db8edf3c1d5dd959a8d93f5a9a3845fd7bb57d5a570a72005ced89147d2a8",
+    "Extension/ArcadeMode/Test/custom_flatland/flatland_tests.cpp": "2e19db928ebd08dd6306d5359ba21fe2971a6c62faea61cff1783b25ca880bb8",
+    "Extension/ArcadeMode/Test/custom_flatland/run.py": "7269445ea3b8ff00c1db7f23db9dba7cbd0fb364c8d3c11bec099f0b8f703880",
+    "Extension/ArcadeMode/Test/custom_flatland/CMakeLists.txt": "8c11227fe976e7d2ef08c37be54941068e6d4ae43edd0d75a341b71bdf912880"
+  },
+  "regenerable_test_outputs": [
+    {
+      "name": "arcade_input_session_tests",
+      "bytes": 1007944,
+      "sha256": "8772912b7d24a35e5a064d828b50a3fe19049ec7cf718aeafad94b9005234fbe"
+    },
+    {
+      "name": "arcade_ground_motion_step_tests",
+      "bytes": 65032,
+      "sha256": "9f4abf80b368e9b82ddf41956cf74f44fd10197db23ac7fb5ba3349468ca6914"
+    },
+    {
+      "name": "anim_core.o",
+      "bytes": 298736,
+      "sha256": "76b9145515ac6f0d897e7fa3784cc4b13ff132e9b0b07322bb5565a8fa186747"
+    },
+    {
+      "name": "arcade_ground_control_tests",
+      "bytes": 61680,
+      "sha256": "250c7d009baaf8f92d3150f8422766c146bb749cb4025f5f35461ddc4ba25693"
+    },
+    {
+      "name": "arcade_input_pattern_dispatch_tests",
+      "bytes": 770584,
+      "sha256": "6c73ce34afa2f6666649a03a5a39cc366d1aad3dc81048ade394731da8e5a859"
+    },
+    {
+      "name": "casper_spike_tests",
+      "bytes": 1029448,
+      "sha256": "41fb1f5752ffd494c41d7eda2188314d112cdff17a2c4db32ced613471ca22d3"
+    },
+    {
+      "name": "arcade_input_pattern_dispatch_tests_baseline",
+      "bytes": 770584,
+      "sha256": "cd162a15e18b5176641e39899aea294f8b8f611e1ad596f6e49713374d2a221a"
+    },
+    {
+      "name": "arcade_manual_balance_lifecycle_tests",
+      "bytes": 775848,
+      "sha256": "5cf36744e8d603d894e649b487a997d638c50286185059348080329c63035d9b"
+    },
+    {
+      "name": "arcade_combo_trace_tests",
+      "bytes": 62992,
+      "sha256": "d79b01035be12448bf3152ce1e7837bed799cd419a87bcc9daffceec3500876a"
+    }
+  ],
+  "hardware_trials": 0,
+  "windows_builds": 0
+}

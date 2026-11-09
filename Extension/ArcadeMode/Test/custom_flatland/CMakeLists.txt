@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.24)
+project(casper_spike LANGUAGES CXX)
+enable_testing()
+get_filename_component(REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)
+add_library(casper_animation_core STATIC "${REPOSITORY_ROOT}/Extension/AnimationStudio/anim_core.cpp")
+target_include_directories(casper_animation_core PRIVATE "${REPOSITORY_ROOT}")
+target_compile_features(casper_animation_core PRIVATE cxx_std_20)
+# Upstream anim_core contains unused JSON helpers; keep its existing source
+# intact and apply the strict Arcade warning policy to the spike/test code.
+add_executable(casper_spike_tests flatland_tests.cpp)
+target_link_libraries(casper_spike_tests PRIVATE casper_animation_core)
+target_include_directories(casper_spike_tests PRIVATE "${REPOSITORY_ROOT}")
+target_compile_features(casper_spike_tests PRIVATE cxx_std_20)
+include("${CMAKE_CURRENT_SOURCE_DIR}/../manual_test_warnings.cmake")
+dingosdk_arcade_manual_test_warnings(casper_spike_tests)
+add_test(NAME casper_spike COMMAND casper_spike_tests)

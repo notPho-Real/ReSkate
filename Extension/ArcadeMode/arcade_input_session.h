@@ -40,6 +40,10 @@ struct InputAdmission {
     HeldFlipObservation held_flip{};
     NativeFootplantRequest footplant{};
     NativeGroundGrabRequest ground_grab{};
+    // Opt-in visual flatland adapter, never native trick/result admission.
+    // The spike has no runtime producer for this capability.
+    bool custom_flatland{};
+    unsigned custom_flatland_branch{}; // Leased presentation context, never native identity.
 };
 // One per-controller journal and one dispatch path. Native playback objects have
 // no physical edge buffers; their only inputs are admitted semantic requests.
@@ -56,6 +60,7 @@ public:
         ground_turn_ = {}; // Keep the serial watermark across resets.
         takeoff_release_at_=0; takeoff_native_={}; takeoff_jump_observed_=false; takeoff_from_rail_=false;
         revert_link_={}; revert_trigger_owned_=false;
+        flatland_y_held_=flatland_y_accepted_=false;
     }
     // A requested RT from verified manual ownership, followed by original native
     // 101->100 observations and a native fakie change permit renewed ownership.
@@ -350,7 +355,22 @@ public:
         const bool ground_balance = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual ||
             (revert_link_.issued && native.required && native.fresh(now) && !native.airborne &&
              native.flip.state==100 && native.flip.mode==1);
-        const auto manual_buttons = static_cast<std::uint16_t>(physical.buttons & (ground_balance ? ~0x6000u : 0xffffu));
+        // Query the shared journal before the first actuator sample. Only a
+        // live X prefix reserves Y; ordinary Y keeps its immediate behavior.
+        const bool flatland_safe=admission.custom_flatland && admission.extensions.request &&
+            ground_balance && admission.manual_balance_admitted &&
+            native.required && native.fresh(now) && native.correlates_action(admission.balance_generations) &&
+            native.flip.state==100 && native.flip.mode==1 && manual_.busy() && !triggers &&
+            !authored_.busy() && !auxiliary_.busy() && !admission.external_owner &&
+            !(physical.buttons&0x1330u);
+        if(!(physical.buttons&0x8000u) || !flatland_safe)flatland_y_held_=false;
+        constexpr std::array flatland_prefix{InputToken{InputSource::buttons,14,InputEdge::press}};
+        const bool reserve_y=flatland_safe && (physical.buttons&0x8000u) &&
+            (flatland_y_held_ || (admission.branch_ready &&
+                input_.history().match({flatland_prefix,300,~InputConsumption::manual},now)));
+        flatland_y_accepted_=flatland_y_held_;
+        auto manual_buttons = static_cast<std::uint16_t>(physical.buttons & (ground_balance ? ~0x6000u : 0xffffu));
+        if(reserve_y)manual_buttons&=static_cast<std::uint16_t>(~0x8000u);
         // During the acknowledged handoff the client still publishes the old
         // episode type. The new actuator waits for successor admission, not
         // that old presentation type (which would cancel it as opposite input).
@@ -391,7 +411,8 @@ public:
         const bool manual_conflict = authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers;
         // Ground auxiliary input is RT; its table uses the same experiment
         // permission as physical RT masking, without enabling a hidden actor.
-        InputEnvironment environment{context, true, admission.external_owner, admission.nollie, admission.observed_balance_branch ? admission.observed_balance_branch : admission.pose == SkatePose::nose_manual ? 13u : 0u,
+        InputEnvironment environment{context, true, admission.external_owner, admission.nollie,
+            admission.custom_flatland ? admission.custom_flatland_branch : admission.observed_balance_branch ? admission.observed_balance_branch : admission.pose == SkatePose::nose_manual ? 13u : 0u,
             admission.manual_safe && !admission.external_owner && !triggers,
             admission.manual_prepare && !admission.external_owner && !triggers, manual_.busy() || reset_manual,
             action_enabled && admission.action_fresh && (context != InputContext::ground || output.action.consume_rt),
@@ -430,6 +451,10 @@ public:
             (native.flip.state==100 || native.flip.state==103)) environment.takeoff_release_at=now;
         environment.takeoff_actor_busy=authored_.busy() || auxiliary_.busy();
         input_.poll(now, physical, environment, {this, &receive});
+        flatland_y_held_=reserve_y && flatland_y_accepted_;
+        // A rejected adapter cannot keep the provisional reservation. No new
+        // pending queue or replay of an expired first button is introduced.
+        if(reserve_y && !flatland_y_held_)manual_buttons|=physical.buttons&0x8000u;
         if(ground_grab_) {
             const auto control=admission.ground_grab.controls(admission.ground_grab.context,(physical.buttons&0x2000u)!=0);
             ground_grab_=control.owned;
@@ -821,11 +846,15 @@ private:
             if (request.action == InputAction::transfer_command && !admission.surface.can_transfer) return InputDisposition::cancelled;
             return request_extension(request);
         case InputAction::balance_branch_one: case InputAction::balance_branch_two: case InputAction::balance_variant: case InputAction::balance_return: {
-            const auto origin = admission.observed_balance_branch ? admission.observed_balance_branch :
+            const auto origin = admission.custom_flatland ? admission.custom_flatland_branch : admission.observed_balance_branch ? admission.observed_balance_branch :
                 admission.pose == SkatePose::nose_manual ? 13u : 0u;
             if (!admission.manual_balance_admitted || !admission.branch_ready || origin != request.balance_origin)
                 return InputDisposition::cancelled;
-            return request_extension(request);
+            if(admission.custom_flatland && !manual_.busy())return InputDisposition::cancelled;
+            const auto result=request_extension(request);
+            if(admission.custom_flatland && result==InputDisposition::started &&
+                (request.variant==2 || request.variant==0))flatland_y_accepted_=true;
+            return result;
         }
         case InputAction::lip_request:
             return request_extension(request);
@@ -1016,6 +1045,7 @@ private:
     TrickDirection rail_direction_{};
     std::uint64_t now_{}, last_{}, last_tick_{}, jump_pressed_at_{};
     bool jump_nollie_{}, extension_started_{};
+    bool flatland_y_held_{}, flatland_y_accepted_{};
     std::int32_t air_followup_id_{};
     bool rail_{}, holding_{}, air_action_{}, clocked_{};
     std::uint16_t grab_hold_button_{};

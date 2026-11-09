@@ -98,8 +98,9 @@ struct InputRequest {
 struct InputEnvironment {
     InputContext context{};
     bool gameplay{}, conflict{}, nollie{};
-    // Only an independent native observer may admit a branch context. Merely
-    // recognizing an unsupported request must never advance this value.
+    // Independently admitted native balance plus its native observer or owned
+    // custom presentation adapter selects this input table, not a native ID.
+    // Recognizing an unsupported request must never advance this value.
     unsigned balance_branch{};
     bool manual_safe{true}, manual_prepare{}, manual_active{};
     bool auxiliary_enabled{true};
