@@ -69,6 +69,7 @@ struct Hit {
 };
 struct Exclusions {
     std::array<SurfaceGeometryBody,8> bodies{};
+    std::array<SurfaceGeometryBody,8> query_handles{};
     std::array<SurfaceGeometryWorldOwner,8> local_components{};
     std::size_t count{};
 };
@@ -107,8 +108,8 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
         std::copy(segment.start.begin(),segment.start.end(),ray.start.begin());
         std::copy(segment.end.begin(),segment.end.end(),ray.end.begin());
         if (excluded.count) {
-            ray.ignored_bodies[0] = reinterpret_cast<std::uintptr_t>(excluded.bodies.data());
-            ray.ignored_bodies[1] = reinterpret_cast<std::uintptr_t>(excluded.bodies.data()+excluded.count);
+            ray.ignored_bodies[0] = reinterpret_cast<std::uintptr_t>(excluded.query_handles.data());
+            ray.ignored_bodies[1] = reinterpret_cast<std::uintptr_t>(excluded.query_handles.data()+excluded.count);
             ray.ignored_bodies[2] = ray.ignored_bodies[1];
         }
         editor::NativeSurfaceResult result;
@@ -182,10 +183,19 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
         if (!hit) return {};
         if (!exclusions_current(api,ctx,excluded,trace)) return fail("exclusions_changed");
         if (!hit->local_component && hit->owner != ctx.self_entity) {if(trace)trace->reason="hit";return hit;} // unknown nearer owner never skipped
+        // An entity identity alone cannot supply the native exclusion owner.
+        if (clear && !hit->local_component) return fail("self_owner_unavailable");
         if (excluded.count == excluded.bodies.size() ||
             std::find(excluded.bodies.begin(),excluded.bodies.begin()+static_cast<std::ptrdiff_t>(excluded.count),hit->body) !=
                 excluded.bodies.begin()+static_cast<std::ptrdiff_t>(excluded.count)) return fail("self_exclusion_limit");
-        if(hit->local_component)excluded.local_components[excluded.count]=hit->world_owner;
+        excluded.query_handles[excluded.count]=hit->body;
+        if(hit->local_component) {
+            excluded.local_components[excluded.count]=hit->world_owner;
+            // Native ray exclusions compare physics owner indices, not shape
+            // indices. Keep the original shape separately for revalidation.
+            excluded.query_handles[excluded.count]={hit->body.world,
+                hit->world_owner.index,hit->world_owner.generation};
+        }
         excluded.bodies[excluded.count++] = hit->body;
     }
     return {};

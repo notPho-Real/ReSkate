@@ -80,7 +80,7 @@ struct Fixture {
         const auto& descriptor=*static_cast<const std::array<std::uint64_t,3>*>(hit);
         check(descriptor[0]==f.live.world && descriptor[1]==f.first,"complete nearest hit descriptor retained");
         auto& b=*static_cast<SurfaceGeometryBody*>(out);
-        b={f.live.world, f.self_hit ? static_cast<std::uint32_t>(100+f.calls) : f.seam && f.last_x>0 ? 2u : 1u,f.generation};
+        b={f.live.world, f.self_hit ? (f.native_self && !f.many_self ? 203u : static_cast<std::uint32_t>(100+f.calls)) : f.seam && f.last_x>0 ? 2u : 1u,f.generation};
         return out;
     }
     static bool static_owner(void* user,const SurfaceGeometryBody&,SurfaceGeometryWorldOwner& owner) noexcept {
@@ -113,7 +113,13 @@ struct Fixture {
         f.self_hit=f.many_self || (f.self && !ray_value->ignored_bodies[0]);
         if (f.self && ray_value->ignored_bodies[0]) {
             const auto* b=reinterpret_cast<const SurfaceGeometryBody*>(ray_value->ignored_bodies[0]);
-            check(b->world==f.live.world && b->generation==f.generation && b->index>=100,"native exclusions retain full body token");
+            if(f.native_self) {
+                // The native filter looks up the hit shape's owner index and
+                // compares it with the request's +8 lane, not the shape ID.
+                f.self_hit=f.many_self || b->index!=f.world_owner.index;
+                check(b->world==f.live.world && b->generation==f.world_owner.generation,
+                      "local exclusion carries the independently validated owner incarnation");
+            } else check(b->world==f.live.world && b->generation==f.generation && b->index>=100,"native exclusions retain full body token");
         }
         if (f.wall) {
             SurfaceGeometryVector start{}, end{};
@@ -573,10 +579,17 @@ int main() {
     { Fixture f;f.anchor_block_at=1;f.bad_fraction=true;
       check(!f.query_anchor().valid,"invalid obstacle fraction never becomes clear"); }
     { Fixture f;f.self=true;
-      check(f.query_anchor().valid&&f.calls==5,"only authenticated native local-player shape may be excluded"); }
+      check(!f.query_anchor().valid&&f.calls==1,"entity identity without a validated physics owner cannot exclude an anchor obstacle"); }
     { Fixture f;f.self=true;f.native_self=true;
       check(f.query_anchor().valid&&f.calls==5&&f.component_calls>2,
             "non-ECS local component is excluded and revalidated across all clearance rays"); }
+    { Fixture f;f.self=true;f.native_self=true;f.world_owner.index=138;
+      f.world_owner.body={7,166,50331648};
+      check(f.query_anchor().valid&&f.calls==5,
+            "native shape203 excludes owner138 rather than shape203 or rigid body166"); }
+    { Fixture f;f.self=true;f.native_self=true;f.anchor_block_at=2;
+      check(!f.query_anchor().valid&&f.calls==2,
+            "foreign obstacle behind an excluded local component still blocks the anchor"); }
     { Fixture f;f.self=true;f.native_self=true;f.foreign_component=true;
       check(!f.query_anchor().valid&&f.calls==1,"foreign non-ECS component remains an obstacle"); }
     { Fixture f;f.self=true;f.native_self=true;f.changing_component=true;
@@ -593,7 +606,7 @@ int main() {
               "clearance-only native component exclusion cannot broaden wall or ground qualification");
     }
     { Fixture f;f.many_self=true;
-      check(!f.query_anchor().valid&&f.calls==9,"anchor uses existing bounded self-exclusion lifecycle"); }
+      check(!f.query_anchor().valid&&f.calls==1,"unresolved physics owners fail before sending shape IDs as exclusions"); }
     { Fixture f;f.unknown=true;f.allow_world_owner=true;
       check(f.query_anchor().valid,"non-ECS wall retains verified full static-world stamp"); }
     { Fixture f;f.unknown=true;f.allow_world_owner=true;f.changing_world_owner=true;
