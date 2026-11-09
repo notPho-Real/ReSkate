@@ -22,7 +22,7 @@ def generate(root):
         'FOLLOWUP_PUBLICATION': between(client, '    a.native_launch_id.store(', '    a.launch.store('),
         'COMMIT': between(client, '        const auto commit_motion = ', '        const auto release_turn = '),
         'ANGULAR_RELEASE': between(client, '        const auto release_turn = ', '        if (!intent.enabled) {'),
-        'ANGULAR_BODY': between(client, '        auto applied=a.ground_output.ready', '\n    } catch (...) {\n        if(wallplant)arcade_mode::wallplant_runtime::completed(wallplant,false);'),
+        'ANGULAR_BODY': between(client, '        auto applied=a.ground_output.ready', '\n    } catch (...) {\n        try {throw;}'),
     }
     source = (root / 'Extension/ArcadeMode/Test/ground_writer/fixture.cpp.in').read_text()
     for name, text in chunks.items():

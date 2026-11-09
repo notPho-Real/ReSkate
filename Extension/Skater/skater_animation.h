@@ -51,6 +51,12 @@ bool playing() noexcept; // a clip of play() has not finished
 // caller's clip. The ticket only owns this submission; ordinary play(), seek()
 // or pause() revoke it. Cancellation cannot stop a newer caller's playback.
 std::uint64_t try_play(Play clip);
+// Borrow the idle player at one authored clip time until a monotonic
+// GetTickCount64 deadline (at most one second ahead), then blend out (at most
+// one second). The
+// animation callback enforces expiry even if the client stops ticking.
+std::uint64_t try_hold(Play clip,std::uint64_t deadline);
+bool release_play(std::uint64_t ticket); // matching held ticket begins its blend out
 void prepare_playback() noexcept; // requests the existing hooks at the next client tick
 bool can_play() noexcept;
 bool owns_play(std::uint64_t ticket) noexcept;
@@ -60,6 +66,13 @@ void cancel_play(std::uint64_t ticket);
 struct PlaybackEvidence {
     std::uint64_t ticket{}, samples{}, writes{}, draws{};
     float first_sample{}, last_sample{};
+    // World joint origins from the exact body pose copied by the renderer,
+    // composed with its then-current native placement. These are not physical
+    // contact points, a sole surface, or native ActorController evidence.
+    std::uintptr_t component{};
+    std::uint64_t feet_drawn_at{};
+    anim_studio::Vec3 left_foot{}, right_foot{};
+    bool feet_valid{};
 };
 std::optional<PlaybackEvidence> playback_evidence(std::uint64_t ticket) noexcept;
 // The clip of play(), moved to `seconds` (clamped to it), held there or playing on from it.

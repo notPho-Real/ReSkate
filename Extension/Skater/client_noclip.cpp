@@ -18,6 +18,7 @@
 #include "Extension/ArcadeMode/arcade_ground_writer_observation.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_wallplant_runtime.h"
+#include "Extension/ArcadeMode/arcade_wallplant_hold.h"
 #include "Extension/ArcadeMode/arcade_ground_rotation.h"
 #include "free_flight.h"
 #include "Engine/Game/Multiplayer/session_competition.h"
@@ -580,6 +581,61 @@ bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManua
     if (ground_turn) *ground_turn = candidate_turn;
     return true;
 }
+struct WallplantPhysicalHold {
+    arcade_mode::WallplantCommand command{};
+    NoBailSkater owner{};
+    std::uintptr_t client{},entity{};
+    std::uint64_t started{},intent_generation{},targets{},first_target{},last_target{};
+    std::array<float,3> entry_root{},last_root{},last_velocity{},readback0{},readback8{},actual_forward{};
+    float maximum_drift{};
+};
+// Payload is protected by SourceState::busy; idle physics/target callbacks only
+// read the atomic hint. Runtime cancellation never needs the source lock.
+WallplantPhysicalHold& wallplant_physical_hold() {static WallplantPhysicalHold value;return value;}
+std::atomic<std::uintptr_t> wallplant_hold_core{};
+void wallplant_hold_log(const WallplantPhysicalHold& hold,const char* phase,const char* reason,
+        std::uint64_t now,std::uint32_t selected) noexcept {
+    try {
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT HOLD: occurrence={} contact={} phase={} reason={} ms={} started={} elapsed={} state={} targets={} first_target={} last_target={} root={},{},{} anchor={},{},{} maximum_drift={} velocity={},{},{} exit={},{},{} readback0={},{},{} readback8={},{},{} entry_root={},{},{} incoming={},{},{} reflected={},{},{} hold_forward={},{},{} target_normal={},{},{} actual_forward={},{},{} native_drive=spring hard_anchor_verified=false.",
+            hold.command.input_sequence,hold.command.contact,phase,reason,now,hold.started,
+            now>=hold.started?now-hold.started:0,selected,hold.targets,hold.first_target,hold.last_target,
+            hold.last_root[0],hold.last_root[1],hold.last_root[2],hold.command.anchor[0],
+            hold.command.anchor[1],hold.command.anchor[2],hold.maximum_drift,
+            hold.last_velocity[0],hold.last_velocity[1],hold.last_velocity[2],
+            hold.command.after[0],hold.command.after[1],hold.command.after[2],
+            hold.readback0[0],hold.readback0[1],hold.readback0[2],hold.readback8[0],hold.readback8[1],hold.readback8[2],
+            hold.entry_root[0],hold.entry_root[1],hold.entry_root[2],
+            hold.command.incoming[0],hold.command.incoming[1],hold.command.incoming[2],
+            hold.command.reflected[0],hold.command.reflected[1],hold.command.reflected[2],
+            hold.command.hold_forward[0],hold.command.hold_forward[1],hold.command.hold_forward[2],
+            hold.command.contact_normal[0],hold.command.contact_normal[1],hold.command.contact_normal[2],
+            hold.actual_forward[0],hold.actual_forward[1],hold.actual_forward[2]);
+    } catch(...) {}
+}
+void wallplant_hold_cancel(const char* reason,std::uint64_t now,std::uint32_t selected=0) noexcept {
+    auto& hold=wallplant_physical_hold();
+    if(!hold.command)return;
+    const auto cancelled=hold;hold={};wallplant_hold_core.store(0,std::memory_order_release);
+    arcade_mode::wallplant_runtime::finish_hold(cancelled.command,false,now);
+    wallplant_hold_log(cancelled,"cancel",reason,now,selected);
+}
+bool wallplant_hold_target_matrix(const arcade_mode::WallplantCommand& command,
+        const std::array<float,16>& supplied,std::array<float,16>& target) noexcept {
+    if(!command.anchor_verified || !valid_flight_transform(supplied))return false;
+    float x{},z{};
+    for(unsigned axis=0;axis<3;++axis) {
+        if(!std::isfinite(command.anchor[axis]) || std::abs(command.anchor[axis])>1000000 ||
+           !std::isfinite(command.hold_forward[axis]))return false;
+        x+=command.hold_forward[axis]*supplied[axis];
+        z+=command.hold_forward[axis]*supplied[8+axis];
+    }
+    if(!std::isfinite(x) || !std::isfinite(z) || std::hypot(x,z)<.001f)return false;
+    target=supplied;
+    arcade_mode::AirMotion::rotate_target(target,std::atan2(x,z));
+    for(unsigned axis=0;axis<3;++axis)target[12+axis]=command.anchor[axis];
+    return valid_flight_transform(target);
+}
 struct WallplantHandoff {
     arcade_mode::WallplantExecutionProof execution{};
     arcade_mode::wallplant_runtime::WriterProbe probe{};
@@ -754,22 +810,161 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         command=arcade_mode::wallplant_runtime::consume(now,handoff.execution.native,velocities[0],handoff.ticket.input,&reconstruction);
         note(17,command?"reconstruction_command_ready":"reconstruction_consume_empty",live.state);
         if(!command)return;
-        source_require(arcade_mode::AirMotion::apply_bodies(command.motion,velocities,spins,bodies.up),
-            "Wallplant reconstructed motion invalid.");
+        source_require(arcade_mode::wallplant_hold_anchor_current(command,bodies.root),
+            "Wallplant anchor moved beyond validated adjustment.");
+        std::array<float,16> hold_target{};
+        source_require(wallplant_hold_target_matrix(command,bodies.matrix,hold_target),
+            "Wallplant anchor or orientation is unavailable.");
+        source_require(!wallplant_physical_hold().command,"Wallplant physical phase already owns motion.");
+        arcade_mode::WallplantHoldContinuity admission;
+        source_require(admission.begin(command,now),"Wallplant hold origin is invalid.");
+        arcade_mode::AirMotionOutput brake{};brake.ready=brake.vertical=brake.horizontal=true;
+        brake.delta_x=-velocities[0][0];brake.delta_z=-velocities[0][2];
+        source_require(arcade_mode::AirMotion::apply_bodies(brake,velocities,spins,bodies.up),
+            "Wallplant entry brake is invalid.");
         reader.verify();NoBailSkater after{};
         source_require(no_bail_skater(after) && after==owner,"Wallplant reconstruction ownership changed before writing.");
         source_require(arcade_mode::wallplant_runtime::current(command,now,handoff.execution.native,command.before),
-            "Wall contact changed before reconstructed rebound.");
+            "Wall contact changed before hold entry.");
         write_arcade_bodies(bodies.parts,velocities,spins,flags,true,false,[]{});
+        auto started=GetTickCount64();
+        SourceReader written;
+        const auto readback0=written.value<std::array<float,3>>(bodies.parts[0],0x70);
+        const auto readback8=written.value<std::array<float,3>>(bodies.parts[8],0x70);
+        written.verify();
         auto& air=arcade_air();
         air.controller.yield_ordinary_motion();air.output.vertical=air.output.horizontal=false;
-        arcade_mode::wallplant_runtime::completed(command,true);
-        note(18,"reconstruction_committed",live.state);
+        source_require(arcade_mode::wallplant_runtime::begin_hold(command,started),
+            "Wallplant hold authority changed after entry brake.");
+        auto& hold=wallplant_physical_hold();
+        hold={};hold.command=command;hold.owner=owner;hold.client=client;hold.entity=entity;
+        hold.started=started;hold.intent_generation=intent.generation;hold.entry_root=hold.last_root=bodies.root;
+        hold.last_velocity=velocities[0];
+        hold.actual_forward={bodies.matrix[8],bodies.matrix[9],bodies.matrix[10]};
+        hold.readback0=readback0;hold.readback8=readback8;
+        hold.maximum_drift=std::hypot(bodies.root[0]-command.anchor[0],bodies.root[1]-command.anchor[1],bodies.root[2]-command.anchor[2]);
+        wallplant_hold_core.store(core,std::memory_order_release);
+        wallplant_hold_log(hold,"entry","braked",started,live.state);
+        note(18,"hold_entry_committed",live.state);
     } catch(...) {
         if(command)arcade_mode::wallplant_runtime::completed(command,false);
         try{throw;}catch(const SourceGuard& issue){note(19,issue.message);}
         catch(...){note(19,"reconstruction_exception");}
     }
+}
+void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
+    if(wallplant_hold_core.load(std::memory_order_acquire)!=core)return;
+    // Serialize current controller permission before SourceState::busy. The
+    // original admitted AIR frame is never renewed to authorize a later step.
+    const auto held=arcade_mode::wallplant_runtime::held_command();
+    std::uint64_t now=GetTickCount64();
+    const auto frame=held?arcade_mode::native_wallplant_hold_context(held.native.owner,now):arcade_mode::NativeInputFrame{};
+    auto& state=source_state();
+    if(state.busy.test_and_set(std::memory_order_acquire))return;
+    SourceBusyScope scope{state.busy};
+    auto& hold=wallplant_physical_hold();
+    if(!hold.command || hold.owner.core!=core)return;
+    WallplantPhysicalHold attempted_release{};
+    try {
+        source_require(state.initialized.load(std::memory_order_acquire) &&
+            state.velocity_guard_active.load(std::memory_order_acquire) &&
+            state.motion_original.load(std::memory_order_acquire),"hold_writer_unavailable");
+        source_require(held && held.input_sequence==hold.command.input_sequence &&
+            held.contact==hold.command.contact && frame.valid &&
+            arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame),
+            "hold_authority");
+        arcade_mode::AirMotionIntent intent{};
+        source_require(read_arcade_air(intent,nullptr,nullptr) && intent.enabled &&
+            intent.generation==hold.intent_generation && now>=intent.sampled_at &&
+            now-intent.sampled_at<=150 && !multiplayer_session_active() &&
+            !state.trial.debug.noclip && !state.trial.debug.park_editor,"hold_control_owner");
+        const auto bodies=debug_noclip_bodies(state.trial.base,hold.client,hold.entity);
+        NoBailSkater owner{};
+        source_require(no_bail_skater(owner) && owner==hold.owner && bodies.core==core &&
+            bodies.context==owner.context && bodies.rig_wrapper==owner.rig &&
+            !bodies.offboard && !bodies.wipeout,"hold_body_owner");
+        SourceReader reader;
+        source_require(reader.value<std::uint8_t>(hold.entity,0x7e0)==0,"hold_teleport");
+        const auto selected=reader.value<std::uint32_t>(bodies.context,
+            game::build::v20260929::arcade_native_probe::selected_state);
+        source_require(selected==100 || selected==200 || selected==201,"hold_native_state");
+        hold.last_root=bodies.root;
+        hold.actual_forward={bodies.matrix[8],bodies.matrix[9],bodies.matrix[10]};
+        const auto drift=std::hypot(bodies.root[0]-held.anchor[0],bodies.root[1]-held.anchor[1],bodies.root[2]-held.anchor[2]);
+        source_require(std::isfinite(drift),"hold_root_invalid");hold.maximum_drift=std::max(hold.maximum_drift,drift);
+        source_require(now>=hold.started,"hold_clock");
+        if(now-hold.started<arcade_mode::WallplantHoldContinuity::duration_ms)return;
+        source_require(hold.targets>0,"hold_target_never_applied");
+        std::array<std::array<float,3>,32> velocities{},spins{};
+        std::array<std::uint32_t,32> flags{};
+        for(std::size_t i=0;i<bodies.parts.size();++i) {
+            velocities[i]=reader.value<std::array<float,3>>(bodies.parts[i],0x70);
+            spins[i]=reader.value<std::array<float,3>>(bodies.parts[i],0x90);
+            flags[i]=reader.value<std::uint32_t>(bodies.parts[i],0x60);
+        }
+        hold.last_velocity=velocities[0];
+        arcade_mode::AirMotionOutput release{};release.ready=release.vertical=release.horizontal=true;
+        release.velocity_y=held.after[1];release.delta_x=held.after[0]-velocities[0][0];
+        release.delta_z=held.after[2]-velocities[0][2];
+        source_require(arcade_mode::AirMotion::apply_bodies(release,velocities,spins,bodies.up),"hold_release_velocity");
+        reader.verify();NoBailSkater after{};
+        source_require(no_bail_skater(after) && after==owner &&
+            arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame),"hold_release_revalidation");
+        // Take the physical ticket before touching bodies: recursive callbacks
+        // and future ticks cannot turn a single release into repeated writes.
+        auto releasing=hold;attempted_release=releasing;
+        hold={};wallplant_hold_core.store(0,std::memory_order_release);
+        write_arcade_bodies(bodies.parts,velocities,spins,flags,true,false,[]{});
+        SourceReader written;
+        releasing.readback0=written.value<std::array<float,3>>(bodies.parts[0],0x70);
+        releasing.readback8=written.value<std::array<float,3>>(bodies.parts[8],0x70);
+        written.verify();
+        arcade_mode::wallplant_runtime::finish_hold(releasing.command,true,now);
+        wallplant_hold_log(releasing,"release","committed",now,selected);
+    } catch(...) {
+        // If a write failed after taking the local ticket, still withdraw the
+        // runtime receipt. No repair write or delayed retry is manufactured.
+        if(!hold.command) {
+            arcade_mode::wallplant_runtime::finish_hold(held,false,now);
+            if(attempted_release.command)wallplant_hold_log(attempted_release,"cancel","release_write_failed",now,0);
+        }
+        try{throw;}catch(const SourceGuard& issue){wallplant_hold_cancel(issue.message,now);}
+        catch(...){wallplant_hold_cancel("hold_exception",now);}
+    }
+}
+bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
+        const std::array<float,16>* supplied,std::array<float,16>& target,
+        const arcade_mode::NativeInputFrame& frame,std::uint64_t now) {
+    auto& hold=wallplant_physical_hold();
+    if(!hold.command)return false;
+    if(rig!=hold.owner.rig || context!=hold.owner.context)return false;
+    try {
+        source_require(frame.valid && arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame),"target_authority");
+        if(now<hold.started || now-hold.started>=arcade_mode::WallplantHoldContinuity::duration_ms)return false;
+        auto& state=source_state();
+        source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor && !multiplayer_session_active(),"target_control_owner");
+        const auto bodies=debug_noclip_bodies(state.trial.base,hold.client,hold.entity);
+        NoBailSkater owner{};
+        source_require(no_bail_skater(owner) && owner==hold.owner && bodies.core==owner.core &&
+            !bodies.offboard && !bodies.wipeout,"target_body_owner");
+        SourceReader reader;std::array<float,16> original{};
+        source_require(reader.value<std::uint8_t>(hold.entity,0x7e0)==0 &&
+            reader.raw(reinterpret_cast<std::uintptr_t>(supplied),original.data(),sizeof(original)) &&
+            wallplant_hold_target_matrix(hold.command,original,target),"target_transform");
+        reader.verify();NoBailSkater after{};
+        source_require(no_bail_skater(after) && after==owner &&
+            arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame),"target_revalidation");
+        if(now<hold.started || now-hold.started>=arcade_mode::WallplantHoldContinuity::duration_ms)return false;
+        hold.last_root=bodies.root;
+        hold.maximum_drift=std::max(hold.maximum_drift,std::hypot(bodies.root[0]-hold.command.anchor[0],
+            bodies.root[1]-hold.command.anchor[1],bodies.root[2]-hold.command.anchor[2]));
+        if(!hold.targets)hold.first_target=now;
+        if(hold.targets!=UINT64_MAX)++hold.targets;
+        hold.last_target=now;
+        return true;
+    } catch(const SourceGuard& issue) {wallplant_hold_cancel(issue.message,now);}
+      catch(...) {wallplant_hold_cancel("target_exception",now);}
+    return false;
 }
 void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) noexcept {
     const auto wall_probe=arcade_mode::wallplant_runtime::writer_probe();
@@ -783,7 +978,6 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
     arcade_mode::AirMotionIntent intent{};
     arcade_mode::NativeManualContact manual{};
     arcade_mode::GroundTurnCommand ground_turn{};
-    arcade_mode::WallplantCommand wallplant{};
     const auto now = GetTickCount64();
     auto& state = source_state();
     if (!state.initialized.load(std::memory_order_acquire)) {wall_writer(3,"source_uninitialized");return;}
@@ -882,8 +1076,6 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
             if (!linear && !angular) return;
             reader.verify(); NoBailSkater after{};
             source_require(no_bail_skater(after) && after==owner, "Arcade motion ownership changed before writing.");
-            if(wallplant)source_require(arcade_mode::wallplant_runtime::current(wallplant,now,native_frame,wallplant.before),
-                "Wall contact changed before rebound.");
             writer_observation.validated(); // Ground writer observation.
             angular_observation.validated(); // Angular writer observation.
             writer_observation.writing(); // Ground writer observation.
@@ -932,10 +1124,10 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
             }
             release_turn(!manual.admitted,true);
         }
-        wall_writer(5,"before_consume");
-        if(!wallplant_handoff_active)wallplant=arcade_mode::wallplant_runtime::consume(now,native_frame,velocities[0]);
-        wall_writer(6,wallplant?"consumed_command":"consume_empty");
-        if(wallplant)a.controller.yield_ordinary_motion();
+        // A wallplant can only enter through the recorded chooser handoff.
+        // This ordinary motion path never bypasses its contact hold phase.
+        (void)wallplant_handoff_active;
+        wall_writer(6,"ordinary_motion_only");
         const auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,
             bodies.root[1], velocities[0][1], spins[0][1], ordinary, velocities[0][0], velocities[0][2],true,
             arcade_mode::NativeAirSpinProof::from_frame(native_frame),
@@ -990,13 +1182,6 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
         } else if (ground_step.status == arcade_mode::GroundStepStatus::unavailable) a.ground_resistance.reset();
         a.ground_output=a.ground_yaw.step(intent,native_frame,now,bodies.seconds,velocities[0],ordinary,manual.admitted,&ground_turn);
         auto applied=a.ground_output.ready ? arcade_mode::GroundYaw::body_output(a.ground_output) : output;
-        if(wallplant) {
-            // One velocity transaction. Do not publish a cached vertical target
-            // or replace native collision/trajectory physics on later steps.
-            applied.ready=applied.vertical=applied.horizontal=true;
-            applied.velocity_y=wallplant.motion.velocity_y;
-            applied.delta_x=wallplant.motion.delta_x;applied.delta_z=wallplant.motion.delta_z;
-        }
         angular_row.ground_selected=a.ground_output.ready; // Angular writer observation.
         // Neutral is a withdrawal of our previous ground rate, not permission
         // to overwrite a new native impulse with an unconditional zero.
@@ -1014,7 +1199,6 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
         if (applied.vertical || applied.angular || applied.horizontal)
             source_require(arcade_mode::AirMotion::apply_bodies(applied, velocities, spins, bodies.up), "Arcade motion result is invalid.");
         commit_motion(resistance_change<0 || applied.vertical || applied.horizontal,applied.angular || angular_release);
-        if(wallplant)arcade_mode::wallplant_runtime::completed(wallplant,true);
         // Ordinary steering needs the same conditional withdrawal handoff as
         // a half-turn; neither may leave a still-owned rate after cancellation.
         if (a.ground_output.ready && applied.angular)
@@ -1024,7 +1208,6 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
             a.air_write.record(native_frame,bodies.parts,spins,bodies.up,cleanup);
         } else if (cleanup.inspected || !a.air_write.pending()) a.air_write.clear();
     } catch (...) {
-        if(wallplant)arcade_mode::wallplant_runtime::completed(wallplant,false);
         try {throw;} catch(const SourceGuard& issue) {wall_writer(7,issue.message);}
         catch(...) {wall_writer(7,"unknown_exception");}
         a.controller.reset(); a.ground_resistance.reset(); a.ground_yaw.reset(); a.ground_output={}; a.output = {}; a.turn_write.clear(); a.air_write.clear(); a.ready_until.store(0, std::memory_order_release);
@@ -1851,20 +2034,26 @@ void noclip_physics_update(std::uintptr_t core) {
     if (original) original(core);
     observe_phase(1,"after_original");
     retained_phase(3,"after_original");
-    noclip_apply_velocity(core);
-    trainer_apply_jump_scale(core);
+    const bool holding=wallplant_hold_core.load(std::memory_order_acquire)==core;
+    if(!holding) {
+        noclip_apply_velocity(core);
+        trainer_apply_jump_scale(core);
+    }
     if (const auto callback = physics_step_callback.load(std::memory_order_acquire)) callback();
-    trainer_push_speed(core);
-    arcade_air_apply(core,handoff.ticket.selected);
-    apply_push_velocity(core);
-    apply_plugin_velocity(core);
-    trainer_pump_power(core);
-    trainer_air_gravity(core);
-    trainer_revert_boost(core);
-    trainer_transition(core);
+    if(!holding) {
+        trainer_push_speed(core);
+        arcade_air_apply(core,handoff.ticket.selected);
+        apply_push_velocity(core);
+        apply_plugin_velocity(core);
+        trainer_pump_power(core);
+        trainer_air_gravity(core);
+        trainer_revert_boost(core);
+        trainer_transition(core);
+    }
     // Native100 entry 482c200 has reconstructed body velocities before this
     // existing +58 update. All ordinary writers finish before the single kick.
     arcade_wallplant_after_reconstruction(handoff,core);
+    arcade_wallplant_hold_step(core);
     retained_phase(4,"after_reconstruction");
 }
 bool noclip_motion_target(std::uintptr_t rig, std::uintptr_t context,
@@ -1872,9 +2061,17 @@ bool noclip_motion_target(std::uintptr_t rig, std::uintptr_t context,
     if(competition_stock_physics())return false;
     SourceLastError error;
     auto& state = source_state();
+    std::uint64_t hold_now=GetTickCount64();
+    arcade_mode::NativeInputFrame hold_frame{};
+    if(wallplant_hold_core.load(std::memory_order_acquire)) {
+        const auto held=arcade_mode::wallplant_runtime::held_command();
+        if(held && held.native.owner.rig==rig && held.native.owner.context==context)
+            hold_frame=arcade_mode::native_wallplant_hold_context(held.native.owner,hold_now);
+    }
     if (!state.initialized.load(std::memory_order_acquire) || !state.velocity_guard_active.load(std::memory_order_acquire) ||
         state.busy.test_and_set(std::memory_order_acquire)) return false;
     SourceBusyScope scope{state.busy};
+    if(arcade_wallplant_hold_target(rig,context,supplied,target,hold_frame,hold_now))return true;
     auto& debug = state.trial.debug;
     if (!debug.noclip && !debug.park_editor && !debug.offboard_up_velocity.valid) {
         try { if (arcade_air_target(rig, context, supplied, target)) return true; }

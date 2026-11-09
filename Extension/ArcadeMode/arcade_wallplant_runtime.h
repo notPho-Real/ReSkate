@@ -8,7 +8,8 @@ namespace dingosdk::arcade_mode::wallplant_runtime {
 void tick(std::uintptr_t base,bool gameplay) noexcept;
 void observe_physics(const NativeInputFrame&) noexcept;
 void publish_geometry(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
-    const NativeInputFrame&,SurfaceGeometryVector root,const SurfaceGeometrySample& ground) noexcept;
+    const NativeInputFrame&,SurfaceGeometryVector root,const SurfaceGeometrySample& ground,
+    std::span<const SurfaceGeometryVector> verified_support_offsets) noexcept;
 InputSurfaceState surface(std::uint64_t now,const NativeInputFrame&) noexcept;
 InputDisposition request(const InputRequest&,std::uint64_t now,const NativeInputFrame&) noexcept;
 WallplantCommand consume(std::uint64_t now,const NativeInputFrame&,SurfaceGeometryVector velocity,
@@ -16,6 +17,13 @@ WallplantCommand consume(std::uint64_t now,const NativeInputFrame&,SurfaceGeomet
 bool current(const WallplantCommand&,std::uint64_t now,const NativeInputFrame&,SurfaceGeometryVector velocity) noexcept;
 void completed(const WallplantCommand&,bool applied) noexcept;
 WallplantCommand latest_completed() noexcept;
+bool begin_hold(const WallplantCommand&,std::uint64_t& now) noexcept;
+bool hold_current(const WallplantCommand&,std::uint64_t& now,const NativeInputFrame&) noexcept;
+void finish_hold(const WallplantCommand&,bool released,std::uint64_t now) noexcept;
+WallplantCommand held_command() noexcept;
+std::uint64_t hold_started_at() noexcept;
+bool preserves_combo(const NativeInputFrame&,std::uint64_t now) noexcept;
+bool excludes_grind(const NativeInputFrame&,std::uint64_t now) noexcept;
 // Read-only pending-work receipt. A zero token avoids runtime locking and all
 // native reads/logging on ordinary physics updates; it grants no write rights.
 struct WriterProbe {

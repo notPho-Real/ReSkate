@@ -613,7 +613,7 @@ struct ConformanceFacade {
         return out;
     }
 };
-void completed_wallplant_air_followup() {
+void entry_wallplant_air_followup() {
     for (unsigned cadence:{8u,17u,34u}) for (bool ready:{false,true}) {
         auto fixture=std::make_unique<ConformanceFacade>();auto& h=*fixture;h.cadence=cadence;
         h.poll(1000,200);
@@ -639,12 +639,12 @@ void completed_wallplant_air_followup() {
             if(bad==6)when+=151;
             if(bad==7)identity=0;
             if(bad==8)identity=last+1;
-            check(!h.input.acknowledge_wallplant(when,invalid,identity),
+            check(!h.input.acknowledge_wallplant_entry(when,invalid,identity,when),
                 "unproven stale foreign or mismatched wallplant receipt cannot retire the actor");
             check(h.input.authored_air_followup(now,proof)==2,"invalid receipt preserves the first flip lineage");
         }
-        check(h.input.acknowledge_wallplant(now,proof,sequence),"completed same-flight rebound retires old air intent once");
-        check(!h.input.acknowledge_wallplant(now,proof,sequence),"repeated receipt cannot retire another action");
+        check(h.input.acknowledge_wallplant_entry(now,proof,sequence,now),"authenticated same-flight entry retires old air intent once");
+        check(!h.input.acknowledge_wallplant_entry(now,proof,sequence,now),"repeated receipt cannot retire another action");
         check(!h.input.authored_air_followup(now,proof) && h.input.history(0)->events().size()==count &&
             h.input.history(0)->events().back().sequence==last,
             "receipt preserves physical journal and does not create a native airborne trick");
@@ -660,9 +660,90 @@ void completed_wallplant_air_followup() {
             h.flip_ready=true;out=h.poll(now+2*cadence,200,{0x4000});
             check(out.requested_id==2,"queued post-rebound flip starts once readiness returns without a new edge");
         }
-        check(!h.input.acknowledge_wallplant(now+2*cadence,proof,sequence),
+        check(!h.input.acknowledge_wallplant_entry(now+2*cadence,proof,sequence,now+2*cadence),
             "old receipt cannot cancel the new post-rebound actor");
     }
+}
+void held_wallplant_entry_followup() {
+    ArcadeInput input(true);input.enable(true);input.set_recognition_capture(0,true);
+    NativeInputState tracker;const NativeInputOwner owner{1,2,3,4,5};const auto prepared=catalog();
+    const auto publish=[&](std::uint64_t at,unsigned state) {
+        NativeRequestSample sample{};sample.valid=true;sample.state=state;
+        sample.crouch_mode=state==100?1u:2u;sample.words[1]=state==100?0x8000u:0;
+        const auto frame=tracker.observe(at,owner,sample,{true,-1,0x1234},false,1.f/30);
+        input.publish_native_context(frame);input.publish_authority(at,frame.owner_generation,1,true);
+        return frame;
+    };
+    const auto poll=[&](std::uint64_t at,unsigned state,std::uint16_t buttons,bool holding) {
+        publish(at,state);
+        return input.poll(0,at,buttons,0,0,0,0,true,!holding,false,0,false,false,true,
+            at/17,false,prepared,false,true,state==100?SkatePose::riding:SkatePose::air,
+            false,false,false,false,true,false,0,0,ActionExperiment::classic,true,true,false);
+    };
+    poll(1000,201,0,false);
+    check(poll(1017,201,0x4000,false).requested_id==2,"held-plant fixture owns initial airborne flip lineage");
+    poll(1034,201,0x1000,false);const auto origin=input.native_context(1034);
+    std::uint64_t edge{};
+    for(const auto& event:input.history(0)->events())
+        if(event.token==InputToken{InputSource::buttons,12,InputEdge::press})edge=event.sequence;
+    check(edge&&input.authored_air_followup(1034,origin)==2,"entry requires existing physicalA and preserves prior flip until brake acknowledgment");
+    const auto contact=publish(1067,100);
+    const auto from=InputNativeContext::from_frame(origin);
+    const auto to=InputNativeContext::from_frame(contact);
+    for(unsigned fault=0;fault<9;++fault) {
+        auto rejected=to;auto at=1067u;
+        switch(fault) {
+        case 0:++rejected.generations.owner;break;
+        case 1:++rejected.generations.action;break;
+        case 2:++rejected.airborne_episode;break;
+        case 3:++rejected.air_departure;break;
+        case 4:rejected.flip.id=2;break;
+        case 5:++rejected.flip.object;break;
+        case 6:rejected.flip.stance=0x20;break;
+        case 7:at=1185;break;
+        case 8:rejected.flip.state=103;break;
+        }
+        check(!wallplant_entry_lineage(from,rejected,at,at),"entry retirement rejects foreign stale competing or unrelated contact");
+    }
+    check(!input.acknowledge_wallplant_entry(1067,origin,edge+100,1067),"unrecorded input cannot borrow entry lineage");
+    const auto journal_size=input.history(0)->events().size();
+    check(input.acknowledge_wallplant_entry(1067,origin,edge,1067),"real native201 to100 entry retires lineage under original150ms lease");
+    check(!input.acknowledge_wallplant_entry(1067,origin,edge,1067),"entry retirement is exactly once");
+    check(input.history(0)->events().size()==journal_size,"entry retirement preserves physical journal");
+    poll(1067,100,0x1000,true);poll(1100,100,0,true);
+    const auto repeated=poll(1133,200,0x1000,true);
+    check(!repeated.jump.setup_started&&!repeated.jump.released,"hold-era freshA does not create second launch");
+    poll(1166,201,0x1000,true);poll(1199,201,0x1000,true);
+    const auto release=poll(1232,201,0x1000,false);
+    check(!release.jump.setup_started&&!release.jump.released&&!release.requested_id,
+        "heldA across160ms release cannot synthesize a new action");
+    check(!input.acknowledge_wallplant_entry(1232,origin,edge,1232),"expired original entry remains expired afterrelease");
+    poll(1265,201,0,false);
+    const auto followup=poll(1298,201,0x4000,false);
+    const auto& diagnostic=*input.input_diagnostic(0);
+    check(followup.requested_id==2&&diagnostic.recognition_count==1&&diagnostic.recognition[0].request.presses==1,
+        "fresh currentAIR X after160ms is independent flip, not pre-wall doubleflip lineage");
+    check(!followup.jump.setup_started&&!followup.jump.released&&!followup.native_flip_request,
+        "fresh posthold flip uses no fallback Ollie or synthetic native launch");
+    check(!input.acknowledge_wallplant_entry(1298,origin,edge,1298),"old entry cannot cancel fresh posthold actor");
+}
+void delayed_wallplant_entry_receipt() {
+    ConformanceFacade h;h.poll(1000,200);h.poll(1017,200,{0x1000});
+    const auto origin=h.input.native_context(1017);
+    std::uint64_t edge{};
+    for(const auto& event:h.input.history(0)->events())
+        if(event.token==InputToken{InputSource::buttons,12,InputEdge::press})edge=event.sequence;
+    h.poll(1100,200,{0x1000});h.poll(1166,200,{0x1000});
+    // The real policy consumed at edge age149ms; input delivery acknowledges
+    // later, without changing either recorded physical or native timestamp.
+    const auto current=h.input.native_context(1166);
+    check(!h.input.acknowledge_wallplant_entry(1183,origin,edge,1184),"future consumption timestamp is never historical authority");
+    check(!h.input.acknowledge_wallplant_entry(1183,origin,edge,1016),"consumption cannot precede original native proof");
+    check(!h.input.acknowledge_wallplant_entry(1183,origin,edge,1168),"event expired at consumption cannot retire via late receipt");
+    check(h.input.acknowledge_wallplant_entry(1183,origin,edge,1166),"149ms consumed edge retires after150ms under authenticated active hold");
+    check(h.input.native_context(1183).sampled_at==current.sampled_at&&origin.sampled_at==1017,
+        "delayed retirement never renews current or original sample timestamps");
+    check(!h.input.acknowledge_wallplant_entry(1183,origin,edge,1166),"delayed exact receipt remains once-only");
 }
 void grounded_manual_readiness_wait() {
     InputNativeContext context{true,true,{1,1,1},1,1000};
@@ -1175,7 +1256,7 @@ void revert_crouch_ownership() {
  }
 }
 int main() {
-    completed_wallplant_air_followup();
+    entry_wallplant_air_followup();held_wallplant_entry_followup();delayed_wallplant_entry_receipt();
     established_manual_revert_retains_pressure();
     revert_crouch_ownership(); native_manual_revert_links(); native_revert_stances(); jump_idle_tests::run();
     grounded_manual_readiness_wait(); manual_context_window_contracts(); manual_transition_continuity_negatives();

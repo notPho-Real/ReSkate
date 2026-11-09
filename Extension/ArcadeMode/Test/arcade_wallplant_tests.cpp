@@ -60,8 +60,8 @@ int main() {
         const auto command=f.policy.step(f.frame,f.contact,f.press,&reconstruction,&decision);
         check(bool(command)&&decision.reconstruction&&near(decision.current_normal,.13112003f),
             "recorded native reconstruction corroborates its small original solver response");
-        check(near(command.after[2],5.08f)&&near(command.after[1],12.7f)&&near(command.after[0],f.frame.velocity[0])&&
-            command.after[2]>command.before[2],"one bounded exit replaces solver normal speed and preserves tangent");
+        check(near(command.after[2],4.7736523f)&&near(command.after[1],12.7f)&&near(command.after[0],-2.4937035f)&&
+            command.after[2]>command.before[2],"measured preimpact vector reflects and loses scalar speed independently of solver response");
         check(!f.policy.step(f.frame,f.contact,f.press,&reconstruction),"same physical input cannot replay reconstructed response");
         ++f.press.sequence;
         auto repeated=reconstruction;repeated.ticket.input=f.press.sequence;
@@ -311,7 +311,8 @@ int main() {
     }
     {
         const auto parameters=WallplantParameters::reference_prototype();
-        const float apex=parameters.maximum_vertical_speed*parameters.maximum_vertical_speed/(2*AirMotion::ordinary_gravity);
+        const float launch=GameplayProfile{}.launch_speed(200,LaunchDescriptor::ordinary());
+        const float apex=launch*launch/(2*AirMotion::ordinary_gravity);
         const SurfaceGeometryVector root{10,apex,20};
         const auto query=wallplant_clearance_request(root,parameters);
         for(const auto& segment:query.segments) {
@@ -325,7 +326,8 @@ int main() {
         Fixture f;f.frame.native.physics_seconds=1.0f/static_cast<float>(rate);
         f.contact.normal={side,0,0};f.frame.velocity={-12*side,-2,tangent};f.sync();
         const auto command=f.run();check(bool(command),"head-on and angled collision admit in both directions and cadences");
-        check(command.after[0]*side>0 && near(command.after[2],tangent),"one rebound reverses normal and preserves tangent");
+        check(near(command.after[0]*side,tangent==0?6.285f:7.0635036f) &&
+            near(command.after[2],tangent==0?0.f:4.1203771f),"horizontal reflection applies scalar speed loss to both normal and tangent");
         check(near(command.after[1],500*GameplayProfile::metres_per_inch),"source-backed vertical exit target");
         check(f.policy.current(command,f.frame,f.contact),"command retains exact current native transaction identity");
         std::array<SurfaceGeometryVector,2> velocities{f.frame.velocity,SurfaceGeometryVector{f.frame.velocity[0]+.2f,-1,tangent+.3f}};
@@ -419,11 +421,66 @@ int main() {
     }
     {
         Fixture f;f.frame.velocity={-900,-2,10};f.sync();auto command=f.run();
-        check(bool(command) && std::hypot(command.after[0],command.after[2])<=GameplayProfile{}.hard_speed()+.0001f,
-              "large inward speed cannot accumulate above existing horizontal cap");
-        check(near(command.after[2],10),"bounded normal exit still preserves useful tangent");
+        check(bool(command) && near(std::hypot(command.after[0],command.after[2]),894.34055f),
+              "large inward speed loses the same scalar amount without an unrelated riding cap");
+        check(near(command.after[2],9.936504f),"scalar loss scales tangent with the reflected whole vector");
         WallplantParameters invalid=WallplantParameters::reference_prototype();invalid.vertical_exit_speed=std::numeric_limits<float>::quiet_NaN();
         f.policy=WallplantPolicy(invalid);check(!f.run(),"invalid tuning never emits velocity");
+    }
+    {
+        // This 5-12-13 triangle has a known horizontal reflection and scalar
+        // exit speed7.285. A solver can alter current velocity, not that target.
+        SurfaceGeometryVector expected{};
+        for(const auto current:std::array{SurfaceGeometryVector{-12,-2,5},SurfaceGeometryVector{0,8,-40},
+                SurfaceGeometryVector{-.1f,-500,20}}) {
+            Fixture f;f.contact.approach_velocity={-12,-123,5};f.frame.velocity=current;
+            const auto command=f.run();
+            check(bool(command) && near(command.after[0],6.7246154f) && near(command.after[2],2.8019231f),
+                "same incoming vector gives same full reflection after different native solver reconstructions");
+            check(command.before==current && command.incoming==f.contact.approach_velocity &&
+                command.reflected==SurfaceGeometryVector{12,0,5},"receipt keeps distinct preimpact, current and reflected vectors");
+            check(near(current[0]+command.motion.delta_x,command.after[0]) &&
+                near(current[2]+command.motion.delta_z,command.after[2]),"single body transaction applies difference from current solver velocity");
+            expected=command.after;
+        }
+        for(float vertical:{-999.f,0.f,999.f}) {
+            Fixture f;f.contact.approach_velocity={-12,vertical,5};
+            const auto command=f.run();
+            check(bool(command) && command.after==expected && near(command.after[1],12.7f),
+                "incoming vertical speed does not change horizontal reflection or fixed upward release");
+        }
+        Fixture rotated;rotated.frame.velocity={-10,-2,0};rotated.sync();rotated.contact.normal={.6f,0,.8f};
+        const auto command=rotated.run();
+        check(bool(command) && near(command.reflected[0],-2.8f) && near(command.reflected[2],9.6f),
+            "rotated wall reflects about actual normal rather than a world axis");
+        check(near(command.after[0],-1.4224f) && near(command.after[2],4.8768f) &&
+            near(std::hypot(command.after[0],command.after[2]),5.08f),"minimum exit applies to reflected speed, not normal component alone");
+        Fixture tilted;tilted.contact.normal={.9987492f,.05f,0};const auto tilted_command=tilted.run();
+        check(bool(tilted_command) && tilted_command.contact_normal==tilted.contact.normal &&
+            near(tilted_command.normal[1],0),"actual collision plane retained separately from horizontal reflection normal");
+        for(float size:{2.e-6f,3.e-6f}) {
+            Fixture f;f.frame.velocity={-.6f*size,900,.8f*size};f.sync();
+            const auto tiny=f.run();
+            check(bool(tiny) && near(tiny.after[0],3.048f) &&
+                near(tiny.after[2],size<.00000254f?-4.064f:4.064f),
+                "below source zero threshold fallback reverses incoming direction; above it uses reflected direction");
+            check(near(tiny.after[1],12.7f),"tiny horizontal fallback cannot inherit incoming vertical speed");
+        }
+        for(const auto profile:std::array{GameplayProfile{GameplayStats::standard},GameplayProfile{}}) {
+            Fixture f;f.policy=WallplantPolicy(WallplantParameters::reference_prototype(profile));
+            f.frame.velocity={-100,999,0};f.sync();const auto uncapped=f.run();
+            check(bool(uncapped) && near(uncapped.after[0],94.285f) && near(uncapped.after[1],12.7f),
+                "ordinary profile speed and Ollie caps do not change collision release");
+        }
+        for(float invalid:{-1000.f,1000.f,std::numeric_limits<float>::infinity(),std::numeric_limits<float>::quiet_NaN()}) {
+            Fixture frame;frame.frame.velocity[1]=invalid;
+            check(!frame.run(),"current body components retain strict finite abs-below1000 guard");
+            Fixture incoming;incoming.contact.approach_velocity[1]=invalid;
+            check(!incoming.run(),"incoming components retain strict finite abs-below1000 guard");
+        }
+        Fixture too_large;too_large.frame.velocity={-999,0,-999};too_large.sync();
+        too_large.contact.normal={.9238795f,0,.3826834f};
+        check(!too_large.run(),"valid incoming components cannot emit a reflected component outside actual body safety bound");
     }
     std::cout<<checks<<" wallplant policy checks passed; synthetic observations are not hardware acceptance\n";
 }

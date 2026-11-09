@@ -180,7 +180,6 @@ def generate(root,variant='current'):
     struct ScalarWorld{GroundResistance ground_resistance;GroundMotionStep ground_steps;};
     float FUNCTION(ScalarWorld& a){
      auto& intent=writer_intent;auto& manual=writer_manual;auto& native_frame=latest;
-     const WallplantCommand wallplant{}; // Ground-only fixture has no observed wall or rebound transaction.
      const auto now=clock_ms;const auto physics=raw.state,mode=raw.crouch_mode,contacts=raw.words[1]&0xc000u,requests=raw.words[0];
      const bool ordinary=true;
      struct Bodies{std::array<float,3> forward{0,0,1};std::array<std::uintptr_t,2>parts{1,2};std::uintptr_t context{4};float seconds{scalar_seconds};}bodies;

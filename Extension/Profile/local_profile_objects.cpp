@@ -8,6 +8,9 @@
 #include "Engine/Game/Build/20260929/puppet_cost.h"
 #include "runtime_internal.h"
 #include "Engine/Game/Build/20260929/local_placements.h"
+#include "Engine/Game/Build/20260929/placement_adapters.h"
+#include "Engine/Game/Build/20260929/skater_movement.h"
+#include "Engine/Game/Build/20260929/skater_state.h"
 #include "Extension/Objects/local_placements_runtime.h"
 #include "Extension/Objects/teleport_transform.h"
 #include "Extension/Objects/ParkEditor/park_editor_runtime.h"
@@ -245,12 +248,41 @@ bool read_surface_self(std::uintptr_t context,const NoBailSkater& owner,SurfaceS
     !memory::read(after[2],after_incarnation)||after_incarnation!=incarnation)return false;
  next.component=component;next.query=query;result=next;return true;
 }
+// Source-backed deck support only: placement_physics.cpp uses this exact
+// board part0 position. It does not establish articulated-body collision bounds.
+struct SurfaceBoardSupport {
+ std::uintptr_t wrapper{},physics{},parts{};
+ SurfaceGeometryVector point{};
+ bool operator==(const SurfaceBoardSupport&)const=default;
+};
+bool read_surface_board_support(const NoBailSkater& owner,SurfaceBoardSupport& out) noexcept {
+ try{
+  namespace adapter=game::build::v20260929::placement_adapters;
+  namespace movement=game::build::v20260929::skater_movement;
+  namespace state=game::build::v20260929::skater_state;
+  const auto read=[&](SurfaceBoardSupport& value) {
+   std::uintptr_t identity{};std::uint32_t count{};
+   return memory::read(owner.core+movement::skater_board,value.wrapper)&&value.wrapper&&
+    memory::read(value.wrapper+adapter::board_physics,value.physics)&&value.physics&&
+    memory::read(value.physics,identity)&&identity==owner.base+state::board_physics_vtable&&
+    memory::read(value.physics+adapter::board_parts,value.parts)&&value.parts&&
+    memory::read(value.parts,count)&&count==adapter::board_part_count&&
+    memory::read(value.parts+adapter::parts_owner,identity)&&identity==value.physics&&
+    memory::read(value.parts+adapter::parts_position,value.point)&&surface_geometry_detail::finite(value.point);
+  };
+  NoBailSkater before{},after{};SurfaceBoardSupport first{},second{};
+  if(!no_bail_skater(before)||before!=owner||!read(first)||!read(second)||first!=second||
+     !no_bail_skater(after)||after!=owner)return false;
+  out=first;return true;
+ }catch(...){return false;}
+}
 struct SurfaceCallback {
  std::unique_lock<std::recursive_mutex>& native_lock;
  std::unique_lock<std::recursive_mutex>& world_lock;
  DWORD thread{};std::uintptr_t client{};NoBailSkater owner;SurfaceSelf self;
  SurfaceGeometryContext context;editor::NativeSurfaceApi surface;editor::NativePickingApi picking;
  bool entered{};
+ SurfaceBoardSupport board_support{};
  const char* failure{"not_checked"};
 };
 bool surface_callback_current_impl(void* user,const SurfaceGeometryContext& context,bool wallplant) noexcept {
@@ -274,6 +306,10 @@ bool surface_callback_current_impl(void* user,const SurfaceGeometryContext& cont
   if(!memory::read(c.client+8,actual)||actual!=context.client_context)return false;
   c.failure="native_owner";
   if(!no_bail_skater(owner)||owner!=c.owner)return false;
+  if(wallplant&&c.board_support.parts){
+   SurfaceBoardSupport board;c.failure="board_support_changed";
+   if(!read_surface_board_support(owner,board)||board!=c.board_support)return false;
+  }
   c.failure="native_self";
   if(!read_surface_self(context.client_context,owner,self)||self!=c.self||self.entity!=context.self_entity)return false;
   const char* frame_reason{};
@@ -357,8 +393,17 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
   if(sample.valid&&!revalidate_surface_geometry(api,origin,sample))sample={};
   if(!admission.wallplant_only)publish_surface_geometry(sample);
   auto wallplant_api=api;wallplant_api.current=&wallplant_surface_callback_current;
+  const SurfaceGeometryVector root{pose[8],pose[9],pose[10]};
+  std::array<SurfaceGeometryVector,1> board_offsets{};
+  std::span<const SurfaceGeometryVector> supports;
+  // The existing callback owns all native queries. A failed support read is
+  // passed as missing evidence; it cannot silently enable an unchecked anchor.
+  if(probe.contact&&read_surface_board_support(owner,callback.board_support)){
+   board_offsets[0]=surface_geometry_detail::sub(callback.board_support.point,root);
+   supports=board_offsets;
+  }
   note(11,"before_publish");
-  wallplant_runtime::publish_geometry(wallplant_api,origin,frame,{pose[8],pose[9],pose[10]},sample);
+  wallplant_runtime::publish_geometry(wallplant_api,origin,frame,root,sample,supports);
   callback.entered=false;
  }catch(...){note(12,"exception");arcade_mode::invalidate_surface_geometry();}
 }

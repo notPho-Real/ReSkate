@@ -75,13 +75,21 @@ bool exclusions_current(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
     return true;
 }
 std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContext& ctx,
-                       const SurfaceGeometrySegment& segment, Exclusions& excluded, SurfaceGeometryTrace* trace = nullptr) {
+                       const SurfaceGeometrySegment& segment, Exclusions& excluded, SurfaceGeometryTrace* trace = nullptr,
+                       bool* clear = nullptr) {
+    if(clear)*clear=false;
     const auto fail = [&](const char* reason) -> std::optional<Hit> {if(trace)trace->reason=reason;return {};};
     if(trace){trace->start=segment.start;trace->end=segment.end;}
     for (unsigned attempt = 0; attempt <= 8; ++attempt) {
         if(trace)trace->attempt=attempt;
         if (!exclusions_current(api,ctx,excluded,trace)) return fail("exclusions_current");
         editor::NativeSurfaceRay ray;
+        if(clear) {
+            // Clearance includes every categorized shape, not just camera hits.
+            const auto filter=editor::surface_query_filter(body_query::QueryPreset::all);
+            if(!filter)return fail("clearance_filter");
+            ray.filter=*filter;
+        }
         std::copy(segment.start.begin(),segment.start.end(),ray.start.begin());
         std::copy(segment.end.begin(),segment.end.end(),ray.end.begin());
         if (excluded.count) {
@@ -92,6 +100,7 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
         editor::NativeSurfaceResult result;
         bool released = false;
         std::optional<Hit> hit;
+        bool empty=false;
         {
             struct Release {
                 const SurfaceGeometryNativeApi& api; editor::NativeSurfaceResult& result; bool& ok;
@@ -104,7 +113,16 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
                 if (result.world != ctx.world || !result.data || result.count > 4096 ||
                     result.first > UINT32_MAX-result.count) return fail("ray_result");
                 std::uintptr_t fractions{};
-                if (!read(api,result.data+8,fractions) || !fractions) return fail("fractions");
+                if (!read(api,result.data+8,fractions)) return fail("fractions");
+                // Same counted-empty contract as Park Editor cast_surface_once:
+                // native 0x26afdc0 -> 0x2664c00 publishes first=0,count=0 with
+                // valid world/data even when the readable fraction lane is null.
+                // An unavailable/malformed query is never clear.
+                if(clear && !result.count) {
+                    if(result.first)return fail("empty_result_first");
+                    empty=true;return {};
+                }
+                if(!fractions)return fail("fractions");
                 float closest = 2;
                 std::uint32_t selected{};
                 for (std::uint32_t i = 0; i < result.count; ++i) {
@@ -132,6 +150,10 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
             try { hit = inspect(); } catch (...) { hit = fail("query_exception"); }
         }
         if (!released) return fail("cleanup");
+        if(empty) {
+            if(!exclusions_current(api,ctx,excluded,trace))return fail("exclusions_changed");
+            *clear=true;if(trace)trace->reason="clear";return {};
+        }
         if (!hit) return {};
         if (!exclusions_current(api,ctx,excluded,trace)) return fail("exclusions_changed");
         if (hit->owner != ctx.self_entity) {if(trace)trace->reason="hit";return hit;} // unknown nearer owner never skipped
@@ -247,4 +269,59 @@ SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,co
         return sample;
     } catch(...) {return fail("wall_exception");}
 }
+SurfaceGeometryAnchor query_wallplant_anchor(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
+        SurfaceGeometryBody shape,SurfaceGeometryVector point,SurfaceGeometryVector normal,
+        SurfaceGeometryVector root,std::span<const SurfaceGeometryVector> body_offsets,
+        SurfaceGeometryTrace* trace) noexcept {
+    const auto fail=[&](const char* reason)->SurfaceGeometryAnchor {if(trace)trace->reason=reason;return {};};
+    if(trace)*trace={};
+    try {
+        if(!current(api,ctx,trace) || !finite(point) || !finite(root) || !finite(normal) ||
+           std::abs(dot(normal,normal)-1.f)>.02f || !unit(normal) || std::abs(normal[1])>.1f)
+            return fail("anchor_context_normal");
+        if(body_offsets.empty() || body_offsets.size()>32)return fail("anchor_supports");
+        for(const auto& offset:body_offsets)if(!finite(offset))return fail("anchor_support_invalid");
+        // Reference wall distance in metres; bounds target offset AND root
+        // adjustment. It is not a collision shape radius.
+        constexpr float distance=27.6f*.0254f;
+        constexpr float plane_tolerance=.005f; // Existing plane corroboration tolerance.
+        SurfaceGeometryAnchor result;
+        for(unsigned axis=0;axis<3;++axis)result.target[axis]=point[axis]+normal[axis]*distance;
+        const auto delta=sub(result.target,root);
+        result.displacement=std::sqrt(dot(delta,delta));
+        if(!finite(result.target) || !std::isfinite(result.displacement) ||
+           result.displacement>distance)return fail("anchor_adjustment");
+        SurfaceGeometrySample source;source.context=ctx;source.body=shape;source.queried_at=api.now(api.user);
+        if(!body_owner(api,ctx,shape,source.body_owner,trace,&source.world_owner) ||
+           source.body_owner==ctx.self_entity)return fail("anchor_shape");
+        source.valid=true;
+        Exclusions excluded;
+        const auto clear_segment=[&](const SurfaceGeometryVector& start,const SurfaceGeometryVector& end) {
+            if(!finite(start) || !finite(end))return false;
+            if(trace)trace->ray=result.checked_rays;
+            bool clear=false;
+            const auto hit=cast(api,ctx,{start,end},excluded,trace,&clear);
+            if(hit || !clear)return false;
+            ++result.checked_rays;return true;
+        };
+        SurfaceGeometryVector outside{};
+        for(unsigned axis=0;axis<3;++axis)outside[axis]=point[axis]+normal[axis]*plane_tolerance;
+        // Never exclude the contacted wall or another obstacle. Only existing
+        // revalidated local-player shape exclusions are permitted.
+        if(!clear_segment(outside,result.target))return fail("anchor_outward_blocked");
+        // An already stationary root introduces no translated support path.
+        // The nonzero wall-outward segment and unchanged owner stamp remain
+        // mandatory; a zero-length native ray is never taken as clear evidence.
+        if(result.displacement>0 && !clear_segment(root,result.target))return fail("anchor_root_blocked");
+        if(result.displacement>0)for(const auto& offset:body_offsets) {
+            SurfaceGeometryVector start{},end{};
+            for(unsigned axis=0;axis<3;++axis){start[axis]=root[axis]+offset[axis];end[axis]=result.target[axis]+offset[axis];}
+            if(!clear_segment(start,end))return fail("anchor_support_blocked");
+        }
+        if(!exclusions_current(api,ctx,excluded,trace) || !revalidate(api,ctx,source,trace))
+            return fail("anchor_revalidation");
+        result.valid=true;if(trace)trace->reason="anchor_rays_clear";return result;
+    } catch(...) {return fail("anchor_exception");}
+}
+
 }

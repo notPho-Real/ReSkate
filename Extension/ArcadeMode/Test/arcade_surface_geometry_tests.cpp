@@ -31,6 +31,9 @@ struct Fixture {
     float last_x{};
     bool self_hit{};
     bool wall{}, upper_gap{}, lower_gap{};
+    bool anchor{}, malformed_empty{}, unreadable_fraction_lane{};
+    unsigned anchor_block_at{};
+    std::array<SurfaceGeometrySegment,40> anchor_segments{};
     bool allow_world_owner{}, reject_world_owner{}, changing_world_owner{};
     unsigned world_owner_calls{};
     unsigned reject_owner_at{},reject_shape_at{},shape_checks{},context_failure_after_owners{};
@@ -112,6 +115,19 @@ struct Fixture {
         if (f.bad_fraction) f.fractions[f.first]=std::numeric_limits<float>::quiet_NaN();
         f.data[1]=f.bad_data ? 0 : reinterpret_cast<std::uintptr_t>(f.fractions.data());
         if (f.edge && x>0) result->count=0;
+        if(f.anchor) {
+            check(ray_value->filter==*editor::surface_query_filter(body_query::QueryPreset::all),
+                  "anchor clearance includes all categorized collision shapes");
+            if(f.calls<=f.anchor_segments.size()) {
+                auto& segment=f.anchor_segments[f.calls-1];
+                std::copy_n(ray_value->start.begin(),3,segment.start.begin());
+                std::copy_n(ray_value->end.begin(),3,segment.end.begin());
+            }
+            result->count=(f.calls==f.anchor_block_at || f.self_hit)?1u:0u;
+            result->first=f.malformed_empty?3u:0u;
+            f.fractions[0]=f.bad_fraction?std::numeric_limits<float>::quiet_NaN():.5f;
+            if(!result->count)f.data[1]=0; // Native empty-vector storage may be null.
+        }
         if (f.changed_context) ++f.live.world_generation;
         if (f.throw_query) throw std::runtime_error("partial result");
         return result;
@@ -149,12 +165,24 @@ struct Fixture {
         return result;
     }
     SurfaceGeometrySample query_wall() {return query_wall(wall_point,wall_normal);}
+    SurfaceGeometryAnchor query_anchor(SurfaceGeometryVector root={0,1.5f,.2f},
+        std::span<const SurfaceGeometryVector> offsets=std::span<const SurfaceGeometryVector>{}) {
+        anchor=true;first=0;
+        const std::array<SurfaceGeometryVector,2> measured{{{-.2f,.3f,0},{.2f,-.3f,0}}};
+        if(offsets.data()==nullptr)offsets=measured;
+        const auto context=live;
+        auto result=query_wallplant_anchor(api(),context,{7,1,generation},wall_point,wall_normal,root,offsets);
+        check(calls==pops && calls==frees,"anchor query releases every original native result scope");
+        return result;
+    }
+
 };
 }
 namespace dingosdk {
 bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) noexcept {
     const auto* f=Fixture::running;
     const auto fractions=reinterpret_cast<std::uintptr_t>(f->fractions.data());
+    if(f->unreadable_fraction_lane && at==reinterpret_cast<std::uintptr_t>(f->data.data())+8)return false;
     if (f->read_fail && at>=fractions && at-fractions<sizeof f->fractions) return false;
     const auto copy=[&](const void* begin,std::size_t length) {
         const auto base=reinterpret_cast<std::uintptr_t>(begin);
@@ -427,5 +455,78 @@ int main() {
       check(sample.valid && sample.queried_at==1000 && f.time==1050,"wall casts spend original query clock"); }
     { Fixture f; f.self=true; check(f.query_wall().valid && f.calls==6,"wall excludes exact local skater body before world contact"); }
     { Fixture f; f.many_self=true; check(!f.query_wall().valid && f.calls==9,"wall self-body exclusions remain bounded"); }
+    {
+        Fixture f;const auto anchor=f.query_anchor();
+        check(anchor.valid&&anchor.checked_rays==4&&f.calls==4,"anchor checks outward, root, and every measured support ray");
+        check(std::abs(anchor.target[2]-.70104f)<.000001f&&std::abs(anchor.displacement-.50104f)<.000001f,
+              "reference wall offset and bounded root adjustment are distinct");
+        check(std::abs(f.anchor_segments[0].start[2]-.005f)<.000001f,"outward clearance begins at existing plane tolerance");
+        check(f.anchor_segments[1].start==SurfaceGeometryVector{0,1.5f,.2f}&&f.anchor_segments[1].end==anchor.target,
+              "root ray checks actual proposed adjustment");
+        check(f.anchor_segments[2].start==SurfaceGeometryVector{-.2f,1.8f,.2f}&&
+              std::abs(f.anchor_segments[2].end[2]-anchor.target[2])<.000001f,
+              "measured support translates by same root displacement without guessed extents");
+    }
+    for(unsigned ray=1;ray<=4;++ray) {
+        Fixture f;f.anchor_block_at=ray;
+        check(!f.query_anchor().valid&&f.calls==ray,"any obstacle including contacted shape blocks anchor without skipping");
+    }
+    for(unsigned failure=0;failure<13;++failure) {
+        Fixture f;
+        switch(failure) {
+        case 0:f.malformed_empty=true;break;
+        case 1:f.unreadable_fraction_lane=true;break;
+        case 2:f.wrong_world=true;break;
+        case 3:f.throw_query=true;break;
+        case 4:f.throw_pop=true;break;
+        case 5:f.throw_free=true;break;
+        case 6:f.changed_context=true;break;
+        case 7:f.changed_owner=true;break;
+        case 8:f.bad_body=true;break;
+        case 9:f.unknown=true;break;
+        case 10:f.no_context=true;break;
+        case 11:f.time=1151;break;
+        case 12:f.delay=60;break;
+        }
+        check(!f.query_anchor().valid,"missing/invalid/expired query or owner evidence never becomes clear");
+    }
+    { Fixture f;f.anchor_block_at=1;f.bad_fraction=true;
+      check(!f.query_anchor().valid,"invalid obstacle fraction never becomes clear"); }
+    { Fixture f;f.self=true;
+      check(f.query_anchor().valid&&f.calls==5,"only authenticated native local-player shape may be excluded"); }
+    { Fixture f;f.many_self=true;
+      check(!f.query_anchor().valid&&f.calls==9,"anchor uses existing bounded self-exclusion lifecycle"); }
+    { Fixture f;f.unknown=true;f.allow_world_owner=true;
+      check(f.query_anchor().valid,"non-ECS wall retains verified full static-world stamp"); }
+    { Fixture f;f.unknown=true;f.allow_world_owner=true;f.changing_world_owner=true;
+      check(!f.query_anchor().valid,"static-world incarnation change invalidates clearance"); }
+    { Fixture f;f.generation=0;
+      check(f.query_anchor().valid,"allocated native generation zero remains valid"); }
+    { Fixture f;f.wall_normal={-.6f,0,.8f};
+      auto root=f.wall_point;for(unsigned axis=0;axis<3;++axis)root[axis]+=.2f*f.wall_normal[axis];
+      const auto anchor=f.query_anchor(root);
+      check(anchor.valid&&std::abs(anchor.target[0]+.420624f)<.000001f&&
+            std::abs(anchor.target[2]-.560832f)<.000001f,"angled wall uses original normalized direction"); }
+    for(auto root:{SurfaceGeometryVector{0,1.5f,-.01f},SurfaceGeometryVector{2,1.5f,.2f},
+                   SurfaceGeometryVector{0,1.5f,std::numeric_limits<float>::quiet_NaN()}}) {
+        Fixture f;check(!f.query_anchor(root).valid&&f.calls==0,"unbounded or invalid root adjustments reject before ray calls");
+    }
+    { Fixture f;const auto anchor=f.query_anchor({0,1.5f,27.6f*.0254f});
+      check(anchor.valid&&anchor.displacement==0&&anchor.checked_rays==1&&f.calls==1,
+            "stationary anchor still requires nonzero outward clearance and owner revalidation");
+      check(f.anchor_segments[0].start!=f.anchor_segments[0].end,"stationary proof never casts a zero-length ray"); }
+    { Fixture f;f.anchor_block_at=1;
+      check(!f.query_anchor({0,1.5f,27.6f*.0254f}).valid,"stationary root cannot bypass blocked outward evidence"); }
+    { Fixture f;f.unreadable_fraction_lane=true;
+      check(!f.query_anchor({0,1.5f,27.6f*.0254f}).valid,"stationary root cannot infer clearance from unavailable query"); }
+    { Fixture f;std::array<SurfaceGeometryVector,33> offsets{};
+      check(!f.query_anchor({0,1.5f,.2f},offsets).valid&&f.calls==0,"native support count is bounded"); }
+    { Fixture f;std::array<SurfaceGeometryVector,1> offsets{};
+      const auto empty=std::span<const SurfaceGeometryVector>(offsets.data(),0);
+      check(!f.query_anchor({0,1.5f,.2f},empty).valid&&f.calls==0,"missing native support proof rejects"); }
+    { Fixture f;std::array<SurfaceGeometryVector,1> offsets{{{0,std::numeric_limits<float>::infinity(),0}}};
+      check(!f.query_anchor({0,1.5f,.2f},offsets).valid&&f.calls==0,"invalid native support point rejects"); }
+    { Fixture f;std::array<SurfaceGeometryVector,32> offsets{};
+      check(f.query_anchor({0,1.5f,.2f},offsets).valid&&f.calls==34,"every supplied native body support is checked"); }
     std::cout<<checks<<" surface geometry/native-query contract checks passed\n";
 }

@@ -40,31 +40,84 @@ same-owner flight, shape/body lifetime, inward approach, controller ownership
 and a fresh journal A are checked separately. Missing evidence leaves A on its
 existing path. No second input engine is introduced.
 
-The one-shot velocity transaction reuses the guarded articulated-body adapter.
-It retains tangential momentum, selects a bounded outward/upward velocity, and
-retires ordinary trajectory assistance. It does not teleport, suppress native
-collision, force a flight state, or keep rewriting rebound velocity.
+The revised policy reflects the full horizontal pre-impact velocity around the
+horizontal wall normal, then subtracts 5.715 m/s from its magnitude with a
+5.08 m/s minimum. The entire reflected vector is scaled; tangential momentum is
+not separately retained. The near-zero fallback points opposite the normalized
+incoming horizontal direction. Vertical exit is always 12.7 m/s. The current
+solver velocity is the baseline for the one release delta, never a second
+reflection input. Existing typed chooser/reconstruction provenance is still
+required when native collision resolution has already produced outward motion.
 
-Prototype tuning comes from the retained classic arcade `Physics_Wallplant_*` reference:
-20-degree minimum approach, 225 inches/second loss, 200 minimum exit speed,
-500 vertical exit speed, 24-inch minimum clearance and 1000ms repeat exclusion.
-Units use the existing Arcade metres-per-inch conversion. Existing GameplayProfile
-speed limits cap the result. Tangential retention intentionally differs from
-scalar horizontal speed loss. These values require measured Skate trials.
+Ordinary riding and launch profile caps do not clamp this exit. The existing
+articulated writer rejects nonfinite body values or any velocity/angular-velocity
+component with absolute value at least 1000; it does not silently scale a valid
+exit. Relative velocities and spin across the body batch remain intact. Profile
+launch speed is used only to size the independent downward clearance query.
+
+The source execution sequence was reviewed at revision
+`98b4e24921446ccd4b157453e25697f9574f0053` of the specified public reference,
+including both wall-contact admission and the dedicated hold state's update.
+Other retained parameters are the 20-degree approach, 0.6096 m minimum clearance,
+1000 ms repetition exclusion, 0.70104 m wall offset, 160 ms hold and 200 ms grind
+exclusion measured from entry. No reference code or assets are copied here.
+
+## Physical hold and release
+
+The admitted chooser/reconstruction call performs one uniform entry brake. An
+immutable owner/epoch/contact receipt then owns the existing physical-rig target
+for 160 ms. The target retains native pitch/roll and turns its yaw toward outgoing
+travel. Native collision and original physics callbacks continue; ordinary SDK
+motion writers yield during this interval. At the first validated native step
+after the deadline, one release delta establishes the saved outward/upward exit.
+Late, interrupted or invalid phases cancel rather than retrying an impulse.
+The target stops at 160 ms; release may wait at most one observed native physics
+interval for its callback (about 33.3 ms at the pinned 30 Hz cadence). This is a
+measured scheduling difference, not a longer requested hold.
+
+The target is the real collision point plus the full collision normal times
+0.70104 m. Existing client-thread native queries check the outward path, root
+path and measured board deck-part support path before admission. The adjustment
+is bounded by that same distance; an obstructed or unknown query rejects the
+plant. These are finite rays, not a complete articulated volume sweep. Native
+collision remains responsible for articulated-body contact.
+
+This native target is a spring drive, so it is not yet proof of complete movement
+suspension. The implementation records target calls, actual root drift and native
+body velocity readbacks at entry/release. It must not be accepted on the strength
+of target writes alone. Unlike the reference's suspended displacement with stored
+velocity, this adaptation brakes once and stores the exit until release.
+
+An authenticated plant retains the SDK's existing airborne combo through its
+single native100 reconstruction and at most one native step after release. A
+later real landing or bail still settles normally. This does not award points,
+modify native score state, or establish native combo ownership; those require
+separate hardware evidence.
 
 ## Animation approximation
 
 The original regular/fakie Judo footplant clips are loaded from the installed
 game and mirrored through the existing animation library. The guarded local
-pose facility plays one bounded clip after a successful rebound. Placement
-joints and physics are untouched. Playback ownership tickets prevent cleanup
+pose facility borrows a bounded native pose during the physical plant. Placement
+joints and physics are untouched by the pose player. Playback ownership tickets prevent cleanup
 from cancelling a newer plugin clip. New trick input cancels the approximation.
+The held sample maximizes authored foot reach toward the contacted wall in the
+outgoing upright basis, then blends back to native animation over 40 ms. This
+selection assumes an upright basis and the clip's native bind pose; it does not
+prove alignment for the current skater's pitch, roll or body proportions.
 
 This is a native asset displayed through the existing pose player, not an
-authentic Footplant StateFlow/ActorController transition. The 160ms prototype
-playback requires visual testing; clip-clock logs do not prove rendered foot
-contact or original actor initialization. A rebound with this approximation
+authentic Footplant StateFlow/ActorController transition. The 160ms plant
+requires visual testing; clip-clock logs do not prove rendered foot
+contact or original actor initialization. Ticket-correlated rendered foot joint
+positions are measured against the actual wall plane, but joint origins alone
+are not sole-contact proof. A rebound with this approximation
 does not close full wallplant acceptance.
+
+The reference's temporary ceiling-collision exception is not reproduced by
+disabling collision detection. Genuine native ceiling and articulated contacts
+continue throughout the hold and release; resulting deviations require native
+evidence rather than fabricated collision or state observations.
 
 ## Independent tests and required hardware evidence
 

@@ -147,22 +147,22 @@ struct WallplantFrame {
 };
 struct WallplantParameters {
     float minimum_approach_sine{}, normal_speed_loss{}, minimum_exit_speed{}, vertical_exit_speed{};
-    float maximum_speed{}, maximum_vertical_speed{}, minimum_height{}, maximum_normal_y{};
+    float clearance_launch_speed{}, minimum_height{}, maximum_normal_y{};
     std::uint64_t repeat_ms{}, contact_lease_ms{};
-    // classic arcade reference Physics_Wallplant_* values are prototype tuning, not Skate
-    // hardware acceptance. Preserve tangent instead of classic arcade's scalar speed loss.
+    // Full horizontal reflection followed by scalar speed loss. Ordinary
+    // riding/launch profile caps do not alter this collision exit trajectory.
     static WallplantParameters reference_prototype(GameplayProfile profile = {}) noexcept {
         constexpr float inches = GameplayProfile::metres_per_inch;
         return {std::sin(20.0f*3.14159265358979323846f/180.0f),225*inches,200*inches,
-            500*inches,profile.hard_speed(),profile.launch_speed(200,LaunchDescriptor::ordinary()),
+            500*inches,profile.launch_speed(200,LaunchDescriptor::ordinary()),
             24*inches,.1f,1000,InputTiming::native_sample_lease_ms};
     }
     bool valid() const noexcept {
         const std::array values{minimum_approach_sine,normal_speed_loss,minimum_exit_speed,
-            vertical_exit_speed,maximum_speed,maximum_vertical_speed,minimum_height,maximum_normal_y};
+            vertical_exit_speed,clearance_launch_speed,minimum_height,maximum_normal_y};
         for(float v:values) if(!std::isfinite(v) || v<0 || v>=1000)return false;
         return minimum_approach_sine>0 && minimum_approach_sine<1 && minimum_exit_speed>0 &&
-            vertical_exit_speed>0 && maximum_speed>minimum_exit_speed && maximum_vertical_speed>0 &&
+            vertical_exit_speed>0 && clearance_launch_speed>0 &&
             maximum_normal_y<.25f && repeat_ms>0 && contact_lease_ms>0 &&
             contact_lease_ms<=InputTiming::native_sample_lease_ms;
     }
@@ -172,7 +172,9 @@ struct WallplantCommand {
     NativeInputFrame native{};
     SurfaceGeometryContext geometry{};
     SurfaceGeometryBody body{};
-    SurfaceGeometryVector point{}, normal{}, before{}, after{};
+    SurfaceGeometryVector point{}, normal{}, contact_normal{}, before{}, after{};
+    SurfaceGeometryVector incoming{}, reflected{}, hold_forward{}, anchor{};
+    bool anchor_verified{};
     std::uint64_t contact{}, input_sequence{}, issued_at{};
     explicit operator bool() const noexcept { return motion.ready; }
 };
@@ -181,7 +183,7 @@ struct WallplantCommand {
 // The reference minimum plant height; it does not enlarge ordinary support probes.
 inline SurfaceGeometryRequest wallplant_clearance_request(SurfaceGeometryVector root,
         WallplantParameters parameters=WallplantParameters::reference_prototype()) noexcept {
-    const float reach=std::min(19.25f,parameters.maximum_vertical_speed*parameters.maximum_vertical_speed/
+    const float reach=std::min(19.25f,parameters.clearance_launch_speed*parameters.clearance_launch_speed/
         (2*AirMotion::ordinary_gravity)+parameters.minimum_height);
     constexpr std::array<std::array<float,2>,5> offsets{{{0,0},{-.25f,0},{.25f,0},{0,-.25f},{0,.25f}}};
     SurfaceGeometryRequest request{};
@@ -245,27 +247,29 @@ public:
         const float current_normal=dot(frame.velocity);
         const bool response=reconstruction && reconstruction->matches(frame.native,press.sequence,contact.identity,frame.now);
         if(diagnostic){diagnostic->current_normal=current_normal;diagnostic->reconstruction=response;}
-        if(!(incoming>0) || !(approach_speed>0) ||
+        if(std::hypot(contact.approach_velocity[0],contact.approach_velocity[1],contact.approach_velocity[2])<
+               .01f*GameplayProfile::metres_per_inch || !(incoming>0) || !(approach_speed>0) ||
            incoming/approach_speed<parameters_.minimum_approach_sine)return reject("policy_approach");
         if(current_normal>0 && !response)return reject("policy_outward_unproven");
-        // The original collision may have stopped inward root velocity before
-        // A is processed. Its fresh pre-impact approach remains necessary;
-        // already outward travel is rejected without response provenance.
-        const float current_incoming=-current_normal;
-        const SurfaceGeometryVector tangent{frame.velocity[0]+current_incoming*normal[0],0,
-                                             frame.velocity[2]+current_incoming*normal[2]};
-        const float tangent_speed=std::hypot(tangent[0],tangent[2]);
-        if(tangent_speed>=parameters_.maximum_speed)return reject("policy_tangent_speed");
-        const float available=std::sqrt(parameters_.maximum_speed*parameters_.maximum_speed-tangent_speed*tangent_speed);
-        const float exit=std::min(available,std::max(parameters_.minimum_exit_speed,
-                                                  incoming-parameters_.normal_speed_loss));
-        if(diagnostic)diagnostic->target_normal=exit;
-        if(current_normal>0 && current_normal>=exit)return reject("policy_exit_already_reached");
+        // Reflect the independently recorded incoming vector, not the solver's
+        // already-resolved velocity. The transaction below applies only the
+        // difference from the current body velocity, so it cannot reflect twice.
+        const SurfaceGeometryVector reflected{contact.approach_velocity[0]+2*incoming*normal[0],0,
+                                               contact.approach_velocity[2]+2*incoming*normal[2]};
+        const float reflected_speed=std::hypot(reflected[0],reflected[2]);
+        const float exit_speed=std::max(parameters_.minimum_exit_speed,reflected_speed-parameters_.normal_speed_loss);
+        constexpr float zero_speed=.0001f*GameplayProfile::metres_per_inch;
+        const SurfaceGeometryVector direction=reflected_speed>zero_speed ?
+            SurfaceGeometryVector{reflected[0]/reflected_speed,0,reflected[2]/reflected_speed} :
+            SurfaceGeometryVector{-contact.approach_velocity[0]/approach_speed,0,-contact.approach_velocity[2]/approach_speed};
+        const float exit_normal=exit_speed*dot(direction);
+        if(diagnostic)diagnostic->target_normal=exit_normal;
+        if(current_normal>0 && current_normal>=exit_normal)return reject("policy_exit_already_reached");
         WallplantCommand result{};
         result.native=frame.native;result.geometry=frame.geometry;result.body=contact.body;
-        result.point=contact.point;result.normal=normal;result.before=frame.velocity;
-        result.after={tangent[0]+exit*normal[0],
-            std::min(parameters_.vertical_exit_speed,parameters_.maximum_vertical_speed),tangent[2]+exit*normal[2]};
+        result.point=contact.point;result.normal=normal;result.contact_normal=contact.normal;result.before=frame.velocity;
+        result.incoming=contact.approach_velocity;result.reflected=reflected;result.hold_forward=direction;
+        result.after={direction[0]*exit_speed,parameters_.vertical_exit_speed,direction[2]*exit_speed};
         if(!finite_velocity(result.after))return reject("policy_result");
         result.motion.ready=true;result.motion.vertical=true;result.motion.horizontal=true;
         result.motion.velocity_y=result.after[1];result.motion.delta_x=result.after[0]-frame.velocity[0];

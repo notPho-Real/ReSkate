@@ -26,6 +26,7 @@ namespace dingosdk::arcade_mode::native_ground_grab {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_grind {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::wallplant_runtime {
 unsigned cancellations{};
+bool excludes_grind(const NativeInputFrame&,std::uint64_t) noexcept {return false;}
 void cancel() noexcept {++cancellations;}
 }
 static void observe(NativeControllerRoute& route,unsigned slot,ArcadeInput::Physical pad){
@@ -402,6 +403,42 @@ void run(){
             "competing-session test retains otherwise valid exact frame and controller authority");++checks;
         require(!native_wallplant_execution_authorized(airborne,checked_at),
             "production late execution rejects a real busy held session even with matching AIR proof");++checks;
+    }
+    // A real native100 during an owned physical hold cannot start ordinary
+    // crouch/Ollie. Poll raw A throughout the hold so release does not recreate
+    // a press from an already-held physical button.
+    {
+        ArcadeInput held_input(true);held_input.enable(true);NativeInputState tracker;
+        NativeRequestSample native{};native.valid=true;native.state=100;native.crouch_mode=1;native.words[1]=0xc000;
+        const std::array prepared{PreparedGesture{1,false,GestureContext::ground,
+            std::vector<AuthoredStickStep>{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}}};
+        const auto hold_sample=[&](std::uint64_t at,std::uint16_t buttons,bool holding) {
+            const auto frame=tracker.observe(at,owner,native,{true,-1,0x300000},false,1.f/30);
+            held_input.publish_native_context(frame);held_input.publish_authority(at,frame.owner_generation,1,true);
+            return held_input.poll(0,at,buttons,0,0,0,0,true,!holding,false,0,false,false,true,
+                at/17,false,prepared,false,true,SkatePose::riding);
+        };
+        hold_sample(1000,0,true);
+        for(const auto at:{1017u,1034u,1051u}) {
+            const auto held=hold_sample(at,0x1000,true);
+            require(!held.authored_playback&&!held_input.busy(0)&&held.requested_id==0,
+                "native100 hold repeated A never acquires ordinary jump");++checks;
+        }
+        hold_sample(1068,0,true);
+        const auto pressed=hold_sample(1085,0x1000,true);
+        require(!pressed.authored_playback&&pressed.requested_id==0,
+            "second physical press remains journaled without ground launch during hold");++checks;
+        for(const auto at:{1160u,1177u}) {
+            const auto held=hold_sample(at,0x1000,false);
+            require(!held.authored_playback&&!held_input.busy(0)&&held.requested_id==0,
+                "held A spanning physical release does not become a synthetic fresh press");++checks;
+        }
+        const auto released=hold_sample(1194,0,false);
+        require(!released.authored_playback&&released.requested_id==0,
+            "unowned hold-era A release cannot produce fallback Ollie");++checks;
+        const auto fresh=hold_sample(1211,0x1000,false);
+        require(fresh.authored_playback&&held_input.busy(0),
+            "independent later physical A retains ordinary ground control");++checks;
     }
     // Use the actual geometry accessors with a contended producer mutex.
     // Ordinary callers still yield; retained wall queries wait for the owner

@@ -51,6 +51,11 @@ std::atomic<bool> active{true};bool enabled(){return active.load();}
 std::atomic<bool>& mode_enabled=active;
 std::atomic<bool> prepared_catalog{true};
 @@CAMERA_STATE@@
+// This Manual-only fixture has no admitted wallplant hold. The real runtime
+// lifecycle/hold suite exercises that independently owned boundary.
+namespace dingosdk::arcade_mode::wallplant_runtime {
+bool preserves_combo(const NativeInputFrame&,std::uint64_t) noexcept {return false;}
+}
 namespace dingosdk::arcade_mode::native_flip {void cancel()noexcept;}
 NativeInputState native_input_state,motion_cleanup_state;@@INPUT_STATE@@
 NativeInputOwner input_owner(const NoBailSkater& o)noexcept{return{o.base,o.entity,o.core,o.context,o.rig};}
@@ -171,6 +176,9 @@ NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,
  const auto manual_deadline=manual_eligible_until.load();const bool manual_safe=game_input&&admission.manual&&manual_deadline>=now&&manual_deadline-now<=150;
  const auto prepare_deadline=manual_prepare_until.load();const bool manual_prepare=game_input&&admission.prepare&&prepare_deadline>=now&&prepare_deadline-now<=150;
  const auto action_experiment=ActionExperiment::classic;const bool flip_ready=admission.flip_ready,action_safe=admission.action,may_exit_grind=false;
+// Explicit ordinary-player boundary: no plant owns or masks these controls.
+const bool plant_holding=false;
+const auto gameplay_buttons=buttons;
 @@POLL@@
  if(corrupt_manual_delivery)result.right_y=0;
 @@DELIVERY@@

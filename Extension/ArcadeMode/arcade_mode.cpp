@@ -663,7 +663,8 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const bool episode_live=episode.established() || episode.airborne();
     if (!physical.valid && !episode_live) { manual_identity.reset(manual_label); balance_control.reset_manual(); }
     const bool failed = combo_session.step(pose, manual_pose ? physical_seconds : (episode_live?0.f:dt), correction, native_revert,
-        manual_pose || (kind == BalanceKind::manual && !episode_live) ? &physical : nullptr,pending_manual_revert,episode_live);
+        manual_pose || (kind == BalanceKind::manual && !episode_live) ? &physical : nullptr,pending_manual_revert,episode_live,
+        valid && !owner_changed && !bail && wallplant_runtime::preserves_combo(native_frame,now));
     if(episode_live && (failed || combo_session.manual_putdown())) {
         std::lock_guard lock(ollie_mutex);manual_episode.end(ManualEpisode::Exit::endpoint);manual_hud_episode=0;
     }
@@ -1599,6 +1600,19 @@ bool native_wallplant_execution_authorized(const NativeInputFrame& original,std:
         original.owner_generation==arcade_input.owner_epoch() &&
         wallplant_same_observation(original,arcade_input.native_context(now));
 }
+NativeInputFrame native_wallplant_hold_context(const NativeInputOwner& owner,std::uint64_t& now) noexcept {
+    std::lock_guard lock(ollie_mutex);
+    now=GetTickCount64();
+    const auto physical=controller_route.physical(now);
+    const auto live=arcade_input.native_context(now);
+    const auto conflicts=wallplant_runtime::excludes_grind(live,now)?0x6030u:0xe030u;
+    if(!mode_enabled.load(std::memory_order_acquire) ||
+       action_mode.load(std::memory_order_acquire)!=ActionExperiment::classic || grind_change.active() ||
+       !physical.valid || physical.lt>30 || physical.rt>30 || (physical.buttons&conflicts) ||
+       !arcade_input.admitted(0,now) || !arcade_input.wallplant_controls_unowned(0) ||
+       !live.valid || live.owner!=owner || live.owner_generation!=arcade_input.owner_epoch())return {};
+    return live;
+}
 static NativeInputFrame surface_geometry_native_frame_locked(std::uint64_t now,const char** diagnostic_reason) noexcept {
     const auto unavailable=[&](const char* reason) {if(diagnostic_reason)*diagnostic_reason=reason;return NativeInputFrame{};};
     if(!mode_enabled.load(std::memory_order_acquire))return unavailable("frame_disabled");
@@ -2431,10 +2445,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             return native_grab::fingerflip(grab.owner,grab.episode,id,steps,tick,mirror);
         };
         const auto grind_frame=arcade_input.native_context(now);
-        const auto wallplant_receipt=wallplant_runtime::latest_completed();
-        if(wallplant_receipt)
-            arcade_input.acknowledge_wallplant(now,wallplant_receipt.native,wallplant_receipt.input_sequence);
-        const bool grind_permitted=game_input && owns_controls && !offboard && !releasing_manual &&
+        const bool plant_grind_excluded=wallplant_runtime::excludes_grind(grind_frame,now);
+        const auto plant_command=wallplant_runtime::held_command();
+        const bool plant_holding=plant_command && wallplant_runtime::hold_current(plant_command,now,grind_frame);
+        if(plant_holding)
+            arcade_input.acknowledge_wallplant_entry(now,plant_command.native,plant_command.input_sequence,plant_command.issued_at);
+        const bool grind_permitted=game_input && owns_controls && !offboard && !releasing_manual && !plant_grind_excluded &&
             !(physical_buttons & (classic_a | 0x0330u)) && physical_left_trigger<=30 && physical_right_trigger<=30;
         const auto grind_contact=grind_permitted?native_grind::contact(native_flip_owner):NativeGrindContact{};
         const auto grind_animation=grind_permitted && (grind_contact.valid || grind_change.active())?
@@ -2476,9 +2492,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 const auto& c=*static_cast<FootplantContext*>(context);
                 return native_ground_grab::controls(c.owner,c.step,held);
             }};
-        result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,
-            game_input, may_start || may_exit_grind, may_push && auto_kick_enabled(), admission.speed,
-            left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
+        // Preserve raw physical history above, but withhold grind intent for
+        // the short contact/release exclusion interval of the owned plant.
+        const auto gameplay_buttons=static_cast<unsigned short>(plant_grind_excluded?buttons&~0x8000u:buttons);
+        result = arcade_input.poll(NativeControllerRoute::session, now, gameplay_buttons, left_x, left_y, right_x, right_y,
+            game_input, (may_start || may_exit_grind) && !plant_holding, may_push && auto_kick_enabled() && !plant_holding, admission.speed,
+            left_trigger > 30 || right_trigger > 30, may_toggle_board && !plant_holding, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             admission.mirror_x, manual_safe,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
@@ -2551,7 +2570,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // The semantic session owns recognition; this existing actor owns only
         // its admitted RS channel. Native Manual release remains independent.
         const auto rail_pad = arcade_input.sample_native_rail(result.rail,now,
-            game_input && !offboard && !releasing_manual && !reference && !action.owned);
+            game_input && !offboard && !releasing_manual && !reference && !action.owned && !plant_grind_excluded);
         if (rail_pad.owns_right_stick) { result.right_x = rail_pad.right_x; result.right_y = rail_pad.right_y; }
         if(grind_change.active() && (reference || action.owned || result.authored_playback)) {
             grind_change.cancel();native_grind::cancel();

@@ -202,16 +202,17 @@ public:
     std::int32_t authored_air_followup(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) ? sessions_[0].authored_air_followup(now,InputNativeContext::from_frame(frame)) : 0;
     }
-    bool acknowledge_wallplant(std::uint64_t now,const NativeInputFrame& proof,
-                               std::uint64_t input_sequence) noexcept {
+    // Caller holds the authenticated live physical hold. consumed_at is the
+    // immutable command issue time, never a replacement input/sample clock.
+    bool acknowledge_wallplant_entry(std::uint64_t now,const NativeInputFrame& proof,
+                               std::uint64_t input_sequence,std::uint64_t consumed_at) noexcept {
         const auto current=native_context(now);
         const auto source=InputNativeContext::from_frame(proof);
         const auto observed=InputNativeContext::from_frame(current);
         if (!admitted(0,now) || !current.valid || !proof.valid || current.owner!=proof.owner ||
-            current.owner_generation!=proof.owner_generation || !source.fresh(now) || !observed.follows(source) ||
-            !current.airborne || current.airborne_episode!=proof.airborne_episode || current.air_departure!=proof.air_departure)
+            current.owner_generation!=proof.owner_generation || !wallplant_entry_lineage(source,observed,now,consumed_at))
             return false;
-        return sessions_[0].acknowledge_wallplant(now,source,input_sequence);
+        return sessions_[0].acknowledge_wallplant_entry(now,source,observed,input_sequence,consumed_at);
     }
     bool rail_followup_active(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) && sessions_[0].rail_followup_active(now,InputNativeContext::from_frame(frame));

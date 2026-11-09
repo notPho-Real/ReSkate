@@ -1,4 +1,5 @@
 #include "skater_animation.h"
+#include "owned_playback_hold.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
 #include "Engine/Game/Build/20260929/native_skater.h"
@@ -264,6 +265,7 @@ struct Plan {
     float from{};               // the clip's seconds at `started`
     std::optional<float> held;  // paused at these seconds of the clip
     std::uint64_t serial{};
+    std::uint64_t hold_deadline{},hold_released_at{};
     std::vector<Replacement> replacements;
     bool allowed{};
     float record_seconds{}; // > 0: record this long, from the next update
@@ -323,17 +325,21 @@ void publish() {
 std::atomic<std::uint64_t> finished_serial{}; // the play the animation thread saw finish
 std::mutex playback_evidence_mutex;
 PlaybackEvidence playback_observed;
-void observe_playback(std::uint64_t ticket,unsigned phase,float time=0) {
-    if(!ticket)return;
+bool observe_playback(std::uint64_t ticket,unsigned phase,float time=0) {
+    if(!ticket)return false;
     std::lock_guard lock(playback_evidence_mutex);
     auto& evidence=playback_observed;
-    if(evidence.ticket!=ticket)return;
+    if(evidence.ticket!=ticket)return false;
     if(phase==0 && std::isfinite(time)) {
         if(!evidence.samples)evidence.first_sample=time;
         evidence.last_sample=time;
         if(evidence.samples!=UINT64_MAX)++evidence.samples;
     } else if(phase==1 && evidence.writes!=UINT64_MAX)++evidence.writes;
-    else if(phase==2 && evidence.draws!=UINT64_MAX)++evidence.draws;
+    else if(phase==2) {
+        if(evidence.draws!=UINT64_MAX)++evidence.draws;
+        evidence.feet_valid=false;
+    }
+    return true;
 }
 std::mutex recorded_mutex;
 std::shared_ptr<const Clip> recorded; // under recorded_mutex
@@ -416,6 +422,9 @@ struct Pending {
     std::uint32_t game_first{};
     std::uintptr_t game_buffer{}, game_interface{};
     std::uint64_t play_ticket{}, written_ticket{};
+    Vec3 left_foot{}, right_foot{};
+    std::uintptr_t feet_component{};
+    bool feet_valid{};
 };
 Pending& pending() {
     static auto* p = new Pending;
@@ -710,6 +719,11 @@ void on_animation(std::uintptr_t component) noexcept {
                 const float after = (run - length) / std::max(p.speed, 0.05f);
                 weight = std::min(weight, blend > 0 ? 1 - std::clamp(after / blend, 0.0f, 1.0f) : 0.0f);
                 if (weight <= 0) finished_serial.store(snap->serial, std::memory_order_release);
+            }
+            if(snap->held && snap->hold_deadline) {
+                const auto fading=owned_hold_weight(GetTickCount64(),snap->hold_deadline,snap->hold_released_at,blend);
+                weight=std::min(weight,fading);
+                if(fading<=0)finished_serial.store(snap->serial,std::memory_order_release);
             }
         } else if (snap->allowed && !snap->replacements.empty() && air) {
             // A game trick with a replacement: the clip plays on the body from the takeoff, blended in
@@ -1085,6 +1099,7 @@ void on_render(std::uintptr_t animation_interface) noexcept {
         std::lock_guard lock(p.mutex);
         p.game.clear(); // only ever what this render wrote over
         p.written_ticket=0;
+        p.feet_valid=false;
         const auto count = [](int Probe::*n) {
             auto& pr = probe();
             std::lock_guard probe_lock(pr.mutex);
@@ -1138,7 +1153,24 @@ void on_render(std::uintptr_t animation_interface) noexcept {
             p.game_buffer = layout.buffer;
             p.game_interface = animation_interface;
             p.written_ticket=p.play_ticket;
-            observe_playback(p.written_ticket,1);
+            const bool tracked=observe_playback(p.written_ticket,1);
+            // Read only the two placement joints not owned by this clip. The
+            // remaining transforms are the exact values just written above.
+            // Publish this measurement only after the matching draw callback.
+            if(tracked && p.first==2 && p.last==skeleton_joints && p.deltas.empty()) {
+                std::array<NativeBone,2> placement{};
+                if(peek(layout.buffer,placement.data(),sizeof(placement))) {
+                    thread_local std::array<Joint,skeleton_joints> rendered;
+                    for(std::size_t i=0;i<placement.size();++i)rendered[i]=joint_of(placement[i]);
+                    for(std::size_t i=0;i<current.size();++i)rendered[i+2]=joint_of(current[i]);
+                    const auto left=world(rendered,left_foot_joint);
+                    const auto right=world(rendered,right_foot_joint);
+                    if(finite(left) && finite(right)) {
+                        p.left_foot=left.position;p.right_foot=right.position;
+                        p.feet_component=component;p.feet_valid=true;
+                    }
+                }
+            }
         } else {
             p.game.clear();
         }
@@ -1155,10 +1187,20 @@ void on_drawn(std::uintptr_t animation_interface) noexcept {
         std::lock_guard lock(p.mutex);
         if (!p.game.empty() && animation_interface == p.game_interface) {
             observe_playback(p.written_ticket,2);
+            if(p.written_ticket && p.feet_valid && live().component.load(std::memory_order_acquire)==p.feet_component) {
+                std::lock_guard evidence_lock(playback_evidence_mutex);
+                if(playback_observed.ticket==p.written_ticket && playback_observed.component==p.feet_component) {
+                    playback_observed.feet_drawn_at=GetTickCount64();
+                    playback_observed.left_foot=p.left_foot;
+                    playback_observed.right_foot=p.right_foot;
+                    playback_observed.feet_valid=true;
+                }
+            }
             (void)poke(p.game_buffer + p.game_first * sizeof(NativeBone), p.game.data(), p.game.size() * sizeof(NativeBone));
         }
         p.game.clear();
         p.written_ticket=0;
+        p.feet_valid=false;
     } catch (...) {
     }
     SetLastError(error);
@@ -1241,6 +1283,7 @@ void show_in_room(bool on) noexcept {
 }
 void play(std::optional<Play> clip) {
     borrowed_play = 0;
+    plan_draft.hold_deadline=plan_draft.hold_released_at=0;
     plan_draft.play = std::move(clip);
     plan_draft.started = now_seconds();
     plan_draft.from = plan_draft.play ? plan_draft.play->at : 0;
@@ -1257,9 +1300,39 @@ std::uint64_t try_play(Play clip) {
     borrowed_play = plan_draft.serial;
     {
         std::lock_guard lock(playback_evidence_mutex);
-        playback_observed={borrowed_play,0,0,0,0,0};
+        playback_observed={};playback_observed.ticket=borrowed_play;
+        playback_observed.component=live().component.load(std::memory_order_acquire);
     }
     return borrowed_play;
+}
+std::uint64_t try_hold(Play clip,std::uint64_t deadline) {
+    if(!can_play() || !owned_hold_deadline(GetTickCount64(),deadline) || !clip.clip || clip.clip->empty() ||
+       !std::isfinite(clip.clip->duration()) || clip.clip->duration()<=0 ||
+       !std::isfinite(clip.at) || clip.at<0 || clip.at>clip.clip->duration() ||
+       !std::isfinite(clip.speed) || clip.speed<=0 || !std::isfinite(clip.blend) || clip.blend<0 || clip.blend>1 ||
+       clip.loop || serial==UINT64_MAX)return 0;
+    // Publish the pause and its expiry together; no intermediate unbounded
+    // paused plan is ever visible to the animation thread.
+    clip.paused=true;borrowed_play=0;plan_draft.play=std::move(clip);
+    plan_draft.started=now_seconds();plan_draft.from=plan_draft.play->at;
+    plan_draft.held=plan_draft.from;plan_draft.serial=++serial;
+    plan_draft.hold_deadline=deadline;plan_draft.hold_released_at=0;
+    publish();borrowed_play=plan_draft.serial;
+    {
+        std::lock_guard lock(playback_evidence_mutex);
+        playback_observed={};playback_observed.ticket=borrowed_play;
+        playback_observed.component=live().component.load(std::memory_order_acquire);
+    }
+    return borrowed_play;
+}
+bool release_play(std::uint64_t ticket) {
+    const auto released=owned_hold_release(ticket,borrowed_play,plan_draft.serial,plan_draft.hold_deadline,
+        plan_draft.held.has_value(),plan_draft.hold_released_at,GetTickCount64());
+    if(!released)return false;
+    if(!plan_draft.hold_released_at) {
+        plan_draft.hold_released_at=*released;publish();
+    }
+    return true;
 }
 std::optional<PlaybackEvidence> playback_evidence(std::uint64_t ticket) noexcept {
     try {
@@ -1290,6 +1363,7 @@ std::optional<float> play_time() {
 void seek(float seconds) {
     if (!plan_draft.play || !plan_draft.play->clip) return;
     borrowed_play = 0;
+    plan_draft.hold_deadline=plan_draft.hold_released_at=0;
     const float t = std::clamp(seconds, 0.0f, plan_draft.play->clip->duration());
     if (plan_draft.held) plan_draft.held = t;
     else {
@@ -1303,6 +1377,7 @@ void seek(float seconds) {
 void pause(bool paused) {
     if (!plan_draft.play || !plan_draft.play->clip || paused == plan_draft.held.has_value()) return;
     borrowed_play = 0;
+    plan_draft.hold_deadline=plan_draft.hold_released_at=0;
     if (paused) plan_draft.held = play_time();
     else {
         const float t = *plan_draft.held;
@@ -1313,6 +1388,9 @@ void pause(bool paused) {
     publish();
 }
 bool playing() noexcept {
+    if(plan_draft.play && plan_draft.held && plan_draft.hold_deadline &&
+       owned_hold_weight(GetTickCount64(),plan_draft.hold_deadline,plan_draft.hold_released_at,
+           plan_draft.play->blend)<=0)return false;
     return plan_draft.play.has_value() && finished_serial.load(std::memory_order_acquire) != plan_draft.serial;
 }
 void pose(std::vector<PoseOffset> offsets, float weight, Shown shown) {

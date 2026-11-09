@@ -27,7 +27,9 @@ struct Event { std::string name;std::uintptr_t core;bool active; };
 std::vector<Event> events;
 void event(const char* name,std::uintptr_t core=0,bool active=false){events.push_back({name,core,active});}
 std::uint32_t native_result=100;
-unsigned native_calls{},chooser_calls{},writes{};
+unsigned native_calls{},chooser_calls{},writes{},hold_releases{};
+std::atomic<std::uintptr_t> wallplant_hold_core{};
+bool release_hold{},begin_hold_on_write{};
 bool reenter{},admit=true;
 std::uint64_t serial{};
 struct SourceLastError { SourceLastError(){} };
@@ -55,7 +57,15 @@ void arcade_air_apply(std::uintptr_t core,bool active){event("arcade_air_apply",
 void arcade_wallplant_after_reconstruction(const WallplantHandoff& staged,std::uintptr_t core) noexcept {
  if(!staged.ticket.selected || staged.execution.native.owner.core!=core)return;
  ++writes;event("final_write",core);
+ if(begin_hold_on_write)wallplant_hold_core.store(core);
 }
+void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
+ if(wallplant_hold_core.load()!=core)return;
+ event("hold_step",core);
+ if(release_hold){wallplant_hold_core.store(0);++hold_releases;event("hold_release",core);}
+}
+@wallplant_wrapper_transform_validation@
+@wallplant_wrapper_target@
 std::uint64_t apply_arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept {
  event("prepare",selector);
  if(!admit)return 0;
@@ -107,6 +117,7 @@ void reset(){
  events.clear();wallplant_handoff()={};native_calls=chooser_calls=writes=0;
  arcade_mode::wallplant_runtime::retained={};arcade_mode::wallplant_runtime::retained_phases.clear();
  native_result=100;reenter=false;admit=true;
+ wallplant_hold_core.store(0);hold_releases=0;release_hold=begin_hold_on_write=false;
  native_state.velocity_update_original.store(native_update);
  physics_step_callback.store(callback);
 }
@@ -169,6 +180,66 @@ void run(){
  finish_arcade_wallplant_selection(call+1,9,201,100);noclip_physics_update(1);check(writes==0,"mismatched invocation cancels");
  reset();choose_state(9,201);finish_arcade_wallplant_selection(wallplant_handoff().ticket.invocation,10,201,100);
  noclip_physics_update(1);check(writes==0,"mismatched selector cancels");
+ {
+  reset();admit=false;wallplant_hold_core.store(1);
+  check(choose_state(9,201)==100&&chooser_calls==1,"active hold never replaces original chooser result");
+  noclip_physics_update(1);
+  check(native_calls==1&&writes==0&&hold_releases==0,"active hold preserves native update without another entry or release write");
+  check(find("native")<find("callback")&&find("callback")<find("hold_step"),
+        "native physics and callback precede bounded hold processing");
+  for(const char* name:{"noclip_apply_velocity","trainer_apply_jump_scale","trainer_push_speed","arcade_air_apply",
+      "apply_push_velocity","apply_plugin_velocity","trainer_pump_power","trainer_air_gravity","trainer_revert_boost","trainer_transition"})
+   check(find(name)==events.size(),"active owner prevents competing SDK velocity writers");
+  events.clear();release_hold=true;noclip_physics_update(1);
+  check(native_calls==2&&hold_releases==1&&find("hold_release")+1==events.size(),"single hold release is last after unchanged native update");
+  events.clear();noclip_physics_update(1);
+  check(native_calls==3&&hold_releases==1&&find("arcade_air_apply")<events.size(),
+        "released owner returns to ordinary writers without replaying release");
+ }
+ {
+  reset();wallplant_hold_core.store(1);noclip_physics_update(2);
+  check(native_calls==1&&find("arcade_air_apply")<events.size()&&find("hold_step")==events.size(),
+        "foreign core retains ordinary physics and cannot process another owner's hold");
+  check(wallplant_hold_core.load()==1,"foreign core leaves hold ownership intact");
+ }
+ {
+  reset();wallplant_hold_core.store(1);reenter=true;noclip_physics_update(1);
+  check(native_calls==2&&writes==0&&hold_releases==0,"reentrant native physics cannot create an entry or early release");
+  release_hold=true;events.clear();noclip_physics_update(1);
+  check(hold_releases==1&&find("hold_release")+1==events.size(),"reentry history cannot duplicate final release");
+ }
+ {
+  reset();choose_state(9,201);begin_hold_on_write=true;noclip_physics_update(1);
+  check(writes==1&&wallplant_hold_core.load()==1&&find("final_write")<find("hold_step"),
+        "newly owned hold is processed only after its single final entry transaction");
+  check(hold_releases==0,"same callback does not imply elapsed160ms");
+ }
+ {
+  arcade_mode::WallplantCommand command;command.anchor_verified=true;
+  command.anchor={7,8,9};command.hold_forward={1,0,0};
+  const std::array<float,16> supplied{1,0,0,11,0,.8f,.6f,12,0,-.6f,.8f,13,2,3,4,1};
+  std::array<float,16> target{};
+  check(wallplant_hold_target_matrix(command,supplied,target),"actual target helper accepts measured orthonormal pitched basis");
+  for(unsigned axis=0;axis<3;++axis){
+   check(target[4+axis]==supplied[4+axis],"local up/pitch-roll basis remains unchanged");
+   check(std::abs(target[8+axis]-supplied[axis])<.00001f,"target forward follows exact local-yaw projection");
+   check(target[12+axis]==command.anchor[axis],"only supplied verified anchor sets target translation");
+  }
+  for(unsigned lane:{3u,7u,11u,15u})check(target[lane]==supplied[lane],"native fourth lanes unchanged");
+  check(supplied[12]==2&&supplied[13]==3&&supplied[14]==4,"input matrix remains immutable");
+  for(unsigned fault=0;fault<5;++fault){
+   auto bad=command;auto matrix=supplied;target.fill(123);
+   switch(fault){
+   case 0:bad.anchor_verified=false;break;
+   case 1:bad.anchor[0]=std::numeric_limits<float>::infinity();break;
+   case 2:bad.hold_forward={0,0,0};break;
+   case 3:bad.hold_forward[0]=std::numeric_limits<float>::quiet_NaN();break;
+   case 4:matrix[0]=2;break;
+   }
+   check(!wallplant_hold_target_matrix(bad,matrix,target),"unverified anchor/invalid orientation cannot emit target");
+   check(target[0]==123&&target[12]==123,"failed target admission leaves caller output unchanged");
+  }
+ }
  std::cout<<checks<<" production wrapper ordering checks passed\n";
 }
 }

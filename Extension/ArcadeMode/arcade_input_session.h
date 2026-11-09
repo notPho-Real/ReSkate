@@ -41,6 +41,33 @@ struct InputAdmission {
     NativeFootplantRequest footplant{};
     NativeGroundGrabRequest ground_grab{};
 };
+// Retirement provenance only: no actor or physics authority is returned.
+// The authenticated entry brake already consumed the original AIR press
+// within its lease. A later input callback checks that historical consumption
+// time and a separately fresh current frame; neither timestamp is renewed.
+inline bool wallplant_entry_lineage(const InputNativeContext& origin,
+        const InputNativeContext& current,std::uint64_t now,std::uint64_t consumed_at) noexcept {
+    if(!consumed_at || consumed_at>now || !origin.required || !current.required ||
+       !origin.fresh(consumed_at) || !current.fresh(now) ||
+       !origin.airborne || (origin.flip.state!=200 && origin.flip.state!=201) || !origin.airborne_episode ||
+       origin.rail_family || current.rail_family ||
+       origin.generations.owner!=current.generations.owner || !current.follows(origin) ||
+       origin.flip.stance!=current.flip.stance || origin.flip.valid!=current.flip.valid ||
+       origin.flip.id!=current.flip.id || origin.flip.object!=current.flip.object ||
+       current.generations.action<origin.generations.action)return false;
+    const auto actions=current.generations.action-origin.generations.action;
+    if(current.air_episode()==origin.air_episode() && current.airborne)
+        return (current.flip.state==origin.flip.state && actions==0) ||
+            (origin.flip.state==200 && current.flip.state==201 && actions==1);
+    if(origin.flip.state!=201 || origin.air_departure==UINT64_MAX ||
+       current.air_departure!=origin.air_departure+1)return false;
+    if(!current.airborne && current.flip.state==100)
+        return current.airborne_episode==origin.airborne_episode && actions==1;
+    return origin.airborne_episode!=UINT64_MAX && current.airborne &&
+        current.airborne_episode==origin.airborne_episode+1 &&
+        ((current.flip.state==200 && actions==2) ||
+         (current.flip.state==201 && (actions==2 || actions==3)));
+}
 // One per-controller journal and one dispatch path. Native playback objects have
 // no physical edge buffers; their only inputs are admitted semantic requests.
 class InputSession {
@@ -97,20 +124,20 @@ public:
         return air_action_ && frame.required && frame.fresh(now) && frame.airborne &&
             frame.air_episode()==air_actor_episode_ && (native_followup_ ? native_flip::ordinary_flip(air_followup_id_) : ordinary_ollie_followup(air_followup_id_)) ? air_followup_id_ : 0;
     }
-    // Called only for the motion adapter's completed body transaction. This
-    // retires input lineage, never creates a native jump, air episode or score.
-    bool acknowledge_wallplant(std::uint64_t now,const InputNativeContext& proof,
-                               std::uint64_t input_sequence) noexcept {
-        if (!input_sequence || !clocked_ || !proof.required || !proof.fresh(now) ||
-            !native_.required || !native_.fresh(now) || !proof.airborne || !native_.airborne ||
-            !proof.airborne_episode || proof.rail_family || native_.rail_family ||
-            proof.generations.owner!=native_.generations.owner || proof.air_episode()!=native_.air_episode() ||
+    // Called only for the authenticated successful entry brake. This retires
+    // consumed input lineage even if the later hold is cancelled; it does not
+    // certify a release, create a jump, renew a frame or manufacture trick credit.
+    bool acknowledge_wallplant_entry(std::uint64_t now,const InputNativeContext& proof,
+                               const InputNativeContext& current,std::uint64_t input_sequence,std::uint64_t consumed_at) noexcept {
+        if (!input_sequence || !clocked_ || !proof.required || !proof.fresh(consumed_at) ||
+            !native_.required || !native_.fresh(now) || !wallplant_entry_lineage(proof,current,now,consumed_at) ||
+            proof.generations.owner!=native_.generations.owner || !current.follows(native_) ||
             (wallplant_owner_==proof.generations.owner && input_sequence<=wallplant_sequence_) ||
             footplant_ || ground_grab_ || rail_ || holding_ || board_active_ || manual_.busy()) return false;
         bool physical_press=false;
         for (const auto& event:input_.history().events())
             if (event.sequence==input_sequence && event.token==InputToken{InputSource::buttons,12,InputEdge::press} &&
-                now>=event.at && now-event.at<=150) physical_press=true;
+                consumed_at>=event.at && consumed_at-event.at<=InputTiming::native_sample_lease_ms) physical_press=true;
         if (!physical_press) return false;
         wallplant_owner_=proof.generations.owner;wallplant_sequence_=input_sequence;
         input_.retire_air_actions();authored_.cancel();auxiliary_.cancel();held_flip_.cancel();

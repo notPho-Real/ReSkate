@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_surface_geometry.h"
+#include <span>
 #include "Extension/Objects/ParkEditor/park_editor_surface.h"
 
 namespace dingosdk::arcade_mode {
@@ -50,6 +51,21 @@ SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi&, co
 SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
     SurfaceGeometryBody contacted_body, SurfaceGeometryVector point, SurfaceGeometryVector normal,
     SurfaceGeometryVector approach_velocity, float native_seconds,
+    SurfaceGeometryTrace* = nullptr) noexcept;
+// Finite native support-ray clearance, not a capsule/volume sweep. The caller
+// supplies verified native support positions relative to root (at most 32),
+// from the same guarded owner observation. The live caller currently proves
+// deck part0 only, not articulated shape extents. Native collision remains enabled.
+// No missing-support fallback and no transform/position write occurs here.
+struct SurfaceGeometryAnchor {
+    SurfaceGeometryVector target{};
+    float displacement{};
+    unsigned checked_rays{};
+    bool valid{};
+};
+SurfaceGeometryAnchor query_wallplant_anchor(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
+    SurfaceGeometryBody contacted_shape, SurfaceGeometryVector contact_point, SurfaceGeometryVector normal,
+    SurfaceGeometryVector root, std::span<const SurfaceGeometryVector> body_offsets,
     SurfaceGeometryTrace* = nullptr) noexcept;
 // Call only in the same supported client/park callback contract. Never renews
 // queried_at; physics/input consumers receive the copied publication only.
