@@ -392,8 +392,13 @@ fixture. The follow-up preserves strict warnings and the production call
 extraction: the existing Manual fixture supplies no custom-animation authority.
 Local strict builds pass 689,573 lifecycle and 698,774 reservation checks; all
 five reservation rollback controls still fail at their intended assertions.
-The focused Casper/input/motion suites also pass again. Hosted validation of
-the corrected candidate remains required.
+The focused Casper/input/motion suites also pass again. The controller
+publication fixture also needs a nonactuating custom-animation cancellation
+sink. Its source-bound checks now require selected-controller withdrawal to
+cancel Casper once and unrelated-controller withdrawal to preserve ownership.
+The controller/publication tests pass; removing the actual cancellation makes
+the new assertion fail. Hosted validation of the corrected candidate remains
+required.
 
 Before gameplay, require the exact candidate's successful Windows runtime build
 and CI tests, and record source SHA, run/attempt/artifact ID and DLL SHA-256.

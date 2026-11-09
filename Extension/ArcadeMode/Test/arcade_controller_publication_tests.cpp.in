@@ -19,6 +19,10 @@ namespace dingosdk::arcade_mode::native_grab {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_footplant {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_ground_grab {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_grind {void cancel() noexcept {}}
+namespace dingosdk::arcade_mode::custom_flatland_runtime {
+unsigned cancellations{};
+void cancel() noexcept {++cancellations;}
+}
 namespace dingosdk::arcade_mode::wallplant_runtime {
 unsigned cancellations{};
 void cancel() noexcept {++cancellations;}
@@ -185,15 +189,20 @@ void run(){
         playback_packets={};playback_packets[slot].sample(20,20,true);playback_packets[slot].sample(20,20,true);
         push=air=true;gameplay_valid_until=1150;reset_physical_manual=false;
         const auto wallplant_cancellations=wallplant_runtime::cancellations;
+        const auto flatland_cancellations=custom_flatland_runtime::cancellations;
         disconnect_xinput_source((slot+1)%4);
         require(arcade_input.admitted(0,1000)&&push&&air,"other source loss cannot withdraw selected actor");++checks;
         require(wallplant_runtime::cancellations==wallplant_cancellations,
             "other controller withdrawal cannot cancel selected wallplant ownership");++checks;
+        require(custom_flatland_runtime::cancellations==flatland_cancellations,
+            "other controller withdrawal cannot cancel selected flatland ownership");++checks;
         disconnect_xinput_source(slot);
         require(!controller_route.accepts(slot,1000)&&!arcade_input.admitted(0,1000)&&!push&&!air&&!gameplay_valid_until&&reset_physical_manual,
             "actual disconnect callback revokes shared facade and native intentions immediately");++checks;
         require(wallplant_runtime::cancellations==wallplant_cancellations+1,
             "selected controller withdrawal cancels pending wallplant ownership once");++checks;
+        require(custom_flatland_runtime::cancellations==flatland_cancellations+1,
+            "selected controller withdrawal cancels pending flatland ownership once");++checks;
         require(playback_packets[slot].sample(22,22,false)==23,"actual revocation retires last synthetic packet without erasing collision debt");++checks;
         require(playback_packets[slot].sample(22,22,false)==22,"retirement is consumed exactly once");++checks;
         require(playback_packets[(slot+1)%4].sample(22,22,false)==22,"unowned controller retains native packet identity");++checks;
