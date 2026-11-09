@@ -51,7 +51,9 @@ struct Rig {
     InputSession session;
     std::uint64_t now{player.now+1000};
     float dt{1.f/60};
-    bool enabled{true},balanced{true};
+    bool enabled{true},balanced{true},catalog_loaded{true},controls_owned{true};
+    bool offboard{},releasing_manual{},grind_owned{};
+    unsigned physical_left_trigger{},physical_right_trigger{};
     Rig(){
         custom_flatland_runtime::set_enabled(true);
         custom_flatland_runtime::cancel();player.occupied=false;player.seed_available=true;player.seed_wrong_owner=false;player.reject_replace=false;
@@ -62,10 +64,22 @@ struct Rig {
         session.resume_manual_episode(d,a.native_context);
     }
     CustomFlatlandContext context()const{return {frame,now,owner.entity,enabled,true,balanced,false,false};}
-    CustomFlatlandBinding binding(){return custom_flatland_runtime::observe(context());}
+    CustomFlatlandContext input_context(unsigned physical_buttons=0)const{
+        const bool game_input=enabled,owns_controls=controls_owned;
+        [[maybe_unused]] const bool authored=catalog_loaded;
+        constexpr unsigned classic_a=0x1000u;
+        struct Grind {bool owned;bool active()const{return owned;}} grind_change{grind_owned};
+        const auto& grind_frame=frame;
+        const auto flatland_context=[&](std::uint64_t at,const NativeInputFrame& native,bool permitted){
+            auto c=context();c.now=at;c.frame=native;c.enabled=c.enabled && permitted;return c;
+        };
+#include "runtime_admission.inc"
+        return flatland;
+    }
+    CustomFlatlandBinding binding(){return custom_flatland_runtime::observe(input_context());}
     InputAdmission admission(){
         auto binding=this->binding();InputAdmission a{};
-        a.gameplay=enabled;a.may_start=a.manual_safe=a.manual_balance_admitted=true;a.pose=SkatePose::manual;a.tick=now;
+        a.gameplay=enabled;a.authored=catalog_loaded;a.may_start=a.manual_safe=a.manual_balance_admitted=true;a.pose=SkatePose::manual;a.tick=now;
         a.native_context=InputNativeContext::from_frame(frame);a.balance_generations=a.native_context.generations;
         a.balance_controls=InputBalanceControls::vertical();a.balance_controls.generations=a.balance_generations;
         a.custom_flatland=binding.enabled;a.custom_flatland_branch=binding.branch;a.branch_ready=binding.ready;
@@ -79,7 +93,7 @@ struct Rig {
     void tick(){custom_flatland_runtime::tick(context());}
     auto step(std::array<float,3> v={3,0,4}){return custom_flatland_runtime::consume(frame,now,v,balanced);}
     auto poll(std::uint16_t buttons){
-        next();auto c=context();c.ollie=(buttons&0x1000u)!=0;custom_flatland_runtime::observe(c);
+        next();custom_flatland_runtime::observe(input_context(buttons));
         auto a=admission(); // For A use the cancelled binding, without starting another gesture.
         auto out=session.poll(now,{buttons},0,0,a);
         if(!out.manual.owns)custom_flatland_runtime::cancel();
@@ -98,6 +112,24 @@ struct Rig {
         check(binding().ready && player.time==.3f,"entry settles into native-clock held pose");
     }
 };
+void runtime_admission(){
+    for(bool loaded:{false,true}){
+        Rig r;r.catalog_loaded=loaded;r.enter();
+        check(r.binding().branch==2,"catalog availability does not veto native Manual to Casper");
+    }
+    for(unsigned reason=0;reason<8;++reason){
+        Rig r;
+        if(reason==0)r.enabled=false;
+        if(reason==1)r.controls_owned=false;
+        if(reason==2)r.offboard=true;
+        if(reason==3)r.releasing_manual=true;
+        if(reason==4)r.grind_owned=true;
+        if(reason==5)r.physical_left_trigger=31;
+        if(reason==6)r.physical_right_trigger=31;
+        const auto c=r.input_context(reason==7?0x10u:0u);
+        check(!c.valid(),"actual outer gameplay/conflict gates still reject Casper");
+    }
+}
 void slice(){
     Rig r;const auto starts=player.starts;r.enter();r.hold(1000);
     check(player.starts==starts+1,"holding beyond 15 seconds never restarts or duplicates animation");
@@ -157,4 +189,4 @@ void seed_and_pending(){
 }
 int main(){
     check(!custom_flatland_runtime::status().enabled,"dev experiment defaults OFF");
-    slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}
+    runtime_admission();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

@@ -427,3 +427,31 @@ remain separate gameplay questions. The authored pose is a rough prototype;
 body/board clearance still requires visual review. No custom native score is
 claimed. Rollback is the switch OFF plus the existing validated DLL rollback
 procedure if required, preserving all stock/development backup bytes.
+
+
+## Deck admission failure and correction — 2026-11-09
+
+The exact 90ea3bb0 candidate passed full CI 42556682210 and was then tested on
+Steam Deck in the owner's exclusive Casper slot. Loaded DLL mappings and hash,
+the pinned 20260929 executable, and the live Mega Park descriptor were verified.
+Ordinary Manual admitted the native tail pose, rear-axle support, balance and
+history. The original physics and cached skater timestep both read 1/30 second.
+This is a baseline, not completed cadence or Casper acceptance.
+
+The first completed X-to-Y trial failed: Y withdrew Manual pressure and the
+board returned to both axles while the Manual HUD label lingered. The existing
+runtime input gate required `!authored`, but that variable means a nonempty
+prepared gesture catalog, not active authored playback. A loaded catalog
+therefore disabled the Casper capability on every input poll. The correction
+removes that availability veto; InputSession still rejects actual authored,
+auxiliary and external owners before reserving Y. Gameplay, control ownership,
+release, grind, trigger and menu gates remain in place.
+
+The adapter tests now compile the actual outer admission statements from
+arcade_mode.cpp, through both the portable runner and CMake. With the old gate,
+the new fixture fails to enable a fresh matching seed. With the correction,
+1,382 adapter checks, 4,798 flatland checks, the release-disabled check and the
+six adjacent integration suites pass locally. Prior animation-system work is
+unchanged. A clean Windows rebuild and repeated live entry, exit, cancellation,
+render/contact continuity and motion trials remain required. This candidate is
+not yet ready for owner testing.

@@ -17,7 +17,12 @@ out = args.output.resolve()
 out.mkdir(parents=True, exist_ok=True)
 (out / "tmp").mkdir(exist_ok=True)
 env = dict(os.environ, TMPDIR=str(out / "tmp"))
-common = [args.cxx, "-std=c++20", "-I", str(root)]
+# Use the same production input gate as the full CMake test.
+mode = (root / "Extension/ArcadeMode/arcade_mode.cpp").read_text()
+start = mode.index("        auto flatland=flatland_context(")
+end = mode.index("        const auto flatland_binding=", start)
+(out / "runtime_admission.inc").write_text(mode[start:end])
+common = [args.cxx, "-std=c++20", "-I", str(root), "-I", str(out)]
 if sys.platform == "darwin":
     # Avoid xcrun cache writes outside the chosen bounded output directory.
     sdk = Path("/Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk")

@@ -2367,8 +2367,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             return native_grab::fingerflip(grab.owner,grab.episode,id,steps,tick,mirror);
         };
         const auto grind_frame=arcade_input.native_context(now);
+        // Catalog availability is not playback ownership. InputSession rejects
+        // actual authored/auxiliary conflicts before reserving Manual's Y edge.
         auto flatland=flatland_context(now,grind_frame,game_input && owns_controls && !offboard &&
-            !releasing_manual && !authored && !grind_change.active() &&
+            !releasing_manual && !grind_change.active() &&
             physical_left_trigger<=30 && physical_right_trigger<=30 && !(physical_buttons&0x0030u));
         flatland.ollie=(physical_buttons&classic_a)!=0;
         const auto flatland_binding=custom_flatland_runtime::observe(flatland);
