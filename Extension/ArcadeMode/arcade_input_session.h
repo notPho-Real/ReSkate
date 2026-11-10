@@ -346,7 +346,7 @@ public:
         if (physical.rt<=30) revert_trigger_owned_=false;
         else if(auxiliary_.busy() && !grab_actor_) revert_trigger_owned_=true;
         const bool flatland_triggers=admission.custom_flatland && admission.custom_flatland_triggers &&
-            admission.custom_flatland_branch!=0 && admission.extensions.request &&
+            admission.extensions.request &&
             admission.manual_balance_admitted && manual_.busy() && !authored_.busy() &&
             !auxiliary_.busy() && !admission.external_owner && native.required && native.fresh(now) &&
             native.correlates_action(admission.balance_generations) &&

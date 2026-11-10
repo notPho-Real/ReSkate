@@ -166,8 +166,9 @@ void held_rotation(){
 }
 
 void held_rotation_exits(){
-    for(bool flip:{false,true}){
-        Rig r;r.enter();r.hold();r.physical_left_trigger=255;
+    for(bool flip:{false,true})for(bool left:{false,true}){
+        Rig r;r.enter();r.hold();
+        if(left)r.physical_left_trigger=255;else r.physical_right_trigger=255;
         r.poll(0);r.step();r.tick();
         const auto turned=player.display_radians;
         r.poll(0x4000);r.step();r.tick();r.poll(0);r.step();r.tick();
@@ -175,7 +176,19 @@ void held_rotation_exits(){
         check(out.manual.owns,"held rotation still permits a branch exit without losing native Manual");
         r.tick();
         check(r.binding().branch==(flip?42u:0u),"held trigger does not block flip or direct return");
-        if(flip)check(player.display_radians>=turned,"flip preserves the display turn already reached");
+        if(flip)check((player.display_radians-turned)*(left?1.f:-1.f)>=0,"flip preserves the display turn already reached");
+        for(unsigned i=0;i<48;++i){
+            const auto held=r.poll(!flip && i<4?0x8000u:0u);
+            check(held.manual.owns,"holding the exit Y and rotation trigger cannot release the continuing Manual");
+            check(held.flatland_triggers_owned && !held.action.owned,"the already-held rotation trigger stays consumed through exit");
+            r.step();r.tick();
+        }
+        check(!player.ticket && r.binding().branch==0 && !r.binding().ready,
+            "exit completes while the held trigger cannot reenter Casper");
+        r.physical_left_trigger=r.physical_right_trigger=0;
+        check(r.poll(0).manual.owns && !r.binding().owns_triggers && r.binding().ready,
+            "physical trigger release restores ordinary Manual input");
+
     }
     Rig r;r.enter();r.hold();r.physical_right_trigger=255;r.poll(0);r.step();r.tick();
     const auto angle=player.display_radians;
@@ -183,6 +196,31 @@ void held_rotation_exits(){
     for(unsigned i=0;i<10;++i){r.next();r.tick();}
     r.step();r.tick();
     check(player.display_radians==angle,"animation heartbeat cannot renew stale trigger input");
+}
+void exit_trigger_boundaries(){
+    for(unsigned reason=0;reason<11;++reason){
+        Rig r;r.enter();r.hold();r.physical_right_trigger=255;
+        r.poll(0);r.step();r.tick();
+        r.poll(0x4000);r.poll(0);r.poll(0x8000);r.tick();r.poll(0);r.tick();
+        check(r.binding().owns_triggers && !r.binding().ready,
+            "completed exit retains only the held trigger release obligation");
+        if(reason==0)r.enabled=false;
+        if(reason==1)r.balanced=false;
+        if(reason==2)++r.owner.core;
+        if(reason==3)r.next(151);else r.next();
+        if(reason==4){player.occupied=true;r.tick();}
+        if(reason==5){auto c=r.context();c.ollie=true;custom_flatland_runtime::observe(c);}
+        if(reason==6)custom_flatland_runtime::cancel();
+        if(reason==7)custom_flatland_runtime::set_enabled(false);
+        if(reason==8)r.physical_left_trigger=255;
+        if(reason==9)++r.owner.entity;
+        if(reason==10)for(unsigned i=0;i<10;++i){r.next();r.tick();}
+        if(reason==2 || reason==9)r.next();
+        check(!r.binding().owns_triggers,"invalid or newly pressed input cannot inherit the exit trigger lease");
+        r.enabled=r.balanced=true;player.occupied=false;custom_flatland_runtime::set_enabled(true);
+        r.next();r.tick();r.next();r.tick();
+        check(!r.binding().enabled,"recovery cannot turn a held trigger into new Casper admission");
+    }
 }
 void material_capture_lifetime(){
     Rig r;
@@ -260,4 +298,4 @@ void seed_and_pending(){
 }
 int main(){
     check(!custom_flatland_runtime::status().enabled,"dev experiment defaults OFF");
-    material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}
+    material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

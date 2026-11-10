@@ -14,6 +14,8 @@ struct State {
     NativeInputFrame spin_input{};
     std::uint64_t spin_at{};
     int spin_direction{};
+    unsigned held_triggers{};
+    std::uint64_t held_at{};
     NativeInputOwner seed_owner{};
     std::uint64_t seed_generation{},seed_episode{},seed_step{},seed_at{};
     std::uint32_t seed_stance{};
@@ -55,7 +57,7 @@ void observe_locked(State& s,CustomFlatlandContext& context) noexcept {
     if(!context.valid() || !s.seed_current() ||
         (s.ticket && !skater_animation::controlled_play_current(s.ticket))) {
         if(s.trick)s.trick->cancel();
-        s.ready=false;
+        s.ready=false;s.held_triggers=0;
     }
 }
 }
@@ -63,7 +65,7 @@ void set_enabled(bool enabled) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
     if(s.enabled==enabled)return;
     if(s.trick)s.trick->cancel();
-    s.enabled=enabled;s.ready=false;s.context.enabled=false;
+    s.enabled=enabled;s.ready=false;s.context.enabled=false;s.held_triggers=0;
     native_wall_contact::enable_materials(false);
     if(enabled)s.observation={};
 }
@@ -81,22 +83,34 @@ CustomFlatlandBinding observe(CustomFlatlandContext context) noexcept {
 CustomFlatlandBinding observe_input(CustomFlatlandContext context,unsigned lt,unsigned rt) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
     const bool active=s.trick && s.trick->active();
-    // A preheld trigger cannot enter Casper. Once acquired, triggers belong
-    // to this presentation lease, while native Manual keeps its RS pressure.
-    if(!active && (lt>30 || rt>30))context.enabled=false;
+    const unsigned held=(lt>30?1u:0u)|(rt>30?2u:0u);
+    s.held_triggers&=held;
+    if(!s.held_at || context.now<s.held_at || context.now-s.held_at>150)s.held_triggers=0;
+    // The trigger used to rotate remains consumed through a normal exit until
+    // release. Otherwise the next held Y poll cancels the continuing Manual.
+    // This grants no new branch: a preheld or newly added trigger still vetoes
+    // entry, and every owner/episode/gameplay boundary clears the remainder.
+    const bool finishing=!active && held && held==s.held_triggers;
+    if(!active && held && !finishing)context.enabled=false;
     observe_locked(s,context);
     s.spin_input={};s.spin_at=0;s.spin_direction=0;
-    if(!s.trick || !s.ready || !s.client_current() || !context.valid())return {};
+    if(!s.trick || !s.ready || !s.client_current() || !context.valid()){
+        s.held_triggers=0;return {};
+    }
     const bool owns=s.trick->active();
     if(owns) {
+        s.held_triggers=held;
         s.spin_input=context.frame;s.spin_at=context.now;
         s.spin_direction=(lt>30?1:0)-(rt>30?1:0);
     }
-    return {true,s.trick->branch(),s.trick->branch_ready(),owns};
+    const bool releasing=!owns && s.held_triggers!=0;
+    s.held_at=s.held_triggers?context.now:0;
+    return {true,s.trick->branch(),s.trick->branch_ready() && !releasing,owns || releasing};
 }
 InputDisposition request(const InputRequest& request) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
-    if(!s.trick || !s.ready || !s.client_current())return InputDisposition::unsupported;
+    if(!s.trick || !s.ready || !s.client_current() ||
+        (!s.trick->active() && s.held_triggers))return InputDisposition::unsupported;
     const auto adapter=s.trick->adapter();return adapter.request(adapter.state,request);
 }
 CustomFlatland::Motion consume(const NativeInputFrame& frame,std::uint64_t now,
@@ -135,7 +149,7 @@ void cancel() noexcept {
     native_wall_contact::enable_materials(false);
     auto& s=state();std::lock_guard lock(s.mutex);
     if(s.trick)s.trick->cancel();
-    s.ready=false;s.context.enabled=false;
+    s.ready=false;s.context.enabled=false;s.held_triggers=0;
 }
 void tick(CustomFlatlandContext context) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
@@ -148,12 +162,13 @@ void tick(CustomFlatlandContext context) noexcept {
             // It must never acquire a fresh ticket after another owner wins.
             skater_animation::cancel_play(s.ticket);s.ticket=s.submitted=0;
             if(s.trick)s.trick->cancel();
-            s.ready=false;
+            s.ready=false;s.held_triggers=0;
         }
         if(s.ticket && s.submitted!=s.logical) {
             if(s.logical && skater_animation::replace_owned(s.ticket,s.clip,s.time)) {
                 s.submitted=s.logical;
             } else {
+                if(s.logical)s.held_triggers=0;
                 if(s.trick)s.trick->cancel();
                 skater_animation::cancel_play(s.ticket);s.ticket=s.submitted=0;
                 s.ready=false;
@@ -169,7 +184,7 @@ void tick(CustomFlatlandContext context) noexcept {
         }
         if(s.ticket) {
             if(!skater_animation::seek_owned(s.ticket,s.time,s.trick->display_radians())) {
-                s.trick->cancel();skater_animation::cancel_play(s.ticket);s.ticket=s.submitted=0;s.ready=false;
+                s.trick->cancel();skater_animation::cancel_play(s.ticket);s.ticket=s.submitted=0;s.ready=false;s.held_triggers=0;
             }
             return;
         }
@@ -196,7 +211,7 @@ void tick(CustomFlatlandContext context) noexcept {
         native_wall_contact::enable_materials(false);
         if(s.trick)s.trick->cancel();
         if(s.ticket)skater_animation::cancel_play(s.ticket);
-        s.ticket=s.submitted=0;s.ready=false;
+        s.ticket=s.submitted=0;s.ready=false;s.held_triggers=0;
     }
 }
 }
