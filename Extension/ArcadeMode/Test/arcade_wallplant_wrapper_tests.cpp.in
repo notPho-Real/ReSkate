@@ -315,6 +315,39 @@ void run(){
     check(std::abs(roundtrip[4*r+k]-wanted[4*r+k])<.000001,"quaternion conversion preserves composed row rotations");
   }
   const auto actual=axis_rotation(1,0);
+  {
+   float available{},travel{};
+   const std::array<float,3> root_spin{-.65800965f,1.7436432f,3.6349056f};
+   const std::array<float,3> reference_spin{1.2282802f,-.251222f,1.6660773f};
+   check(orientation::motion_budget(1.1f,1.f/30,root_spin,reference_spin,available,travel),
+         "observed moving bodies retain a positive native orientation budget");
+   check(travel>.2f&&travel<.21f&&available<.9f,"one native step reserves measured angular travel, not a fixed margin");
+   // Independent callback observations from the failed hold. The reference
+   // crossed the limit after target publication while body orientation moved.
+   // This checks target geometry against that motion, not a simulated success.
+   const orientation::Matrix before{-.43698022f,-.8072772f,.396676f,0,-.06382808f,.46772897f,.8815643f,0,
+       -.8972036f,.3599071f,-.25591528f,0,0,0,0,1};
+   const orientation::Matrix after{-.38931632f,-.87162995f,.29781577f,0,-.10911432f,.36468953f,.92471385f,0,
+       -.9146185f,.32751012f,-.23708695f,0,0,0,0,1};
+   const orientation::Matrix reference{.47575322f,-.44725206f,.7573811f,0,.20036381f,.89353955f,.4017975f,0,
+       -.8564549f,-.039404728f,.5147175f,0,0,0,0,1};
+   orientation::Matrix old_target{},new_target{};orientation::Result old_report,new_report;
+   check(orientation::bound(before,reference,1.1f,old_target,old_report)&&
+         orientation::error(after,old_target)>1.1f,"a statically valid target fails after the recorded native body movement");
+   check(orientation::bound(before,reference,available,new_target,new_report)&&
+         orientation::error(after,new_target)<1.1f,"motion reserve accommodates the recorded movement without changing the native limit");
+   float faster{},fast_travel{};
+   check(orientation::motion_budget(1.1f,1.f/60,root_spin,reference_spin,faster,fast_travel)&&
+         std::abs(fast_travel*2-travel)<.00001f&&faster>available,"reserve follows native step duration");
+   for(unsigned fault=0;fault<5;++fault){
+    float dt=1.f/30;auto spin=root_spin;
+    switch(fault){case 0:dt=0;break;case 1:dt=-1;break;case 2:dt=NAN;break;
+     case 3:spin[0]=INFINITY;break;case 4:dt=1;break;}
+    available=travel=123;
+    check(!orientation::motion_budget(1.1f,dt,spin,reference_spin,available,travel)&&available==123&&travel==123,
+          "invalid or exhausted angular budget refuses a target without changing outputs");
+   }
+  }
   for(unsigned fault=0;fault<5;++fault) {
    auto wanted=axis_rotation(1,pi);float limit=.6f;
    switch(fault){case 0:limit=0;break;case 1:limit=4;break;case 2:limit=NAN;break;
@@ -374,7 +407,8 @@ struct State {
 State& source_state(){return ground_state;}
 struct SourceBusyScope {std::atomic_flag& busy;~SourceBusyScope(){busy.clear();}};
 struct Hold {Command command;std::uint64_t started{100};game::orientation_target::Result orientation{};float orientation_limit{};} physical_hold;
-struct WallplantOrientationSnapshot {std::array<float,16> actual{},local_root{};float limit{};} orientation_snapshot;
+struct WallplantOrientationSnapshot {std::array<float,16> actual{},local_root{};
+ std::array<float,3> root_spin{},reference_spin{};float limit{};} orientation_snapshot;
 bool orientation_available=true;
 Hold& wallplant_physical_hold(){return physical_hold;}
 std::atomic<std::uintptr_t> wallplant_hold_core{};
@@ -401,6 +435,8 @@ bool hold_current(const Command&,std::uint64_t,const NativeInputFrame&,bool* sta
  if(change_orientation_at_permission==1)orientation_snapshot.actual[0]=.5f;
  if(change_orientation_at_permission==2)orientation_snapshot.local_root[0]=.5f;
  if(change_orientation_at_permission==3)orientation_snapshot.limit=.1f;
+ if(change_orientation_at_permission==4)orientation_snapshot.root_spin[0]=1;
+ if(change_orientation_at_permission==5)orientation_snapshot.reference_spin[0]=1;
  if(stale)*stale=fixture_stale_query;return fixture_current && !fixture_stale_query;
 }
 }
@@ -421,7 +457,8 @@ struct SourceReader {
  void verify(){
   source_require(!fail_verify,"snapshot_invalid");
   source_require(!orientation_watched || (watched_orientation.actual==orientation_snapshot.actual &&
-    watched_orientation.local_root==orientation_snapshot.local_root && watched_orientation.limit==orientation_snapshot.limit),
+    watched_orientation.local_root==orientation_snapshot.local_root && watched_orientation.limit==orientation_snapshot.limit &&
+    watched_orientation.root_spin==orientation_snapshot.root_spin && watched_orientation.reference_spin==orientation_snapshot.reference_spin),
     "orientation_changed");
   if(change_snapshot)stored[12]+=1;
  }
@@ -476,10 +513,17 @@ void run(){
  check(stored[28]==7&&stored[29]==8&&stored[30]==9,"orientation constraint preserves checked wall anchor");
  reset();orientation_available=false;noclip_ground_target(2,.03333333f);
  check(copies==0&&stored==prepared&&cancelled=="orientation_contract","missing native orientation contract refuses target mutation");
- for(unsigned changed=1;changed<=3;++changed){
+ reset();orientation_snapshot.limit=1.1f;orientation_snapshot.root_spin={0,3,0};
+ orientation_snapshot.reference_spin={0,2,0};noclip_ground_target(2,.03333333f);
+ check(copies==1&&cancelled.empty()&&physical_hold.orientation.applied_error<.934f,
+       "production ground callback uses live angular motion in its target budget");
+ reset();orientation_snapshot.root_spin={1000,0,0};noclip_ground_target(2,.03333333f);
+ check(copies==0&&stored==prepared&&cancelled=="ground_target_motion_budget",
+       "exhausted live angular budget cancels without changing body, target or native limit");
+ for(unsigned changed=1;changed<=5;++changed){
   reset();change_orientation_at_permission=changed;noclip_ground_target(2,.03333333f);
   check(originals==1&&copies==0&&stored==prepared&&cancelled=="orientation_changed",
-        "physical basis, local root or limit changed during authority lookup rejects the stale target without a write");
+        "physical basis, local root, spin or limit changed during authority lookup rejects the stale target without a write");
  }
  reset();fixture_stale_query=true;noclip_ground_target(2,.03333333f);
  check(originals==1 && copies==0 && stored==prepared && cancelled.empty() && wallplant_hold_core.load()==1,

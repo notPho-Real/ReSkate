@@ -7,6 +7,26 @@ namespace dingosdk::game::orientation_target {
 using Matrix = std::array<float,16>;
 using Quaternion = std::array<double,4>;
 
+// A target checked now is consumed after physics advances. Reserve the angular
+// travel of both observed bodies for that step instead of placing the target
+// on the rejection boundary. This extrapolates measured rates; it does not
+// bound a new collision impulse or replace native collision/pose checks.
+inline bool motion_budget(float limit, float seconds,
+        const std::array<float,3>& root_spin, const std::array<float,3>& reference_spin,
+        float& available, float& travel) noexcept {
+    if(!std::isfinite(limit) || limit<=0 || limit>3.14159265358979323846f ||
+       !std::isfinite(seconds) || seconds<=0)return false;
+    for(const auto& spin:{root_spin,reference_spin})for(float v:spin)
+        if(!std::isfinite(v))return false;
+    const double swept=double(seconds)*(std::hypot(double(root_spin[0]),double(root_spin[1]),double(root_spin[2]))+
+        std::hypot(double(reference_spin[0]),double(reference_spin[1]),double(reference_spin[2])));
+    if(!std::isfinite(swept) || swept>=limit)return false;
+    const auto remaining=static_cast<float>(double(limit)-swept);
+    if(!(remaining>0))return false;
+    available=std::nextafter(remaining,0.f);travel=static_cast<float>(swept);
+    return available>0;
+}
+
 // Rotation rows use the same convention as LinearTransform. Translation and
 // SIMD fourth lanes are not part of the angular constraint.
 inline bool basis_valid(const Matrix& m) noexcept {

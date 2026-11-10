@@ -66,14 +66,26 @@ exclusion measured from entry. No reference code or assets are copied here.
 
 The admitted chooser/reconstruction call performs one uniform entry brake. An
 immutable owner/epoch/contact receipt then owns the existing physical-rig target
-for 160 ms. The target retains native pitch/roll and turns its yaw toward outgoing
-travel. Native collision and original physics callbacks continue; ordinary SDK
+for 160 ms. The requested target is upright and faces outgoing travel. The ground
+adapter bounds the composed articulated reference against the actual board body
+and the stricter live native orientation limit. It reserves one native step of
+angular travel from the measured root and reference-body angular velocities;
+the limit itself is never changed. Native collision and original physics callbacks continue; ordinary SDK
 motion writers yield during this interval. At the first validated native step
 after the deadline, one release delta establishes the saved outward/upward exit.
 Late, interrupted or invalid phases cancel rather than retrying an impulse.
 The target stops at 160 ms; release may wait at most one observed native physics
 interval for its callback (about 33.3 ms at the pinned 30 Hz cadence). This is a
 measured scheduling difference, not a longer requested hold.
+
+A target exactly at the native limit is insufficient: a recorded hold set an
+error of 1.0999995 radians against a 1.1-radian limit, then the next native
+callback observed 1.1261044 radians and a wipeout. That plant canceled after
+62 ms without a release. The motion reserve addresses this measured movement
+between publication and consumption. It extrapolates current rates and cannot
+guarantee a bound on a later collision impulse or articulated acceleration.
+Exhausted budgets cancel; original collision and wipeout checks remain active.
+Actual outgoing alignment within the hold still requires hardware evidence.
 
 The target is the real collision point plus the full collision normal times
 0.70104 m. Existing client-thread native queries check the outward path, root
