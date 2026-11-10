@@ -42,6 +42,9 @@ struct SupportMaterial {
 // actual static flat support; no ray, cached fallback, or native material write.
 SupportMaterial board_material(const NoBailSkater& owner,std::uint64_t now) noexcept;
 bool start(std::uintptr_t base) noexcept;
+// Material capture owns only the board hook, independently of wallplant capture.
+bool start_materials(std::uintptr_t base) noexcept;
+void enable_materials(bool enabled) noexcept;
 void enable(bool enabled) noexcept;
 Snapshot observe(const NoBailSkater& owner,std::uint64_t now) noexcept;
 // Caller must independently validate its current local-world incarnation and

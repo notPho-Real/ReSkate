@@ -1,5 +1,6 @@
 #include "Extension/ArcadeMode/arcade_custom_flatland_runtime.h"
 #include "Extension/ArcadeMode/arcade_input_session.h"
+#include "Extension/ArcadeMode/arcade_native_wall_contact.h"
 #include "Extension/Skater/skater_animation.h"
 #include <cstdlib>
 #include <iostream>
@@ -7,6 +8,8 @@ using namespace dingosdk;
 using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
+bool material_capture{},material_capture_ready{true};
+std::uintptr_t material_base{};
 void check(bool ok,const char* why){++checks;if(!ok){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
 struct Player {
     std::uint64_t serial{},ticket{},now{},until{};
@@ -16,8 +19,12 @@ struct Player {
     std::uintptr_t entity{2};
 } player;
 }
-// Fake ONLY the native client endpoint; compile and execute the actual runtime
+// Fake only native animation and contact-capture endpoints; execute the actual runtime
 // mailbox, shared recognizer, custom episode and animation authoring code.
+namespace dingosdk::arcade_mode::native_wall_contact {
+bool start_materials(std::uintptr_t base) noexcept {material_base=base;return material_capture_ready;}
+void enable_materials(bool enabled) noexcept {material_capture=enabled;}
+}
 namespace dingosdk::skater_animation {
 void prepare_playback() noexcept {}
 bool can_play() noexcept {return !player.occupied && !player.ticket;}
@@ -177,6 +184,23 @@ void held_rotation_exits(){
     r.step();r.tick();
     check(player.display_radians==angle,"animation heartbeat cannot renew stale trigger input");
 }
+void material_capture_lifetime(){
+    Rig r;
+    check(material_capture && material_base==r.owner.base,"valid opted-in Manual starts its own board-material capture");
+    custom_flatland_runtime::set_enabled(false);
+    check(!material_capture,"OFF immediately withdraws material capture");
+    r.tick();check(!material_capture,"client heartbeat cannot reenable an OFF material owner");
+    custom_flatland_runtime::set_enabled(true);r.next();r.tick();
+    check(material_capture,"reenabling a valid Manual renews material capture");
+    r.enabled=false;r.next();r.tick();
+    check(!material_capture,"gameplay loss withdraws material capture");
+    r.enabled=true;material_capture_ready=false;r.next();r.tick();
+    check(!material_capture,"failed native contracts cannot enable material capture");
+    material_capture_ready=true;r.next();r.tick();
+    check(material_capture,"valid native contracts permit later material capture");
+    custom_flatland_runtime::cancel();
+    check(!material_capture,"cancellation immediately withdraws material capture");
+}
 void slice(){
     Rig r;const auto starts=player.starts;r.enter();r.hold(1000);
     check(player.starts==starts+1,"holding beyond 15 seconds never restarts or duplicates animation");
@@ -236,4 +260,4 @@ void seed_and_pending(){
 }
 int main(){
     check(!custom_flatland_runtime::status().enabled,"dev experiment defaults OFF");
-    runtime_admission();held_rotation();held_rotation_exits();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}
+    material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

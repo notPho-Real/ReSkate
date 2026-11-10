@@ -27,7 +27,7 @@ using Process=void(*)(std::uintptr_t,std::uintptr_t);
 Process original{};
 using BoardProcess=void(*)(std::uintptr_t,float,const void*);
 BoardProcess original_board{};
-std::atomic<bool> permitted{},ready{},materials_ready{};
+std::atomic<bool> permitted{},material_permitted{},ready{},rig_ready{},materials_ready{};
 std::uintptr_t image{};
 std::mutex mutex;
 Snapshot latest{};
@@ -125,7 +125,8 @@ bool begin_snapshot(Snapshot& next,const NoBailSkater& owner,float seconds,Sourc
 }
 void publish(Snapshot next) {
     std::lock_guard lock(mutex);
-    if(!permitted.load(std::memory_order_acquire))return;
+    if(!permitted.load(std::memory_order_acquire) &&
+       !(next.source==Source::board && material_permitted.load(std::memory_order_acquire)))return;
     next.serial=++serial;
     const auto source=static_cast<std::size_t>(next.source);
     next.source_serial=++source_serials[source];
@@ -189,7 +190,7 @@ std::uintptr_t board_vector(std::uintptr_t board) noexcept {
     return pointer(board+c::board_provider)==provider ? vector : 0;
 }
 bool capture_board(Snapshot& next,std::uintptr_t board,float seconds) {
-    if(!permitted.load(std::memory_order_acquire))return false;
+    if(!permitted.load(std::memory_order_acquire) && !material_permitted.load(std::memory_order_acquire))return false;
     NoBailSkater owner{};
     if(!no_bail_skater(owner)||owner.base!=image||owned_board(owner)!=board)return false;
     {std::lock_guard lock(mutex);latest_board={};}
@@ -215,12 +216,10 @@ bool fingerprint(const game::build::Fingerprint& contract) noexcept {
     std::array<unsigned char,32> actual{};
     return read(image+contract.rva,actual)&&actual==contract.bytes;
 }
-}
-bool start(std::uintptr_t base) noexcept {
+bool start_board(std::uintptr_t base) noexcept {
     if(ready.load(std::memory_order_acquire))return base==image;
     if(!base||(image&&image!=base)||!supported_build::running_image_matches(base))return false;
     image=base;
-    for(const auto& contract:c::contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:c::board_contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:b::contracts)if(!fingerprint(contract))return false;
     if(!fingerprint(rc::shape_valid)||!fingerprint(rc::body_valid)||
@@ -229,20 +228,41 @@ bool start(std::uintptr_t base) noexcept {
     for(const auto& contract:game::build::v20260929::contact_material::contracts)
         material_contracts=material_contracts && fingerprint(contract);
     materials_ready.store(material_contracts,std::memory_order_release);
-    void* relay{};auto* target=reinterpret_cast<void*>(base+c::process);
-    if(hook_prepare(target,reinterpret_cast<void*>(&hooked),&relay)!=HookOk)return false;
-    original=reinterpret_cast<Process>(relay);
-    auto* board_target=reinterpret_cast<void*>(base+c::board_process);
-    if(hook_prepare(board_target,reinterpret_cast<void*>(&hooked_board),&relay)!=HookOk)return false;
+    void* relay{};
+    auto* target=reinterpret_cast<void*>(base+c::board_process);
+    if(hook_prepare(target,reinterpret_cast<void*>(&hooked_board),&relay)!=HookOk)return false;
     original_board=reinterpret_cast<BoardProcess>(relay);
     HookBatch batch;
     if(hook_enable(target)!=HookOk)return false;
-    if(hook_enable(board_target)!=HookOk)return false;
     ready.store(true,std::memory_order_release);return true;
+}
+}
+bool start(std::uintptr_t base) noexcept {
+    if(!start_board(base))return false;
+    if(rig_ready.load(std::memory_order_acquire))return true;
+    for(const auto& contract:c::contracts)if(!fingerprint(contract))return false;
+    void* relay{};auto* target=reinterpret_cast<void*>(base+c::process);
+    if(hook_prepare(target,reinterpret_cast<void*>(&hooked),&relay)!=HookOk)return false;
+    original=reinterpret_cast<Process>(relay);
+    HookBatch batch;
+    if(hook_enable(target)!=HookOk)return false;
+    rig_ready.store(true,std::memory_order_release);return true;
+}
+bool start_materials(std::uintptr_t base) noexcept {
+    return start_board(base) && materials_ready.load(std::memory_order_acquire);
 }
 void enable(bool enabled) noexcept {
     permitted.store(enabled,std::memory_order_release);
-    if(!enabled){std::lock_guard lock(mutex);latest={};latest_board={};}
+    if(!enabled){
+        std::lock_guard lock(mutex);latest={};
+        if(!material_permitted.load(std::memory_order_acquire))latest_board={};
+    }
+}
+void enable_materials(bool enabled) noexcept {
+    material_permitted.store(enabled,std::memory_order_release);
+    if(!enabled && !permitted.load(std::memory_order_acquire)){
+        std::lock_guard lock(mutex);latest_board={};
+    }
 }
 Snapshot observe(const NoBailSkater& owner,std::uint64_t now) noexcept {
     std::lock_guard lock(mutex);
@@ -269,7 +289,7 @@ SupportMaterial board_material(const NoBailSkater& owner,std::uint64_t now) noex
     Snapshot snap{};
     {
         std::lock_guard lock(mutex);
-        if(!permitted.load(std::memory_order_acquire))return {};
+        if(!material_permitted.load(std::memory_order_acquire))return {};
         snap=latest_board;
     }
     if(!snap.valid || snap.owner!=owner || snap.physics_thread!=GetCurrentThreadId() ||
@@ -296,7 +316,7 @@ SupportMaterial board_material(const NoBailSkater& owner,std::uint64_t now) noex
     NoBailSkater after{};
     if(!no_bail_skater(after) || after!=owner)return {};
     std::lock_guard lock(mutex);
-    if(!permitted.load(std::memory_order_acquire) || latest_board.serial!=snap.serial)return {};
+    if(!material_permitted.load(std::memory_order_acquire) || latest_board.serial!=snap.serial)return {};
     return {owner,*material,snap.serial,snap.sampled_at,snap.seconds,true};
 }
 bool current(const Contact& contact,std::uintptr_t expected_world) noexcept {

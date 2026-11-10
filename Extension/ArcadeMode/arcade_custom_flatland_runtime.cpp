@@ -1,6 +1,7 @@
 #include "arcade_custom_flatland_runtime.h"
 #if defined(DINGOSDK_DEV_TOOLS)
 #include "arcade_custom_flatland_clips.h"
+#include "arcade_native_wall_contact.h"
 #include "Extension/Skater/skater_animation.h"
 #include <mutex>
 
@@ -63,6 +64,7 @@ void set_enabled(bool enabled) noexcept {
     if(s.enabled==enabled)return;
     if(s.trick)s.trick->cancel();
     s.enabled=enabled;s.ready=false;s.context.enabled=false;
+    native_wall_contact::enable_materials(false);
     if(enabled)s.observation={};
 }
 Status status() noexcept {
@@ -130,6 +132,7 @@ CustomFlatland::Motion consume(const NativeInputFrame& frame,std::uint64_t now,
     return motion;
 }
 void cancel() noexcept {
+    native_wall_contact::enable_materials(false);
     auto& s=state();std::lock_guard lock(s.mutex);
     if(s.trick)s.trick->cancel();
     s.ready=false;s.context.enabled=false;
@@ -138,6 +141,8 @@ void tick(CustomFlatlandContext context) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
     try {
         observe_locked(s,context); // Expire a missed heartbeat before renewing it.
+        native_wall_contact::enable_materials(s.enabled && context.valid() &&
+            native_wall_contact::start_materials(context.frame.owner.base));
         if(s.ticket && !skater_animation::owns_play(s.ticket)) {
             // Losing the old clip also invalidates a queued phase transition.
             // It must never acquire a fresh ticket after another owner wins.
@@ -188,6 +193,7 @@ void tick(CustomFlatlandContext context) noexcept {
         s.trick=std::make_unique<CustomFlatland>(std::move(clips),s.playback());
         s.trick->observe(context);s.ready=true;
     } catch(...) {
+        native_wall_contact::enable_materials(false);
         if(s.trick)s.trick->cancel();
         if(s.ticket)skater_animation::cancel_play(s.ticket);
         s.ticket=s.submitted=0;s.ready=false;
