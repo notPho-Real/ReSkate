@@ -5,6 +5,8 @@
 #include "Extension/ArcadeMode/arcade_manual_labels.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_wallplant.h"
+#include "Extension/ArcadeMode/arcade_custom_flatland_runtime.h"
+#include "Extension/ArcadeMode/arcade_flatland_surface.h"
 @@ACQUISITION_INCLUDE@@
 #include "Extension/ArcadeMode/arcade_manual_balance_entry.h"
 #include "Extension/ArcadeMode/arcade_manual_episode.h"
@@ -114,8 +116,13 @@ bool current(const WallplantCommand&,std::uint64_t,const NativeInputFrame&,Surfa
 namespace dingosdk::arcade_mode::custom_flatland_runtime {
 void cancel()noexcept{}
 CustomFlatlandBinding observe(CustomFlatlandContext)noexcept{return {};}
+Status status()noexcept{return {};}
 CustomFlatland::Motion consume(const NativeInputFrame&,std::uint64_t,
- const std::array<float,3>&,bool)noexcept{return {};}
+ const std::array<float,3>&,bool,const FlatlandSurfaceEvidence&)noexcept{return {};}
+}
+// Manual fixtures have no captured native support-material publication.
+namespace dingosdk::arcade_mode::native_wall_contact {
+SupportMaterial board_material(const NoBailSkater&,std::uint64_t)noexcept{return {};}
 }
 NativeFlipRequest normal_flip{};
 NativeGrabRequest normal_grab{};
