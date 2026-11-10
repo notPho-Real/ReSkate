@@ -2088,6 +2088,7 @@ std::uint32_t choose_state(std::uintptr_t selector, std::uint32_t current) {
     return chosen;
 }
 void skeleton_response(std::uintptr_t rig, float seconds, bool wipeout) {
+    observe_arcade_wallplant_native_response(rig,wipeout);
     // The state post-update can raise another request after the selector ran.
     // Filter at this consumer, then let native constraints and recovery run.
     if (filter_requests(rig, &Owner::rig)) wipeout = false;

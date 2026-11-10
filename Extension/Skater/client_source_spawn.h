@@ -15,6 +15,9 @@ bool start_client_noclip_velocity(std::uintptr_t base) noexcept;
 std::uint64_t apply_arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept;
 void finish_arcade_wallplant_selection(std::uint64_t ticket,std::uintptr_t selector,
     std::uint32_t current,std::uint32_t chosen) noexcept;
+// Read the bounded active hold at the original skeleton-response callback,
+// before listeners can withdraw its input authority. Does not change physics.
+void observe_arcade_wallplant_native_response(std::uintptr_t rig,bool wipeout) noexcept;
 // A plugin's push (skater_push.h): one horizontal velocity at the next on-board physics step,
 // in competition physics only. Uses the verified local physics owner and never enables trainer
 // boosts.

@@ -72,6 +72,7 @@ inline constexpr std::uintptr_t rig_motion_origin = 0x5780;
 // predicates compare that reference with board physics body 8, not body 0 or
 // the rendered entity transform. Both predicates report cause 3.
 inline constexpr std::uintptr_t rig_local_root = 0x49e0;
+inline constexpr std::uintptr_t context_motion_reference = 0;
 inline constexpr std::uint32_t reference_body_index = 8;
 inline constexpr std::uintptr_t physics_configuration = 0x7785dc0;
 inline constexpr std::uintptr_t orientation_configuration = 0x3bb8;

@@ -629,10 +629,11 @@ void wallplant_hold_cancel(const char* reason,std::uint64_t now,std::uint32_t se
 struct WallplantOrientationSnapshot {
     std::array<float,16> actual{},local_root{};
     float limit{};
+    std::uintptr_t root_body{},reference_body{};
 };
-WallplantOrientationSnapshot wallplant_orientation_snapshot(const arcade_mode::NativeInputOwner& owner) {
+WallplantOrientationSnapshot wallplant_orientation_snapshot(const arcade_mode::NativeInputOwner& owner,
+        SourceReader& reader) {
     namespace native=addr::skater_state;
-    SourceReader reader;
     for(const auto& contract:spawn::orientation_limit_contracts) {
         std::array<unsigned char,32> bytes{};
         source_require(reader.raw(owner.base+contract.rva,bytes.data(),bytes.size()) &&
@@ -645,6 +646,7 @@ WallplantOrientationSnapshot wallplant_orientation_snapshot(const arcade_mode::N
     const auto at=parts+spawn::reference_body_index*native::physics_body_size;
     source_require(reader.pointer(at,native::body_owner_offset)==board,"hold_orientation_body_owner");
     WallplantOrientationSnapshot result;
+    result.root_body=parts;result.reference_body=at;
     for(unsigned row=0;row<4;++row) {
         const auto actual=reader.value<std::array<float,4>>(at,addr::skater_body::body_transform_offset+row*16);
         const auto local=reader.value<std::array<float,4>>(owner.rig,spawn::rig_local_root+row*16);
@@ -659,7 +661,9 @@ WallplantOrientationSnapshot wallplant_orientation_snapshot(const arcade_mode::N
             "hold_orientation_limit");
         result.limit=std::min(result.limit,limit);
     }
-    reader.verify();return result;
+    // Keep these watches in the caller's transaction. A separately verified
+    // snapshot can expire while the target is composed, before it is written.
+    return result;
 }
 bool wallplant_hold_target_matrix(const arcade_mode::WallplantCommand& command,
         const std::array<float,16>& supplied,std::array<float,16>& target) noexcept {
@@ -2324,7 +2328,7 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
         std::array<float,16> world{},target{};
         std::copy_n(supplied.begin()+16,16,world.begin());
         if(!arcade_wallplant_hold_target(rig,held.native.owner.context,&world,target,frame,now))return;
-        const auto orientation=wallplant_orientation_snapshot(held.native.owner);
+        const auto orientation=wallplant_orientation_snapshot(held.native.owner,reader);
         game::orientation_target::Result turn;
         source_require(wallplant_ground_orientation(supplied,origin,orientation.local_root,
             orientation.actual,orientation.limit,target,turn),"ground_target_orientation");
@@ -2341,6 +2345,9 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
         source_require(hold.command.input_sequence==held.input_sequence && now>=hold.started &&
             now-hold.started<arcade_mode::WallplantHoldContinuity::duration_ms &&
             current,"ground_target_expired");
+        // Authority lookup can yield to the physics publisher. Revalidate the
+        // physical basis, native limit and target origin at the write boundary.
+        reader.verify();
         // Native preparation and its subsequent drive each run once. Replace
         // only their coherent target triplet; contact, body and state data stay
         // owned by the native solver. A failed copy withdraws this hold.
@@ -2377,6 +2384,53 @@ void noclip_skater_motion(std::uintptr_t rig, std::uintptr_t context,
 
 namespace dingosdk {
 using namespace client_source::detail;
+void observe_arcade_wallplant_native_response(std::uintptr_t rig,bool wipeout) noexcept {
+    if(!wallplant_hold_core.load(std::memory_order_acquire))return;
+    SourceLastError error;
+    auto& state=source_state();
+    if(state.busy.test_and_set(std::memory_order_acquire))return;
+    SourceBusyScope scope{state.busy};
+    const auto& hold=wallplant_physical_hold();
+    if(!hold.command || hold.owner.rig!=rig)return;
+    const auto now=GetTickCount64();
+    const auto grace=static_cast<std::uint64_t>(std::ceil(hold.command.native.physics_seconds*1000.0));
+    if(now<hold.started || now-hold.started>arcade_mode::WallplantHoldContinuity::duration_ms+grace)return;
+    try {
+        NoBailSkater owner{};
+        if(!no_bail_skater(owner) || owner!=hold.owner)return;
+        SourceReader reader;
+        const arcade_mode::NativeInputOwner input_owner{owner.base,owner.entity,owner.core,owner.context,owner.rig};
+        const auto orientation=wallplant_orientation_snapshot(input_owner,reader);
+        std::array<float,16> reference{};
+        for(unsigned row=0;row<4;++row) {
+            const auto lanes=reader.value<std::array<float,4>>(owner.context,spawn::context_motion_reference+row*16);
+            std::copy(lanes.begin(),lanes.end(),reference.begin()+row*4);
+        }
+        namespace native=addr::skater_state;
+        source_require(reader.pointer(orientation.root_body,native::body_owner_offset)==
+            reader.pointer(orientation.reference_body,native::body_owner_offset),"hold_observer_body_owner");
+        const auto velocity=reader.value<std::array<float,3>>(orientation.reference_body,native::body_velocity_offset);
+        const auto spin0=reader.value<std::array<float,3>>(orientation.root_body,native::body_spin_offset);
+        const auto spin8=reader.value<std::array<float,3>>(orientation.reference_body,native::body_spin_offset);
+        const auto flags=reader.value<std::uint32_t>(orientation.reference_body,native::body_pending_flags_offset);
+        const auto selected=reader.value<std::uint32_t>(owner.context,native::physics_state_offset);
+        source_require(game::orientation_target::basis_valid(reference) &&
+            game::orientation_target::basis_valid(orientation.actual),"hold_observer_basis");
+        for(const auto& vector:{velocity,spin0,spin8})for(float v:vector)
+            source_require(std::isfinite(v),"hold_observer_motion");
+        reader.verify();NoBailSkater after{};
+        if(!no_bail_skater(after) || after!=owner)return;
+        const auto& a=orientation.actual;const auto& r=reference;
+        // This is an original native callback observation, not the earlier
+        // pending-write readback and not a hook of the bail predicate itself.
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT NATIVE: occurrence={} contact={} ms={} elapsed={} phase=before_skeleton state={} core={} rig={} context={} original_wipeout={} limit={} observed_error={} last_target_error={} flags={} velocity8={},{},{} spin0={},{},{} spin8={},{},{} actual={},{},{},{},{},{},{},{},{} reference={},{},{},{},{},{},{},{},{}.",
+            hold.command.input_sequence,hold.command.contact,now,now-hold.started,selected,owner.core,owner.rig,owner.context,
+            wipeout,orientation.limit,game::orientation_target::error(a,r),hold.orientation.applied_error,flags,
+            velocity[0],velocity[1],velocity[2],spin0[0],spin0[1],spin0[2],spin8[0],spin8[1],spin8[2],
+            a[0],a[1],a[2],a[4],a[5],a[6],a[8],a[9],a[10],r[0],r[1],r[2],r[4],r[5],r[6],r[8],r[9],r[10]);
+    } catch(...) {}
+}
 std::uint64_t apply_arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept {
     return arcade_wallplant_before_selection(selector,current);
 }

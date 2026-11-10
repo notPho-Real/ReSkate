@@ -376,9 +376,6 @@ struct SourceBusyScope {std::atomic_flag& busy;~SourceBusyScope(){busy.clear();}
 struct Hold {Command command;std::uint64_t started{100};game::orientation_target::Result orientation{};float orientation_limit{};} physical_hold;
 struct WallplantOrientationSnapshot {std::array<float,16> actual{},local_root{};float limit{};} orientation_snapshot;
 bool orientation_available=true;
-WallplantOrientationSnapshot wallplant_orientation_snapshot(const dingosdk::arcade_mode::NativeInputOwner&) {
- source_require(orientation_available,"orientation_contract");return orientation_snapshot;
-}
 Hold& wallplant_physical_hold(){return physical_hold;}
 std::atomic<std::uintptr_t> wallplant_hold_core{};
 std::array<float,48> prepared{},stored{};
@@ -389,6 +386,7 @@ std::uint64_t clock_ms{110};
 unsigned originals{},target_calls{},copies{},reads{},state_id{100};
 float passed_seconds{};
 bool stock{},writable{true},fixture_current{true},allow_target{true},change_snapshot{},fail_verify{},expire{},fixture_stale_query{};
+unsigned change_orientation_at_permission{};
 unsigned fail_copy{},fail_read{};
 std::uintptr_t native_context{3};
 bool competition_stock_physics(){return stock;}
@@ -399,10 +397,17 @@ using WallplantHoldContinuity=dingosdk::arcade_mode::WallplantHoldContinuity;
 NativeInputFrame native_wallplant_hold_context(const dingosdk::arcade_mode::NativeInputOwner&,std::uint64_t){return {};}
 namespace wallplant_runtime {
 Command held_command(){return held_value;}
-bool hold_current(const Command&,std::uint64_t,const NativeInputFrame&,bool* stale=nullptr){if(stale)*stale=fixture_stale_query;return fixture_current && !fixture_stale_query;}
+bool hold_current(const Command&,std::uint64_t,const NativeInputFrame&,bool* stale=nullptr){
+ if(change_orientation_at_permission==1)orientation_snapshot.actual[0]=.5f;
+ if(change_orientation_at_permission==2)orientation_snapshot.local_root[0]=.5f;
+ if(change_orientation_at_permission==3)orientation_snapshot.limit=.1f;
+ if(stale)*stale=fixture_stale_query;return fixture_current && !fixture_stale_query;
+}
 }
 }
 struct SourceReader {
+ bool orientation_watched{};
+ WallplantOrientationSnapshot watched_orientation{};
  std::uintptr_t pointer(std::uintptr_t rig){check(rig==2,"ground reads only held rig");return native_context;}
  template<class T>T value(std::uintptr_t base,std::uintptr_t offset){
   if constexpr(std::is_same_v<T,std::uint32_t>){check(base==3,"ground reads held context state");return state_id;}
@@ -415,9 +420,17 @@ struct SourceReader {
  }
  void verify(){
   source_require(!fail_verify,"snapshot_invalid");
+  source_require(!orientation_watched || (watched_orientation.actual==orientation_snapshot.actual &&
+    watched_orientation.local_root==orientation_snapshot.local_root && watched_orientation.limit==orientation_snapshot.limit),
+    "orientation_changed");
   if(change_snapshot)stored[12]+=1;
  }
 };
+WallplantOrientationSnapshot wallplant_orientation_snapshot(const dingosdk::arcade_mode::NativeInputOwner&,
+ SourceReader& reader) {
+ source_require(orientation_available,"orientation_contract");
+ reader.orientation_watched=true;reader.watched_orientation=orientation_snapshot;return orientation_snapshot;
+}
 bool source_writable(std::uintptr_t address,std::size_t bytes){
  check(address==2+spawn::rig_local_motion_target&&bytes==sizeof(stored),"ground writable range is bounded");return writable;
 }
@@ -443,6 +456,7 @@ void reset(){
  held_value.anchor_verified=true;held_value.anchor={7,8,9};held_value.hold_forward={1,0,0};physical_hold={held_value,100};
  wallplant_hold_core=1;cancelled.clear();clock_ms=110;originals=target_calls=copies=reads=0;state_id=100;
  passed_seconds=0;stock=change_snapshot=fail_verify=expire=fixture_stale_query=false;writable=fixture_current=allow_target=true;
+ change_orientation_at_permission=0;
  fail_copy=fail_read=0;native_context=3;prepared={};stored={};
  orientation_available=true;orientation_snapshot={};orientation_snapshot.limit=3.14159265358979323846f;
  for(unsigned a=0;a<4;++a)orientation_snapshot.actual[a*5]=orientation_snapshot.local_root[a*5]=1;
@@ -462,6 +476,11 @@ void run(){
  check(stored[28]==7&&stored[29]==8&&stored[30]==9,"orientation constraint preserves checked wall anchor");
  reset();orientation_available=false;noclip_ground_target(2,.03333333f);
  check(copies==0&&stored==prepared&&cancelled=="orientation_contract","missing native orientation contract refuses target mutation");
+ for(unsigned changed=1;changed<=3;++changed){
+  reset();change_orientation_at_permission=changed;noclip_ground_target(2,.03333333f);
+  check(originals==1&&copies==0&&stored==prepared&&cancelled=="orientation_changed",
+        "physical basis, local root or limit changed during authority lookup rejects the stale target without a write");
+ }
  reset();fixture_stale_query=true;noclip_ground_target(2,.03333333f);
  check(originals==1 && copies==0 && stored==prepared && cancelled.empty() && wallplant_hold_core.load()==1,
        "overtaken final target reader forwards native preparation without writing or canceling newer hold");

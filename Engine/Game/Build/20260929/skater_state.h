@@ -38,6 +38,7 @@ inline constexpr std::uintptr_t rig_physics_offset = 0x2f10;  // rig
 inline constexpr std::uintptr_t physics_bodies_offset = 0x20; // board or rig physics
 inline constexpr std::uintptr_t physics_body_size = 0x130;
 inline constexpr std::uintptr_t body_owner_offset = 0x10;
+inline constexpr std::uintptr_t body_pending_flags_offset = 0x60;
 inline constexpr std::uintptr_t body_velocity_offset = 0x70;
 inline constexpr std::uintptr_t body_spin_offset = 0x90;
 inline constexpr std::uint32_t board_body_count = 9, rig_body_count = 26;
