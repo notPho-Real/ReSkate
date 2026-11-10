@@ -2,13 +2,14 @@
 #include "arcade_input_dispatch.h"
 #include "arcade_ground_motion_step.h"
 #include "arcade_movement.h"
-#include "Extension/AnimationStudio/anim_core.h"
+#include "Extension/AnimationStudio/motion_authoring.h"
 #include <memory>
 
 namespace dingosdk::arcade_mode {
 // Presentation only. No native trick ID, contact, balance or score is created.
 struct CustomTrickClips {
-    std::shared_ptr<const anim_studio::Clip> entry_hold, flip_exit;
+    std::shared_ptr<const anim_studio::Clip> entry_hold, flip_exit, direct_exit;
+    float range_begin{},range_end{};
 };
 struct CustomTrickPlayback {
     void* context{};
@@ -48,8 +49,9 @@ struct CustomFlatlandContext {
     std::uint64_t now{}, manual_episode{};
     bool enabled{}, manual_admitted{}, balance_active{}, competing_owner{}, ollie{};
     int spin_direction{}; // Held display turn only: -1, 0, +1; physics placement stays native.
+    float balance{}; // Read-only governing Manual balance; no new dynamics.
     bool valid() const noexcept {
-        return enabled && manual_admitted && balance_active && !competing_owner && !ollie &&
+        return std::isfinite(balance) && enabled && manual_admitted && balance_active && !competing_owner && !ollie &&
             manual_episode && frame.valid && InputNativeContext::from_frame(frame).fresh(now) &&
             frame.state==100 && frame.mode==1 && frame.contacts==0x4000u &&
             !(frame.stance_and_push&0x40u) && !frame.airborne && !frame.rail_family;
@@ -57,7 +59,7 @@ struct CustomFlatlandContext {
 };
 class CustomFlatland {
 public:
-    enum class Phase { manual, entry, hold, flip_exit };
+    enum class Phase { manual, entry, hold, flip_exit, direct_exit };
     struct Motion { float x{}, z{}; bool admitted{}; };
     CustomFlatland(CustomTrickClips clips,CustomTrickPlayback playback)
         : clips_(std::move(clips)),playback_(playback) {}
@@ -66,13 +68,13 @@ public:
     ~CustomFlatland(){cancel();}
     Phase phase() const noexcept {return phase_;}
     bool active() const noexcept {return phase_!=Phase::manual;}
-    unsigned branch() const noexcept {return phase_==Phase::flip_exit?42u:active()?2u:0u;}
+    unsigned branch() const noexcept {return phase_==Phase::flip_exit?42u:phase_==Phase::direct_exit?0u:active()?2u:0u;}
     std::uint64_t episode() const noexcept {return episode_;}
     float display_radians() const noexcept {return display_radians_;}
     bool branch_ready() const noexcept {return phase_==Phase::manual || phase_==Phase::hold;}
     void cancel() noexcept {
         if(ticket_ && playback_.cancel)playback_.cancel(playback_.context,ticket_);
-        ticket_=episode_=started_step_=0;phase_=Phase::manual;elapsed_=display_radians_=0;resistance_.reset();
+        ticket_=episode_=started_step_=0;phase_=Phase::manual;elapsed_=sample_time_=range_weight_=display_radians_=0;resistance_.reset();
         // steps_ intentionally survives cancellation and OFF/ON.
     }
     void observe(CustomFlatlandContext context) noexcept {
@@ -100,7 +102,7 @@ public:
         }
         if(step.baseline)resistance_.reset();
         elapsed_+=step.seconds;
-        if(playback_.seek && phase_!=Phase::flip_exit)elapsed_=std::min(elapsed_,.3f);
+        if(playback_.seek && (phase_==Phase::entry || phase_==Phase::hold))elapsed_=std::min(elapsed_,.3f);
         if(elapsed_>=duration_) {cancel();return {};}
         if(phase_==Phase::entry && elapsed_>=.3f)phase_=Phase::hold;
         // Original ManualLink turns the display 360 degrees in .75 seconds.
@@ -108,7 +110,14 @@ public:
         if(phase_==Phase::hold && (context.spin_direction==-1 || context.spin_direction==1))
             display_radians_=std::remainder(display_radians_+
                 static_cast<float>(context.spin_direction)*(6.283185307179586f/.75f)*step.seconds,6.283185307179586f);
-        if(playback_.seek)playback_.seek(playback_.context,ticket_,elapsed_);
+        sample_time_=elapsed_;
+        if(phase_==Phase::hold && clips_.range_end>clips_.range_begin) {
+            range_weight_=std::min(1.f,range_weight_+step.seconds/.10f);
+            const float alpha=(std::clamp(context.balance,-1.f,1.f)*range_weight_+1)*.5f;
+            sample_time_=clips_.range_begin+(clips_.range_end-clips_.range_begin)*alpha;
+        }
+        if(playback_.seek)playback_.seek(playback_.context,ticket_,sample_time_);
+        if(phase_==Phase::direct_exit)return {}; // Direct return ends custom drag immediately.
         const float speed=std::hypot(velocity[0],velocity[2]);
         const float change=resistance_.step(step.seconds,speed,false,false,true,
             flatland_friction(context.frame,surface));
@@ -127,21 +136,27 @@ private:
         const bool entry=r.action==InputAction::balance_branch_one && r.variant==2 && !active();
         const bool flip=r.action==InputAction::balance_variant && r.variant==42 && phase_==Phase::hold;
         const bool back=r.action==InputAction::balance_return && r.variant==0 && phase_==Phase::hold;
-        if(back){cancel();return InputDisposition::started;}
-        if(!entry && !flip)return InputDisposition::unsupported;
-        const auto& clip=flip?clips_.flip_exit:clips_.entry_hold;
+        if(back && !clips_.direct_exit){cancel();return InputDisposition::started;}
+        if(!entry && !flip && !back)return InputDisposition::unsupported;
+        auto clip=back?clips_.direct_exit:flip?clips_.flip_exit:clips_.entry_hold;
         if(!clip || clip->empty() || !std::isfinite(clip->duration()) || clip->duration()<=0)
             return InputDisposition::unsupported;
         // A finite next phase borrows only an idle player. No ordinary play()
         // call can steal another caller's newer clip during cancellation.
-        const float turn=flip?display_radians_:0;
+        if(!entry) {
+            try {
+                clip=std::make_shared<anim_studio::Clip>(anim_studio::motion_authoring::joined(
+                    *clip,*clips_.entry_hold,sample_time_));
+            } catch(...) {return InputDisposition::unsupported;}
+        }
+        const float turn=entry?0:display_radians_;
         cancel();
         ticket_=playback_.begin(playback_.context,clip);
         if(!ticket_)return InputDisposition::unsupported;
         display_radians_=turn;
         owner_=context_.frame.owner;owner_generation_=context_.frame.owner_generation;
         episode_=context_.manual_episode;started_step_=context_.frame.physics_step;
-        duration_=clip->duration();phase_=flip?Phase::flip_exit:Phase::entry;
+        duration_=clip->duration();phase_=back?Phase::direct_exit:flip?Phase::flip_exit:Phase::entry;
         return InputDisposition::started;
     }
     CustomTrickClips clips_;
@@ -152,6 +167,6 @@ private:
     GroundMotionStep steps_;
     GroundResistance resistance_;
     Phase phase_{Phase::manual};
-    float elapsed_{},duration_{},display_radians_{};
+    float elapsed_{},sample_time_{},range_weight_{},duration_{},display_radians_{};
 };
 }

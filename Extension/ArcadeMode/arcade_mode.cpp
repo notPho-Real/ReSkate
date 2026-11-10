@@ -508,7 +508,7 @@ ManualEpisode manual_episode;
 CustomFlatlandContext flatland_context(std::uint64_t now,const NativeInputFrame& frame,bool permitted=true) noexcept {
     return {frame,now,manual_episode.serial(),enabled() && permitted,
         manual_episode.actuatable(now) && manual_episode.pose()==SkatePose::manual,
-        manual_balance_admitted.load(std::memory_order_relaxed),false,false};
+        manual_balance_admitted.load(std::memory_order_relaxed),false,false,0,physical_manual.snapshot().position};
 }
 std::atomic<std::uint64_t> manual_hud_episode{};
 GroundManualBalance ground_manual_balance; // Same mutex; delivered basic ground contact only.

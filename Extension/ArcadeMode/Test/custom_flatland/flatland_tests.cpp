@@ -1,3 +1,4 @@
+#include "pose_fixture.h"
 #include "Extension/Skater/display_turn.h"
 #include "surface_tests.h"
 #include "Extension/ArcadeMode/arcade_custom_flatland_clips.h"
@@ -25,8 +26,8 @@ struct Player {
             if(self.live==ticket){self.live=0;++self.cancels;}}};}
 };
 CustomTrickClips clips(){
-    std::array<dingosdk::anim_studio::Joint,dingosdk::anim_studio::skeleton_joints> seed{};
-    seed[7].position={0,1,0};seed[1].position={3,0,4};
+    auto seed=flatland_pose_fixture();
+    seed[1].position={3,0,4};
     return make_casper_clips(seed,{});
 }
 struct Rig {
@@ -90,8 +91,11 @@ void input_and_continuity(){
         after.balance_kind==initial.balance_kind,"no invented scoring initiation or bank");
     Rig back;back.enter();back.hold();at=back.now+10;back.poll(at,0x4000);back.poll(at+10);
     out=back.poll(at+60,0x8000);
-    check(out.manual.owns && !back.trick.active(),"contextual X Y fallback returns to Manual without ending episode");
+    check(out.manual.owns && back.trick.phase()==CustomFlatland::Phase::direct_exit,"contextual X Y starts an authored return without ending the Manual episode");
     check(back.poll(at+80,0x8000).manual.owns,"held return Y remains consumed");
+    for(unsigned i=0;i<20;++i){back.next(back.now+17);const auto drag=back.trick.step(back.context(),{0,0,5});
+        check(!drag.admitted,"direct return releases custom drag while its pose recovers");}
+    check(!back.trick.active() && !back.player.live,"authored direct exit releases animation ownership");
 }
 void sequence_boundaries(){
     for(unsigned age:{299u,300u,301u}){
@@ -233,7 +237,7 @@ void animation(){
     c.entry_hold->sample(.3f,pose);c.entry_hold->sample_board(.3f,board);
     check(near(pose[1].position[0],3) && near(pose[1].position[2],4),"native placement seed remains unchanged");
     check(std::abs(pose[342].rotation[0])>.1f,"new authored body pose changes knee joint");
-    check(rotate(board.rotation,{0,1,0})[1]<-.99f,"held rendered board is inverted");
+    check(rotate(board.rotation,{0,1,0})[1]<-.5f,"held rendered board is inverted and nose elevated");
     std::array<Joint,skeleton_joints> flip_start{};
     Joint flip_board;
     c.flip_exit->sample(0,flip_start);c.flip_exit->sample_board(0,flip_board);
@@ -256,7 +260,7 @@ void animation(){
             total+=2*std::acos(std::clamp(std::abs(dot),0.f,1.f));}
         first=false;previous=board.rotation;
     }
-    check(near(total,3*3.14159265f,.02f),"shortest arc interpolation preserves authored 540-degree flip exit");
+    check(total>3*3.14159265f && total<10.5f,"shortest arc interpolation preserves the authored roll with coordinated pitch");
     const auto roundtrip=clip_from_bytes(clip_bytes(*c.entry_hold));check(roundtrip.times==c.entry_hold->times,"authored clip uses existing portable serialization");
 }
 }

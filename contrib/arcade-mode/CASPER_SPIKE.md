@@ -593,3 +593,80 @@ These are requests, not proof of final movement or rendered pose.
 
 Private source and native research, transport receipts and subsequent hardware
 evidence live under artifacts/casper-spin-surface outside the repository.
+
+## Authored motion candidate — November 10, 2026
+
+This continuation preserves the accepted gameplay source at ec391bdd and changes
+presentation. Native visual acceptance is still pending.
+
+The motion source is animations/casper.motion.json. Entry loads the rear leg,
+separates the feet while the board rolls, then catches a steep nose-up inverted
+board. The held range has a front instep target on the grip side and a rear sole
+target at the tail. The native seed supplies stance and bone lengths. The flip
+has anticipation, release, clearance and recovery keys. Direct return reverses
+entry and fades to the current native pose. Existing Ollie, bail, OFF,
+focus/controller loss and competing-owner boundaries cancel immediately; an exit
+animation never delays native gameplay.
+
+physical_manual.snapshot().position selects the held range; its dynamics, input,
+fatigue and ownership are unchanged. The first 0.10 seconds of hold ease into
+that range. Flip/direct exits join the selected range pose. Shoulder display
+rotation remains through exit and disappears with its blend envelope. Direct
+return stops custom drag when requested, as before. No material classification,
+friction coefficient, controller mapping or native contact is changed.
+
+### Reusable authoring workflow
+
+1. Author named phase keys in JSON. The compiler rejects invalid dimensions,
+   non-finite values, unordered times and invalid weights. Regenerate with:
+
+       python contrib/arcade-mode/animations/compile_motion.py contrib/arcade-mode/animations/casper.motion.json Extension/ArcadeMode/arcade_casper_motion.inl
+
+   Add --check to detect stale generated data without writing it.
+
+2. Resolve the target rig from a fresh native pose. Work in its placement frame,
+   preserve parent-local bone translations, and determine stance from feet relative
+   to the board. Animation Studio's motion_authoring.h offers a generic two-bone
+   target solver, named phase baking, smooth quaternion/position interpolation,
+   reversal and continuous phase joins. It uses the existing pose math and Clip
+   representation. There is no additional runtime player. Imported regular clips
+   retain the existing rig-aware Library::mirror; blend masks mirror with joints.
+
+3. Bake phases into Animation Studio clips. Supply intermediate orientation keys
+   for turns greater than 180 degrees. Per-joint masks keep unowned face/finger
+   motion native. The envelope blends body and board back to the current native
+   pose. Weighted files use FAS4; unweighted exports remain FAS3, and FAS1–3 imports
+   retain previous defaults. Export/import validate shapes, finite values, times
+   and blend bounds.
+
+4. Run portable authoring and gameplay tests before a full runtime build:
+
+       python Extension/ArcadeMode/Test/custom_flatland/run.py --output <SSD-output> --integration --sanitize
+
+   Tests cover both stances, three synthetic body sizes, range contact error,
+   unchanged limb lengths, phase continuity, reversal, blend serialization,
+   malformed files and existing input/drag/ownership boundaries. Sanitizers caught
+   a board-track ID incorrectly used as a body-joint index; that error is fixed.
+
+5. Build an exact-source experimental DLL once a candidate is coherent. Inspect
+   actual front, side and rear rendering in both stances, entry, spin, flip,
+   direct/Ollie exit and cancellation. Synthetic target error is not proof of
+   shoe-mesh contact, ground support or acceptable animation.
+
+### Reference and limits
+
+The sequence follows the previously audited entry/range/out behavior. Public
+gameplay footage around 2:13:16–2:13:18 supplied visual reference for foot
+separation, the steep held board and upper-body counterbalance. Reference URLs
+and extraction notes remain in the private SSD evidence directory. No proprietary
+skeletal animation, mesh or extracted game asset is included in source/packages.
+
+Source skeleton/animation formats and existing import tools were inspected, but
+no local source-game installation or compatible extracted rig was verified.
+These are newly authored controls retargeted to a live pose, not converted assets.
+
+The rendered board remains separate from the native rigid board and contacts.
+The solver places visible ankles; it does not create support, move physical
+geometry, suppress bails or establish custom scoring/trick IDs. Native visual
+and contact acceptance, goofy gameplay and exact DLL installation must be
+recorded after the coordinated hardware session.

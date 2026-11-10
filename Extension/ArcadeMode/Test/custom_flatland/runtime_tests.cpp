@@ -1,9 +1,11 @@
+#include "pose_fixture.h"
 #include "Extension/ArcadeMode/arcade_custom_flatland_runtime.h"
 #include "Extension/ArcadeMode/arcade_input_session.h"
 #include "Extension/ArcadeMode/arcade_native_wall_contact.h"
 #include "Extension/Skater/skater_animation.h"
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 using namespace dingosdk;
 using namespace dingosdk::arcade_mode;
 namespace {
@@ -48,7 +50,7 @@ bool seek_owned(std::uint64_t id,float seconds,float radians){
 std::optional<NativePose> native_pose(){
     if(!player.seed_available)return {};
     NativePose p;p.base=1;p.entity=player.seed_wrong_owner?99:player.entity;
-    p.joints.resize(anim_studio::skeleton_joints);p.age=.001;p.sequence=player.now;return p;
+    p.joints=flatland_pose_fixture();p.age=.001;p.sequence=player.now;return p;
 }
 }
 namespace {
@@ -58,7 +60,7 @@ struct Rig {
     NativeInputFrame frame{};
     InputSession session;
     std::uint64_t now{player.now+1000};
-    float dt{1.f/60};
+    float dt{1.f/60},balance{};
     bool enabled{true},balanced{true},catalog_loaded{true},controls_owned{true};
     bool offboard{},releasing_manual{},grind_owned{};
     unsigned physical_left_trigger{},physical_right_trigger{};
@@ -71,7 +73,7 @@ struct Rig {
         ManualInputDiagnostic d{};d.owns=d.safe=true;d.request=-1;d.request_at=now-100;d.recognized_at=d.request_at;d.recognition_id=7;
         session.resume_manual_episode(d,a.native_context);
     }
-    CustomFlatlandContext context()const{return {frame,now,owner.entity,enabled,true,balanced,false,false};}
+    CustomFlatlandContext context()const{return {frame,now,owner.entity,enabled,true,balanced,false,false,0,balance};}
     CustomFlatlandContext input_context(unsigned physical_buttons=0)const{
         const bool game_input=enabled,owns_controls=controls_owned;
         [[maybe_unused]] const bool authored=catalog_loaded;
@@ -117,7 +119,7 @@ struct Rig {
     }
     void hold(unsigned count=24){
         for(unsigned i=0;i<count;++i){next();auto d=step();tick();check(d.admitted,"active native writer consumes custom drag");}
-        check(binding().ready && player.time==.3f,"entry settles into native-clock held pose");
+        check(binding().ready && player.time==2.f,"entry settles into native-clock held pose");
     }
 };
 void runtime_admission(){
@@ -202,6 +204,7 @@ void exit_trigger_boundaries(){
         Rig r;r.enter();r.hold();r.physical_right_trigger=255;
         r.poll(0);r.step();r.tick();
         r.poll(0x4000);r.poll(0);r.poll(0x8000);r.tick();r.poll(0);r.tick();
+        for(unsigned i=0;i<20;++i){r.poll(0);r.step();r.tick();}
         check(r.binding().owns_triggers && !r.binding().ready,
             "completed exit retains only the held trigger release obligation");
         if(reason==0)r.enabled=false;
@@ -221,6 +224,17 @@ void exit_trigger_boundaries(){
         r.next();r.tick();r.next();r.tick();
         check(!r.binding().enabled,"recovery cannot turn a held trigger into new Casper admission");
     }
+}
+void balance_range(){
+    Rig r;r.enter();r.hold();
+    const auto ticket=player.ticket;
+    for(float balance:{-1.f,-.5f,0.f,.5f,1.f}) {
+        r.balance=balance;r.poll(0);r.step();r.tick();
+        check(std::abs(player.time-(2+balance))<.0001f && player.ticket==ticket,
+            "the governing Manual balance selects the range on the same ticket");
+    }
+    r.balance=std::numeric_limits<float>::quiet_NaN();r.poll(0);r.tick();
+    check(!player.ticket,"invalid balance cannot leave an owned pose behind");
 }
 void material_capture_lifetime(){
     Rig r;
@@ -298,4 +312,4 @@ void seed_and_pending(){
 }
 int main(){
     check(!custom_flatland_runtime::status().enabled,"dev experiment defaults OFF");
-    material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}
+    balance_range();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

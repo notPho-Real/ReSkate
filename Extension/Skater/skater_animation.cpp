@@ -798,6 +798,7 @@ void on_animation(std::uintptr_t component) noexcept {
         std::size_t first = 0, last = 0; // [first, last) of l.pose written
         Joint board_target;
         float board_weight = 0;
+        if (clip && t >= 0) weight *= clip->weight(t);
         if (clip && t >= 0 && weight > 0) {
             const auto placement = world(l.pose, placement_joint);
             l.custom.resize(layout.count);
@@ -821,10 +822,11 @@ void on_animation(std::uintptr_t component) noexcept {
                 if (!body[i]) continue;
                 auto& j = l.pose[i];
                 const auto& c = l.custom[i];
-                j.rotation = slerp(j.rotation, c.rotation, weight);
+                const float joint_weight = weight * clip->joint_weight(i);
+                j.rotation = slerp(j.rotation, c.rotation, joint_weight);
                 if (clip->keeps_position(i) && !(i == hips_joint && snap->play &&
                     clip == snap->play->clip.get() && snap->display_radians != 0)) continue; // the skater's own build
-                for (std::size_t k = 0; k < 3; ++k) j.position[k] += (c.position[k] - j.position[k]) * weight;
+                for (std::size_t k = 0; k < 3; ++k) j.position[k] += (c.position[k] - j.position[k]) * joint_weight;
             }
             first = 2;
             last = layout.count;

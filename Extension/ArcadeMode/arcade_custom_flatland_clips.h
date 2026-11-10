@@ -1,53 +1,102 @@
 #pragma once
 #include "arcade_custom_flatland.h"
+#include "Extension/AnimationStudio/motion_authoring.h"
 #include <stdexcept>
+#include "arcade_casper_motion.inl"
 
 namespace dingosdk::arcade_mode {
-// Original authored offsets, not copied animation data. The caller supplies an
-// owned local Manual seed (395 parent-local joints and placement-relative board).
-// This rough pose demonstrates the animation route; it is not contact/IK proof.
+// Newly authored motion in the board frame. A live Manual pose supplies the
+// skeleton proportions and stance; no source-game animation is embedded.
 inline CustomTrickClips make_casper_clips(std::span<const anim_studio::Joint> seed,
         const anim_studio::Joint& board) {
     using namespace anim_studio;
-    if(seed.size()!=skeleton_joints || !finite(board))throw std::invalid_argument("flatland seed");
-    for(const auto& joint:seed)if(!finite(joint))throw std::invalid_argument("flatland joint");
-    const auto make=[&](bool flip) {
-        Animation animation;
-        const float duration=flip?.6f:15.f;
-        const std::array<float,7> times=flip?std::array<float,7>{0,.1f,.2f,.3f,.4f,.5f,.6f}:
-            std::array<float,7>{0,.1f,.2f,.3f,14.7f,14.85f,15.f};
-        for(auto [joint,degrees]:std::array<std::pair<std::uint16_t,Vec3>,8>{{
-            {hips_joint,{0,0,-12}},{42,{8,0,0}},{341,{-28,0,0}},{342,{48,0,0}},
-            {343,{-24,0,0}},{8,{18,0,0}},{9,{30,0,0}},{10,{-35,0,0}}}}) {
-            const auto rotation=from_euler(degrees);
-            if(flip) {
-                set_key(animation,joint,0,{rotation,{}});
-                set_key(animation,joint,.2f,{rotation,{}});
-                set_key(animation,joint,duration,{});
-            } else {
-                set_key(animation,joint,0,{});
-                set_key(animation,joint,.3f,{rotation,{}});
-                set_key(animation,joint,14.7f,{rotation,{}});
-                set_key(animation,joint,duration,{});
-            }
+    namespace author=motion_authoring;
+    using namespace pose_math;
+    if(seed.size()!=skeleton_joints || !anim_studio::finite(board))
+        throw std::invalid_argument("flatland seed");
+    for(const auto& joint:seed)if(!anim_studio::finite(joint))throw std::invalid_argument("flatland joint");
+    auto base=std::vector<Joint>(seed.begin(),seed.end());
+    // Author in the placement frame. Restore these two untouched joints after
+    // solving; the player's native placement remains authoritative.
+    base[0]=base[placement_joint]=Joint{};
+    const auto left=world(base,343),right=world(base,10);
+    const bool left_front=author::unpoint(board,left.position)[2]>author::unpoint(board,right.position)[2];
+    const std::array<std::uint16_t,3> front=left_front?std::array<std::uint16_t,3>{341,342,343}:std::array<std::uint16_t,3>{8,9,10};
+    const std::array<std::uint16_t,3> back=left_front?std::array<std::uint16_t,3>{8,9,10}:std::array<std::uint16_t,3>{341,342,343};
+    const auto front_foot=world(base,front[2]),back_foot=world(base,back[2]);
+    const float side=left_front?1.f:-1.f;
+    const auto axis=[&](Vec3 v){return rotate(board.rotation,v);};
+    // All numbers below are authored controls, not a second runtime pose layer.
+    // Feet: the front instep supports the grip side; the rear sole rests on the
+    // inverted tail. Release keys lift both feet before the board turns past them.
+    using casper_motion::Key;
+    const auto pose=[&](const Key& k,float balance=0.f) {
+        author::PoseKey out;out.time=k.time;out.pose=base;out.board=board;out.weight=k.weight;
+        out.board.rotation=normalised(multiply(board.rotation,from_euler({k.pitch,0,side*k.roll})));
+        out.board.position=add(board.position,axis({0,k.lift+(author::unpoint(board,back_foot.position)[1]-.08f)*k.contact,0}));
+        out.pose[hips_joint].position=add(out.pose[hips_joint].position,axis({0,-k.hip_drop,k.hip_back+.025f*balance}));
+        author::turn(out.pose,hips_joint,axis_angle(axis({1,0,0}),(-4*k.upper+3*balance)*.01745329252f));
+        author::turn(out.pose,42,axis_angle(axis({1,0,0}),(7*k.upper-4*balance)*.01745329252f));
+        author::turn(out.pose,44,axis_angle(axis({0,0,1}),side*(5*k.upper+6*balance)*.01745329252f));
+        author::turn(out.pose,103,axis_angle(axis({1,0,0}),-5*k.upper*.01745329252f));
+        const auto foot=[&](const std::array<std::uint16_t,3>& chain,const Joint& native,
+                Vec3 contact,float lift,float lateral,float ankle) {
+            const auto on_board=author::point(out.board,contact);
+            auto target=add(native.position,scaled(sub(on_board,native.position),k.contact));
+            const float outward=author::unpoint(board,native.position)[0]<0?-1.f:1.f;
+            target=add(target,axis({outward*lateral,lift,0}));
+            const auto rotation=normalised(multiply(axis_angle(axis({1,0,0}),ankle*k.contact*.01745329252f),native.rotation));
+            // Preserve the native knee's side of the leg; use its bend plane,
+            // with the skater's forward direction only as a straight-leg fallback.
+            const auto hip=world(base,chain[0]),knee=world(base,chain[1]);
+            const auto middle=scaled(add(hip.position,native.position),.5f);
+            const auto pole=unit(sub(knee.position,middle),axis({side,0,0}));
+            (void)author::reach(out.pose,chain,target,pole,rotation);
+        };
+        foot(front,front_foot,{side*.025f,.025f,.25f},k.front_lift,k.front_side,-18);
+        foot(back,back_foot,{-side*.015f,-.10f,-.32f},k.back_lift,k.back_side,5);
+        // Open hands counter the body transfer; each arm keeps its own lengths.
+        for(const auto chain: {std::array<std::uint16_t,3>{47,48,49},std::array<std::uint16_t,3>{276,277,278}}) {
+            const auto native=world(base,chain[2]),shoulder=world(base,chain[0]);
+            const auto outward=unit(sub(shoulder.position,world(base,45).position),axis({1,0,0}));
+            const float response=(chain[0]==47?1.f:-1.f)*balance;
+            const auto target=add(native.position,add(scaled(outward,.08f*k.upper),
+                axis({0,.10f*k.upper+.045f*response,-.025f*k.upper})));
+            (void)author::reach(out.pose,chain,target,add(outward,axis({0,-.3f,0})),native.rotation);
         }
-        auto clip=std::make_shared<Clip>();clip->joints=skeleton_joints;
-        // Each adjacent board roll is <=90 degrees, preserving a full turn.
-        for(float time:times) {
-            clip->times.push_back(time);
-            std::vector<Joint> pose(seed.begin(),seed.end());
-            apply_edits(animation,time,pose);
-            clip->frames.insert(clip->frames.end(),pose.begin(),pose.end());
-            const float weight=flip?1.f-std::clamp((time-.2f)/.4f,0.f,1.f):
-                std::min(std::clamp(time/.3f,0.f,1.f),std::clamp((15-time)/.3f,0.f,1.f));
-            const float angle=flip?180+540*(time/duration):180*weight;
-            auto b=board;
-            b.rotation=multiply(b.rotation,axis_angle({0,0,1},angle*3.14159265358979f/180));
-            b.position[1]+=.08f*weight; // render clearance only; no rigid body is moved.
-            clip->board.push_back(b);
-        }
-        return clip;
+        if(k.contact==0 && k.front_lift==0 && k.back_lift==0 && k.front_side==0 && k.back_side==0 && k.upper==0 &&
+            k.hip_drop==0 && k.hip_back==0)out.pose.assign(seed.begin(),seed.end());
+        out.pose[0]=seed[0];out.pose[placement_joint]=seed[placement_joint];
+        return out;
     };
-    return {make(false),make(true)};
+    std::vector<float> mask(skeleton_joints,0);
+    for(const auto& joint:editable_joints())if(joint.index<mask.size())mask[joint.index]=1;
+    const auto phase=[&](std::string name){return author::Phase{std::move(name),{},mask};};
+    auto entry=phase("Casper Entry");
+    for(const auto& k:casper_motion::entry)entry.keys.push_back(pose(k));
+    auto init=author::bake(entry);
+    auto out=author::reversed(init);
+    for(std::size_t f=0;f<out.times.size();++f)out.weights[f]=1-author::smooth((out.times[f]-.20f)/.10f);
+    auto hold=phase("Casper Range");
+    Key held=casper_motion::hold.front();
+    const float held_pitch=held.pitch;
+    for(float balance:{-1.f,0.f,1.f}) {
+        held.time=2+balance;held.pitch=held_pitch+3*balance;
+        hold.keys.push_back(pose(held,balance));
+    }
+    const auto range=author::bake(hold);
+    // Preserve the original entry/hold handle and its finite fallback lease.
+    // Externally clocked playback addresses only the entry or the range.
+    for(std::size_t f=0;f<range.times.size();++f) {
+        init.times.push_back(range.times[f]);
+        init.frames.insert(init.frames.end(),range.frame(f).begin(),range.frame(f).end());
+        init.board.push_back(range.board[f]);init.weights.push_back(1);
+    }
+    init.times.push_back(15);init.frames.insert(init.frames.end(),seed.begin(),seed.end());
+    init.board.push_back(board);init.weights.push_back(0);
+    auto flip=phase("Casper Flip");
+    for(const auto& k:casper_motion::flip)flip.keys.push_back(pose(k));
+    return {std::make_shared<Clip>(std::move(init)),std::make_shared<Clip>(author::bake(flip)),
+        std::make_shared<Clip>(std::move(out)),1,3};
 }
 }

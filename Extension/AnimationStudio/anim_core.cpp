@@ -294,9 +294,35 @@ Joint world(std::span<const Joint> local, std::uint16_t joint) noexcept {
 }
 
 // "FAS3": the joints that never move in the clip (most of the face and the fingers) are stored once,
-// the others every frame, and the board every frame when there is one. "FAS1" (no board) and "FAS2"
+// the others every frame, and the board every frame when there is one. "FAS4" adds a blend envelope
+// and per-joint mask. Unweighted exports stay FAS3. "FAS1" (no board) and "FAS2"
 // (every joint every frame, then the board) still read.
+float Clip::weight(float seconds) const noexcept {
+    if (weights.size() != times.size() || weights.empty()) return 1;
+    if (!std::isfinite(seconds)) return 0;
+    const auto it = std::upper_bound(times.begin(), times.end(), seconds);
+    if (it == times.begin()) return weights.front();
+    if (it == times.end()) return weights.back();
+    const auto b = static_cast<std::size_t>(it - times.begin()), a = b - 1;
+    const float t = (seconds - times[a]) / std::max(times[b] - times[a], 1e-6f);
+    return weights[a] + (weights[b] - weights[a]) * t;
+}
 std::vector<std::uint8_t> clip_bytes(const Clip& clip) {
+    require(clip.joints > 0 && clip.joints <= 512 && !clip.times.empty() &&
+        clip.times.size() <= 20000 && clip.frames.size() == clip.times.size() * clip.joints,
+        "invalid clip dimensions");
+    require(clip.board.empty() || clip.board.size() == clip.times.size(), "invalid board track");
+    require(clip.turned_only.empty() || clip.turned_only.size() == clip.joints, "invalid position mask");
+    require(clip.joint_weights.empty() || clip.joint_weights.size() == clip.joints, "invalid joint blend mask");
+    require(clip.weights.empty() || clip.weights.size() == clip.times.size(), "invalid blend envelope");
+    for (std::size_t i = 0; i < clip.times.size(); ++i)
+        require(std::isfinite(clip.times[i]) && clip.times[i] >= 0 &&
+            (!i || clip.times[i] >= clip.times[i-1]), "invalid clip time");
+    for (const auto& j : clip.frames) require(finite(j), "invalid clip joint");
+    for (const auto& j : clip.board) require(finite(j), "invalid clip board");
+    for (float w : clip.weights) require(std::isfinite(w) && w >= 0 && w <= 1, "invalid blend envelope");
+    for (float w : clip.joint_weights) require(std::isfinite(w) && w >= 0 && w <= 1, "invalid joint blend mask");
+    require(std::isfinite(clip.takeoff) && std::isfinite(clip.landing), "invalid clip events");
     std::vector<std::uint8_t> out;
     const auto put = [&](const void* data, std::size_t size) {
         const auto* p = static_cast<const std::uint8_t*>(data);
@@ -309,17 +335,21 @@ std::vector<std::uint8_t> clip_bytes(const Clip& clip) {
     };
     const bool board = clip.board.size() == clip.times.size() && !clip.board.empty();
     const std::uint32_t frames = static_cast<std::uint32_t>(clip.times.size());
-    put("FAS3", 4);
+    const bool weighted = !clip.weights.empty() || !clip.joint_weights.empty();
+    put(weighted ? "FAS4" : "FAS3", 4);
     put(&clip.joints, 4);
     put(&frames, 4);
     put(&clip.takeoff, 4);
     put(&clip.landing, 4);
     // Bit 1: the board follows the frames. Bit 2: which joints the clip only turns, after the times.
     const bool turned = clip.turned_only.size() == clip.joints;
-    const std::uint8_t flags = (board ? 1 : 0) | (turned ? 2 : 0);
+    const std::uint8_t flags = (board ? 1 : 0) | (turned ? 2 : 0) |
+        (!clip.weights.empty() ? 4 : 0) | (!clip.joint_weights.empty() ? 8 : 0);
     put(&flags, 1);
     put(clip.times.data(), clip.times.size() * 4);
     if (turned) put(clip.turned_only.data(), clip.turned_only.size());
+    if (!clip.weights.empty()) put(clip.weights.data(), clip.weights.size() * 4);
+    if (!clip.joint_weights.empty()) put(clip.joint_weights.data(), clip.joint_weights.size() * 4);
     std::vector<std::uint8_t> moves(clip.joints, 0);
     const auto same = [](const Joint& a, const Joint& b) {
         for (std::size_t i = 0; i < 3; ++i)
@@ -356,7 +386,8 @@ Clip clip_from_bytes(std::span<const std::uint8_t> bytes) {
     char magic[4]{};
     require(bytes.size() >= 20, "the clip file is cut short");
     get(magic, 4);
-    const bool v3 = std::memcmp(magic, "FAS3", 4) == 0;
+    const bool v4 = std::memcmp(magic, "FAS4", 4) == 0;
+    const bool v3 = v4 || std::memcmp(magic, "FAS3", 4) == 0;
     bool board = std::memcmp(magic, "FAS2", 4) == 0;
     require(v3 || board || std::memcmp(magic, "FAS1", 4) == 0, "not an Animation Studio clip");
     Clip clip;
@@ -366,13 +397,15 @@ Clip clip_from_bytes(std::span<const std::uint8_t> bytes) {
     get(&clip.takeoff, 4);
     get(&clip.landing, 4);
     require(clip.joints > 0 && clip.joints <= 512 && frames <= 20000, "the clip is too large");
-    bool turned = false;
+    bool turned = false, weighted = false, masked = false;
     if (v3) {
         std::uint8_t flags{};
         get(&flags, 1);
-        require(flags <= 3, "the clip file is a newer one");
+        require(flags <= (v4 ? 15 : 3), "the clip file is a newer one");
         board = (flags & 1) != 0;
         turned = (flags & 2) != 0;
+        weighted = (flags & 4) != 0;
+        masked = (flags & 8) != 0;
     }
     clip.times.resize(frames);
     get(clip.times.data(), frames * 4ull);
@@ -380,6 +413,13 @@ Clip clip_from_bytes(std::span<const std::uint8_t> bytes) {
         clip.turned_only.resize(clip.joints);
         get(clip.turned_only.data(), clip.turned_only.size());
     }
+    const auto get_weights = [&](std::vector<float>& values, std::size_t count) {
+        values.resize(count);
+        get(values.data(), count * 4);
+        for (float w : values) require(std::isfinite(w) && w >= 0 && w <= 1, "invalid clip blend weight");
+    };
+    if (weighted) get_weights(clip.weights, frames);
+    if (masked) get_weights(clip.joint_weights, clip.joints);
     for (std::size_t i = 0; i < clip.times.size(); ++i)
         require(std::isfinite(clip.times[i]) && clip.times[i] >= 0 && (i == 0 || clip.times[i] >= clip.times[i - 1]), "the clip's times are out of order");
     clip.frames.resize(static_cast<std::size_t>(frames) * clip.joints);

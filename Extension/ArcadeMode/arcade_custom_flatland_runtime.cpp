@@ -82,7 +82,7 @@ CustomFlatlandBinding observe(CustomFlatlandContext context) noexcept {
 }
 CustomFlatlandBinding observe_input(CustomFlatlandContext context,unsigned lt,unsigned rt) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
-    const bool active=s.trick && s.trick->active();
+    const bool active=s.trick && s.trick->active() && s.trick->phase()!=CustomFlatland::Phase::direct_exit;
     const unsigned held=(lt>30?1u:0u)|(rt>30?2u:0u);
     s.held_triggers&=held;
     if(!s.held_at || context.now<s.held_at || context.now-s.held_at>150)s.held_triggers=0;
@@ -97,7 +97,7 @@ CustomFlatlandBinding observe_input(CustomFlatlandContext context,unsigned lt,un
     if(!s.trick || !s.ready || !s.client_current() || !context.valid()){
         s.held_triggers=0;return {};
     }
-    const bool owns=s.trick->active();
+    const bool owns=s.trick->active() && s.trick->phase()!=CustomFlatland::Phase::direct_exit;
     if(owns) {
         s.held_triggers=held;
         s.spin_input=context.frame;s.spin_at=context.now;

@@ -11,6 +11,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--cxx", default="c++")
 parser.add_argument("--integration", action="store_true")
+parser.add_argument("--sanitize", action="store_true")
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[4]
 out = args.output.resolve()
@@ -28,12 +29,24 @@ if sys.platform == "darwin":
     sdk = Path("/Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk")
     if sdk.exists():
         common += ["-isysroot", str(sdk), "-isystem", str(sdk / "usr/include/c++/v1")]
+if args.sanitize:
+    common += ["-g", "-O1", "-fsanitize=address,undefined", "-fno-omit-frame-pointer"]
 strict = ["-Wall", "-Wextra", "-Wshadow", "-Wconversion", "-Wsign-conversion", "-Werror"]
 def run(command):
     subprocess.run(command, cwd=root, env=env, check=True)
 
+run([sys.executable, str(root / "contrib/arcade-mode/animations/compile_motion.py"),
+     str(root / "contrib/arcade-mode/animations/casper.motion.json"),
+     str(root / "Extension/ArcadeMode/arcade_casper_motion.inl"), "--check"])
+run([sys.executable, str(root / "contrib/arcade-mode/animations/test_compile_motion.py")])
 core = out / "anim_core.o"
 run(common + ["-c", str(root / "Extension/AnimationStudio/anim_core.cpp"), "-o", str(core)])
+authoring = out / "casper_authoring_tests"
+run(common + strict + [str(Path(__file__).with_name("authoring_tests.cpp")), str(core), "-o", str(authoring)])
+run([str(authoring)])
+studio = out / "animation_studio_tests"
+run(common + ["-Wall", "-Wextra", "-Werror", str(root / "Extension/AnimationStudio/Test/anim_core_tests.cpp"), str(core), "-o", str(studio)])
+run([str(studio)])
 test = out / "casper_spike_tests"
 run(common + strict + [str(Path(__file__).with_name("flatland_tests.cpp")), str(core), "-o", str(test)])
 run([str(test)])

@@ -67,6 +67,13 @@ struct Clip {
     // keeps a joint's place (the skater's build) for a joint its own clips have no position for. Empty:
     // every joint's position is the clip's, as in a recording.
     std::vector<std::uint8_t> turned_only;
+    // Optional native blend mask and time-varying ownership envelope. Empty means 1.
+    // The envelope also applies to the board; a zero endpoint returns to the live pose.
+    std::vector<float> joint_weights, weights;
+    float weight(float seconds) const noexcept;
+    float joint_weight(std::size_t joint) const noexcept {
+        return joint < joint_weights.size() ? joint_weights[joint] : 1.f;
+    }
     bool empty() const noexcept { return times.empty() || !joints; }
     bool keeps_position(std::size_t joint) const noexcept { return joint < turned_only.size() && turned_only[joint]; }
     float duration() const noexcept { return times.empty() ? 0.0f : times.back(); }

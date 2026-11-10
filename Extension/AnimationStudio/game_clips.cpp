@@ -511,6 +511,10 @@ Clip Library::mirror(const Clip& clip) const {
     if (!clip.turned_only.empty()) {
         for (std::size_t j = 0; j < clip.turned_only.size(); ++j) out.turned_only[rig.mirror_of[j]] = clip.turned_only[j];
     }
+    if (!clip.joint_weights.empty()) {
+        for (std::size_t j = 0; j < clip.joint_weights.size(); ++j)
+            out.joint_weights[rig.mirror_of[j]] = clip.joint_weights[j];
+    }
     // The board's joints (Skateboard_Root and everything under it): the board mirrored as itself, the rest
     // of it (trucks, wheels, the feet's deck effectors) in its frame, Left and Right trading there.
     std::vector<bool> on_board(skeleton_joints, false);
