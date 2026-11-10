@@ -44,6 +44,21 @@ another X→Y returns directly. The controlled player holds at 0.3 seconds using
 native physics elapsed time, beyond the portable clip's 15-second duration.
 The flip replaces the current controlled clip under the same ticket and retains
 blend progress; its first body/board pose must match the held pose.
+Hold LT or RT after entry to turn the displayed body and board at 480 degrees
+per native second. Opposing triggers or release stop further turning. This is
+a display turn; exit returns to the native heading. The trigger already used
+for rotation remains consumed through a normal exit until release, while the
+same Manual continues. This continuation cannot admit another Casper and ends
+on stale input, owner/episode changes, gameplay loss or competing ownership.
+The runtime regression holds both the exit button and each rotation trigger
+across subsequent polls; checking only the initial exit poll misses a dropped
+Manual on the next input sample.
+
+Live static wheel-contact material selects the Casper slide resistance request.
+The measured slowdown must be checked with native horizontal velocity on each
+real surface; the request coefficient alone does not prove the result after
+the existing ground-resistance compensation and native physics.
+
 A cancels immediately and leaves the ordinary launch path. Up/Down still feeds
 existing Manual balance. Nose Manual, shoulder-spin compatibility, goofy poses,
 banked contacts, live surface-material detection and native score acceptance
