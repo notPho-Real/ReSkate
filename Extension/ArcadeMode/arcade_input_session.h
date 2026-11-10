@@ -43,6 +43,7 @@ struct InputAdmission {
     // Opt-in visual flatland adapter, never native trick/result admission.
     // The dev runtime supplies a leased presentation capability.
     bool custom_flatland{};
+    bool custom_flatland_triggers{};
     unsigned custom_flatland_branch{}; // Leased presentation context, never native identity.
 };
 // One per-controller journal and one dispatch path. Native playback objects have
@@ -344,7 +345,15 @@ public:
         };
         if (physical.rt<=30) revert_trigger_owned_=false;
         else if(auxiliary_.busy() && !grab_actor_) revert_trigger_owned_=true;
-        const bool triggers = physical.lt > 30 || physical.rt > 30;
+        const bool flatland_triggers=admission.custom_flatland && admission.custom_flatland_triggers &&
+            admission.custom_flatland_branch!=0 && admission.extensions.request &&
+            admission.manual_balance_admitted && manual_.busy() && !authored_.busy() &&
+            !auxiliary_.busy() && !admission.external_owner && native.required && native.fresh(now) &&
+            native.correlates_action(admission.balance_generations) &&
+            native.flip.state==100 && native.flip.mode==1 && !(physical.buttons&0x1330u);
+        output.flatland_triggers_owned=flatland_triggers;
+        if(flatland_triggers)admission.nollie=admission_.nollie=false;
+        const bool triggers = (physical.lt > 30 || physical.rt > 30) && !flatland_triggers;
         // Native adapter wiring only: an admitted balance can retain its RS
         // hold when a stance/branch trigger has no competing channel owner.
         // Preparation and actual authored/auxiliary/external conflicts still cancel.
@@ -824,6 +833,7 @@ private:
             }
             rail_ = true; rail_request_ = request; return InputDisposition::started;
         case InputAction::grab: case InputAction::revert:
+            if(current_->flatland_triggers_owned)return InputDisposition::cancelled;
             return request_auxiliary(request);
         case InputAction::rail_select: case InputAction::rail_change: case InputAction::lip_select: case InputAction::lip_change:
             if (!admission.rail.fresh) return request.action == InputAction::rail_select &&

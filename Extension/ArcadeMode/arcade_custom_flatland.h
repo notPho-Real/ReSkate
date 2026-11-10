@@ -19,7 +19,7 @@ struct CustomTrickPlayback {
     bool available() const noexcept {return begin && owns && cancel;}
 };
 enum class FlatlandSurface { unknown, ordinary, rough, sealed, slick };
-// An explicit contact-proof boundary, with NO native producer in this spike.
+// Joined from the original board contact and live material grid, or unknown.
 // A ray/body ID or render material cannot populate this evidence.
 struct FlatlandSurfaceEvidence {
     FlatlandSurface surface{};
@@ -47,6 +47,7 @@ struct CustomFlatlandContext {
     NativeInputFrame frame{};
     std::uint64_t now{}, manual_episode{};
     bool enabled{}, manual_admitted{}, balance_active{}, competing_owner{}, ollie{};
+    int spin_direction{}; // Held display turn only: -1, 0, +1; physics placement stays native.
     bool valid() const noexcept {
         return enabled && manual_admitted && balance_active && !competing_owner && !ollie &&
             manual_episode && frame.valid && InputNativeContext::from_frame(frame).fresh(now) &&
@@ -67,10 +68,11 @@ public:
     bool active() const noexcept {return phase_!=Phase::manual;}
     unsigned branch() const noexcept {return phase_==Phase::flip_exit?42u:active()?2u:0u;}
     std::uint64_t episode() const noexcept {return episode_;}
+    float display_radians() const noexcept {return display_radians_;}
     bool branch_ready() const noexcept {return phase_==Phase::manual || phase_==Phase::hold;}
     void cancel() noexcept {
         if(ticket_ && playback_.cancel)playback_.cancel(playback_.context,ticket_);
-        ticket_=episode_=started_step_=0;phase_=Phase::manual;elapsed_=0;resistance_.reset();
+        ticket_=episode_=started_step_=0;phase_=Phase::manual;elapsed_=display_radians_=0;resistance_.reset();
         // steps_ intentionally survives cancellation and OFF/ON.
     }
     void observe(CustomFlatlandContext context) noexcept {
@@ -101,6 +103,11 @@ public:
         if(playback_.seek && phase_!=Phase::flip_exit)elapsed_=std::min(elapsed_,.3f);
         if(elapsed_>=duration_) {cancel();return {};}
         if(phase_==Phase::entry && elapsed_>=.3f)phase_=Phase::hold;
+        // Original ManualLink turns the display 360 degrees in .75 seconds.
+        // Holding continues that rate; opposing triggers or release stop it.
+        if(phase_==Phase::hold && (context.spin_direction==-1 || context.spin_direction==1))
+            display_radians_=std::remainder(display_radians_+
+                static_cast<float>(context.spin_direction)*(6.283185307179586f/.75f)*step.seconds,6.283185307179586f);
         if(playback_.seek)playback_.seek(playback_.context,ticket_,elapsed_);
         const float speed=std::hypot(velocity[0],velocity[2]);
         const float change=resistance_.step(step.seconds,speed,false,false,true,
@@ -127,9 +134,11 @@ private:
             return InputDisposition::unsupported;
         // A finite next phase borrows only an idle player. No ordinary play()
         // call can steal another caller's newer clip during cancellation.
+        const float turn=flip?display_radians_:0;
         cancel();
         ticket_=playback_.begin(playback_.context,clip);
         if(!ticket_)return InputDisposition::unsupported;
+        display_radians_=turn;
         owner_=context_.frame.owner;owner_generation_=context_.frame.owner_generation;
         episode_=context_.manual_episode;started_step_=context_.frame.physics_step;
         duration_=clip->duration();phase_=flip?Phase::flip_exit:Phase::entry;
@@ -143,6 +152,6 @@ private:
     GroundMotionStep steps_;
     GroundResistance resistance_;
     Phase phase_{Phase::manual};
-    float elapsed_{},duration_{};
+    float elapsed_{},duration_{},display_radians_{};
 };
 }

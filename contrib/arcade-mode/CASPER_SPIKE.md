@@ -455,3 +455,141 @@ six adjacent integration suites pass locally. Prior animation-system work is
 unchanged. A clean Windows rebuild and repeated live entry, exit, cancellation,
 render/contact continuity and motion trials remain required. This candidate is
 not yet ready for owner testing.
+
+
+## Deck validation of d7568193 — 2026-11-09
+
+The preserved implementation, including the animation-system changes, now passes
+the supported Windows build and every required job in
+[full integration 42698106033](https://github.com/notPho-Real/ReSkate/actions/runs/42698106033).
+The runtime artifact is 13711708834; the Deck artifact is 13713455438. Both identify
+source `d7568193a351dd041286bc07e91f9005a2eb1903`. The tested DLL is 44,216,320 bytes,
+SHA-256 `9d7f1e9e4fde249d7bf6c099ce27721fe6845c31e0287859d155912996fc511a`.
+The MSVC follow-up only removes a test variable shadow; it retains the admission
+fix and all previous animation work.
+
+The agent drove the actual Steam Deck remotely with bounded virtual-controller
+input, exclusive `/dev/uinput` locking, private video and independent native
+observations. The loaded DLL, pinned executable and live Mega Park descriptor
+were checked. Local evidence is under the shared SSD artifact directory
+`artifacts/casper-hil-d7568193`; `test_matrix.json` records accepted evidence and
+failed or inconclusive attempts separately. No captured game assets are added
+to this repository.
+
+| Check | Observed result |
+| --- | --- |
+| Default OFF and ordinary Manual | Passed; fresh launch reported OFF, baseline admitted Manual and rear-axle support. |
+| X then Y entry and hold | Passed; inverted rendered board with the same native owner, Manual episode and rear support. A longer hold recorded 61 updates/61 renders and zero stale samples. |
+| X then X flip exit | Passed at measured 30 and 60 Hz; continuous authored flip, then continuing native Manual. Frame-by-frame review found no transition pose flash. |
+| X then Y direct return | Passed in `direct_short30_after_archive`; native Manual remains active after the return. The earlier long trial reached the ordinary balance limit and is not its acceptance proof. |
+| A exit | Passed; normal native launch/air/landing sequence `100 -> 103 -> 200/201 -> 100`, with custom pose cleared. |
+| OFF, plain Y, expired X prefix | Passed; no Casper entry and ordinary Manual release. The expired interval measured 442.644 ms. |
+| Controller withdrawal and bail | Passed; custom presentation cleared when the controller binding was revoked and on independently observed native bail. |
+| Another animation owner | Passed in `owner30_v2`; ordinary plugin playback took over during Casper and remained playing after Casper cleanup. The temporary fixture was removed and host unload confirmed. |
+| Gameplay focus transferred to ReSkate menu | Passed in `focus_menu30`; the production focus flag became false, Manual intent became zero, two-axle riding returned, and video showed the custom pose cleared. |
+| OS foreground transferred to another Wine application | Passed in `os_focus30_deferred`; actual foreground changed, the binding was revoked, native Manual cleared, and the normal board pose returned. Temporary window and compositor controls were cleaned up. |
+| Horizontal drag and cancellation control | Casper decelerated more strongly than the matched ordinary control. A final ordinary Manual after all cancellation trials matched the initial control closely and showed no retained custom pose or added drag. |
+
+The motion comparison is live forward, regular-stance evidence, not a measured
+coefficient for every surface. At 1.8 seconds, horizontal speed was approximately
+0.019 m/s with Casper, 0.104 m/s in the initial ordinary control, and 0.106 m/s
+in the final ordinary control. Exact scalar resistance, reverse-vector behavior,
+and the absence of a vertical write are also covered by the portable tests;
+a live backward/fakie trial is not claimed.
+
+Measured native callback rates were 30.0099 Hz and 59.9874 Hz, with physics and
+cached timesteps matching their requested rates. Requesting 120 Hz produced
+90.708 callbacks/s on this setup; it is not a true 120 Hz pass. Both timestep
+fields were restored to 1/30 second before handoff.
+
+Operating-system foreground loss passed in `os_focus30_deferred`. The reviewed
+video shows the inverted Casper pose before a temporary Notepad window in the
+existing Wine session takes foreground. Production source-6 evidence changes
+focus/gameplay to false and revokes the controller binding. Independent native
+reads change Manual intent from 1 to 0, rear support to two-axle riding, with
+state 100 retained. The returned game renders the ordinary board pose. The
+foreground window stayed selected for the bounded 0.5-second interval; it was
+closed normally, both temporary Gamescope window controls were restored to zero,
+and no Notepad window/process remained. Physics and cached steps were 1/30;
+the measured stable-owner callback rate was 29.3658 Hz during this trial.
+
+Earlier overlay, helper-window, unmap and minimize attempts did not establish
+Wine foreground loss and remain excluded. Setup attempts with native menus open
+or without a native Manual prerequisite also remain excluded. The successful
+trial launches the foreground target only after Casper entry. Its initial speed
+was higher than the matched drag comparison above; it is cancellation evidence,
+not a replacement matched-speed experiment.
+
+The authored pose has now been visually reviewed on the tested character. It
+remains a rough prototype; sampled native joint positions are not proof of the
+rendered override's exact sole/board clearance. Goofy, banks, moving supports,
+shoulder spins and support-material-specific drag retain their earlier exclusions.
+No custom native trick ID or score acceptance is claimed.
+
+The final ordinary control passed at 30.0021 Hz. The game was then closed normally
+for a user-requested temporary RC4 hardware slot. Independent stopped checks
+confirmed no Skate or launcher process. All 47 prior rollback directories
+(141 files) verified unchanged, and an additional exact Casper DLL/settings/receipt
+backup was created for RC4 to restore. The hardware release receipt is
+`handoff_to_rc4.json`. No Casper hardware operation may overlap RC4's slot.
+
+RC4 subsequently returned the exclusive hardware slot. `verify_rc4_return.json`
+independently confirmed the exact Casper DLL/settings/receipt, stock backup and
+all 48 rollback directories before the final foreground test. After that test,
+native riding/Manual-zero and both 1/30 timesteps were verified; the game exited
+normally. The first shutdown check caught the launcher's brief shutdown tail;
+`final_launcher_inventory.json` and `final_stopped_verification.json` then
+confirmed both processes stopped and the exact installation and all backups
+unchanged. Temporary animation and foreground fixtures are absent.
+
+The regular-stance, flat-ground prototype is ready for owner testing. This
+supersedes the older pending-build, untested-entry and pending-focus statements.
+It does not broaden the scope exclusions above or establish true 120 Hz operation.
+The tested d7568193 runtime remains installed; launch normally, enable
+`arcademode on` and `arcadeflatland on`, close the console, and establish a fresh
+Manual before trying the entry/exit sequences above.
+
+
+## Held turns and contact materials — candidate, 2026-11-09
+
+This extends the existing d7568193 spike and its owned animation player.
+It has not yet passed the new Windows build or Deck acceptance matrix.
+Earlier acceptance above applies only to the earlier flat-ground prototype.
+
+Original reference CasperBranches uses L2/R2. ManualLink rotates the display
+360 degrees in 0.75 seconds, with opposite signs. LT/RT now continue that
+rate while held in Casper; release or opposing triggers freezes the display
+angle. Native placement and physics orientation remain owned by Skate.
+Preheld triggers do not enter Casper, and the active lease consumes them
+without interrupting Manual balance correction. X-X retains the display
+angle through the authored flip; cancellation releases the display lease.
+
+The supported native collision publisher resolves both colliding materials,
+including terrain and per-triangle mesh materials. The owner-relative contact
+copy selects the other surface into raw contact +0x44. The pinned contracts
+are in contact_material.h; no engine material is changed. The existing board
+contact hook captures the material and publishes only after the original
+processor returns. The reader requires the same owner, physics thread, flat
+static support, matching contact identity and a new publication in the current
+native step interval. Disagreeing supports are unknown.
+
+The live world's MaterialIndexMap remaps the packed slot into its property
+row. A bounded double read resolves the gameplay property and named enum,
+rather than assuming a stable slot number. Developer Deck research confirmed
+Default at the Mega Park flat test lane and resolved the named enum catalog.
+The property's other floating values have not been identified as friction.
+
+Design resistance is 6 m/s² for ordinary/default, 8 for rough, 3 for sealed
+wood/plastic and 0.75 for slick metal/marble/glass. These are explicit Casper
+tuning values. Unknown or stale evidence retains 6 m/s². The existing single
+velocity transaction applies the selected resistance; there is no second
+physics writer or global material mutation.
+
+Portable coverage includes live slot remapping, malformed/ambiguous properties,
+enum validation, changed reads, stale/duplicate publications, owner reuse,
+native time mismatch, surface selection and rate-independent drag. Developer
+status reports bounded request counters and the last requested resistance/yaw.
+These are requests, not proof of final movement or rendered pose.
+
+Private source and native research, transport receipts and subsequent hardware
+evidence live under artifacts/casper-spin-surface outside the repository.

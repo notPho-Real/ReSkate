@@ -20,6 +20,7 @@
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_wallplant_runtime.h"
 #include "Extension/ArcadeMode/arcade_custom_flatland_runtime.h"
+#include "Extension/ArcadeMode/arcade_flatland_surface.h"
 #include "Extension/ArcadeMode/arcade_ground_rotation.h"
 #include "free_flight.h"
 #include "Engine/Game/Multiplayer/session_competition.h"
@@ -758,7 +759,11 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             const bool selected_brake = controls_current && controls.known ? controls.trying_to_brake(total_speed,facing_dot) : braking;
             writer_observation.selected(selected_brake); // Ground writer observation.
             const arcade_mode::GroundFriction friction{!controls_current || !controls.known || controls.auto_kick,false};
-            const auto flatland=arcade_mode::custom_flatland_runtime::consume(native_frame,now,velocities[0],balancing);
+            static arcade_mode::FlatlandSurfaceJoin flatland_surfaces;
+            const auto support=arcade_mode::custom_flatland_runtime::status().animation_current ?
+                arcade_mode::native_wall_contact::board_material(owner,now) : arcade_mode::native_wall_contact::SupportMaterial{};
+            const auto surface=flatland_surfaces.observe(native_frame,support);
+            const auto flatland=arcade_mode::custom_flatland_runtime::consume(native_frame,now,velocities[0],balancing,surface);
             const float change = flatland.admitted ? -std::hypot(flatland.x,flatland.z) :
                 a.ground_resistance.step(ground_step.seconds, speed,
                     physics == 103 && push_speed().arcade_crouched.load(std::memory_order_relaxed), selected_brake, balancing,friction);

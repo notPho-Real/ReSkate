@@ -276,6 +276,7 @@ public:
         admission.extensions=extensions;
         admission.surface=surface;
         admission.custom_flatland=flatland.enabled;
+        admission.custom_flatland_triggers=flatland.owns_triggers;
         admission.custom_flatland_branch=flatland.branch;
         if(flatland.enabled)admission.branch_ready=flatland.ready;
         admission.input_policy = policy_;

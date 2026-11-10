@@ -2370,10 +2370,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // Catalog availability is not playback ownership. InputSession rejects
         // actual authored/auxiliary conflicts before reserving Manual's Y edge.
         auto flatland=flatland_context(now,grind_frame,game_input && owns_controls && !offboard &&
-            !releasing_manual && !grind_change.active() &&
-            physical_left_trigger<=30 && physical_right_trigger<=30 && !(physical_buttons&0x0030u));
+            !releasing_manual && !grind_change.active() && !(physical_buttons&0x0030u));
         flatland.ollie=(physical_buttons&classic_a)!=0;
-        const auto flatland_binding=custom_flatland_runtime::observe(flatland);
+        const auto flatland_binding=custom_flatland_runtime::observe_input(flatland,physical_left_trigger,physical_right_trigger);
         const auto wallplant_receipt=wallplant_runtime::latest_completed();
         if(wallplant_receipt)
             arcade_input.acknowledge_wallplant(now,wallplant_receipt.native,wallplant_receipt.input_sequence);
@@ -2479,6 +2478,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             result.manual.release_requested && !result.manual.owns && !result.rail.held &&
             result.right_x==0 && result.right_y==0);
         result.buttons &= ~action.consume_buttons;
+        if (result.flatland_triggers_owned) left_trigger = right_trigger = 0;
         if (action.consume_rt) right_trigger = 0;
         if (action.pad.owns_right_stick) { result.right_x = action.pad.right_x; result.right_y = action.pad.right_y; }
         if (action.pad.owns_left_stick) { left_x = action.pad.left_x; left_y = action.pad.left_y; }
@@ -2617,7 +2617,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             (!result.command_busy || result.manual.owns) &&
             result.phase!=3 && !rail_pad.owns_right_stick && !grind_pad.owns && !rail_pad.button_mask && !rotation.owns_left &&
             !(physical_buttons & (classic_a | 0x0030u)) &&
-            physical_left_trigger<=30 && physical_right_trigger<=30);
+            ((physical_left_trigger<=30 && physical_right_trigger<=30) || result.flatland_triggers_owned));
         // The manual's vertical controls feed its balance model, not native
         // locomotion. Reserve the final axis from initial RS delivery through
         // owned putdown, including gaps in correction/contact publication.

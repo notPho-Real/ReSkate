@@ -57,6 +57,11 @@ void register_console_commands(Commands &registry) {
             "; seed=" + (state.ready ? "ready" : "waiting") +
             "; animation=" + (state.animation_current ? "current" : "none") +
             ". Close the console before input; opening it cancels gameplay ownership.");
+        const auto& row=state.observation;
+        out(std::format("CASPER REQUESTS: step={} dt={} surface={} verified={} deceleration={} speed={} loss={} display_radians={} left_seconds={} right_seconds={} surface_steps={},{},{},{},{}. Requests only; final movement/render acceptance is separate.",
+            row.step,row.seconds,static_cast<unsigned>(row.surface),row.verified,row.deceleration,row.speed,
+            row.requested_loss,row.display_radians,row.left_seconds,row.right_seconds,
+            row.surface_steps[0],row.surface_steps[1],row.surface_steps[2],row.surface_steps[3],row.surface_steps[4]));
     };
     registry.add(std::move(flatland));
 #endif

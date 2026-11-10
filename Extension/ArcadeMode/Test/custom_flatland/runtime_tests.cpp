@@ -11,7 +11,7 @@ void check(bool ok,const char* why){++checks;if(!ok){std::cerr<<"FAIL: "<<why<<'
 struct Player {
     std::uint64_t serial{},ticket{},now{},until{};
     unsigned starts{},cancels{},replacements{};
-    float time{};
+    float time{},display_radians{};
     bool occupied{},seed_available{true},seed_wrong_owner{},reject_replace{};
     std::uintptr_t entity{2};
 } player;
@@ -33,9 +33,10 @@ bool replace_owned(std::uint64_t id,std::shared_ptr<const Clip> clip,float secon
         seconds<0 || seconds>clip->duration())return false;
     ++player.replacements;player.time=seconds;player.until=player.now+150;return true;
 }
-bool seek_owned(std::uint64_t id,float seconds){
+bool seek_owned(std::uint64_t id,float seconds){return seek_owned(id,seconds,0);}
+bool seek_owned(std::uint64_t id,float seconds,float radians){
     if(!owns_play(id))return false;
-    player.time=seconds;player.until=player.now+150;return true;
+    player.time=seconds;player.display_radians=radians;player.until=player.now+150;return true;
 }
 std::optional<NativePose> native_pose(){
     if(!player.seed_available)return {};
@@ -75,13 +76,13 @@ struct Rig {
 #include "runtime_admission.inc"
         return flatland;
     }
-    CustomFlatlandBinding binding(){return custom_flatland_runtime::observe(input_context());}
+    CustomFlatlandBinding binding(){return custom_flatland_runtime::observe_input(input_context(),physical_left_trigger,physical_right_trigger);}
     InputAdmission admission(){
         auto binding=this->binding();InputAdmission a{};
         a.gameplay=enabled;a.authored=catalog_loaded;a.may_start=a.manual_safe=a.manual_balance_admitted=true;a.pose=SkatePose::manual;a.tick=now;
         a.native_context=InputNativeContext::from_frame(frame);a.balance_generations=a.native_context.generations;
         a.balance_controls=InputBalanceControls::vertical();a.balance_controls.generations=a.balance_generations;
-        a.custom_flatland=binding.enabled;a.custom_flatland_branch=binding.branch;a.branch_ready=binding.ready;
+        a.custom_flatland=binding.enabled;a.custom_flatland_triggers=binding.owns_triggers;a.custom_flatland_branch=binding.branch;a.branch_ready=binding.ready;
         a.extensions={nullptr,[](void*,const InputRequest& r) noexcept {return custom_flatland_runtime::request(r);}};
         return a;
     }
@@ -94,7 +95,8 @@ struct Rig {
     auto poll(std::uint16_t buttons){
         next();custom_flatland_runtime::observe(input_context(buttons));
         auto a=admission(); // For A use the cancelled binding, without starting another gesture.
-        auto out=session.poll(now,{buttons},0,0,a);
+        PhysicalInputSample physical{buttons};physical.lt=static_cast<std::uint8_t>(physical_left_trigger);physical.rt=static_cast<std::uint8_t>(physical_right_trigger);
+        auto out=session.poll(now,physical,0,0,a);
         if(!out.manual.owns)custom_flatland_runtime::cancel();
         return out;
     }
@@ -126,8 +128,54 @@ void runtime_admission(){
         if(reason==5)r.physical_left_trigger=31;
         if(reason==6)r.physical_right_trigger=31;
         const auto c=r.input_context(reason==7?0x10u:0u);
-        check(!c.valid(),"actual outer gameplay/conflict gates still reject Casper");
+        if(reason==5 || reason==6)check(!r.binding().enabled,"preheld triggers cannot enable Casper entry");
+        else check(!c.valid(),"actual outer gameplay/conflict gates still reject Casper");
     }
+}
+void held_rotation(){
+    for(bool left:{false,true}){
+        Rig r;r.enter();r.hold();
+        const auto ticket=player.ticket;const auto start=player.display_radians;
+        if(left)r.physical_left_trigger=255;else r.physical_right_trigger=255;
+        for(unsigned i=0;i<8;++i){
+            const auto out=r.poll(0);
+            check(out.manual.owns && out.flatland_triggers_owned && !out.action.owned,
+                "held Casper trigger keeps native Manual and owns no revert actor");
+            r.step();r.tick();
+        }
+        check(player.ticket==ticket && (player.display_radians-start)*(left?1.f:-1.f)>.5f,
+            "both held directions rotate the same owned clip");
+        const auto once=player.display_radians;r.step();r.tick();
+        check(player.display_radians==once,"duplicate physical step cannot rotate twice");
+        r.physical_left_trigger=r.physical_right_trigger=255;
+        r.poll(0);r.step();r.tick();
+        check(player.display_radians==once,"opposing triggers stop display rotation");
+        r.physical_left_trigger=r.physical_right_trigger=0;
+        r.poll(0);r.step();r.tick();
+        check(player.display_radians==once,"release stops further rotation without snapping the held pose");
+        r.next(151);r.tick();r.step();
+        check(!custom_flatland_runtime::status().animation_current,"stale gameplay lease withdraws display ownership");
+    }
+}
+
+void held_rotation_exits(){
+    for(bool flip:{false,true}){
+        Rig r;r.enter();r.hold();r.physical_left_trigger=255;
+        r.poll(0);r.step();r.tick();
+        const auto turned=player.display_radians;
+        r.poll(0x4000);r.step();r.tick();r.poll(0);r.step();r.tick();
+        const auto out=r.poll(flip?0x4000:0x8000);
+        check(out.manual.owns,"held rotation still permits a branch exit without losing native Manual");
+        r.tick();
+        check(r.binding().branch==(flip?42u:0u),"held trigger does not block flip or direct return");
+        if(flip)check(player.display_radians>=turned,"flip preserves the display turn already reached");
+    }
+    Rig r;r.enter();r.hold();r.physical_right_trigger=255;r.poll(0);r.step();r.tick();
+    const auto angle=player.display_radians;
+    // Renew the animation and native observations, but never refresh physical input.
+    for(unsigned i=0;i<10;++i){r.next();r.tick();}
+    r.step();r.tick();
+    check(player.display_radians==angle,"animation heartbeat cannot renew stale trigger input");
 }
 void slice(){
     Rig r;const auto starts=player.starts;r.enter();r.hold(1000);
@@ -188,4 +236,4 @@ void seed_and_pending(){
 }
 int main(){
     check(!custom_flatland_runtime::status().enabled,"dev experiment defaults OFF");
-    runtime_admission();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}
+    runtime_admission();held_rotation();held_rotation_exits();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

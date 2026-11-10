@@ -27,7 +27,7 @@ using Process=void(*)(std::uintptr_t,std::uintptr_t);
 Process original{};
 using BoardProcess=void(*)(std::uintptr_t,float,const void*);
 BoardProcess original_board{};
-std::atomic<bool> permitted{},ready{};
+std::atomic<bool> permitted{},ready{},materials_ready{};
 std::uintptr_t image{};
 std::mutex mutex;
 Snapshot latest{};
@@ -99,6 +99,7 @@ bool capture_raw(Snapshot& next,std::uintptr_t vector,std::size_t body_count) no
         std::uintptr_t own{},other{},own_entity{};
         if(!read(at+c::normal,contact.normal)||!read(at+c::point,contact.point)||
            !read(at+c::bone,contact.bone)||!read(at+c::shape,contact.shape)||
+           !read(at+game::build::v20260929::contact_material::packed_other,contact.packed_material)||
            !read(at+c::own_collidable,own)||!read(at+c::other_collidable,other)||!read(at+c::fallback_kind,contact.kind)||
            contact.bone>=body_count||!finite(contact.normal)||!finite(contact.point))return false;
         if(own==UINTPTR_MAX||other==UINTPTR_MAX)continue;
@@ -224,6 +225,10 @@ bool start(std::uintptr_t base) noexcept {
     for(const auto& contract:b::contracts)if(!fingerprint(contract))return false;
     if(!fingerprint(rc::shape_valid)||!fingerprint(rc::body_valid)||
        !fingerprint(r::shape_in_categories)||!fingerprint(c::motion_fixed_contract))return false;
+    bool material_contracts=true;
+    for(const auto& contract:game::build::v20260929::contact_material::contracts)
+        material_contracts=material_contracts && fingerprint(contract);
+    materials_ready.store(material_contracts,std::memory_order_release);
     void* relay{};auto* target=reinterpret_cast<void*>(base+c::process);
     if(hook_prepare(target,reinterpret_cast<void*>(&hooked),&relay)!=HookOk)return false;
     original=reinterpret_cast<Process>(relay);
@@ -258,6 +263,41 @@ Snapshot observe(const NoBailSkater& owner,std::uint64_t now) noexcept {
     }
     if(usable(latest))return latest;
     return usable(latest_board)?latest_board:Snapshot{};
+}
+SupportMaterial board_material(const NoBailSkater& owner,std::uint64_t now) noexcept {
+    if(!materials_ready.load(std::memory_order_acquire))return {};
+    Snapshot snap{};
+    {
+        std::lock_guard lock(mutex);
+        if(!permitted.load(std::memory_order_acquire))return {};
+        snap=latest_board;
+    }
+    if(!snap.valid || snap.owner!=owner || snap.physics_thread!=GetCurrentThreadId() ||
+       !snap.after_valid || snap.state!=100 || snap.state_after!=100 ||
+       now<snap.sampled_at || now-snap.sampled_at>150)return {};
+    namespace m=game::build::v20260929::contact_material;
+    const auto world=pointer(owner.base+rc::game_context_global);
+    if(!world || pointer(owner.entity+m::entity_world)!=world)return {};
+    std::uint32_t packed{};bool found=false;
+    for(std::size_t i=0;i<snap.count;++i) {
+        const auto& hit=snap.contacts[i];
+        if(hit.bone>=4 || hit.normal[1]<.999f)continue;
+        if(!hit.identity_valid || !hit.static_body || !hit.categories_known ||
+           hit.kind==4 || hit.kind==5 || hit.kind==8 || hit.kind==11 ||
+           !current(hit,hit.shape.world))return {};
+        if(found && packed!=hit.packed_material)return {};
+        packed=hit.packed_material;found=true;
+    }
+    if(!found)return {};
+    const auto material=contact_material_read::read(owner.base,world,packed,
+        [](auto at,auto& value){return read(at,value);});
+    if(!material || pointer(owner.base+rc::game_context_global)!=world ||
+       pointer(owner.entity+m::entity_world)!=world)return {};
+    NoBailSkater after{};
+    if(!no_bail_skater(after) || after!=owner)return {};
+    std::lock_guard lock(mutex);
+    if(!permitted.load(std::memory_order_acquire) || latest_board.serial!=snap.serial)return {};
+    return {owner,*material,snap.serial,snap.sampled_at,snap.seconds,true};
 }
 bool current(const Contact& contact,std::uintptr_t expected_world) noexcept {
     if(!contact.identity_valid||contact.shape.world!=expected_world||contact.body.world!=expected_world)return false;

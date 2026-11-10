@@ -56,6 +56,9 @@ std::uint64_t try_play(Play clip);
 // of its gameplay lease. No physics body or contact is changed.
 std::uint64_t try_play_controlled(Play clip);
 bool seek_owned(std::uint64_t ticket, float seconds);
+// Atomically publish the owned clip time and a placement-relative display turn.
+// This affects only the drawn body/board and expires with the controlled lease.
+bool seek_owned(std::uint64_t ticket, float seconds, float display_radians);
 // Replace only a current externally clocked clip, retaining its ticket and
 // blend progress. The caller supplies a continuous pose at the phase boundary.
 bool replace_owned(std::uint64_t ticket, std::shared_ptr<const Clip> clip, float seconds = 0);

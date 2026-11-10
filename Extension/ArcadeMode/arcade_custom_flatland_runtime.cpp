@@ -9,6 +9,10 @@ namespace {
 struct State {
     std::mutex mutex;
     CustomFlatlandContext context;
+    Observation observation{};
+    NativeInputFrame spin_input{};
+    std::uint64_t spin_at{};
+    int spin_direction{};
     NativeInputOwner seed_owner{};
     std::uint64_t seed_generation{},seed_episode{},seed_step{},seed_at{};
     std::uint32_t seed_stance{};
@@ -59,17 +63,34 @@ void set_enabled(bool enabled) noexcept {
     if(s.enabled==enabled)return;
     if(s.trick)s.trick->cancel();
     s.enabled=enabled;s.ready=false;s.context.enabled=false;
+    if(enabled)s.observation={};
 }
 Status status() noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
     return {s.enabled,s.ready && s.client_current(),
         s.ticket && skater_animation::controlled_play_current(s.ticket),
-        s.trick?s.trick->phase():CustomFlatland::Phase::manual};
+        s.trick?s.trick->phase():CustomFlatland::Phase::manual,s.observation};
 }
 CustomFlatlandBinding observe(CustomFlatlandContext context) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);observe_locked(s,context);
     if(!s.trick || !s.ready || !s.client_current() || !context.valid())return {};
     return {true,s.trick->branch(),s.trick->branch_ready()};
+}
+CustomFlatlandBinding observe_input(CustomFlatlandContext context,unsigned lt,unsigned rt) noexcept {
+    auto& s=state();std::lock_guard lock(s.mutex);
+    const bool active=s.trick && s.trick->active();
+    // A preheld trigger cannot enter Casper. Once acquired, triggers belong
+    // to this presentation lease, while native Manual keeps its RS pressure.
+    if(!active && (lt>30 || rt>30))context.enabled=false;
+    observe_locked(s,context);
+    s.spin_input={};s.spin_at=0;s.spin_direction=0;
+    if(!s.trick || !s.ready || !s.client_current() || !context.valid())return {};
+    const bool owns=s.trick->active();
+    if(owns) {
+        s.spin_input=context.frame;s.spin_at=context.now;
+        s.spin_direction=(lt>30?1:0)-(rt>30?1:0);
+    }
+    return {true,s.trick->branch(),s.trick->branch_ready(),owns};
 }
 InputDisposition request(const InputRequest& request) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
@@ -77,7 +98,7 @@ InputDisposition request(const InputRequest& request) noexcept {
     const auto adapter=s.trick->adapter();return adapter.request(adapter.state,request);
 }
 CustomFlatland::Motion consume(const NativeInputFrame& frame,std::uint64_t now,
-        const std::array<float,3>& velocity,bool admitted) noexcept {
+        const std::array<float,3>& velocity,bool admitted,const FlatlandSurfaceEvidence& surface) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
     auto context=s.context;context.frame=frame;context.now=now;
     context.manual_admitted=context.manual_admitted && admitted;
@@ -85,7 +106,28 @@ CustomFlatland::Motion consume(const NativeInputFrame& frame,std::uint64_t now,
     // An accepted gesture is not proof that the client player accepted its clip.
     if(!s.trick || !s.logical || s.submitted!=s.logical || !s.ticket)return {};
     if(!skater_animation::controlled_play_current(s.ticket)){s.trick->cancel();s.ready=false;return {};}
-    return s.trick->step(context,velocity); // unknown support material: conservative default
+    context.spin_direction=s.spin_at && now>=s.spin_at && now-s.spin_at<=150 &&
+        s.spin_input.owner==frame.owner && s.spin_input.owner_generation==frame.owner_generation &&
+        s.spin_input.contact_generation==frame.contact_generation &&
+        s.spin_input.action_generation==frame.action_generation &&
+        s.spin_input.physics_step<=frame.physics_step ? s.spin_direction : 0;
+    const auto motion=s.trick->step(context,velocity,surface);
+    if(motion.admitted) {
+        auto& row=s.observation;
+        row.step=frame.physics_step;row.seconds=frame.physics_seconds;
+        row.verified=surface.matches(frame);
+        row.surface=row.verified?surface.surface:FlatlandSurface::unknown;
+        const auto index=static_cast<std::size_t>(row.surface);
+        if(index<row.surface_steps.size() && row.surface_steps[index]!=UINT64_MAX)++row.surface_steps[index];
+        row.deceleration=flatland_friction(frame,surface).rolling*60*GameplayProfile::metres_per_inch;
+        row.speed=std::hypot(velocity[0],velocity[2]);row.requested_loss=std::hypot(motion.x,motion.z);
+        row.display_radians=s.trick->display_radians();
+        if(s.trick->phase()==CustomFlatland::Phase::hold) {
+            if(context.spin_direction==1)row.left_seconds+=frame.physics_seconds;
+            if(context.spin_direction==-1)row.right_seconds+=frame.physics_seconds;
+        }
+    }
+    return motion;
 }
 void cancel() noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
@@ -121,7 +163,7 @@ void tick(CustomFlatlandContext context) noexcept {
             s.submitted=s.logical;
         }
         if(s.ticket) {
-            if(!skater_animation::seek_owned(s.ticket,s.time)) {
+            if(!skater_animation::seek_owned(s.ticket,s.time,s.trick->display_radians())) {
                 s.trick->cancel();skater_animation::cancel_play(s.ticket);s.ticket=s.submitted=0;s.ready=false;
             }
             return;
@@ -158,8 +200,9 @@ void set_enabled(bool) noexcept {}
 Status status() noexcept {return {};}
 void tick(CustomFlatlandContext) noexcept {}
 CustomFlatlandBinding observe(CustomFlatlandContext) noexcept {return {};}
+CustomFlatlandBinding observe_input(CustomFlatlandContext,unsigned,unsigned) noexcept {return {};}
 InputDisposition request(const InputRequest&) noexcept {return InputDisposition::unsupported;}
-CustomFlatland::Motion consume(const NativeInputFrame&,std::uint64_t,const std::array<float,3>&,bool) noexcept {return {};}
+CustomFlatland::Motion consume(const NativeInputFrame&,std::uint64_t,const std::array<float,3>&,bool,const FlatlandSurfaceEvidence&) noexcept {return {};}
 void cancel() noexcept {}
 }
 #endif

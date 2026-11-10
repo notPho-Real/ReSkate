@@ -1,3 +1,5 @@
+#include "Extension/Skater/display_turn.h"
+#include "surface_tests.h"
 #include "Extension/ArcadeMode/arcade_custom_flatland_clips.h"
 #include "Extension/ArcadeMode/arcade_custom_flatland_playback.h"
 #include "Extension/ArcadeMode/arcade_input_session.h"
@@ -204,6 +206,27 @@ void balance_continuity(){
     r.next(r.now+17,300);r.episode.observe(r.frame,0,true);r.combo.step(SkatePose::bail,r.dt,0);
     check(r.episode.ended() && !r.combo.model().state().combo_active,"real observed bailout retains normal episode/combo termination");
 }
+void display_rotation(){
+    using namespace dingosdk::anim_studio;
+    std::array<Joint,skeleton_joints> pose{};
+    pose[0].rotation=from_euler({15,33,8});pose[0].position={5,2,7};
+    pose[placement_joint].position={1,.5f,2};
+    pose[hips_joint].position={.2f,1,.3f};
+    pose[343].position={.3f,-.6f,.2f};
+    Joint board;board.position={.1f,-.2f,.3f};
+    const auto original=pose;const auto original_board=board;
+    check(dingosdk::skater_animation::display_turn(pose,&board,1.2f),"display transform accepts finite owned pose");
+    for(unsigned i=0;i<pose.size();++i)if(i!=hips_joint)
+        check(pose[i].position==original[i].position && pose[i].rotation==original[i].rotation,
+            "display turn leaves native placement and all non-root local joints unchanged");
+    check(dingosdk::skater_animation::display_turn(pose,&board,-1.2f),"inverse display transform accepted");
+    for(unsigned i=0;i<3;++i){
+        check(near(pose[hips_joint].position[i],original[hips_joint].position[i],.0001f),"turn is reversible under nontrivial placement");
+        check(near(board.position[i],original_board.position[i],.0001f),"body and board share the same reversible turn");
+    }
+    check(!dingosdk::skater_animation::display_turn(pose,&board,std::numeric_limits<float>::infinity()),"invalid display angle rejected");
+}
+
 void animation(){
     using namespace dingosdk::anim_studio;const auto c=clips();
     std::array<Joint,skeleton_joints> pose{};Joint board;
@@ -237,5 +260,5 @@ void animation(){
     const auto roundtrip=clip_from_bytes(clip_bytes(*c.entry_hold));check(roundtrip.times==c.entry_hold->times,"authored clip uses existing portable serialization");
 }
 }
-int main(){input_and_continuity();sequence_boundaries();friction();cancellation();balance_continuity();animation();
+int main(){surface_tests();input_and_continuity();sequence_boundaries();friction();cancellation();balance_continuity();display_rotation();animation();
     std::cout<<checks<<" custom flatland checks passed (simulated native observations/player; no gameplay acceptance)\n";}

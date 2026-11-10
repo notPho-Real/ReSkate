@@ -115,6 +115,7 @@ struct NativeGesture {
         bool held_input_released{},held_actor_acknowledged{};
         bool footplant_owned{};
         bool ground_grab_owned{};
+        bool flatland_triggers_owned{};
     };
 };
 }

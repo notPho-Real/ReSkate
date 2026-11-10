@@ -1,3 +1,4 @@
+#include "display_turn.h"
 #include "skater_animation.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
@@ -262,6 +263,7 @@ struct Plan {
     std::optional<Play> play;
     double started{};
     double controlled_until{};
+    float display_radians{};
     float from{};               // the clip's seconds at `started`
     std::optional<float> held;  // paused at these seconds of the clip
     std::uint64_t serial{};
@@ -808,6 +810,8 @@ void on_animation(std::uintptr_t component) noexcept {
             const bool has_board = clip->sample_board(t, rel);
             if (snap->play && snap->play->floor && clip == snap->play->clip.get() && clip->joints > left_foot_joint)
                 place_on_floor(l, *clip, t, placement, has_board ? &rel : nullptr, air && *air);
+            if (snap->play && clip == snap->play->clip.get() && snap->display_radians != 0)
+                (void)display_turn(l.custom, has_board ? &rel : nullptr, snap->display_radians);
             if (has_board) {
                 board_target = compose(placement, rel);
                 board_weight = weight;
@@ -818,7 +822,8 @@ void on_animation(std::uintptr_t component) noexcept {
                 auto& j = l.pose[i];
                 const auto& c = l.custom[i];
                 j.rotation = slerp(j.rotation, c.rotation, weight);
-                if (clip->keeps_position(i)) continue; // the skater's own build
+                if (clip->keeps_position(i) && !(i == hips_joint && snap->play &&
+                    clip == snap->play->clip.get() && snap->display_radians != 0)) continue; // the skater's own build
                 for (std::size_t k = 0; k < 3; ++k) j.position[k] += (c.position[k] - j.position[k]) * weight;
             }
             first = 2;
@@ -1258,6 +1263,7 @@ void play(std::optional<Play> clip) {
     controlled_ticket.store(0,std::memory_order_release);
     borrowed_play = 0;
     plan_draft.controlled_until = 0;
+    plan_draft.display_radians = 0;
     plan_draft.play = std::move(clip);
     plan_draft.started = now_seconds();
     plan_draft.from = plan_draft.play ? plan_draft.play->at : 0;
@@ -1290,9 +1296,14 @@ std::uint64_t try_play_controlled(Play clip) {
     return ticket;
 }
 bool seek_owned(std::uint64_t ticket, float seconds) {
+    return seek_owned(ticket, seconds, 0);
+}
+bool seek_owned(std::uint64_t ticket, float seconds, float display_radians) {
+    if (!std::isfinite(display_radians)) return false;
     if (!controlled_play_current(ticket) || !owns_play(ticket) || !plan_draft.held ||
         !std::isfinite(seconds) || seconds < 0 || seconds > plan_draft.play->clip->duration()) return false;
     plan_draft.held = seconds;
+    plan_draft.display_radians = std::remainder(display_radians, 6.283185307179586f);
     plan_draft.controlled_until = now_seconds() + .15;
     controlled_until.store(plan_draft.controlled_until,std::memory_order_release);
     publish();
@@ -1349,6 +1360,7 @@ void seek(float seconds) {
     borrowed_play = 0;
     controlled_ticket.store(0,std::memory_order_release);
     plan_draft.controlled_until = 0;
+    plan_draft.display_radians = 0;
     const float t = std::clamp(seconds, 0.0f, plan_draft.play->clip->duration());
     if (plan_draft.held) plan_draft.held = t;
     else {
@@ -1364,6 +1376,7 @@ void pause(bool paused) {
     borrowed_play = 0;
     controlled_ticket.store(0,std::memory_order_release);
     plan_draft.controlled_until = 0;
+    plan_draft.display_radians = 0;
     if (paused == plan_draft.held.has_value()) {
         publish();
         return;
