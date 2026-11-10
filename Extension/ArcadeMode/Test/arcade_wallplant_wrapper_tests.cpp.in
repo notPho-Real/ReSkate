@@ -3,6 +3,7 @@
 #include "Extension/ArcadeMode/arcade_wallplant.h"
 #include "Extension/ArcadeMode/arcade_wallplant_hold.h"
 #include "Engine/Game/Build/20260929/client_source_spawn.h"
+#include "Engine/Game/Abi/orientation_target.h"
 #include <atomic>
 #include <algorithm>
 #include <cstring>
@@ -42,6 +43,7 @@ struct LastError { LastError(){} };
 struct SourceReader { bool raw(std::uintptr_t,void* target,std::size_t){*static_cast<std::uint32_t*>(target)=native_result;return true;} };
 namespace memory {template<class T>bool peek(std::uintptr_t,T& value){value=9;return true;}}
 namespace game::build::v20260929::arcade_native_probe { constexpr std::uintptr_t selected_state=0,core_selector=0x440; }
+namespace game { namespace orientation_target=dingosdk::game::orientation_target; }
 struct NativeState { std::atomic<void(*)(std::uintptr_t)> velocity_update_original{}; } native_state;
 NativeState& source_state(){return native_state;}
 std::atomic<void(*)()> physics_step_callback{};
@@ -109,7 +111,7 @@ struct Protection {
 Protection& protection(){return protection_value;}
 void AcquireSRWLockExclusive(int*){}
 void ReleaseSRWLockExclusive(int*){}
-namespace logging {enum class Level{debug};enum class Channel{skater};template<class... T>void log(Level,Channel,const char*,T...){}}
+namespace logging {enum class Level{debug,info};enum class Channel{skater};template<class... T>void log(Level,Channel,const char*,T...){}}
 std::uint32_t dark_pop_after(std::uintptr_t,std::uint32_t,std::uint32_t value){return value;}
 void fast_probe_record(std::uintptr_t,std::uint32_t,std::uint32_t,std::uint32_t){}
 struct LARGE_INTEGER{long long QuadPart{};};
@@ -290,6 +292,69 @@ void run(){
          "rejected ground targets leave all outputs untouched");
   }
  }
+ {
+  namespace orientation=dingosdk::game::orientation_target;
+  constexpr double pi=3.14159265358979323846;
+  const auto axis_rotation=[](unsigned axis,double angle) {
+   orientation::Quaternion q{};q[axis]=std::sin(angle/2);q[3]=std::cos(angle/2);
+   auto matrix=orientation::rotation(q);matrix[15]=1;return matrix;
+  };
+  for(unsigned axis=0;axis<3;++axis)for(double angle:{.1,1.5,pi-1e-5,pi}) {
+   const auto actual=axis_rotation((axis+1)%3,.4);
+   auto wanted=orientation::compose_basis(actual,axis_rotation(axis,angle));
+   wanted[12]=7;wanted[13]=8;wanted[14]=9;
+   orientation::Matrix result{};orientation::Result report;
+   check(orientation::bound(actual,wanted,.6f,result,report),"shortest turn supports arbitrary axes and half turns");
+   check(orientation::basis_valid(result)&&orientation::error(actual,result)<.6f,
+         "constrained turn remains orthonormal and inside the native per-axis threshold");
+   check(result[12]==7&&result[13]==8&&result[14]==9&&result[15]==1,"turn preserves anchor and SIMD lanes");
+   if(angle<.6)check(result==wanted&&report.fraction==1,"already safe orientation is unchanged");
+   else check(std::abs(report.fraction-.6/angle)<.00001,"single-axis arc reaches the native bound without added turn-rate tuning");
+   const auto roundtrip=orientation::rotation(orientation::quaternion(wanted));
+   for(unsigned r=0;r<3;++r)for(unsigned k=0;k<3;++k)
+    check(std::abs(roundtrip[4*r+k]-wanted[4*r+k])<.000001,"quaternion conversion preserves composed row rotations");
+  }
+  const auto actual=axis_rotation(1,0);
+  for(unsigned fault=0;fault<5;++fault) {
+   auto wanted=axis_rotation(1,pi);float limit=.6f;
+   switch(fault){case 0:limit=0;break;case 1:limit=4;break;case 2:limit=NAN;break;
+    case 3:wanted[0]=NAN;break;case 4:wanted[0]*=-1;break;}
+   auto output=actual;orientation::Result report{9,9,9};
+   check(!orientation::bound(actual,wanted,limit,output,report)&&output==actual&&report.fraction==9,
+         "invalid rotations and constraints leave outputs untouched");
+  }
+  // The articulated local root is not generally aligned with the world target.
+  std::array<float,48> triplet{};
+  for(unsigned t=0;t<3;++t)for(unsigned a=0;a<4;++a)triplet[16*t+5*a]=1;
+  const auto local_root=axis_rotation(1,.3);
+  auto wanted=axis_rotation(1,1.5);wanted[12]=7;wanted[13]=8;wanted[14]=9;
+  orientation::Result report;
+  check(wallplant_ground_orientation(triplet,{0,0,0},local_root,actual,.6f,wanted,report),
+        "ground correction includes the articulated local root");
+  std::array<float,48> adjusted{};
+  check(wallplant_ground_target_matrices(triplet,{0,0,0},wanted,adjusted),"constrained ground triplet remains coherent");
+  orientation::Matrix local{};std::copy_n(adjusted.begin(),16,local.begin());
+  check(orientation::error(actual,orientation::compose_basis(local_root,local))<=.6f&&
+        std::abs(wanted[8]-std::sin(.3))<.00001&&wanted[12]==7,
+        "native composed reference, rather than world target alone, obeys constraint");
+  const auto preserved=wanted;
+  check(!wallplant_ground_orientation(triplet,{0,0,0},axis_rotation(1,1),actual,.6f,wanted,report)&&wanted==preserved,
+        "a native orientation violation predating our target is not hidden");
+  for(unsigned axis=0;axis<3;++axis)for(double angle:{-.8,-.2,.4,.9}) {
+   auto old_world=axis_rotation(axis,angle);old_world[12]=2;old_world[13]=3;old_world[14]=4;
+   std::array<float,48> supplied{};
+   check(wallplant_ground_target_matrices(triplet,{0,0,0},old_world,supplied),"mixed-axis fixture has coherent native matrices");
+   const auto root=axis_rotation((axis+1)%3,.25);
+   const auto body=orientation::compose_basis(root,old_world);
+   auto outgoing=axis_rotation(1,2.8);outgoing[12]=7;outgoing[13]=8;outgoing[14]=9;
+   check(wallplant_ground_orientation(supplied,{0,0,0},root,body,.6f,outgoing,report),
+         "nonidentity world and local root support a constrained outgoing turn");
+   check(wallplant_ground_target_matrices(supplied,{0,0,0},outgoing,adjusted),"mixed-axis constrained triplet remains coherent");
+   std::copy_n(adjusted.begin(),16,local.begin());
+   check(orientation::error(body,orientation::compose_basis(root,local))<=.6f,
+         "recomposed native float reference stays inside the bound");
+  }
+ }
  std::cout<<checks<<" production wrapper ordering checks passed\n";
 }
 }
@@ -308,7 +373,12 @@ struct State {
 } ground_state;
 State& source_state(){return ground_state;}
 struct SourceBusyScope {std::atomic_flag& busy;~SourceBusyScope(){busy.clear();}};
-struct Hold {Command command;std::uint64_t started{100};} physical_hold;
+struct Hold {Command command;std::uint64_t started{100};game::orientation_target::Result orientation{};float orientation_limit{};} physical_hold;
+struct WallplantOrientationSnapshot {std::array<float,16> actual{},local_root{};float limit{};} orientation_snapshot;
+bool orientation_available=true;
+WallplantOrientationSnapshot wallplant_orientation_snapshot(const dingosdk::arcade_mode::NativeInputOwner&) {
+ source_require(orientation_available,"orientation_contract");return orientation_snapshot;
+}
 Hold& wallplant_physical_hold(){return physical_hold;}
 std::atomic<std::uintptr_t> wallplant_hold_core{};
 std::array<float,48> prepared{},stored{};
@@ -374,6 +444,8 @@ void reset(){
  wallplant_hold_core=1;cancelled.clear();clock_ms=110;originals=target_calls=copies=reads=0;state_id=100;
  passed_seconds=0;stock=change_snapshot=fail_verify=expire=fixture_stale_query=false;writable=fixture_current=allow_target=true;
  fail_copy=fail_read=0;native_context=3;prepared={};stored={};
+ orientation_available=true;orientation_snapshot={};orientation_snapshot.limit=3.14159265358979323846f;
+ for(unsigned a=0;a<4;++a)orientation_snapshot.actual[a*5]=orientation_snapshot.local_root[a*5]=1;
  for(unsigned t=0;t<3;++t)for(unsigned a=0;a<4;++a)prepared[t*16+a*5]=1;
  for(unsigned a=0;a<3;++a){prepared[12+a]=-world_origin[a];prepared[16+12+a]=0;prepared[32+12+a]=0;}
 }
@@ -383,6 +455,13 @@ void run(){
  check(stored[28]==7&&stored[29]==8&&stored[30]==9,"ground uses bounded hold anchor");
  check(std::abs(stored[16+8]-1)<.00001f&&std::abs(stored[16+10])<.00001f,"ground target faces outgoing direction");
  check(!ground_state.busy.test_and_set(),"successful callback releases busy ownership");ground_state.busy.clear();
+ reset();orientation_snapshot.limit=.785398163f;noclip_ground_target(2,.03333333f);
+ check(copies==1&&cancelled.empty(),"native constrained orientation commits through the existing ground route");
+ check(physical_hold.orientation.fraction>.49f&&physical_hold.orientation.fraction<.51f&&
+       physical_hold.orientation.applied_error<=orientation_snapshot.limit,"ground turn uses actual native constraint");
+ check(stored[28]==7&&stored[29]==8&&stored[30]==9,"orientation constraint preserves checked wall anchor");
+ reset();orientation_available=false;noclip_ground_target(2,.03333333f);
+ check(copies==0&&stored==prepared&&cancelled=="orientation_contract","missing native orientation contract refuses target mutation");
  reset();fixture_stale_query=true;noclip_ground_target(2,.03333333f);
  check(originals==1 && copies==0 && stored==prepared && cancelled.empty() && wallplant_hold_core.load()==1,
        "overtaken final target reader forwards native preparation without writing or canceling newer hold");
