@@ -224,3 +224,37 @@ angled and both stances; no-A, floor, slope, ceiling, rail, stale/repeated
 contact and Arcade OFF negatives. Then run every sequence in
 `WALLPLANT_MILESTONE.md`, including flip/plant/flip/manual continuity. Preserve
 RC2 and all RC3 rollback artifacts. Do not promote the accepted branch.
+
+## Release trajectory continuity
+
+The ffa7 capture reached a 175ms spring hold and one release. Consumed native
+body velocity was `[-2.080236,12.261449,3.956027]`, followed by a new native
+trajectory request `[-1.067291,12.158988,-.331903]` during state200. The skater
+returned toward the wall. No bail504 occurred, but this is not acceptance.
+Physical orientation, sole alignment and combo scoring also remain unverified.
+
+The pinned image shows state200's tick at `48347b0` invoking `482f380` at
+`4834896` when it needs another curve; that routine calls the existing setter
+at `482f646`. The existing release scoped world velocity to its own setter
+call, leaving this later native query to ordinary pop shaping. The capture
+does not identify the second request's exact call site; the new receipt logs
+that site and must confirm the source-backed route on hardware.
+
+A successful release from the already observed wall-contact100 now retains
+one continuation receipt for that native100-to-200 query. It expires under the
+existing150ms observation lease, cannot be renewed, and is consumed before the
+original setter, even on refusal. The caller bytes, complete local owner,
+controller generation, unchanged trick/stance/selection, exact next airborne
+episode and original previous state are checked. Both body records must have
+consumed their pending writes and still be moving upward and outward within
+the original exit magnitude. The query uses current physical root velocity,
+including losses since release; it never reapplies the stored launch velocity.
+Native shaping side effects, collision queries and selection still run. This
+continuation adds no query, body write, native state or collision result. It
+does not extend the hold or renew the observation lease.
+
+Focused production-composed regressions cover the captured velocities, original
+caller propagation, single-use/refused receipts, observation boundaries and
+unrelated owner/trick/state/pending-body negatives. Hardware must independently
+show the retained outward trajectory, actual hold/release, orientation, clean
+landing, follow-up controls and scoring before this branch is ready to test.

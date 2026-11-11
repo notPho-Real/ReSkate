@@ -2,6 +2,50 @@
 #include "arcade_wallplant.h"
 
 namespace dingosdk::arcade_mode {
+// A release from the observed wall-contact state may be followed by the
+// game's own pop query. This proof covers that first transition, not another
+// launch. Its lifetime is the existing observation lease, never renewed.
+inline bool wallplant_release_departure_current(const WallplantCommand& command,
+        const NativeInputFrame& released,const NativeInputFrame& live,
+        std::uint64_t released_at,std::uint64_t now,
+        std::uint32_t selected,std::uint32_t previous) noexcept {
+    const auto& origin=command.native;
+    if(!command || !command.input_sequence || !command.contact || !origin.valid || !origin.owner.valid() ||
+       !origin.airborne || origin.state!=201 || !origin.owner_generation || !origin.airborne_episode ||
+       origin.air_departure==UINT64_MAX || origin.airborne_episode==UINT64_MAX ||
+       !released.valid || released.state!=100 || released.airborne || released.rail_family ||
+       released.owner!=origin.owner || released.owner_generation!=origin.owner_generation ||
+       released.airborne_episode!=origin.airborne_episode || released.air_departure!=origin.air_departure+1 ||
+       origin.action_generation==UINT64_MAX || released.action_generation!=origin.action_generation+1 ||
+       released.stance_and_push!=origin.stance_and_push || released.flip_known!=origin.flip_known ||
+       released.flip_id!=origin.flip_id || released.selection_object!=origin.selection_object ||
+       !released.physics_step || now<released_at || now-released_at>InputTiming::native_sample_lease_ms ||
+       released_at<released.sampled_at || released_at-released.sampled_at>InputTiming::native_sample_lease_ms ||
+       selected!=200 || previous!=100 || !live.valid || live.owner!=released.owner ||
+       live.owner_generation!=released.owner_generation || live.rail_family ||
+       now<live.sampled_at || now-live.sampled_at>InputTiming::native_sample_lease_ms ||
+       live.physics_step<released.physics_step || live.sampled_at<released.sampled_at ||
+       live.stance_and_push!=released.stance_and_push || live.flip_known!=released.flip_known ||
+       live.flip_id!=released.flip_id || live.selection_object!=released.selection_object)return false;
+    if(live.physics_step==released.physics_step &&
+       (live.sampled_at!=released.sampled_at || live.state!=released.state))return false;
+    // The original setter can run before the input observer publishes state200.
+    // Accept the retained100 or that exact next episode, never a later air/landing.
+    if(live.state==100)return !live.airborne && live.airborne_episode==released.airborne_episode &&
+        live.air_departure==released.air_departure && live.action_generation==released.action_generation;
+    return live.state==200 && live.airborne && released.action_generation!=UINT64_MAX &&
+        live.action_generation==released.action_generation+1 &&
+        live.airborne_episode==released.airborne_episode+1 && live.air_departure==released.air_departure;
+}
+inline bool wallplant_release_velocity_current(const WallplantCommand& command,
+        const std::array<float,3>& velocity) noexcept {
+    for(unsigned axis=0;axis<3;++axis)
+        if(!std::isfinite(velocity[axis]) || !std::isfinite(command.after[axis]) ||
+           !std::isfinite(command.normal[axis]))return false;
+    const float outward=velocity[0]*command.normal[0]+velocity[2]*command.normal[2];
+    return velocity[1]>0 && velocity[1]<=command.after[1] && outward>0 &&
+        std::hypot(velocity[0],velocity[2])<=std::hypot(command.after[0],command.after[2]);
+}
 inline bool wallplant_hold_anchor_current(const WallplantCommand& command,
         const std::array<float,3>& root) noexcept {
     if(!command.anchor_verified)return false;

@@ -12,6 +12,7 @@
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Engine/Game/Build/20260929/skater_state.h"
 #include "Engine/Game/Build/20260929/skater_body.h"
+#include "Engine/Game/Build/20260929/rigid_bodies.h"
 #include "Engine/Game/Abi/orientation_target.h"
 #include "Engine/Game/Multiplayer/session_tools.h"
 #include "Extension/ArcadeMode/arcade_movement.h"
@@ -647,6 +648,14 @@ struct WallplantPhysicalHold {
 // read the atomic hint. Runtime cancellation never needs the source lock.
 WallplantPhysicalHold& wallplant_physical_hold() {static WallplantPhysicalHold value;return value;}
 std::atomic<std::uintptr_t> wallplant_hold_core{};
+struct WallplantReleasedDeparture {
+    WallplantPhysicalHold release{};
+    arcade_mode::NativeInputFrame frame{};
+    std::uintptr_t object{};
+    std::uint64_t at{};
+};
+WallplantReleasedDeparture& wallplant_released_departure() {static WallplantReleasedDeparture value;return value;}
+std::atomic<std::uintptr_t> wallplant_released_core{};
 void wallplant_hold_log(const WallplantPhysicalHold& hold,const char* phase,const char* reason,
         std::uint64_t now,std::uint32_t selected) noexcept {
     try {
@@ -1037,6 +1046,7 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         source_require(arcade_mode::wallplant_runtime::begin_hold(command,started),
             "Wallplant hold authority changed after entry brake.");
         auto& hold=wallplant_physical_hold();
+        wallplant_released_departure()={};wallplant_released_core.store(0,std::memory_order_release);
         hold={};hold.command=command;hold.owner=owner;hold.client=client;hold.entity=entity;
         hold.started=started;hold.intent_generation=intent.generation;hold.entry_root=hold.last_root=bodies.root;
         hold.last_velocity=velocities[0];
@@ -1193,6 +1203,12 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
             request_velocity[0],request_velocity[1],request_velocity[2],curve_position[0],curve_position[1],curve_position[2],
             curve_velocity[0],curve_velocity[1],curve_velocity[2]);
         arcade_mode::wallplant_runtime::finish_hold(releasing.command,true,now);
+        // The impulse is already spent. Retain only enough provenance for the
+        // first native100->200 query to use consumed motion, not a new kick.
+        if(selected==100 && frame.state==100 && !frame.airborne) {
+            wallplant_released_departure()={releasing,frame,trajectory.object,now};
+            wallplant_released_core.store(core,std::memory_order_release);
+        }
         wallplant_hold_log(releasing,"release","committed",now,selected);
     } catch(...) {
         // If a write failed after taking the local ticket, still withdraw the
@@ -1205,9 +1221,78 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         catch(...){wallplant_hold_cancel("hold_exception",now);}
     }
 }
+bool wallplant_released_native_departure(std::uintptr_t object,
+        trainer::NativeWorldTrajectoryOverride& request,bool completed) noexcept {
+    if(completed || !wallplant_released_core.load(std::memory_order_acquire))return false;
+    const auto receipt=arcade_mode::wallplant_runtime::latest_completed();
+    std::uint64_t now=GetTickCount64();
+    const auto frame=receipt?arcade_mode::native_wallplant_hold_context(receipt.native.owner,now):arcade_mode::NativeInputFrame{};
+    auto& state=source_state();
+    if(state.busy.test_and_set(std::memory_order_acquire))return false;
+    SourceBusyScope scope{state.busy};
+    auto& ticket=wallplant_released_departure();
+    if(!ticket.release.command || object!=ticket.object)return false;
+    // Consume before native execution, including refusals. No later query,
+    // retry or callback can turn this continuity proof into another impulse.
+    const auto departed=ticket;ticket={};wallplant_released_core.store(0,std::memory_order_release);
+    const auto& release=departed.release;
+    try {
+        SourceReader reader;
+        const auto& call=addr::trajectory::pop_query_call;
+        std::array<unsigned char,32> call_bytes{};
+        source_require(state.initialized.load(std::memory_order_acquire) &&
+            state.velocity_guard_active.load(std::memory_order_acquire) &&
+            request.caller==call.rva && reader.raw(state.trial.base+call.rva,call_bytes.data(),call_bytes.size()) &&
+            call_bytes==call.bytes,
+            "released_departure_route");
+        source_require(receipt && receipt.input_sequence==release.command.input_sequence &&
+            receipt.contact==release.command.contact,"released_departure_receipt");
+        arcade_mode::AirMotionIntent intent{};
+        wallplant_read_current_intent(intent,now,release.intent_generation);
+        source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor,"released_departure_control");
+        NoBailSkater owner{};
+        source_require(no_bail_skater(owner) && owner==release.owner,"released_departure_owner");
+        const auto bodies=debug_noclip_bodies(state.trial.base,release.client,release.entity);
+        source_require(bodies.core==owner.core && bodies.context==owner.context && bodies.rig_wrapper==owner.rig &&
+            !bodies.offboard && !bodies.wipeout,"released_departure_bodies");
+        const auto selected=reader.value<std::uint32_t>(owner.context,game::build::v20260929::arcade_native_probe::selected_state);
+        const auto previous=reader.value<std::uint32_t>(owner.context,game::build::v20260929::arcade_native_probe::previous_selected_state);
+        source_require(reader.pointer(owner.core,addr::trajectory::core_object)==object &&
+            reader.pointer(object,addr::trajectory::object_context)==owner.context && reader.pointer(owner.rig)==owner.context &&
+            reader.value<std::uint8_t>(release.entity,addr::rigid_bodies::entity_teleport)==0 &&
+            reader.value<std::uint8_t>(object,addr::trajectory::query_pending)==0,"released_departure_native_owner");
+        const auto observation=wallplant_body_observation(bodies,reader);
+        source_require(!observation.pending0 && !observation.pending8 &&
+            arcade_mode::wallplant_release_velocity_current(release.command,observation.velocity0) &&
+            arcade_mode::wallplant_release_velocity_current(release.command,observation.velocity8),
+            "released_departure_unconsumed_motion");
+        reader.verify();
+        NoBailSkater current{};
+        source_require(no_bail_skater(current) && current==owner,"released_departure_owner_changed");
+        now=GetTickCount64();
+        source_require(arcade_mode::wallplant_release_departure_current(release.command,departed.frame,
+            frame,departed.at,now,selected,previous),"released_departure_continuity");
+        request.velocity=observation.velocity0;request.receipt=release.command.input_sequence;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT DEPARTURE: occurrence={} contact={} ms={} released={} caller={} state={} previous={} consumed_velocity=[{},{},{}] body_write=false candidate_acceptance_verified=false",
+            request.receipt,release.command.contact,now,departed.at,request.caller,selected,previous,
+            request.velocity[0],request.velocity[1],request.velocity[2]);
+        return true;
+    } catch(...) {
+        const auto report=[&](const char* reason) {
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE WALLPLANT DEPARTURE REFUSED: occurrence={} contact={} ms={} released={} caller={} reason={} body_write=false",
+                release.command.input_sequence,release.command.contact,now,departed.at,request.caller,reason);
+        };
+        try{throw;}catch(const SourceGuard& issue){report(issue.message);}
+        catch(...){report("released_departure_exception");}
+        return false;
+    }
+}
 bool wallplant_native_departure(std::uintptr_t object,
         trainer::NativeWorldTrajectoryOverride& request,bool completed) noexcept {
-    if(!wallplant_hold_core.load(std::memory_order_acquire))return false;
+    if(!wallplant_hold_core.load(std::memory_order_acquire))
+        return wallplant_released_native_departure(object,request,completed);
     const auto held=arcade_mode::wallplant_runtime::held_command();
     std::uint64_t now=GetTickCount64();
     const auto frame=held?arcade_mode::native_wallplant_hold_context(held.native.owner,now):arcade_mode::NativeInputFrame{};

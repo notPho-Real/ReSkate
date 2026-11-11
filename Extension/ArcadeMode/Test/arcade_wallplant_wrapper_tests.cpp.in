@@ -4,6 +4,7 @@
 #include "Extension/ArcadeMode/arcade_wallplant_hold.h"
 #include "Engine/Game/Build/20260929/client_source_spawn.h"
 #include "Engine/Game/Build/20260929/skater_body.h"
+#include "Engine/Game/Build/20260929/rigid_bodies.h"
 #include "Engine/Game/Build/20260929/skater_state.h"
 #include "Engine/Game/Abi/orientation_target.h"
 #include "Extension/Trainer/trainer_jump.h"
@@ -45,7 +46,7 @@ struct SourceLastError { SourceLastError(){} };
 struct LastError { LastError(){} };
 struct SourceReader { bool raw(std::uintptr_t,void* target,std::size_t){*static_cast<std::uint32_t*>(target)=native_result;return true;} };
 namespace memory {template<class T>bool peek(std::uintptr_t,T& value){value=9;return true;}}
-namespace game::build::v20260929::arcade_native_probe { constexpr std::uintptr_t selected_state=0,core_selector=0x440; }
+namespace game::build::v20260929::arcade_native_probe { constexpr std::uintptr_t selected_state=0,previous_selected_state=4,core_selector=0x440; }
 namespace game { namespace orientation_target=dingosdk::game::orientation_target; }
 struct NativeState { std::atomic<void(*)(std::uintptr_t)> velocity_update_original{}; } native_state;
 NativeState& source_state(){return native_state;}
@@ -819,6 +820,7 @@ std::array<float,3> offered_velocity{};
 bool bridge(std::uintptr_t at,NativeWorldTrajectoryOverride& request,bool completed) noexcept {
  if(completed){++completions;submission=request.submitted;return request.receipt==9;}
  ++offers;
+ check(request.caller==native::pop_query_call.rva,"bridge receives the original call site before granting authority");
  if(!allow_offer || offer_spent || at!=reinterpret_cast<std::uintptr_t>(object.data()))return false;
  offer_spent=true;request.receipt=9;request.velocity=offered_velocity;return true;
 }
@@ -872,7 +874,7 @@ void run(){
   if(scenario==3)offered_velocity[0]=NAN;
   const auto owner=scenario==6?reinterpret_cast<std::uintptr_t>(other.data()):at;
   other.fill(0);
-  const bool routed=route_native_world_trajectory(owner,packet.values.data());
+  const bool routed=route_native_world_trajectory(owner,packet.values.data(),native::pop_query_call.rva);
   const bool granted=scenario>=2&&scenario<=5;
   check(routed==granted,"only an admitted native departure uses the existing setter route");
   check(sets==(granted?1u:0u)&&selections==0,"departure does not add a query or call the caller's selector");
@@ -883,7 +885,7 @@ void run(){
   if(scenario==2){
    check(candidate_velocity==exit&&object[native::query_pending]==1,"recorded slow departure is replaced before genuine query generation");
    object[native::query_pending]=0;
-   check(!route_native_world_trajectory(at,packet.values.data())&&sets==1&&completions==1,"same receipt cannot launch twice after query completion");
+   check(!route_native_world_trajectory(at,packet.values.data(),native::pop_query_call.rva)&&sets==1&&completions==1,"same receipt cannot launch twice after query completion");
   }
  }
  hook.world_bridge.store(nullptr);skip_shape=fail_set=false;
@@ -896,11 +898,15 @@ namespace trainer=dingosdk::trainer;
 using Command=dingosdk::arcade_mode::WallplantCommand;
 struct NoBailSkater {std::uintptr_t core{1},context{2},rig{3};bool operator==(const NoBailSkater&)const=default;};
 struct Hold {Command command;NoBailSkater owner;std::uint64_t started{100},targets{5},intent_generation{7};
- std::uintptr_t entity{4},native_departure{};bool departure_attempted{},departure_submitted{};} fixture_hold;
+ std::uintptr_t entity{4},client{6},native_departure{};bool departure_attempted{},departure_submitted{};} fixture_hold;
 Hold& wallplant_physical_hold(){return fixture_hold;}
 std::atomic<std::uintptr_t> wallplant_hold_core{1};
+struct Released {Hold release;dingosdk::arcade_mode::NativeInputFrame frame;std::uintptr_t object{5};std::uint64_t at{260};} fixture_release;
+Released& wallplant_released_departure(){return fixture_release;}
+std::atomic<std::uintptr_t> wallplant_released_core{};
+dingosdk::arcade_mode::NativeInputFrame fixture_frame;
 struct State {std::atomic_flag busy{};std::atomic<bool> initialized{true},velocity_guard_active{true};
- struct {struct {bool noclip{},park_editor{};}debug;}trial;} fixture_state;
+ struct {struct {bool noclip{},park_editor{};}debug;std::uintptr_t base{10};}trial;} fixture_state;
 State& source_state(){return fixture_state;}
 struct SourceBusyScope {std::atomic_flag& busy;~SourceBusyScope(){busy.clear();}};
 struct SourceGuard{const char* message;};
@@ -910,16 +916,20 @@ std::uint64_t GetTickCount64(){return fixture_now;}
 bool enabled=true,current_owner=true,current_authority=true,verified=true,session{},teleport{},pending{};
 bool intent_readable=true,intent_future{};
 std::uint64_t publication_delay{},read_delay{},sample_age{},intent_generation=7;
-std::uint32_t fixture_selected=100;
+std::uint32_t fixture_selected=100,fixture_previous=100;
+bool call_code=true,bad_body=false;
 unsigned authority_reads{};
 namespace arcade_mode {
 using NativeInputFrame=dingosdk::arcade_mode::NativeInputFrame;
 using NativeInputOwner=dingosdk::arcade_mode::NativeInputOwner;
 using WallplantHoldContinuity=dingosdk::arcade_mode::WallplantHoldContinuity;
+using dingosdk::arcade_mode::wallplant_release_departure_current;
+using dingosdk::arcade_mode::wallplant_release_velocity_current;
 struct AirMotionIntent{bool enabled{};std::uint64_t generation{},sampled_at{};};
-NativeInputFrame native_wallplant_hold_context(const NativeInputOwner&,std::uint64_t){NativeInputFrame f;f.valid=true;return f;}
+NativeInputFrame native_wallplant_hold_context(const NativeInputOwner&,std::uint64_t){return fixture_frame;}
 namespace wallplant_runtime {
 Command held_command(){return fixture_hold.command;}
+Command latest_completed(){return fixture_release.release.command;}
 bool hold_current(const Command&,std::uint64_t&,const NativeInputFrame&,bool*){
  ++authority_reads;return current_authority&&fixture_now>=100&&fixture_now<=294;
 }
@@ -936,8 +946,13 @@ bool multiplayer_session_active(){return session;}
 @wallplant_wrapper_intent_snapshot@
 bool no_bail_skater(NoBailSkater& out){out={};if(!current_owner)out.context=99;return true;}
 struct SourceReader {
+ bool raw(std::uintptr_t at,void* out,std::size_t count){
+  check(at==10+addr::trajectory::pop_query_call.rva&&count==32,"continuation checks the exact native pop caller bytes");
+  std::memcpy(out,addr::trajectory::pop_query_call.bytes.data(),count);return call_code;
+ }
  template<class T>T value(std::uintptr_t at,std::uintptr_t off){
   if(at==2&&off==game::build::v20260929::arcade_native_probe::selected_state)return static_cast<T>(fixture_selected);
+  if(at==2&&off==game::build::v20260929::arcade_native_probe::previous_selected_state)return static_cast<T>(fixture_previous);
   if(at==4&&off==0x7e0)return static_cast<T>(teleport);
   check(at==5&&off==addr::trajectory::query_pending,"authority reads only the owned trajectory pending flag");return static_cast<T>(pending);
  }
@@ -948,6 +963,13 @@ struct SourceReader {
  }
  void verify(){source_require(verified,"changed_snapshot");}
 };
+struct Bodies {std::uintptr_t core{1},context{2},rig_wrapper{3};bool offboard{},wipeout{};};
+Bodies debug_noclip_bodies(std::uintptr_t base,std::uintptr_t client,std::uintptr_t entity){
+ check(base==10&&client==6&&entity==4,"continuation resolves the original body's owner");Bodies out;out.offboard=bad_body;return out;
+}
+struct Physical {std::array<float,3> velocity0{},velocity8{};unsigned pending0{},pending8{};} physical;
+Physical wallplant_body_observation(const Bodies&,SourceReader&){return physical;}
+@wallplant_wrapper_released_departure@
 @wallplant_wrapper_departure_authority@
 void reset(){
  fixture_hold={};fixture_hold.command.motion.ready=true;fixture_hold.command.input_sequence=9;fixture_hold.command.contact=1;
@@ -955,6 +977,24 @@ void reset(){
  fixture_state.initialized=true;fixture_state.velocity_guard_active=true;fixture_state.trial.debug={};fixture_now=260;authority_reads=0;
  enabled=current_owner=current_authority=verified=true;session=teleport=pending=false;fixture_selected=100;
  intent_readable=true;intent_future=false;publication_delay=read_delay=sample_age=0;intent_generation=7;
+ fixture_frame={};fixture_frame.valid=true;fixture_release={};wallplant_released_core=0;
+ fixture_previous=100;call_code=true;bad_body=false;
+}
+void reset_release(){
+ reset();wallplant_hold_core=0;wallplant_released_core=1;fixture_now=300;fixture_selected=200;
+ fixture_release.release=fixture_hold;
+ auto& c=fixture_release.release.command;
+ c.normal={0,0,1};c.after={-2.071024f,12.7f,4.9647603f};
+ auto& origin=c.native;
+ origin.valid=true;origin.airborne=true;origin.state=201;origin.owner={10,4,1,2,3};origin.owner_generation=7;
+ origin.airborne_episode=1;origin.air_departure=0;origin.action_generation=20;origin.physics_step=10;
+ origin.sampled_at=100;origin.selection_object=30;
+ fixture_release.frame=origin;auto& ground=fixture_release.frame;
+ ground.airborne=false;ground.state=100;ground.air_departure=1;ground.action_generation=21;
+ ground.physics_step=11;ground.sampled_at=260;
+ fixture_frame=ground;fixture_frame.state=200;fixture_frame.airborne=true;
+ fixture_frame.airborne_episode=2;fixture_frame.action_generation=22;fixture_frame.physics_step=12;fixture_frame.sampled_at=285;
+ physical={{-2.080236f,12.261449f,3.956027f},{-2.273323f,11.984737f,3.962077f},0,0};
 }
 void run(){
  {
@@ -1019,6 +1059,64 @@ void run(){
   check(wallplant_native_departure(5,request,true)&&fixture_hold.departure_submitted==submitted,
         "native submission outcome is retained independently of physical success");
   check(!wallplant_native_departure(5,second,false),"failed completion also forbids a second native query");
+ }
+ for(bool published:{false,true}){
+  reset_release();if(!published)fixture_frame=fixture_release.frame;
+  const auto command=fixture_release.release.command;
+  trainer::NativeWorldTrajectoryOverride request;request.caller=addr::trajectory::pop_query_call.rva;
+  check(wallplant_native_departure(5,request,false),"released100 admits only its original next native200 query, before or after observer publication");
+  check(request.velocity==physical.velocity0&&request.velocity!=command.after,
+        "departure uses already consumed velocity including native losses, never resets the original 12.7 launch");
+  check(!wallplant_released_core&&!fixture_release.release.command,"continuation receipt is spent before the original setter runs");
+  trainer::NativeWorldTrajectoryOverride again;again.caller=request.caller;
+  check(!wallplant_native_departure(5,again,false),"next native query cannot reuse the spent release");
+ }
+ for(unsigned fault=0;fault<34;++fault){
+  reset_release();trainer::NativeWorldTrajectoryOverride request;request.caller=addr::trajectory::pop_query_call.rva;
+  if(fault==0)fixture_now=411;
+  if(fault==1)fixture_now=259;
+  if(fault==2)fixture_frame.owner_generation++;
+  if(fault==3)fixture_frame.owner.core++;
+  if(fault==4)fixture_frame.airborne_episode++;
+  if(fault==5)fixture_frame.air_departure++;
+  if(fault==6)fixture_frame.action_generation++;
+  if(fault==7)fixture_frame.stance_and_push++;
+  if(fault==8)fixture_frame.flip_id++;
+  if(fault==9)fixture_frame.selection_object++;
+  if(fault==10)fixture_frame.state=201;
+  if(fault==11)fixture_selected=201;
+  if(fault==12)fixture_previous=103;
+  if(fault==13)request.caller++;
+  if(fault==14)call_code=false;
+  if(fault==15)enabled=false;
+  if(fault==16)current_owner=false;
+  if(fault==17)pending=true;
+  if(fault==18)physical.pending0=8;
+  if(fault==19)physical.pending8=8;
+  if(fault==20)physical.velocity0[2]=-.33190274f;
+  if(fault==21)physical.velocity8[1]=0;
+  if(fault==22)physical.velocity0[0]=NAN;
+  if(fault==23)verified=false;
+  if(fault==24)session=true;
+  if(fault==25)bad_body=true;
+  if(fault==26)fixture_frame.physics_step=11;
+  if(fault==27)fixture_frame.sampled_at=301;
+  if(fault==28)fixture_frame.rail_family=true;
+  if(fault==29)fixture_frame.flip_known=!fixture_frame.flip_known;
+  if(fault==30)fixture_release.frame.action_generation++;
+  if(fault==31)physical.velocity0[1]=12.71f;
+  if(fault==32)physical.velocity8[2]=20;
+  if(fault==33)fixture_frame.valid=false;
+  check(!wallplant_native_departure(5,request,false)&&!request.receipt,
+        "stale, changed, unconsumed or unrelated native departures retain their ordinary behavior");
+  check(!wallplant_released_core&&!fixture_release.release.command,"refused continuation cannot be retried");
+ }
+ {
+  reset_release();fixture_now=410;fixture_frame.sampled_at=410;
+  trainer::NativeWorldTrajectoryOverride request;request.caller=addr::trajectory::pop_query_call.rva;
+  check(!wallplant_native_departure(6,request,false)&&wallplant_released_core==1,
+        "another object's query cannot consume or borrow the local release receipt");
+  check(wallplant_native_departure(5,request,false),"existing observation lease accepts its inclusive boundary without renewal");
  }
  std::cout<<checks<<" combined production departure authority checks passed\n";
 }

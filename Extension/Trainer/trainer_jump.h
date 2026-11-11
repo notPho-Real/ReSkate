@@ -78,6 +78,7 @@ struct NativeWorldTrajectoryOverride {
     std::array<float,3> velocity{};
     std::uint64_t receipt{};
     bool submitted{};
+    std::uintptr_t caller{}; // Original setter call site, supplied by the hook.
 };
 using NativeWorldTrajectoryBridge = bool (*)(std::uintptr_t trajectory,
     NativeWorldTrajectoryOverride& request, bool completed) noexcept;

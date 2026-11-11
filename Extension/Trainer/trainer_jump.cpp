@@ -128,7 +128,8 @@ bool call_guarded(SetTrajectory function, std::uintptr_t trajectory, float *para
         return false;
     }
 }
-bool route_native_world_trajectory(std::uintptr_t trajectory, float* parameters) noexcept {
+bool route_native_world_trajectory(std::uintptr_t trajectory, float* parameters,
+        std::uintptr_t caller) noexcept {
     namespace native=game::build::v20260929::trajectory;
     auto& h=hooked();
     const auto bridge=h.world_bridge.load(std::memory_order_acquire);
@@ -136,6 +137,7 @@ bool route_native_world_trajectory(std::uintptr_t trajectory, float* parameters)
     if(!bridge || !h.ready || !original || !h.shape_original.load(std::memory_order_acquire) ||
        !trajectory || !parameters || world_trajectory_request.object)return false;
     NativeWorldTrajectoryOverride offered{};
+    offered.caller=caller;
     NativeTrajectoryParameters packet{};
     __try {
         // Never spend a receipt on a setter that native pending work will refuse.
@@ -157,8 +159,8 @@ bool route_native_world_trajectory(std::uintptr_t trajectory, float* parameters)
     offered.submitted=valid && called && result.observed && result.preserved;
     (void)bridge(trajectory,offered,true);
     if(offered.submitted)logging::log(logging::Level::info,logging::Channel::skater,
-        "Native trajectory world exit: object={} receipt={} route=native_departure shaped=[{},{},{}] query_input=[{},{},{}] candidate_acceptance_verified=false",
-        trajectory,offered.receipt,result.shaped[0],result.shaped[1],result.shaped[2],
+        "Native trajectory world exit: object={} receipt={} caller={} route=native_departure shaped=[{},{},{}] query_input=[{},{},{}] candidate_acceptance_verified=false",
+        trajectory,offered.receipt,caller,result.shaped[0],result.shaped[1],result.shaped[2],
         result.velocity[0],result.velocity[1],result.velocity[2]);
     return true;
 }
@@ -181,8 +183,8 @@ void raise_step() noexcept {
 }
 void set_trajectory_hook(std::uintptr_t trajectory, float *parameters) {
     auto &h = hooked();
-    if(route_native_world_trajectory(trajectory,parameters))return;
     const auto caller = reinterpret_cast<std::uintptr_t>(_ReturnAddress()) - h.base;
+    if(route_native_world_trajectory(trajectory,parameters,caller-5))return;
     if (const auto modifier = h.modifier.load(std::memory_order_acquire); modifier && parameters) {
         float velocity[3]{parameters[velocity_y - 1], parameters[velocity_y], parameters[velocity_y + 1]};
         modifier(caller - 5, trajectory, velocity);
