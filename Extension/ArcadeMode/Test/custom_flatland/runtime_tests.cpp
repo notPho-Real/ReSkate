@@ -119,7 +119,7 @@ struct Rig {
     }
     void hold(unsigned count=24){
         for(unsigned i=0;i<count;++i){next();auto d=step();tick();check(d.admitted,"active native writer consumes custom drag");}
-        check(binding().ready && player.time==2.f,"entry settles into native-clock held pose");
+        check(binding().ready && std::abs(player.time-2.f)<=.081f,"entry settles into a subtly moving native-clock hold");
     }
 };
 void runtime_admission(){
@@ -230,11 +230,36 @@ void balance_range(){
     const auto ticket=player.ticket;
     for(float balance:{-1.f,-.5f,0.f,.5f,1.f}) {
         r.balance=balance;r.poll(0);r.step();r.tick();
-        check(std::abs(player.time-(2+balance))<.0001f && player.ticket==ticket,
-            "the governing Manual balance selects the range on the same ticket");
+        check(std::abs(player.time-(2+balance))<=.161f && player.time>=1 && player.time<=3 && player.ticket==ticket,
+            "native balance remains the center of bounded presentation motion on the same ticket");
     }
     r.balance=std::numeric_limits<float>::quiet_NaN();r.poll(0);r.tick();
     check(!player.ticket,"invalid balance cannot leave an owned pose behind");
+}
+void moving_hold(){
+    for(float dt:{1.f/30,1.f/60}) {
+        Rig r;r.dt=dt;r.enter();r.hold();
+        const auto ticket=player.ticket;
+        const auto movement=[&](float balance) {
+            r.balance=balance;float distance=0,low=3,high=1,previous=0;
+            for(unsigned i=0;i<120;++i) {
+                r.next();r.step();r.tick();
+                const float at=player.time;
+                check(at>=1 && at<=3 && player.ticket==ticket,"moving range retains bounded owned playback");
+                check(r.balance==balance,"presentation never writes native balance");
+                low=std::min(low,at);high=std::max(high,at);
+                if(i)distance+=std::abs(at-previous);
+                previous=at;
+                check(!r.step().admitted,"duplicate native step cannot advance motion");
+                r.tick();check(player.time==at,"client redraw does not advance hold motion");
+            }
+            check(high-low>.10f,"unchanged balance still has visible authored motion");
+            return distance;
+        };
+        const float quiet=movement(0),top=movement(.88f),bottom=movement(-.88f);
+        check(top>quiet*3 && bottom>quiet*3,"both balance limits produce quicker stronger corrections than center");
+        r.enabled=false;r.next();r.tick();check(!player.ticket,"OFF cancels timed range motion with its owner");
+    }
 }
 void material_capture_lifetime(){
     Rig r;
@@ -318,4 +343,4 @@ int main(){
     custom_flatland_runtime::tick({});
     check(preparations==1 && player.starts==0,"opt-in prepares shared hooks before a Manual without acquiring a player");
     custom_flatland_runtime::set_enabled(false);
-    balance_range();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}
+    balance_range();moving_hold();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

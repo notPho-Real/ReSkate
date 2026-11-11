@@ -10,6 +10,7 @@ namespace dingosdk::arcade_mode {
 struct CustomTrickClips {
     std::shared_ptr<const anim_studio::Clip> entry_hold, flip_exit, direct_exit;
     float range_begin{},range_end{};
+    anim_studio::motion_authoring::RangeMotion range_motion{};
 };
 struct CustomTrickPlayback {
     void* context{};
@@ -74,7 +75,7 @@ public:
     bool branch_ready() const noexcept {return phase_==Phase::manual || phase_==Phase::hold;}
     void cancel() noexcept {
         if(ticket_ && playback_.cancel)playback_.cancel(playback_.context,ticket_);
-        ticket_=episode_=started_step_=0;phase_=Phase::manual;elapsed_=sample_time_=range_weight_=display_radians_=0;resistance_.reset();
+        ticket_=episode_=started_step_=0;phase_=Phase::manual;elapsed_=sample_time_=range_weight_=motion_time_=display_radians_=0;resistance_.reset();
         // steps_ intentionally survives cancellation and OFF/ON.
     }
     void observe(CustomFlatlandContext context) noexcept {
@@ -113,7 +114,9 @@ public:
         sample_time_=elapsed_;
         if(phase_==Phase::hold && clips_.range_end>clips_.range_begin) {
             range_weight_=std::min(1.f,range_weight_+step.seconds/.10f);
-            const float alpha=(std::clamp(context.balance,-1.f,1.f)*range_weight_+1)*.5f;
+            motion_time_=std::fmod(motion_time_+step.seconds,anim_studio::motion_authoring::RangeMotion::period);
+            const float animated=clips_.range_motion.sample(context.balance,motion_time_);
+            const float alpha=(animated*range_weight_+1)*.5f;
             sample_time_=clips_.range_begin+(clips_.range_end-clips_.range_begin)*alpha;
         }
         if(playback_.seek)playback_.seek(playback_.context,ticket_,sample_time_);
@@ -167,6 +170,6 @@ private:
     GroundMotionStep steps_;
     GroundResistance resistance_;
     Phase phase_{Phase::manual};
-    float elapsed_{},sample_time_{},range_weight_{},duration_{},display_radians_{};
+    float elapsed_{},sample_time_{},range_weight_{},motion_time_{},duration_{},display_radians_{};
 };
 }

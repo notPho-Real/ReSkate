@@ -79,6 +79,30 @@ void clips(){
         check(twice.weights==c.direct_exit->weights,"reversing twice restores the blend envelope");
     }
 }
+void low_stance(){
+    // A held Casper is a low inverted deck with separated feet, not a raised
+    // front knee and a near-vertical board. Incoming Manual pitch must not set
+    // the held inclination; both feet remain close to the support surface.
+    for(bool goofy:{false,true})for(float pitch:{-12.f,0.f,12.f,24.f}) {
+        const auto seed=flatland_pose_fixture(goofy);
+        Joint native_board;native_board.rotation=from_euler({pitch,0,0});
+        const auto clips=make_casper_clips(seed,native_board);
+        for(float time:{1.f,1.5f,2.f,2.5f,3.f}) {
+            std::vector<Joint> pose(skeleton_joints);Joint board;
+            clips.entry_hold->sample(time,pose);clips.entry_hold->sample_board(time,board);
+            const auto along=rotate(board.rotation,{0,0,1});
+            check(along[1]>.10f && along[1]<.31f,"held deck remains low, with nose slightly above tail");
+            check(rotate(board.rotation,{0,1,0})[1]<-.94f,"inverted deck stays nearly parallel to the surface");
+            const float floor=world(seed,375).position[1];
+            for(auto foot:{10u,343u}) {
+                const auto ankle=world(pose,static_cast<std::uint16_t>(foot));
+                check(ankle.position[1]>floor && ankle.position[1]<floor+.25f,"both ankles remain near the low deck");
+            }
+            check(std::abs(world(pose,10).position[1]-world(pose,343).position[1])<.14f,
+                "front foot supports the low deck without a high-knee stance");
+        }
+    }
+}
 void raised_shoulders(){
     // A Manual can lift one clavicle. Its vertical offset must not become an
     // upward hand target, and moving the arm must not twist a fixed-world wrist.
@@ -99,6 +123,43 @@ void raised_shoulders(){
         }
     }
 }
+void tall_manual_support(){
+    for(bool goofy:{false,true}) {
+        auto seed=flatland_pose_fixture(goofy);seed[hips_joint].position[1]+=.12f;
+        Joint native_board;native_board.position[2]=.20f;
+        const auto clips=make_casper_clips(seed,native_board);
+        const auto front=static_cast<std::uint16_t>(goofy?10:343),back=static_cast<std::uint16_t>(goofy?343:10);
+        const float side=goofy?-1.f:1.f;
+        for(float time:{1.f,1.5f,2.f,2.5f,3.f}) {
+            std::vector<Joint> pose(skeleton_joints);Joint board;
+            clips.entry_hold->sample(time,pose);clips.entry_hold->sample_board(time,board);
+            check(length(sub(world(pose,front).position,point(board,{side*.025f,.025f,.25f})))<.015f,
+                "a tall rear-weighted Manual still reaches the low front support target");
+            check(length(sub(world(pose,back).position,point(board,{-side*.015f,-.10f,-.32f})))<.015f,
+                "settling the pelvis preserves rear foot support");
+            check(seed[hips_joint].position[1]-pose[hips_joint].position[1]<=.201f,
+                "support settling is bounded and never stretches leg bones");
+        }
+    }
+}
+void range_motion(){
+    RangeMotion still{},moving{.08f,.16f};
+    for(float b:{-1.f,-.8f,0.f,.8f,1.f})for(unsigned i=0;i<=240;++i) {
+        const float time=static_cast<float>(i)/60;
+        check(still.sample(b,time)==b,"unconfigured ranges retain static sampling");
+        const float at=moving.sample(b,time);
+        check(at>=-1 && at<=1 && std::abs(at-b)<=.161f,"range motion remains a bounded correction around native balance");
+        check(std::abs(at-moving.sample(b,time+RangeMotion::period))<.00001f,"wrapping native time keeps motion continuous");
+    }
+    check(moving.sample(0,.25f)>.05f,"neutral balance has a slow visible weight shift");
+    const auto clips=make_casper_clips(flatland_pose_fixture(),{});
+    std::vector<Joint> left(skeleton_joints),right(skeleton_joints);
+    clips.entry_hold->sample(2+moving.sample(0,1.f/3),left);
+    clips.entry_hold->sample(2+moving.sample(0,1.f),right);
+    check(length(sub(world(left,49).position,world(right,49).position))>.012f,
+        "quiet range motion moves the rendered hand rather than disappearing in a center easing plateau");
+    check(moving.sample(std::numeric_limits<float>::quiet_NaN(),0)==0,"invalid range input fails closed");
+}
 void validation(){
     auto seed=flatland_pose_fixture();const auto c=make_casper_clips(seed,{});
     auto clip=*c.direct_exit;
@@ -116,4 +177,4 @@ void validation(){
     rejected([&]{(void)bake(invalid);});
 }
 }
-int main(){clips();raised_shoulders();validation();std::cout<<checks<<" authored motion checks passed (synthetic rig; not native contact acceptance)\n";}
+int main(){low_stance();clips();raised_shoulders();tall_manual_support();range_motion();validation();std::cout<<checks<<" authored motion checks passed (synthetic rig; not native contact acceptance)\n";}

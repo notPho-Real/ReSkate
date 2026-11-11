@@ -8,6 +8,22 @@
 namespace dingosdk::anim_studio::motion_authoring {
 using namespace pose_math;
 inline float smooth(float t) noexcept {t=std::clamp(t,0.f,1.f);return t*t*(3-2*t);}
+// Offset an authored balance range for quiet weight shifts and quicker
+// corrections near either limit. This changes presentation only. The caller
+// advances seconds from its admitted native steps and retains balance ownership.
+struct RangeMotion {
+    float idle_amplitude{},edge_amplitude{};
+    static constexpr float period=4.f;
+    float sample(float balance,float seconds) const noexcept {
+        if(!std::isfinite(balance) || !std::isfinite(seconds))return 0;
+        const float b=std::clamp(balance,-1.f,1.f);
+        const float edge=smooth((std::abs(b)-.55f)/.45f);
+        const float phase=std::remainder(seconds,period)*6.28318530718f;
+        const float sway=idle_amplitude*(1-edge)*std::sin(phase*.75f);
+        const float shake=edge_amplitude*edge*std::sin(phase*4.5f);
+        return std::clamp(b+sway+shake,-1.f,1.f);
+    }
+};
 inline Joint mix(const Joint& a,const Joint& b,float t) noexcept {
     Joint out;out.rotation=slerp(a.rotation,b.rotation,t);
     for(unsigned i=0;i<3;++i){out.position[i]=a.position[i]+(b.position[i]-a.position[i])*t;
@@ -55,6 +71,35 @@ inline float reach(std::span<Joint> pose,std::array<std::uint16_t,3> chain,
     pose[chain[2]].rotation=normalised(multiply(conjugate(world(pose,chain[1]).rotation),rotation));
     return length(sub(world(pose,chain[2]).position,target));
 }
+struct ReachTarget {
+    std::array<std::uint16_t,3> chain;
+    Vec3 target;
+};
+// Lower an authored root only as much as its target legs require. Without this,
+// a low board target can lie beyond a tall native Manual's leg reach and the
+// analytic solver correctly clamps, leaving the displayed shoe above the deck.
+inline float lower_for_reach(std::span<Joint> pose,std::uint16_t root,
+        std::span<const ReachTarget> targets,float limit) {
+    if(root>=pose.size() || !std::isfinite(limit) || limit<0 || limit>.5f)
+        throw std::invalid_argument("invalid authored support fit");
+    float drop=0;
+    for(const auto& item:targets) {
+        if(item.chain[2]>=pose.size() || item.chain[1]>=pose.size() || item.chain[0]>=pose.size() ||
+            !pose_math::finite(item.target))throw std::invalid_argument("invalid authored support target");
+        const auto a=world(pose,item.chain[0]),b=world(pose,item.chain[1]),c=world(pose,item.chain[2]);
+        const float reach=(length(sub(b.position,a.position))+length(sub(c.position,b.position)))*.985f;
+        const auto delta=sub(a.position,item.target);
+        const float vertical=std::sqrt(std::max(0.f,reach*reach-delta[0]*delta[0]-delta[2]*delta[2]));
+        drop=std::max(drop,delta[1]-vertical);
+    }
+    drop=std::min(drop,limit);
+    if(drop>0) {
+        const auto p=parent(root);
+        const auto frame=p>=0?world(pose,static_cast<std::uint16_t>(p)):Joint{};
+        pose[root].position=unpoint(frame,sub(world(pose,root).position,{0,drop,0}));
+    }
+    return drop;
+}
 struct PoseKey {
     float time{};
     std::vector<Joint> pose;
@@ -65,6 +110,7 @@ struct Phase {
     std::string name;
     std::vector<PoseKey> keys;
     std::vector<float> joint_weights;
+    bool ease{true}; // Parameter ranges need linear response through their center.
 };
 // Bake eased keys densely enough that long board rotations retain their path.
 // Supply intermediate keys for rotations exceeding 180 degrees.
@@ -86,7 +132,7 @@ inline Clip bake(const Phase& phase,unsigned hz=120) {
         const auto steps=static_cast<unsigned>(std::ceil((key.time-previous.time)*static_cast<float>(hz)));
         if(out.times.size()+steps+1>20000)throw std::invalid_argument("authored clip too large");
         for(unsigned j=0;j<steps;++j) {
-            const float u=static_cast<float>(j)/static_cast<float>(steps),w=smooth(u);
+            const float u=static_cast<float>(j)/static_cast<float>(steps),w=phase.ease?smooth(u):u;
             out.times.push_back(previous.time+(key.time-previous.time)*u);
             for(std::size_t bone=0;bone<count;++bone)out.frames.push_back(mix(previous.pose[bone],key.pose[bone],w));
             out.board.push_back(mix(previous.board,key.board,w));

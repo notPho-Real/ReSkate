@@ -701,3 +701,33 @@ stances. A private native-pose replay also keeps both hands below the shoulders
 across the balance range; that data remains outside source and packages. This
 arm-only revision still requires native visual acceptance. Board-ground contact
 is numerically aligned to the native Ground joint but remains visually unaccepted.
+
+
+### Low stance and active balance correction
+
+The owner rejected the previous steep-board, high-knee presentation. Those
+captures establish gameplay continuity only; they are not visual acceptance.
+The revised authored hold keeps the inverted board about 12 degrees from the
+support plane, with both feet low and separated. Entry and flip preparation use
+the same revised endpoint. Incoming Manual pitch is removed gradually, while
+heading and native placement remain unchanged. A bounded authoring-only pelvis
+fit keeps both low foot targets reachable on a tall, rear-weighted seed without
+stretching bones or moving native rigid bodies.
+
+A steady balance value no longer freezes the hold. Animation Studio's reusable
+RangeMotion offsets the existing authored range with quiet weight shifts and
+quicker corrections as the absolute native balance approaches either limit.
+The clock advances once per admitted physics step, including at 30 and 60 Hz;
+duplicate steps and client redraws cannot advance it. Range interpolation is
+linear through its center so subtle motion remains visible. Entry and exit
+interpolation stays eased. The native balance value, fatigue, controller mapping,
+friction policy and collision/bail behavior are untouched. Exits join the actual
+current animated pose on the same ownership path.
+
+Focused checks cover low board inclination independent of incoming Manual
+pitch, both low foot targets, bounded support settling, steady-balance motion,
+stronger corrections at both limits, native-step clocking and cancellation.
+Private replay on a captured rig checks reach but is not rendered contact proof.
+New front/side/rear captures, both stances, balance extremes and exit continuity
+must be reviewed in game before this revision is called ready. Owner-supplied
+reference images and captured rig data stay outside the repository and packages.
