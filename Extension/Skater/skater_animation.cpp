@@ -1148,6 +1148,27 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                 std::memcpy(current[i].position.data(), p.bones[i].position.data(), 12);
             }
         }
+        // Physics can change placement between animation evaluation and draw.
+        // Resolve an owned held endpoint against the placement read here, then
+        // restore these render-only rotations through the existing on_drawn path.
+        const auto contact_plan=plan();
+        if(p.play_ticket && p.deltas.empty() && p.first==2 && p.last==skeleton_joints &&
+           contact_plan->serial==p.play_ticket && contact_plan->allowed && contact_plan->held &&
+           contact_plan->hold_deadline && contact_plan->play && contact_plan->play->contact) {
+            const auto& play=*contact_plan->play;
+            const auto elapsed=static_cast<float>(now_seconds()-contact_plan->started);
+            const float entering=play.blend>0?std::clamp(elapsed/play.blend,0.f,1.f):1.f;
+            const float weight=std::min(entering,owned_hold_weight(GetTickCount64(),contact_plan->hold_deadline,
+                contact_plan->hold_released_at,play.blend));
+            std::array<NativeBone,2> placement{};
+            if(weight>0 && peek(layout.buffer,placement.data(),sizeof(placement))) {
+                thread_local std::array<Joint,skeleton_joints> rendered;
+                for(std::size_t i=0;i<placement.size();++i)rendered[i]=joint_of(placement[i]);
+                for(std::size_t i=0;i<current.size();++i)rendered[i+2]=joint_of(current[i]);
+                if(arm_reach::reach_joint(rendered,play.contact->joint,play.contact->point,weight).valid)
+                    for(std::size_t i=0;i<current.size();++i)current[i].rotation=rendered[i+2].rotation;
+            }
+        }
         if (poke(layout.buffer + p.first * sizeof(NativeBone), current.data(), current.size() * sizeof(NativeBone))) {
             p.game_first = p.first;
             p.game_buffer = layout.buffer;
@@ -1311,6 +1332,9 @@ std::uint64_t try_hold(Play clip,std::uint64_t deadline) {
        !std::isfinite(clip.at) || clip.at<0 || clip.at>clip.clip->duration() ||
        !std::isfinite(clip.speed) || clip.speed<=0 || !std::isfinite(clip.blend) || clip.blend<0 || clip.blend>1 ||
        clip.loop || serial==UINT64_MAX)return 0;
+    if(clip.contact && (clip.contact->joint>=clip.clip->joints || clip.contact->joint<2 ||
+       !std::all_of(clip.contact->point.begin(),clip.contact->point.end(),
+           [](float value){return std::isfinite(value) && std::abs(value)<1e6f;})))return 0;
     // Publish the pause and its expiry together; no intermediate unbounded
     // paused plan is ever visible to the animation thread.
     clip.paused=true;borrowed_play=0;plan_draft.play=std::move(clip);

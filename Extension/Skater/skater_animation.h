@@ -23,6 +23,7 @@ using anim_studio::Clip;
 // A clip from now on, in place: `speed` times as fast, blended in and out over `blend` seconds,
 // once or over and over.
 struct Play {
+    struct Contact { std::uint16_t joint{}; anim_studio::Vec3 point{}; };
     std::shared_ptr<const Clip> clip;
     float speed{1}, blend{0.15f};
     bool loop{};
@@ -34,6 +35,9 @@ struct Play {
     // that does not rise by itself (the game's own trick clips stay in place); on the ground its board
     // lies under the feet. Without it the body hangs from where the skater is, as the clip has it.
     bool floor{};
+    // Optional world-space endpoint for a bounded held pose. Render-only
+    // two-bone reach; an unreachable target never stretches or moves the root.
+    std::optional<Contact> contact;
 };
 // A clip the game's own trick plays as, from its takeoff: the clip's air (its takeoff to its
 // landing) stretched to the trick's. `trick` is the game's name ("kickflip"); `pop` "", "low",

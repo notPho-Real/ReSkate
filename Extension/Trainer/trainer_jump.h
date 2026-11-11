@@ -3,6 +3,8 @@
 // jump-trajectory setter with a fixed upward speed, and no tuning value is read for it:
 // the trainer multiplies that speed as the trajectory is set.
 #include <cstdint>
+#include <array>
+#include "Engine/Game/Build/20260929/trajectory.h"
 
 namespace dingosdk::trainer {
 enum class Trick : std::uint8_t { none, no_comply, boneless };
@@ -52,4 +54,14 @@ bool take_trick_launch(TrickLaunch &out) noexcept;
 // nullptr for none. Requires start_trick_heights.
 using TrajectoryModifier = void (*)(std::uintptr_t caller_rva, std::uintptr_t trajectory, float (&velocity)[3]) noexcept;
 void set_trajectory_modifier(TrajectoryModifier modifier) noexcept;
+// Physics-thread bridge to the already verified native setter. The caller owns
+// the local rig and trajectory, and must revalidate that ownership before submit.
+// Preparation reads the current rig; it never replays an earlier launch packet.
+struct NativeTrajectoryParameters {
+    alignas(32) std::array<float, game::build::v20260929::trajectory::parameter_bytes / sizeof(float)> values{};
+};
+bool prepare_native_trajectory(std::uintptr_t base, std::uintptr_t rig,
+                               NativeTrajectoryParameters& parameters) noexcept;
+bool submit_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
+                              NativeTrajectoryParameters& parameters) noexcept;
 } // namespace dingosdk::trainer

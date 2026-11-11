@@ -24,6 +24,7 @@
 #include "Extension/ArcadeMode/arcade_wallplant_hold.h"
 #include "Extension/ArcadeMode/arcade_ground_rotation.h"
 #include "free_flight.h"
+#include "Extension/Trainer/trainer_jump.h"
 #include "Engine/Game/Multiplayer/session_competition.h"
 #include <cmath>
 
@@ -584,6 +585,38 @@ bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManua
     if (ground_turn) *ground_turn = candidate_turn;
     return true;
 }
+struct WallplantBodyObservation {
+    std::array<float,3> root{},board{},forward{},velocity0{},velocity8{};
+    std::uint32_t pending0{},pending8{};
+};
+// Entity placement is a drive reference, not a physical-body measurement.
+// Read the same owned body records used by the native transform getter.
+WallplantBodyObservation wallplant_body_observation(const NoclipBodies& bodies,SourceReader& reader) {
+    namespace body=game::build::v20260929::skater_state;
+    WallplantBodyObservation out;
+    std::array<float,16> root{},board{};
+    for(unsigned row=0;row<4;++row) {
+        const auto root_row=reader.value<std::array<float,4>>(bodies.parts[body::board_root_body],
+            addr::skater_body::body_transform_offset+row*16);
+        const auto board_row=reader.value<std::array<float,4>>(bodies.parts[spawn::reference_body_index],
+            addr::skater_body::body_transform_offset+row*16);
+        std::copy(root_row.begin(),root_row.end(),root.begin()+row*4);
+        std::copy(board_row.begin(),board_row.end(),board.begin()+row*4);
+    }
+    source_require(valid_flight_transform(root) && valid_flight_transform(board),"hold_physical_transform");
+    for(unsigned axis=0;axis<3;++axis) {
+        out.root[axis]=root[12+axis];out.board[axis]=board[12+axis];out.forward[axis]=board[8+axis];
+    }
+    out.velocity0=reader.value<std::array<float,3>>(bodies.parts[body::board_root_body],body::body_velocity_offset);
+    out.velocity8=reader.value<std::array<float,3>>(bodies.parts[spawn::reference_body_index],body::body_velocity_offset);
+    for(unsigned axis=0;axis<3;++axis)
+        source_require(std::isfinite(out.velocity0[axis]) && std::isfinite(out.velocity8[axis]),"hold_physical_velocity");
+    out.pending0=reader.value<std::uint32_t>(bodies.parts[body::board_root_body],body::body_pending_flags_offset);
+    out.pending8=reader.value<std::uint32_t>(bodies.parts[spawn::reference_body_index],body::body_pending_flags_offset);
+    // Include the transform and velocity reads in one checked snapshot.
+    reader.verify();
+    return out;
+}
 struct WallplantPhysicalHold {
     arcade_mode::WallplantCommand command{};
     NoBailSkater owner{};
@@ -591,6 +624,7 @@ struct WallplantPhysicalHold {
     std::uint64_t started{},intent_generation{},targets{},first_target{},last_target{};
     std::array<float,3> entry_root{},last_root{},last_velocity{},readback0{},readback8{},actual_forward{};
     float maximum_drift{};
+    WallplantBodyObservation physical{},entry_physical{};
     game::orientation_target::Result orientation{};
     float orientation_limit{};
 };
@@ -602,7 +636,7 @@ void wallplant_hold_log(const WallplantPhysicalHold& hold,const char* phase,cons
         std::uint64_t now,std::uint32_t selected) noexcept {
     try {
         logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE WALLPLANT HOLD: occurrence={} contact={} phase={} reason={} ms={} started={} elapsed={} state={} targets={} first_target={} last_target={} root={},{},{} anchor={},{},{} maximum_drift={} velocity={},{},{} exit={},{},{} readback0={},{},{} readback8={},{},{} entry_root={},{},{} incoming={},{},{} reflected={},{},{} hold_forward={},{},{} target_normal={},{},{} actual_forward={},{},{} native_orientation_limit={} requested_orientation_error={} applied_orientation_error={} orientation_fraction={} native_drive=spring hard_anchor_verified=false.",
+            "ARCADE WALLPLANT HOLD: occurrence={} contact={} phase={} reason={} ms={} started={} elapsed={} state={} targets={} first_target={} last_target={} entity_root={},{},{} anchor={},{},{} maximum_entity_target_error={} velocity={},{},{} exit={},{},{} pending_readback0={},{},{} pending_readback8={},{},{} entry_entity_root={},{},{} incoming={},{},{} reflected={},{},{} hold_forward={},{},{} target_normal={},{},{} entity_forward={},{},{} native_orientation_limit={} requested_orientation_error={} applied_orientation_error={} orientation_fraction={} native_drive=spring hard_anchor_verified=false.",
             hold.command.input_sequence,hold.command.contact,phase,reason,now,hold.started,
             now>=hold.started?now-hold.started:0,selected,hold.targets,hold.first_target,hold.last_target,
             hold.last_root[0],hold.last_root[1],hold.last_root[2],hold.command.anchor[0],
@@ -617,6 +651,14 @@ void wallplant_hold_log(const WallplantPhysicalHold& hold,const char* phase,cons
             hold.command.contact_normal[0],hold.command.contact_normal[1],hold.command.contact_normal[2],
             hold.actual_forward[0],hold.actual_forward[1],hold.actual_forward[2],
             hold.orientation_limit,hold.orientation.requested_error,hold.orientation.applied_error,hold.orientation.fraction);
+        const auto& p=hold.physical;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT BODY: occurrence={} contact={} phase={} ms={} state={} root={},{},{} board={},{},{} forward={},{},{} velocity0={},{},{} velocity8={},{},{} pending0={} pending8={} entry_root={},{},{} entry_board={},{},{} physical_integration_verified=false.",
+            hold.command.input_sequence,hold.command.contact,phase,now,selected,
+            p.root[0],p.root[1],p.root[2],p.board[0],p.board[1],p.board[2],p.forward[0],p.forward[1],p.forward[2],
+            p.velocity0[0],p.velocity0[1],p.velocity0[2],p.velocity8[0],p.velocity8[1],p.velocity8[2],p.pending0,p.pending8,
+            hold.entry_physical.root[0],hold.entry_physical.root[1],hold.entry_physical.root[2],
+            hold.entry_physical.board[0],hold.entry_physical.board[1],hold.entry_physical.board[2]);
     } catch(...) {}
 }
 void wallplant_hold_cancel(const char* reason,std::uint64_t now,std::uint32_t selected=0) noexcept {
@@ -977,6 +1019,7 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         SourceReader written;
         const auto readback0=written.value<std::array<float,3>>(bodies.parts[0],0x70);
         const auto readback8=written.value<std::array<float,3>>(bodies.parts[8],0x70);
+        const auto entry_physical=wallplant_body_observation(bodies,written);
         written.verify();
         auto& air=arcade_air();
         air.controller.yield_ordinary_motion();air.output.vertical=air.output.horizontal=false;
@@ -988,6 +1031,7 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         hold.last_velocity=velocities[0];
         hold.actual_forward={bodies.matrix[8],bodies.matrix[9],bodies.matrix[10]};
         hold.readback0=readback0;hold.readback8=readback8;
+        hold.physical=hold.entry_physical=entry_physical;
         hold.maximum_drift=std::hypot(bodies.root[0]-command.anchor[0],bodies.root[1]-command.anchor[1],bodies.root[2]-command.anchor[2]);
         wallplant_hold_core.store(core,std::memory_order_release);
         wallplant_hold_log(hold,"entry","braked",started,live.state);
@@ -997,6 +1041,34 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         try{throw;}catch(const SourceGuard& issue){note(19,issue.message);}
         catch(...){note(19,"reconstruction_exception");}
     }
+}
+struct WallplantReleaseTrajectory {
+    std::uintptr_t object{};
+    trainer::NativeTrajectoryParameters parameters{};
+};
+WallplantReleaseTrajectory wallplant_release_trajectory(std::uintptr_t base,
+        const NoBailSkater& owner, const std::array<float,3>& velocity, SourceReader& reader) {
+    namespace native = addr::trajectory;
+    WallplantReleaseTrajectory result;
+    result.object=reader.pointer(owner.core,native::core_object);
+    source_require(source_object(result.object) &&
+        reader.pointer(result.object,native::object_context)==owner.context &&
+        reader.pointer(owner.rig)==owner.context,"release_trajectory_owner");
+    source_require(reader.value<std::uint8_t>(result.object,native::query_pending)==0,
+        "release_trajectory_busy");
+    source_require(trainer::prepare_native_trajectory(base,owner.rig,result.parameters),
+        "release_trajectory_code");
+    // The native rig supplies both transforms and the current query origin.
+    // Only replace its requested launch, never a cached collision result.
+    const auto& values=result.parameters.values;
+    source_require(std::all_of(values.begin(),values.begin()+native::parameter_launch/sizeof(float),
+        [](float value){return std::isfinite(value);}) &&
+        std::all_of(velocity.begin(),velocity.end(),[](float value){return std::isfinite(value);}),
+        "release_trajectory_parameters");
+    std::copy(velocity.begin(),velocity.end(),result.parameters.values.begin()+native::parameter_velocity/sizeof(float));
+    reinterpret_cast<unsigned char*>(result.parameters.values.data())[native::parameter_launch]=1;
+    reader.verify();
+    return result;
 }
 void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
     if(wallplant_hold_core.load(std::memory_order_acquire)!=core)return;
@@ -1036,6 +1108,7 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         const auto selected=reader.value<std::uint32_t>(bodies.context,
             game::build::v20260929::arcade_native_probe::selected_state);
         source_require(selected==100 || selected==200 || selected==201,"hold_native_state");
+        hold.physical=wallplant_body_observation(bodies,reader);
         hold.last_root=bodies.root;
         hold.actual_forward={bodies.matrix[8],bodies.matrix[9],bodies.matrix[10]};
         const auto drift=std::hypot(bodies.root[0]-held.anchor[0],bodies.root[1]-held.anchor[1],bodies.root[2]-held.anchor[2]);
@@ -1051,10 +1124,12 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
             flags[i]=reader.value<std::uint32_t>(bodies.parts[i],0x60);
         }
         hold.last_velocity=velocities[0];
+        const auto original_velocities=velocities,original_spins=spins;
         arcade_mode::AirMotionOutput release{};release.ready=release.vertical=release.horizontal=true;
         release.velocity_y=held.after[1];release.delta_x=held.after[0]-velocities[0][0];
         release.delta_z=held.after[2]-velocities[0][2];
         source_require(arcade_mode::AirMotion::apply_bodies(release,velocities,spins,bodies.up),"hold_release_velocity");
+        auto trajectory=wallplant_release_trajectory(state.trial.base,owner,held.after,reader);
         reader.verify();NoBailSkater after{};
         source_require(no_bail_skater(after) && after==owner,"hold_release_owner");
         const bool current=arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame,&stale_query);
@@ -1064,11 +1139,36 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         // and future ticks cannot turn a single release into repeated writes.
         auto releasing=hold;attempted_release=releasing;
         hold={};wallplant_hold_core.store(0,std::memory_order_release);
+        // The same single-release ticket owns the planner request and body
+        // write. A busy/failed planner cannot be retried as a second impulse.
+        source_require(trainer::submit_native_trajectory(state.trial.base,trajectory.object,trajectory.parameters),
+            "release_trajectory_submit");
+        source_require(no_bail_skater(after) && after==owner,"release_trajectory_owner_changed");
+        SourceReader unchanged;
+        for(std::size_t i=0;i<bodies.parts.size();++i) {
+            source_require(unchanged.value<std::array<float,3>>(bodies.parts[i],0x70)==original_velocities[i] &&
+                unchanged.value<std::array<float,3>>(bodies.parts[i],0x90)==original_spins[i] &&
+                unchanged.value<std::uint32_t>(bodies.parts[i],0x60)==flags[i],"release_trajectory_body_changed");
+        }
+        unchanged.verify();
         write_arcade_bodies(bodies.parts,velocities,spins,flags,true,false,[]{});
         SourceReader written;
         releasing.readback0=written.value<std::array<float,3>>(bodies.parts[0],0x70);
         releasing.readback8=written.value<std::array<float,3>>(bodies.parts[8],0x70);
+        releasing.physical=wallplant_body_observation(bodies,written);
         written.verify();
+        SourceReader planned;
+        const auto curve_position=planned.value<std::array<float,3>>(trajectory.object,addr::trajectory::curve_position);
+        const auto curve_velocity=planned.value<std::array<float,3>>(trajectory.object,addr::trajectory::curve_velocity);
+        const auto request_velocity=planned.value<std::array<float,3>>(trajectory.object,addr::trajectory::requested_velocity);
+        const auto pending=planned.value<std::uint8_t>(trajectory.object,addr::trajectory::query_pending);
+        const auto selected_curve=planned.value<std::uint8_t>(trajectory.object,addr::trajectory::curve_selected);
+        planned.verify();
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT PLAN ms={} input={} contact={} state={} submitted=true pending={} selected={} request_velocity=[{},{},{}] curve_position=[{},{},{}] curve_velocity=[{},{},{}] physical_integration_verified=false",
+            now,releasing.command.input_sequence,releasing.command.contact,selected,unsigned(pending),unsigned(selected_curve),
+            request_velocity[0],request_velocity[1],request_velocity[2],curve_position[0],curve_position[1],curve_position[2],
+            curve_velocity[0],curve_velocity[1],curve_velocity[2]);
         arcade_mode::wallplant_runtime::finish_hold(releasing.command,true,now);
         wallplant_hold_log(releasing,"release","committed",now,selected);
     } catch(...) {
@@ -1104,6 +1204,7 @@ bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
         source_require(reader.value<std::uint8_t>(hold.entity,0x7e0)==0 &&
             reader.raw(reinterpret_cast<std::uintptr_t>(supplied),original.data(),sizeof(original)) &&
             wallplant_hold_target_matrix(hold.command,original,target),"target_transform");
+        const auto physical=wallplant_body_observation(bodies,reader);
         reader.verify();NoBailSkater after{};
         source_require(no_bail_skater(after) && after==owner,"target_owner");
         const bool current=arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame,&stale_query);
@@ -1111,6 +1212,7 @@ bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
         source_require(current,"target_revalidation");
         if(now<hold.started || now-hold.started>=arcade_mode::WallplantHoldContinuity::duration_ms)return false;
         hold.last_root=bodies.root;
+        hold.physical=physical;
         hold.maximum_drift=std::max(hold.maximum_drift,std::hypot(bodies.root[0]-hold.command.anchor[0],
             bodies.root[1]-hold.command.anchor[1],bodies.root[2]-hold.command.anchor[2]));
         if(!hold.targets)hold.first_target=now;

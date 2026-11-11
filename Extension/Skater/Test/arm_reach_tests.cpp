@@ -125,6 +125,42 @@ void a_broken_pose_is_left_alone() {
     auto fine = t_pose();
     check(!reach(fine, goal).valid, "A point that is not a number is refused");
 }
+void held_endpoint_uses_native_placement_without_stretching() {
+    for(const auto tip:{std::uint16_t{10},std::uint16_t{343}}) {
+        auto pose=t_pose();
+        const auto middle=static_cast<std::uint16_t>(anim_studio::parent(tip));
+        const auto upper_joint=static_cast<std::uint16_t>(anim_studio::parent(middle));
+        pose[0].rotation=anim_studio::from_euler({13,42,-9});
+        pose[upper_joint].position={.15f,0,0};
+        pose[middle].position={0,-.45f,.1f};pose[tip].position={0,-.4f,-.1f};
+        const auto before=pose;
+        const auto root=anim_studio::world(pose,upper_joint);
+        const auto bend=anim_studio::world(pose,middle),foot=anim_studio::world(pose,tip);
+        const Vec3 target{root.position[0]+.3f,root.position[1]-.6f,root.position[2]+.15f};
+        const auto reached=reach_joint(pose,tip,target,1);
+        check(reached.valid && reached.reached && distance(reached.hand.position,target)<2e-4f,
+              "Both held feet reach a real world point from a pitched and turned native placement");
+        check(same_turn(reached.hand.rotation,foot.rotation),"The authored foot orientation is retained");
+        check(std::abs(distance(anim_studio::world(pose,upper_joint).position,anim_studio::world(pose,middle).position)-
+            distance(root.position,bend.position))<1e-4f,"A held contact does not stretch the upper leg");
+        check(std::abs(distance(anim_studio::world(pose,middle).position,anim_studio::world(pose,tip).position)-
+            distance(bend.position,foot.position))<1e-4f,"A held contact does not stretch the lower leg");
+        for(std::size_t i=0;i<pose.size();++i) {
+            check(pose[i].position==before[i].position && pose[i].scale==before[i].scale,
+                  "Contact placement never translates or scales any joint");
+            if(i!=upper_joint && i!=middle && i!=tip)
+                check(same_turn(pose[i].rotation,before[i].rotation),"Contact leaves the root, board and unrelated limbs alone");
+        }
+        pose=before;
+        check(reach_joint(pose,tip,target,0).valid && same_pose(pose,before),"Zero contact blend is exactly the authored pose");
+        const Vec3 far{root.position[0]+3,root.position[1],root.position[2]};
+        const auto refused=reach_joint(pose,tip,far,1);
+        check(refused.valid && !refused.reached && same_pose(pose,before),"Unreachable contact is reported without moving or stretching the skater");
+        check(!reach_joint(pose,tip,{NAN,0,0},1).valid && same_pose(pose,before),"Invalid contact leaves the pose alone");
+        check(!reach_joint(pose,1,target,1).valid && same_pose(pose,before),"World placement cannot be used as a limb");
+        check(!reach_joint(pose,tip,target,NAN).valid && same_pose(pose,before),"Invalid contact blend leaves the pose alone");
+    }
+}
 } // namespace
 
 int main() {
@@ -135,6 +171,7 @@ int main() {
         no_weight_is_the_animation();
         only_the_arm_is_written();
         a_broken_pose_is_left_alone();
+        held_endpoint_uses_native_placement_without_stretching();
     } catch (const std::exception& error) {
         std::cerr << "FAILED: " << error.what() << '\n';
         return 1;

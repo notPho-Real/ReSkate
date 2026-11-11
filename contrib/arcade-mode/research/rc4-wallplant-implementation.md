@@ -73,6 +73,23 @@ angular travel from the measured root and reference-body angular velocities;
 the limit itself is never changed. Native collision and original physics callbacks continue; ordinary SDK
 motion writers yield during this interval. At the first validated native step
 after the deadline, one release delta establishes the saved outward/upward exit.
+That release also submits one fresh native trajectory packet, constructed from
+the current owned rig by the pinned native initializer and observation routine.
+Only its requested velocity and native launch-candidate option are changed.
+The existing verified setter and collision-query selector receive it once;
+an outstanding query rejects the release. This does not select a gameplay state
+or manufacture a collision result. The release ticket is consumed before either
+operation, so a failure cannot cause a second request or impulse.
+
+This addresses a distinct native routing problem: a recorded body batch consumed
+the upward release, but the following native air motion reversed it. The native
+air path follows a stored trajectory; a body write alone does not refresh that
+trajectory. The old curve was not captured in that trial, so this remains a
+source-supported explanation rather than proof of exclusive causation. Native
+query submission can be asynchronous and its selected candidate can differ from
+the request. Requested and selected curve values are logged separately; sustained
+post-release body motion must establish acceptance.
+
 Late, interrupted or invalid phases cancel rather than retrying an impulse.
 The target stops at 160 ms; release may wait at most one observed native physics
 interval for its callback (about 33.3 ms at the pinned 30 Hz cadence). This is a
@@ -95,8 +112,9 @@ plant. These are finite rays, not a complete articulated volume sweep. Native
 collision remains responsible for articulated-body contact.
 
 This native target is a spring drive, so it is not yet proof of complete movement
-suspension. The implementation records target calls, actual root drift and native
-body velocity readbacks at entry/release. It must not be accepted on the strength
+suspension. The implementation records target calls and entity target error
+separately from the owned physical root and board transforms, facing, velocities
+and pending-write flags at entry, target callbacks and release. It must not be accepted on the strength
 of target writes alone. Unlike the reference's suspended displacement with stored
 velocity, this adaptation brakes once and stores the exit until release.
 
@@ -115,8 +133,15 @@ joints and physics are untouched by the pose player. Playback ownership tickets 
 from cancelling a newer plugin clip. New trick input cancels the approximation.
 The held sample maximizes authored foot reach toward the contacted wall in the
 outgoing upright basis, then blends back to native animation over 40 ms. This
-selection assumes an upright basis and the clip's native bind pose; it does not
-prove alignment for the current skater's pitch, roll or body proportions.
+selection assumes an upright basis and the clip's native bind pose. At draw time,
+the existing limb solver now bends the selected leg toward the genuine contact
+point using the current native placement. It changes only three render-pose
+rotations, preserves bone lengths and the authored foot orientation, and leaves
+unreachable targets unchanged. The existing draw restoration restores the native
+pose afterward. The same ownership ticket, hold deadline and release blend bound
+this contact constraint; it cannot change the root, board or physical bodies.
+Endpoint reach is not sole alignment, and the authored foot orientation is not
+replaced with a wall-normal alignment. Actual appearance still requires testing.
 
 This is a native asset displayed through the existing pose player, not an
 authentic Footplant StateFlow/ActorController transition. The 160ms plant
@@ -138,6 +163,11 @@ and owner lifetimes, separation, cooldown, fresh input, held-A rejection,
 ground A, and rejection of unavailable geometry. Query tests use fixture
 storage, including narrow rails, seams, changing owners and invalid normals.
 Synthetic tests are not native gameplay acceptance.
+Production-extracted tests also distinguish physical body transforms from entity
+targets and reject busy, changed-owner, stale or invalid trajectory preparation.
+They verify that current native packet fields survive unchanged except for the
+requested exit and launch option. Both-foot geometry regressions cover rotated
+placement, unchanged bone lengths and unrelated joints, and unreachable targets.
 
 Hardware preflight observed the existing RC3-24 DLL on `skate3_megapark`, local
 state100 and native/cached step 1/30, without input or state changes. The

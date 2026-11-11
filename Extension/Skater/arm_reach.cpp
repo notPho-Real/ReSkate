@@ -120,4 +120,57 @@ Reached hand_of(std::span<const Joint> pose, Hand hand) noexcept {
     if (!compose(pose, chain(hand), w)) return {};
     return {finite(w[hand_at].position), w[hand_at], true};
 }
+Reached reach_joint(std::span<Joint> pose, std::uint16_t tip, const Vec3& at, float weight) noexcept {
+    if(!finite(at) || !std::isfinite(weight) || weight<0 || weight>1)return {};
+    std::array<std::uint16_t,64> joints{};
+    std::size_t count{};
+    int index=tip;
+    while(index>=0 && count<joints.size()) {
+        if(static_cast<std::size_t>(index)>=pose.size())return {};
+        joints[count++]=static_cast<std::uint16_t>(index);
+        index=anim_studio::parent(static_cast<std::uint16_t>(index));
+    }
+    if(index>=0 || count<4)return {};
+    std::reverse(joints.begin(),joints.begin()+count);
+    // The world-placement joints are never candidates for this operation.
+    if(joints[count-3]<2)return {};
+    std::array<Placed,64> placed{};
+    const auto chain_joints=std::span<const std::uint16_t>(joints.data(),count);
+    if(!compose(pose,chain_joints,placed))return {};
+    const auto root=placed[count-3],middle=placed[count-2],end=placed[count-1];
+    const float a=length(sub(middle.position,root.position)),b=length(sub(end.position,middle.position));
+    const float d=length(sub(at,root.position));
+    if(!std::isfinite(a+b+d) || a<=1e-6f || b<=1e-6f || d<=1e-6f)return {};
+    if(d> a+b || d<std::abs(a-b))return {true,end,false};
+    if(weight==0)return {true,end,true};
+    const auto direction=scaled(sub(at,root.position),1.f/d);
+    auto pole=sub(middle.position,root.position);
+    pole=sub(pole,scaled(direction,dot(pole,direction)));
+    if(length(pole)<=1e-6f) {
+        pole=rotate(root.rotation,{1,0,0});
+        pole=sub(pole,scaled(direction,dot(pole,direction)));
+        if(length(pole)<=1e-6f) {
+            pole=rotate(root.rotation,{0,0,1});
+            pole=sub(pole,scaled(direction,dot(pole,direction)));
+        }
+    }
+    if(length(pole)<=1e-6f)return {};
+    pole=unit(pole,{0,1,0});
+    const float cosine=std::clamp((a*a+d*d-b*b)/(2*a*d),-1.f,1.f);
+    const auto bend=add(root.position,add(scaled(direction,a*cosine),scaled(pole,a*std::sqrt(std::max(0.f,1-cosine*cosine)))));
+    const auto turn_root=arc(sub(middle.position,root.position),sub(bend,root.position));
+    const auto root_rotation=normalised(multiply(turn_root,root.rotation));
+    const auto turn_middle=arc(rotate(turn_root,sub(end.position,middle.position)),sub(at,bend));
+    const auto middle_rotation=normalised(multiply(turn_middle,multiply(turn_root,middle.rotation)));
+    const auto saved_root=pose[joints[count-3]],saved_middle=pose[joints[count-2]],saved_tip=pose[tip];
+    pose[joints[count-3]].rotation=blend(saved_root.rotation,normalised(multiply(conjugate(placed[count-4].rotation),root_rotation)),weight);
+    pose[joints[count-2]].rotation=blend(saved_middle.rotation,normalised(multiply(conjugate(root_rotation),middle_rotation)),weight);
+    if(compose(pose,chain_joints,placed)) {
+        // Keep the authored endpoint orientation as the two bones bend.
+        pose[tip].rotation=blend(saved_tip.rotation,normalised(multiply(conjugate(placed[count-2].rotation),end.rotation)),weight);
+        if(compose(pose,chain_joints,placed))return {true,placed[count-1],true};
+    }
+    pose[joints[count-3]]=saved_root;pose[joints[count-2]]=saved_middle;pose[tip]=saved_tip;
+    return {};
+}
 }

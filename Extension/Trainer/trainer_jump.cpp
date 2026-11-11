@@ -22,10 +22,11 @@ namespace {
 //    (state 103) of about 0.20 s; an ollie crouches for 0.08 s and launches elsewhere;
 //  - a boneless calls it from 0x47691f8 while the foot is planted (state 602);
 //  - a flat-ground ollie calls it from 0x4824f7f (Engine/Game/Build/20260929/launches.h).
-constexpr std::uintptr_t set_trajectory = 0x4752aa0, no_comply_call = 0x482f646, boneless_call = 0x47691f8, ollie_call = 0x4824f7f;
-constexpr std::array<unsigned char, 32> set_trajectory_prefix{0x40, 0x53, 0x48, 0x83, 0xec, 0x20, 0x80, 0xb9, 0x88, 0xbb, 0x00,
-                                                              0x00, 0x00, 0x48, 0x8b, 0xd9, 0x0f, 0x85, 0xf6, 0x00, 0x00, 0x00,
-                                                              0xc5, 0xfc, 0x28, 0x05, 0x62, 0x7d, 0xe8, 0x01, 0xc5, 0xfc};
+constexpr auto set_trajectory = game::build::v20260929::trajectory::set.rva;
+constexpr auto set_trajectory_prefix = game::build::v20260929::trajectory::set.bytes;
+constexpr auto no_comply_call = game::build::v20260929::launches::grind_pop_call;
+constexpr auto boneless_call = game::build::v20260929::launches::boneless_call;
+constexpr auto ollie_call = game::build::v20260929::launches::ollie_call;
 // An ollie (riding or out of a manual) launches from 0x4824f7f (ollie_call) with the state 103 after 100.
 constexpr std::array<unsigned char, 5> ollie_call_bytes{0xe8, 0x1c, 0xdb, 0xf2, 0xff};
 constexpr std::array<unsigned char, 5> no_comply_call_bytes{0xe8, 0x55, 0x34, 0xf2, 0xff}, boneless_call_bytes{0xe8, 0xa3, 0x98, 0xfe, 0xff};
@@ -219,6 +220,37 @@ bool known_code(std::uintptr_t base) {
     }
 }
 } // namespace
+
+bool prepare_native_trajectory(std::uintptr_t base, std::uintptr_t rig,
+                               NativeTrajectoryParameters& parameters) noexcept {
+    namespace native = game::build::v20260929::trajectory;
+    auto& h = hooked();
+    if (!base || base != h.base || !h.ready || !rig || !h.original.load(std::memory_order_acquire)) return false;
+    if (!known_bytes(base + native::initialize.rva, native::initialize.bytes.data(), native::initialize.bytes.size()) ||
+        !known_bytes(base + native::observe_rig.rva, native::observe_rig.bytes.data(), native::observe_rig.bytes.size()) ||
+        !known_bytes(base + native::select_result.rva, native::select_result.bytes.data(), native::select_result.bytes.size())) return false;
+    __try {
+        reinterpret_cast<void (*)(float*)>(base + native::initialize.rva)(parameters.values.data());
+        reinterpret_cast<void (*)(std::uintptr_t, float*)>(base + native::observe_rig.rva)(rig, parameters.values.data());
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+bool submit_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
+                              NativeTrajectoryParameters& parameters) noexcept {
+    namespace native = game::build::v20260929::trajectory;
+    auto& h = hooked();
+    const auto original = h.original.load(std::memory_order_acquire);
+    if (!base || base != h.base || !h.ready || !trajectory || !original ||
+        !known_bytes(base + native::select_result.rva, native::select_result.bytes.data(), native::select_result.bytes.size())) return false;
+    __try {
+        if (*reinterpret_cast<const std::uint8_t*>(trajectory + native::query_pending)) return false;
+        // Use the verified original, without reapplying trick height modifiers
+        // or retaining this packet as a new ground pop for raise_flight.
+        original(trajectory, parameters.values.data());
+        reinterpret_cast<bool (*)(std::uintptr_t, bool)>(base + native::select_result.rva)(trajectory, true);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
 
 bool start_trick_heights(std::uintptr_t base) noexcept {
     auto &h = hooked();

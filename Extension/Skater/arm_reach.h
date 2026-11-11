@@ -50,4 +50,8 @@ bool compose(std::span<const Joint> pose, std::span<const std::uint16_t> joints,
 Reached reach(std::span<Joint> pose, const Goal& goal) noexcept;
 // Where the hand joint is in the pose as it is.
 Reached hand_of(std::span<const Joint> pose, Hand hand) noexcept;
+// A bounded two-bone reach using the pose's own parent chain and bend plane.
+// Rotates only the last three joints; no root movement, scaling or stretching.
+// An unreachable point leaves the pose unchanged. `hand` reports the tip.
+Reached reach_joint(std::span<Joint> pose, std::uint16_t tip, const Vec3& at, float weight) noexcept;
 }

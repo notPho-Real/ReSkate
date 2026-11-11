@@ -244,6 +244,10 @@ bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t s
         if(!planted)return false;
         skater_animation::Play play;
         play.clip=clip;play.blend=.04f;play.at=planted->time;
+        // The authored clip supplies the pose and leg bend. The existing
+        // render-pose path keeps its selected foot at this genuine contact
+        // using current native placement, without changing physical bodies.
+        play.contact=skater_animation::Play::Contact{planted->joint,point};
         const auto accepted=skater_animation::try_hold(std::move(play),started_at+hold_duration_ms);
         if(!accepted)return false;
         ticket=accepted;held_owner=owner;occurrence=identity;began=started_at;holding=hold_pose=true;

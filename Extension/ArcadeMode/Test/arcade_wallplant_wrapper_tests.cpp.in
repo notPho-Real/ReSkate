@@ -3,7 +3,10 @@
 #include "Extension/ArcadeMode/arcade_wallplant.h"
 #include "Extension/ArcadeMode/arcade_wallplant_hold.h"
 #include "Engine/Game/Build/20260929/client_source_spawn.h"
+#include "Engine/Game/Build/20260929/skater_body.h"
+#include "Engine/Game/Build/20260929/skater_state.h"
 #include "Engine/Game/Abi/orientation_target.h"
+#include "Extension/Trainer/trainer_jump.h"
 #include <atomic>
 #include <algorithm>
 #include <cstring>
@@ -561,7 +564,131 @@ void run(){
  std::cout<<checks<<" combined production wrapper checks passed\n";
 }
 }
-void run_wallplant_wrapper_tests(){run();ground_route::run();}
+namespace body_observation_route {
+namespace game=dingosdk::game;
+namespace addr=game::build::v20260929;
+namespace spawn=addr::client_source_spawn;
+struct NoclipBodies {
+ std::array<std::uintptr_t,32> parts{};
+ std::array<float,3> root{7,8,9}; // Deliberately different from both physical bodies.
+};
+struct SourceGuard {};
+void source_require(bool ok,const char*){if(!ok)throw SourceGuard{};}
+struct SourceReader {
+ std::array<std::array<float,16>,2> transforms{};
+ std::array<std::array<float,3>,2> velocities{{{1,2,3},{4,5,6}}};
+ std::array<std::uint32_t,2> pending{0,8};
+ bool stale{};unsigned verified{};
+ template<class T>T value(std::uintptr_t part,std::uintptr_t offset) {
+  check(part==100 || part==800,"physical reader uses only owned root and reference body");
+  const unsigned i=part==100?0:1;
+  if constexpr(std::is_same_v<T,std::array<float,4>>) {
+   const auto row=(offset-addr::skater_body::body_transform_offset)/16;
+   check(row<4 && offset==addr::skater_body::body_transform_offset+row*16,
+         "physical position comes from bounded native body transform rows");
+   T result;std::copy_n(transforms[i].begin()+row*4,4,result.begin());return result;
+  } else if constexpr(std::is_same_v<T,std::array<float,3>>) {
+   check(offset==addr::skater_state::body_velocity_offset,"physical velocity comes from native body record");
+   return velocities[i];
+  } else {
+   check(offset==addr::skater_state::body_pending_flags_offset,"pending velocity is distinguished from consumed velocity");
+   return pending[i];
+  }
+ }
+ void verify(){++verified;source_require(!stale,"changed");}
+};
+@wallplant_wrapper_body_observation@
+void run(){
+ NoclipBodies bodies;bodies.parts[0]=100;bodies.parts[8]=800;
+ SourceReader reader;
+ for(auto& matrix:reader.transforms)for(unsigned i=0;i<4;++i)matrix[i*5]=1;
+ reader.transforms[0][12]=10;reader.transforms[1][12]=20;
+ const auto observed=wallplant_body_observation(bodies,reader);
+ check(observed.root[0]==10 && observed.board[0]==20 && observed.root!=bodies.root,
+       "entity target cannot masquerade as physical position");
+ check(observed.forward==std::array<float,3>{0,0,1} && observed.velocity0==reader.velocities[0] &&
+       observed.velocity8==reader.velocities[1],"physical facing and velocities retain distinct body observations");
+ check(observed.pending0==0 && observed.pending8==8 && reader.verified==1,
+       "pending status and one coherent snapshot accompany physical observation");
+ for(unsigned bad=0;bad<3;++bad) {
+  auto invalid=reader;
+  if(bad==0)invalid.transforms[1][12]=std::numeric_limits<float>::quiet_NaN();
+  if(bad==1)invalid.velocities[0][1]=std::numeric_limits<float>::quiet_NaN();
+  if(bad==2)invalid.stale=true;
+  bool refused=false;
+  try{(void)wallplant_body_observation(bodies,invalid);}catch(const SourceGuard&){refused=true;}
+  check(refused,"invalid or overtaken physical observation is refused");
+ }
+ std::cout<<checks<<" combined production physical observation checks passed\n";
+}
+}
+namespace release_trajectory_route {
+namespace addr=dingosdk::game::build::v20260929;
+struct NoBailSkater {std::uintptr_t core{0x10000},rig{0x20000},context{0x30000};};
+struct SourceGuard {};
+void source_require(bool ok,const char*){if(!ok)throw SourceGuard{};}
+bool source_object(std::uintptr_t value){return value>=0x10000 && value%8==0;}
+struct SourceReader {
+ std::uintptr_t object{0x40000},object_context{0x30000},rig_context{0x30000};
+ std::uint8_t pending{};bool stale{};unsigned verified{};
+ std::uintptr_t pointer(std::uintptr_t at,std::uintptr_t offset=0) {
+  if(at==0x10000){check(offset==addr::trajectory::core_object,"planner belongs to the local core");return object;}
+  if(at==object){check(offset==addr::trajectory::object_context,"planner context is checked");return object_context;}
+  check(at==0x20000 && offset==0,"rig context is checked");return rig_context;
+ }
+ template<class T>T value(std::uintptr_t at,std::uintptr_t offset){
+  check(at==object && offset==addr::trajectory::query_pending,"no outstanding native query is overwritten");return pending;
+ }
+ void verify(){++verified;source_require(!stale,"stale");}
+};
+namespace trainer {
+using NativeTrajectoryParameters=dingosdk::trainer::NativeTrajectoryParameters;
+NativeTrajectoryParameters current;
+unsigned calls{};bool available{true};
+bool prepare_native_trajectory(std::uintptr_t base,std::uintptr_t rig,NativeTrajectoryParameters& out){
+ ++calls;check(base==0x50000 && rig==0x20000,"native preparation uses current local rig and pinned image");
+ out=current;return available;
+}
+}
+@wallplant_wrapper_release_trajectory@
+void run(){
+ NoBailSkater owner;SourceReader reader;
+ const std::array<float,3> exit{-2.198656f,12.7f,4.917929f};
+ for(unsigned i=0;i<trainer::current.values.size();++i)trainer::current.values[i]=float(i)/10;
+ const auto original=trainer::current;
+ const auto prepared=wallplant_release_trajectory(0x50000,owner,exit,reader);
+ check(prepared.object==reader.object && reader.verified==1 && trainer::calls==1,"one coherent preparation per release");
+ for(std::size_t i=0;i<sizeof(prepared.parameters.values);++i) {
+  const auto* actual=reinterpret_cast<const unsigned char*>(prepared.parameters.values.data());
+  const auto* expected=reinterpret_cast<const unsigned char*>(original.values.data());
+  if(i>=addr::trajectory::parameter_velocity && i<addr::trajectory::parameter_velocity+sizeof(exit))
+   check(actual[i]==reinterpret_cast<const unsigned char*>(exit.data())[i-addr::trajectory::parameter_velocity],"reference exit reaches native query packet unchanged");
+  else if(i==addr::trajectory::parameter_launch)check(actual[i]==1,"native launch candidate option accompanies new exit");
+  else check(actual[i]==expected[i],"native pose and query settings remain intact");
+ }
+ for(unsigned bad=0;bad<8;++bad){
+  SourceReader invalid;auto velocity=exit;trainer::current=original;trainer::available=true;trainer::calls=0;
+  if(bad==0)invalid.object=0;
+  if(bad==1)invalid.object_context=0x60000;
+  if(bad==2)invalid.rig_context=0x60000;
+  if(bad==3)invalid.pending=1;
+  if(bad==4)trainer::available=false;
+  if(bad==5)trainer::current.values[0]=std::numeric_limits<float>::quiet_NaN();
+  if(bad==6)velocity[1]=std::numeric_limits<float>::infinity();
+  if(bad==7)invalid.stale=true;
+  bool rejected=false;
+  try{(void)wallplant_release_trajectory(0x50000,owner,velocity,invalid);}catch(const SourceGuard&){rejected=true;}
+  check(rejected,"invalid, busy or overtaken native planner cannot authorize release");
+  if(bad<4)check(trainer::calls==0,"owner and busy rejection precede native calls");
+ }
+ trainer::available=true;trainer::current=original;trainer::current.values[52]=123.0f;
+ SourceReader next;
+ check(wallplant_release_trajectory(0x50000,owner,exit,next).parameters.values[52]==123.0f,
+       "each release uses fresh native physical position, never an earlier launch packet");
+ std::cout<<checks<<" combined production trajectory preparation checks passed\n";
+}
+}
+void run_wallplant_wrapper_tests(){run();ground_route::run();body_observation_route::run();release_trajectory_route::run();}
 #ifdef ARCADE_WALLPLANT_WRAPPER_STANDALONE
 int main(){run_wallplant_wrapper_tests();}
 #endif
