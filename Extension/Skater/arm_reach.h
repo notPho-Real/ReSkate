@@ -54,4 +54,7 @@ Reached hand_of(std::span<const Joint> pose, Hand hand) noexcept;
 // Rotates only the last three joints; no root movement, scaling or stretching.
 // An unreachable point leaves the pose unchanged. `hand` reports the tip.
 Reached reach_joint(std::span<Joint> pose, std::uint16_t tip, const Vec3& at, float weight) noexcept;
+// Nearest point on an observed surface plane. This is an animation target,
+// not a collision observation; callers still validate the surface and reach.
+std::optional<Vec3> plane_point(const Vec3& tip, const Vec3& point, const Vec3& normal) noexcept;
 }

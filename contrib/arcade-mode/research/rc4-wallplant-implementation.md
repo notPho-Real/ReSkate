@@ -134,8 +134,10 @@ from cancelling a newer plugin clip. New trick input cancels the approximation.
 The held sample maximizes authored foot reach toward the contacted wall in the
 outgoing upright basis, then blends back to native animation over 40 ms. This
 selection assumes an upright basis and the clip's native bind pose. At draw time,
-the existing limb solver now bends the selected leg toward the genuine contact
-point using the current native placement. It changes only three render-pose
+the existing limb solver bends the selected leg toward the nearest point on the
+observed wall plane from its first drawn placement. The body collision point
+defines the plane, not the foot's height. That endpoint stays fixed for the
+owned ticket, rather than sliding with later draws. It changes only three render-pose
 rotations, preserves bone lengths and the authored foot orientation, and leaves
 unreachable targets unchanged. The existing draw restoration restores the native
 pose afterward. The same ownership ticket, hold deadline and release blend bound
@@ -166,7 +168,13 @@ Synthetic tests are not native gameplay acceptance.
 Production-extracted tests also distinguish physical body transforms from entity
 targets and reject busy, changed-owner, stale or invalid trajectory preparation.
 They verify that current native packet fields survive unchanged except for the
-requested exit and launch option. Both-foot geometry regressions cover rotated
+requested exit and launch option. Before preparing a release, the original native
+selector may consume an already completed pending query once. A query still
+pending afterward is refused; the helper never clears the flag or polls, and
+ownership is revalidated after selection. Tests execute this production helper
+against idle, completed, unfinished, renewed and invalid-code boundaries.
+This does not prove that a particular hardware query was ready or that the new
+exit curve was adopted. Both-foot geometry regressions cover rotated
 placement, unchanged bone lengths and unrelated joints, and unreachable targets.
 
 Hardware preflight observed the existing RC3-24 DLL on `skate3_megapark`, local

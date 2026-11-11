@@ -422,6 +422,8 @@ struct Pending {
     std::uint32_t game_first{};
     std::uintptr_t game_buffer{}, game_interface{};
     std::uint64_t play_ticket{}, written_ticket{};
+    std::uint64_t contact_ticket{};
+    std::optional<Vec3> contact_anchor;
     Vec3 left_foot{}, right_foot{};
     std::uintptr_t feet_component{};
     bool feet_valid{};
@@ -1165,7 +1167,16 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                 thread_local std::array<Joint,skeleton_joints> rendered;
                 for(std::size_t i=0;i<placement.size();++i)rendered[i]=joint_of(placement[i]);
                 for(std::size_t i=0;i<current.size();++i)rendered[i+2]=joint_of(current[i]);
-                if(arm_reach::reach_joint(rendered,play.contact->joint,play.contact->point,weight).valid)
+                if(p.contact_ticket!=p.play_ticket) {
+                    p.contact_ticket=p.play_ticket;
+                    const auto foot=world(rendered,play.contact->joint);
+                    p.contact_anchor=finite(foot)?arm_reach::plane_point(foot.position,
+                        play.contact->point,play.contact->normal):std::nullopt;
+                }
+                // Keep the first drawn foot's tangential position throughout
+                // this ticket. Reprojecting every draw would slide on the wall.
+                // The limb solver still refuses unreachable targets.
+                if(p.contact_anchor && arm_reach::reach_joint(rendered,play.contact->joint,*p.contact_anchor,weight).valid)
                     for(std::size_t i=0;i<current.size();++i)current[i].rotation=rendered[i+2].rotation;
             }
         }
@@ -1334,7 +1345,8 @@ std::uint64_t try_hold(Play clip,std::uint64_t deadline) {
        clip.loop || serial==UINT64_MAX)return 0;
     if(clip.contact && (clip.contact->joint>=clip.clip->joints || clip.contact->joint<2 ||
        !std::all_of(clip.contact->point.begin(),clip.contact->point.end(),
-           [](float value){return std::isfinite(value) && std::abs(value)<1e6f;})))return 0;
+           [](float value){return std::isfinite(value) && std::abs(value)<1e6f;}) ||
+       !arm_reach::plane_point(clip.contact->point,clip.contact->point,clip.contact->normal)))return 0;
     // Publish the pause and its expiry together; no intermediate unbounded
     // paused plan is ever visible to the animation thread.
     clip.paused=true;borrowed_play=0;plan_draft.play=std::move(clip);

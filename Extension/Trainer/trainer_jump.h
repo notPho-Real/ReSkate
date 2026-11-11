@@ -62,6 +62,9 @@ struct NativeTrajectoryParameters {
 };
 bool prepare_native_trajectory(std::uintptr_t base, std::uintptr_t rig,
                                NativeTrajectoryParameters& parameters) noexcept;
+// Consume an already completed native query once. An unfinished query remains
+// pending and is refused; this never clears its flag or submits another query.
+bool consume_ready_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory) noexcept;
 bool submit_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
                               NativeTrajectoryParameters& parameters) noexcept;
 } // namespace dingosdk::trainer

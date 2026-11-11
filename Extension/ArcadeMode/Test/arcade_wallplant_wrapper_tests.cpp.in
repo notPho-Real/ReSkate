@@ -630,14 +630,11 @@ void source_require(bool ok,const char*){if(!ok)throw SourceGuard{};}
 bool source_object(std::uintptr_t value){return value>=0x10000 && value%8==0;}
 struct SourceReader {
  std::uintptr_t object{0x40000},object_context{0x30000},rig_context{0x30000};
- std::uint8_t pending{};bool stale{};unsigned verified{};
+ bool stale{};unsigned verified{};
  std::uintptr_t pointer(std::uintptr_t at,std::uintptr_t offset=0) {
   if(at==0x10000){check(offset==addr::trajectory::core_object,"planner belongs to the local core");return object;}
   if(at==object){check(offset==addr::trajectory::object_context,"planner context is checked");return object_context;}
   check(at==0x20000 && offset==0,"rig context is checked");return rig_context;
- }
- template<class T>T value(std::uintptr_t at,std::uintptr_t offset){
-  check(at==object && offset==addr::trajectory::query_pending,"no outstanding native query is overwritten");return pending;
  }
  void verify(){++verified;source_require(!stale,"stale");}
 };
@@ -645,6 +642,13 @@ namespace trainer {
 using NativeTrajectoryParameters=dingosdk::trainer::NativeTrajectoryParameters;
 NativeTrajectoryParameters current;
 unsigned calls{};bool available{true};
+unsigned consume_calls{};bool query_ready{true};
+SourceReader* invalidate_during_selection{};
+bool consume_ready_native_trajectory(std::uintptr_t base,std::uintptr_t object){
+ ++consume_calls;check(base==0x50000 && object==0x40000,"only the owned native planner may consume its completed query");
+ if(invalidate_during_selection)invalidate_during_selection->stale=true;
+ return query_ready;
+}
 bool prepare_native_trajectory(std::uintptr_t base,std::uintptr_t rig,NativeTrajectoryParameters& out){
  ++calls;check(base==0x50000 && rig==0x20000,"native preparation uses current local rig and pinned image");
  out=current;return available;
@@ -657,7 +661,8 @@ void run(){
  for(unsigned i=0;i<trainer::current.values.size();++i)trainer::current.values[i]=float(i)/10;
  const auto original=trainer::current;
  const auto prepared=wallplant_release_trajectory(0x50000,owner,exit,reader);
- check(prepared.object==reader.object && reader.verified==1 && trainer::calls==1,"one coherent preparation per release");
+ check(prepared.object==reader.object && reader.verified==3 && trainer::calls==1 && trainer::consume_calls==1,
+       "one native consumption attempt with owner revalidation before fresh preparation");
  for(std::size_t i=0;i<sizeof(prepared.parameters.values);++i) {
   const auto* actual=reinterpret_cast<const unsigned char*>(prepared.parameters.values.data());
   const auto* expected=reinterpret_cast<const unsigned char*>(original.values.data());
@@ -666,21 +671,28 @@ void run(){
   else if(i==addr::trajectory::parameter_launch)check(actual[i]==1,"native launch candidate option accompanies new exit");
   else check(actual[i]==expected[i],"native pose and query settings remain intact");
  }
- for(unsigned bad=0;bad<8;++bad){
+ for(unsigned bad=0;bad<9;++bad){
   SourceReader invalid;auto velocity=exit;trainer::current=original;trainer::available=true;trainer::calls=0;
+  trainer::consume_calls=0;trainer::query_ready=true;
+  trainer::invalidate_during_selection=nullptr;
   if(bad==0)invalid.object=0;
   if(bad==1)invalid.object_context=0x60000;
   if(bad==2)invalid.rig_context=0x60000;
-  if(bad==3)invalid.pending=1;
+  if(bad==3)trainer::query_ready=false;
   if(bad==4)trainer::available=false;
   if(bad==5)trainer::current.values[0]=std::numeric_limits<float>::quiet_NaN();
   if(bad==6)velocity[1]=std::numeric_limits<float>::infinity();
   if(bad==7)invalid.stale=true;
+  if(bad==8)trainer::invalidate_during_selection=&invalid;
   bool rejected=false;
   try{(void)wallplant_release_trajectory(0x50000,owner,velocity,invalid);}catch(const SourceGuard&){rejected=true;}
   check(rejected,"invalid, busy or overtaken native planner cannot authorize release");
   if(bad<4)check(trainer::calls==0,"owner and busy rejection precede native calls");
+  if(bad<3 || bad==7)check(trainer::consume_calls==0,"invalid or stale owner cannot consume a native query");
+  if(bad==3)check(trainer::consume_calls==1,"unfinished query is refused without polling or a fresh request");
+  if(bad==8)check(trainer::consume_calls==1 && trainer::calls==0,"ownership changed during native selection prevents preparation and release");
  }
+ trainer::invalidate_during_selection=nullptr;
  trainer::available=true;trainer::current=original;trainer::current.values[52]=123.0f;
  SourceReader next;
  check(wallplant_release_trajectory(0x50000,owner,exit,next).parameters.values[52]==123.0f,
@@ -688,7 +700,60 @@ void run(){
  std::cout<<checks<<" combined production trajectory preparation checks passed\n";
 }
 }
-void run_wallplant_wrapper_tests(){run();ground_route::run();body_observation_route::run();release_trajectory_route::run();}
+namespace native_query_route {
+namespace game=dingosdk::game;
+namespace native=game::build::v20260929::trajectory;
+struct Hook {std::uintptr_t base{};bool ready{true};std::atomic<std::uintptr_t> original{1};} hook;
+Hook& hooked(){return hook;}
+bool code_valid{true};unsigned selections{},fingerprints{};
+std::array<std::uint8_t,native::query_pending+1> object{};
+std::uint8_t after_selection{};
+bool select(std::uintptr_t trajectory,bool launch){
+ ++selections;
+ check(trajectory==reinterpret_cast<std::uintptr_t>(object.data()) && launch,"native selector receives the original object and mode");
+ object[native::query_pending]=after_selection;
+ return false; // Selection's return value is not proof that pending work ended.
+}
+bool known_bytes(std::uintptr_t at,const unsigned char* bytes,std::size_t size){
+ ++fingerprints;
+ check(at==reinterpret_cast<std::uintptr_t>(&select) && bytes==native::select_result.bytes.data() &&
+       size==native::select_result.bytes.size(),"selector fingerprint is checked before any native call");
+ return code_valid;
+}
+// Only the native boundary is stubbed. The extracted helper must neither poll
+// nor clear pending state itself, regardless of the selector's return value.
+#define __try try
+#define __except(...) catch(...)
+@wallplant_wrapper_consume_trajectory@
+#undef __except
+#undef __try
+void run(){
+ const auto base=reinterpret_cast<std::uintptr_t>(&select)-native::select_result.rva;
+ const auto trajectory=reinterpret_cast<std::uintptr_t>(object.data());
+ hook.base=base;
+ check(consume_ready_native_trajectory(base,trajectory) && selections==0,"idle native planner needs no selection call");
+ for(const auto pending_after:{std::uint8_t{0},std::uint8_t{1},std::uint8_t{8}}){
+  object[native::query_pending]=1;after_selection=pending_after;selections=0;
+  const auto result=consume_ready_native_trajectory(base,trajectory);
+  check(result==(pending_after==0) && selections==1,"completed, unfinished or renewed queries are handled by one native call");
+  check(object[native::query_pending]==pending_after,"helper never manufactures a completed query");
+ }
+ for(unsigned bad=0;bad<6;++bad){
+  hook.base=base;hook.ready=true;hook.original.store(1);code_valid=true;selections=0;fingerprints=0;
+  auto image=base,owner=trajectory;object[native::query_pending]=1;
+  if(bad==0)image=0;
+  if(bad==1)hook.base=base+1;
+  if(bad==2)hook.ready=false;
+  if(bad==3)owner=0;
+  if(bad==4)hook.original.store(0);
+  if(bad==5)code_valid=false;
+  check(!consume_ready_native_trajectory(image,owner) && selections==0,"invalid code or owner cannot call the native selector");
+  check(object[native::query_pending]==1 && fingerprints==(bad==5?1u:0u),"rejected calls leave the pending query intact");
+ }
+ std::cout<<checks<<" combined production native query checks passed\n";
+}
+}
+void run_wallplant_wrapper_tests(){run();ground_route::run();body_observation_route::run();release_trajectory_route::run();native_query_route::run();}
 #ifdef ARCADE_WALLPLANT_WRAPPER_STANDALONE
 int main(){run_wallplant_wrapper_tests();}
 #endif

@@ -120,6 +120,14 @@ Reached hand_of(std::span<const Joint> pose, Hand hand) noexcept {
     if (!compose(pose, chain(hand), w)) return {};
     return {finite(w[hand_at].position), w[hand_at], true};
 }
+std::optional<Vec3> plane_point(const Vec3& tip, const Vec3& point, const Vec3& normal) noexcept {
+    if (!finite(tip) || !finite(point) || !finite(normal)) return {};
+    const auto square = dot(normal, normal);
+    if (!std::isfinite(square) || square <= 1e-12f) return {};
+    const auto result = sub(tip, scaled(normal, dot(sub(tip, point), normal) / square));
+    return finite(result) ? std::optional(result) : std::nullopt;
+}
+
 Reached reach_joint(std::span<Joint> pose, std::uint16_t tip, const Vec3& at, float weight) noexcept {
     if(!finite(at) || !std::isfinite(weight) || weight<0 || weight>1)return {};
     std::array<std::uint16_t,64> joints{};

@@ -161,6 +161,22 @@ void held_endpoint_uses_native_placement_without_stretching() {
         check(!reach_joint(pose,tip,target,NAN).valid && same_pose(pose,before),"Invalid contact blend leaves the pose alone");
     }
 }
+void contact_plane_preserves_the_foot_height() {
+    // A torso collision point is not a reachable foot endpoint. Preserve the
+    // drawn foot's height and tangential position on the same observed plane.
+    const Vec3 foot{128.25677f,1.2839673f,-136.03656f};
+    const Vec3 point{128.21747f,1.5892204f,-136.2787f};
+    const auto target=plane_point(foot,point,{0,0,1});
+    check(target && (*target)[0]==foot[0] && (*target)[1]==foot[1] && (*target)[2]==point[2],
+          "Observed body contact defines a plane without dragging the foot to torso height");
+    check(plane_point(foot,point,{0,0,-2})==target,"Plane projection is independent of normal scale and sign");
+    const auto angled=plane_point({3,4,5},{1,2,3},{1,0,1});
+    check(angled && distance(*angled,{1,4,3})<1e-5f,"Angled wall projection removes only normal displacement");
+    check(target && plane_point(*target,point,{0,0,1})==target,"A point already on the wall remains fixed");
+    check(!plane_point(foot,point,{0,0,0}) && !plane_point(foot,point,{NAN,0,1}) &&
+          !plane_point({INFINITY,0,0},point,{0,0,1}) && !plane_point(foot,{0,NAN,0},{0,0,1}),
+          "Invalid surface or pose cannot produce a contact target");
+}
 } // namespace
 
 int main() {
@@ -172,6 +188,7 @@ int main() {
         only_the_arm_is_written();
         a_broken_pose_is_left_alone();
         held_endpoint_uses_native_placement_without_stretching();
+        contact_plane_preserves_the_foot_height();
     } catch (const std::exception& error) {
         std::cerr << "FAILED: " << error.what() << '\n';
         return 1;

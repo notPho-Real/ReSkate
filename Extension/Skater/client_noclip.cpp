@@ -1054,8 +1054,13 @@ WallplantReleaseTrajectory wallplant_release_trajectory(std::uintptr_t base,
     source_require(source_object(result.object) &&
         reader.pointer(result.object,native::object_context)==owner.context &&
         reader.pointer(owner.rig)==owner.context,"release_trajectory_owner");
-    source_require(reader.value<std::uint8_t>(result.object,native::query_pending)==0,
+    // The ordinary solver may leave a completed query awaiting selection at
+    // this callback. Let its own selector consume that result once, without
+    // clearing pending work or extending the hold when the result is not ready.
+    reader.verify();
+    source_require(trainer::consume_ready_native_trajectory(base,result.object),
         "release_trajectory_busy");
+    reader.verify();
     source_require(trainer::prepare_native_trajectory(base,owner.rig,result.parameters),
         "release_trajectory_code");
     // The native rig supplies both transforms and the current query origin.

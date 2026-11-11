@@ -235,6 +235,21 @@ bool prepare_native_trajectory(std::uintptr_t base, std::uintptr_t rig,
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
+bool consume_ready_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory) noexcept {
+    namespace native = game::build::v20260929::trajectory;
+    auto& h = hooked();
+    if (!base || base != h.base || !h.ready || !trajectory ||
+        !h.original.load(std::memory_order_acquire) ||
+        !known_bytes(base + native::select_result.rva, native::select_result.bytes.data(), native::select_result.bytes.size())) return false;
+    __try {
+        if (*reinterpret_cast<const std::uint8_t*>(trajectory + native::query_pending)) {
+            // The original selector checks the candidate completion byte before
+            // consuming a result. A pending flag alone does not mean unfinished.
+            reinterpret_cast<bool (*)(std::uintptr_t, bool)>(base + native::select_result.rva)(trajectory, true);
+        }
+        return *reinterpret_cast<const std::uint8_t*>(trajectory + native::query_pending) == 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
 bool submit_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
                               NativeTrajectoryParameters& parameters) noexcept {
     namespace native = game::build::v20260929::trajectory;
