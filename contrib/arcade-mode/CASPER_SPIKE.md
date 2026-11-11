@@ -689,3 +689,15 @@ No collision contact, rigid-body position, balance rule, friction selection, or
 controller mapping changes. Synthetic support, hand-height, mid-flip clearance,
 and cold opt-in tests cover those fixes; the revised exact-source DLL still
 requires native visual and full regression acceptance.
+
+The second exact-source candidate passed the fresh-process entry check and
+retained Manual through left/right rotation and flip recovery. Native rendering
+showed improved released-foot clearance, but an elevated native clavicle still
+raised one hand and the fixed-world wrist orientation curled the hand. The next
+correction projects shoulder spread horizontally, solves from the posed shoulder
+with a downward elbow pole, and preserves wrist-local rotation. An elevated-
+clavicle regression fails before the correction and passes afterward in both
+stances. A private native-pose replay also keeps both hands below the shoulders
+across the balance range; that data remains outside source and packages. This
+arm-only revision still requires native visual acceptance. Board-ground contact
+is numerically aligned to the native Ground joint but remains visually unaccepted.

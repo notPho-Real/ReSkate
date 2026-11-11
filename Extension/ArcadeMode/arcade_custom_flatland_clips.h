@@ -64,13 +64,18 @@ inline CustomTrickClips make_casper_clips(std::span<const anim_studio::Joint> se
         foot(back,back_foot,{-side*.015f,-.10f,-.32f},k.back_lift,k.back_side,5);
         // Open hands counter the body transfer; each arm keeps its own lengths.
         for(const auto chain: {std::array<std::uint16_t,3>{47,48,49},std::array<std::uint16_t,3>{276,277,278}}) {
-            const auto native=world(base,chain[2]),shoulder=world(base,chain[0]);
-            const auto outward=unit(sub(shoulder.position,world(base,45).position),axis({1,0,0}));
+            const auto native=world(base,chain[2]),shoulder=world(out.pose,chain[0]);
+            auto across=sub(shoulder.position,world(out.pose,45).position);
+            across[1]=0; // A raised native clavicle must not lift the hand target.
+            const auto outward=unit(across,axis({1,0,0}));
             const float response=(chain[0]==47?1.f:-1.f)*balance;
             const auto balanced=add(shoulder.position,add(scaled(outward,.35f),
-                axis({0,-.14f+.045f*response,-.04f})));
+                add(Vec3{0,-.18f+.045f*response,0},axis({0,0,-.04f}))));
             const auto target=add(native.position,scaled(sub(balanced,native.position),k.upper));
-            (void)author::reach(out.pose,chain,target,add(outward,axis({0,-.3f,0})),native.rotation);
+            (void)author::reach(out.pose,chain,target,add(Vec3{0,-1,0},axis({0,0,-.3f})),native.rotation);
+            // Let the wrist follow the solved forearm instead of holding its
+            // old world orientation and introducing a new wrist bend.
+            out.pose[chain[2]].rotation=base[chain[2]].rotation;
         }
         if(k.contact==0 && k.front_lift==0 && k.back_lift==0 && k.front_side==0 && k.back_side==0 && k.upper==0 &&
             k.hip_drop==0 && k.hip_back==0)out.pose.assign(seed.begin(),seed.end());

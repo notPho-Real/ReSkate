@@ -79,6 +79,26 @@ void clips(){
         check(twice.weights==c.direct_exit->weights,"reversing twice restores the blend envelope");
     }
 }
+void raised_shoulders(){
+    // A Manual can lift one clavicle. Its vertical offset must not become an
+    // upward hand target, and moving the arm must not twist a fixed-world wrist.
+    for(bool goofy:{false,true}) {
+        auto seed=flatland_pose_fixture(goofy);
+        seed[275].position[1]=.16f;seed[46].position[1]=.07f;
+        Joint native_board;native_board.rotation=from_euler({6,0,0});
+        const auto clips=make_casper_clips(seed,native_board);
+        for(float time:{1.f,2.f,3.f}) {
+            std::vector<Joint> pose(skeleton_joints);clips.entry_hold->sample(time,pose);
+            for(const auto arm:{std::array<std::uint16_t,3>{47,48,49},std::array<std::uint16_t,3>{276,277,278}}) {
+                check(world(pose,arm[2]).position[1]<world(pose,arm[0]).position[1]-.10f,
+                    "raised clavicles retain a low balanced hand target");
+                check(world(pose,arm[1]).position[1]<world(pose,arm[0]).position[1],
+                    "balanced elbows bend below their shoulders");
+                check(same(pose[arm[2]],seed[arm[2]]),"wrists follow the forearms without added flexion");
+            }
+        }
+    }
+}
 void validation(){
     auto seed=flatland_pose_fixture();const auto c=make_casper_clips(seed,{});
     auto clip=*c.direct_exit;
@@ -96,4 +116,4 @@ void validation(){
     rejected([&]{(void)bake(invalid);});
 }
 }
-int main(){clips();validation();std::cout<<checks<<" authored motion checks passed (synthetic rig; not native contact acceptance)\n";}
+int main(){clips();raised_shoulders();validation();std::cout<<checks<<" authored motion checks passed (synthetic rig; not native contact acceptance)\n";}
