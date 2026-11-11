@@ -15,7 +15,10 @@ std::uintptr_t material_base{};
 void check(bool ok,const char* why){++checks;if(!ok){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
 struct Player {
     std::uint64_t serial{},ticket{},now{},until{};
-    unsigned starts{},cancels{},replacements{};
+    unsigned starts{},cancels{},replacements{},seed_reads{};
+    float seed_pitch{};
+    double seed_age{.001};
+    std::shared_ptr<const anim_studio::Clip> clip;
     float time{},display_radians{};
     bool occupied{},seed_available{true},seed_wrong_owner{},reject_replace{};
     std::uintptr_t entity{2};
@@ -35,11 +38,13 @@ bool controlled_play_current(std::uint64_t id) noexcept {return owns_play(id);}
 void cancel_play(std::uint64_t id){if(id && id==player.ticket){player.ticket=0;++player.cancels;}}
 std::uint64_t try_play_controlled(Play play){
     if(!can_play() || !play.clip || play.clip->empty())return 0;
+    player.clip=play.clip;
     ++player.starts;player.until=player.now+150;return player.ticket=++player.serial;
 }
 bool replace_owned(std::uint64_t id,std::shared_ptr<const Clip> clip,float seconds){
     if(!owns_play(id) || player.reject_replace || !clip || clip->empty() ||
         seconds<0 || seconds>clip->duration())return false;
+    player.clip=std::move(clip);
     ++player.replacements;player.time=seconds;player.until=player.now+150;return true;
 }
 bool seek_owned(std::uint64_t id,float seconds){return seek_owned(id,seconds,0);}
@@ -48,9 +53,12 @@ bool seek_owned(std::uint64_t id,float seconds,float radians){
     player.time=seconds;player.display_radians=radians;player.until=player.now+150;return true;
 }
 std::optional<NativePose> native_pose(){
+    ++player.seed_reads;
     if(!player.seed_available)return {};
     NativePose p;p.base=1;p.entity=player.seed_wrong_owner?99:player.entity;
-    p.joints=flatland_pose_fixture();p.age=.001;p.sequence=player.now;return p;
+    p.joints=flatland_pose_fixture();
+    p.joints[10].rotation=anim_studio::from_euler({player.seed_pitch,0,0});
+    p.age=player.seed_age;p.sequence=player.now;return p;
 }
 }
 namespace {
@@ -64,9 +72,10 @@ struct Rig {
     bool enabled{true},balanced{true},catalog_loaded{true},controls_owned{true};
     bool offboard{},releasing_manual{},grind_owned{};
     unsigned physical_left_trigger{},physical_right_trigger{};
-    Rig(){
+    explicit Rig(float seed_pitch=0){
         custom_flatland_runtime::set_enabled(true);
         custom_flatland_runtime::cancel();player.occupied=false;player.seed_available=true;player.seed_wrong_owner=false;player.reject_replace=false;
+        player.seed_pitch=seed_pitch;player.seed_age=.001;
         next();tick();next();tick();
         check(binding().enabled,"a fresh matching native seed enables the dev bridge");
         InputAdmission a=admission();session.poll(now,{},0,0,a);
@@ -326,6 +335,39 @@ void cleanup(){
         if(reason==4){check(player.ticket!=0,"cleanup preserves a newer unrelated animation");player.ticket=0;player.occupied=false;}
     }
 }
+void fresh_entry_seed(){
+    Rig r(75);
+    const auto reads=player.seed_reads;
+    for(unsigned i=0;i<12;++i){r.next();r.tick();}
+    check(player.seed_reads>=reads+12,"idle ready ticks keep native pose observation awake");
+    player.seed_pitch=0;
+    r.enter();
+    const auto settled=anim_studio::Quat{0,0,0,1};
+    check(player.clip && player.clip->frame(0)[10].rotation==settled,
+        "entry uses the planted foot at submission instead of the earlier push seed");
+    const auto entry=player.clip;const auto ticket=player.ticket;
+    player.seed_pitch=75;r.next();r.step();r.tick();
+    check(player.clip==entry && player.ticket==ticket,"an active entry cannot be reseeded mid-playback");
+    r.hold();
+    r.poll(0x4000);r.poll(0);r.poll(0x8000);r.tick();
+    check(player.clip!=entry && player.clip->frame(player.clip->times.size()-1)[10].rotation==settled,
+        "the direct exit recovers the same newly planted native pose");
+}
+void rejected_entry_seed(){
+    for(unsigned reason=0;reason<5;++reason){
+        Rig r;r.poll(0x4000);r.poll(0);r.poll(0x8000);
+        const auto starts=player.starts;
+        if(reason==0)player.seed_available=false;
+        if(reason==1)player.seed_wrong_owner=true;
+        if(reason==2)player.seed_age=.151;
+        if(reason==3)player.seed_age=-.001;
+        if(reason==4)player.seed_age=std::numeric_limits<double>::quiet_NaN();
+        r.tick();
+        check(player.starts==starts && !player.ticket && !r.step().admitted,
+            "missing, mismatched or stale entry pose cannot acquire animation or drag");
+        check(r.poll(0).manual.owns,"refused custom entry preserves ordinary native Manual");
+    }
+}
 void seed_and_pending(){
     Rig r;custom_flatland_runtime::cancel();r.owner.entity=++player.entity;player.seed_wrong_owner=true;
     r.next();r.tick();r.next();r.tick();check(!r.binding().enabled,"mismatched seed entity cannot enable gesture");
@@ -343,4 +385,4 @@ int main(){
     custom_flatland_runtime::tick({});
     check(preparations==1 && player.starts==0,"opt-in prepares shared hooks before a Manual without acquiring a player");
     custom_flatland_runtime::set_enabled(false);
-    balance_range();moving_hold();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}
+    fresh_entry_seed();rejected_entry_seed();balance_range();moving_hold();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

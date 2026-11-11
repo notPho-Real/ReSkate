@@ -86,6 +86,15 @@ public:
             context.frame.physics_step<started_step_ ||
             !playback_.owns(playback_.context,ticket_))cancel();
     }
+    // Refresh proportions and the incoming pose only before the first native
+    // step is submitted. Keep the accepted gesture, owner and playback lease.
+    bool refresh_pending_entry(CustomTrickClips clips) noexcept {
+        const auto& entry=clips.entry_hold;
+        if(phase_!=Phase::entry || elapsed_!=0 || sample_time_!=0 || !context_.valid() ||
+            !playback_.owns(playback_.context,ticket_) || !entry || entry->empty() ||
+            !std::isfinite(entry->duration()) || entry->duration()<=0)return false;
+        duration_=entry->duration();clips_=std::move(clips);return true;
+    }
     InputAdapter adapter() noexcept {return {this,receive};}
     // Called only within the existing native writer transaction. The portable
     // harness supplies original-step observations at the same boundary.

@@ -731,3 +731,20 @@ Private replay on a captured rig checks reach but is not rendered contact proof.
 New front/side/rear captures, both stances, balance extremes and exit continuity
 must be reviewed in game before this revision is called ready. Owner-supplied
 reference images and captured rig data stay outside the repository and packages.
+
+### Refresh the native entry pose
+
+Native review of the low-stance candidate found a timing defect at rolling
+60 Hz entry: the initial Manual seed still contained the last pushing-foot
+rotation, although the live foot was planted before the accepted gesture.
+The runtime now keeps the existing native-pose observation awake while ready
+and reauthors the queued entry and its exits once, immediately before acquiring
+the controlled player. It retains the accepted gesture, native episode and
+logical ownership; an active clip is never reseeded. Missing, mismatched or
+stale native samples refuse the custom submission and preserve ordinary Manual.
+
+The regression reproduces the early pushing seed followed by a planted foot,
+checks observation renewal, unchanged active ownership and exit continuity, and
+rejects absent, wrong-owner, expired, negative-age and nonfinite samples. Focused
+sanitizer and six related integration suites pass. The exact-source Windows
+build and repeated native rolling-entry visual check remain required.

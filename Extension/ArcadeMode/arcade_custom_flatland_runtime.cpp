@@ -31,6 +31,12 @@ struct State {
         return seed_owner==context.frame.owner && seed_generation==context.frame.owner_generation &&
             seed_episode==context.manual_episode && seed_stance==context.frame.stance_and_push;
     }
+    bool accepts_seed(const skater_animation::NativePose& seed) const noexcept {
+        return seed.base==context.frame.owner.base && seed.entity==context.frame.owner.entity &&
+            std::isfinite(seed.age) && seed.age>=0 && seed.age<.15 &&
+            context.frame.physics_step>seed_step && context.now>=seed_at &&
+            seed.age*1000<static_cast<double>(context.now-seed_at);
+    }
     CustomTrickPlayback playback() noexcept {
         return {this,
             [](void* p,std::shared_ptr<const anim_studio::Clip> next_clip)->std::uint64_t {
@@ -180,6 +186,19 @@ void tick(CustomFlatlandContext context) noexcept {
         s.client_at=context.now;
         if(!context.valid()){s.ready=false;return;}
         if(s.logical && !s.ticket) {
+            // The first admitted Manual pose can still be finishing a push.
+            // Reauthor once from the current native pose at actual submission,
+            // including the exits, rather than freezing that earlier foot angle.
+            const auto seed=skater_animation::native_pose();
+            if(!seed || !s.accepts_seed(*seed)) {
+                s.trick->cancel();s.ready=false;return;
+            }
+            auto clips=make_casper_clips(seed->joints,seed->board);
+            const auto entry=clips.entry_hold;
+            if(!s.trick->refresh_pending_entry(std::move(clips))) {
+                s.trick->cancel();s.ready=false;return;
+            }
+            s.clip=entry;
             skater_animation::Play play{};play.clip=s.clip;play.blend=.15f;play.floor=false;
             s.ticket=skater_animation::try_play_controlled(std::move(play));
             if(!s.ticket){s.trick->cancel();s.ready=false;return;}
@@ -194,6 +213,9 @@ void tick(CustomFlatlandContext context) noexcept {
         s.ready=false;
         skater_animation::prepare_playback();
         if(!skater_animation::can_play())return;
+        // native_pose() renews a short observation lease. Keep it awake while
+        // ready so a later gesture has a current seed without delaying input.
+        const auto seed=skater_animation::native_pose();
         if(s.seed_current() && s.trick){s.ready=true;return;}
         // Require a pose evaluated after this independently admitted episode
         // was first seen. A cached pre-Manual pose cannot seed a new trick.
@@ -203,10 +225,7 @@ void tick(CustomFlatlandContext context) noexcept {
             s.seed_owner=context.frame.owner;s.seed_generation=context.frame.owner_generation;
             s.seed_episode=context.manual_episode;s.seed_stance=context.frame.stance_and_push;s.trick.reset();
         }
-        const auto seed=skater_animation::native_pose();
-        if(!seed || seed->base!=context.frame.owner.base || seed->entity!=context.frame.owner.entity ||
-            context.frame.physics_step<=s.seed_step || context.now<s.seed_at ||
-            seed->age*1000>=static_cast<double>(context.now-s.seed_at))return;
+        if(!seed || !s.accepts_seed(*seed))return;
         auto clips=make_casper_clips(seed->joints,seed->board);
         s.trick=std::make_unique<CustomFlatland>(std::move(clips),s.playback());
         s.trick->observe(context);s.ready=true;
