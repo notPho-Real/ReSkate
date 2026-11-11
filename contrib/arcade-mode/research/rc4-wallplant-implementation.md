@@ -183,6 +183,17 @@ evidence rather than fabricated collision or state observations.
 
 ## Independent tests and required hardware evidence
 
+The input snapshot is now read before the clock used to validate its age. The
+controller arbitration lock has already been released at that point, so a new
+publication can legitimately be newer than the arbitration timestamp. Selection,
+reconstruction, hold and departure use the same ordering, retain the 150ms input
+lease, and revalidate the original frame or hold deadline without renewing it.
+Busy publication, disabled input, generation change, reversed clock, expired
+input and multiplayer refusal have separate diagnostics. The native capture that
+motivated this correction only reported their former combined refusal; it does
+not establish which condition failed. A regression demonstrates the clock race,
+but the corrected build still requires native hold and release validation.
+
 Portable tests cover rebound geometry, bounds, body-batch atomicity, contact
 and owner lifetimes, separation, cooldown, fresh input, held-A rejection,
 ground A, and rejection of unavailable geometry. Query tests use fixture

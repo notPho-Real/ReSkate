@@ -585,6 +585,19 @@ bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManua
     if (ground_turn) *ground_turn = candidate_turn;
     return true;
 }
+void wallplant_read_current_intent(arcade_mode::AirMotionIntent& intent,std::uint64_t& now,
+        std::uint64_t generation) {
+    source_require(read_arcade_air(intent,nullptr,nullptr),"wallplant_intent_publication_busy");
+    // Input can publish after controller arbitration releases its lock. Compare
+    // the completed snapshot against a subsequent clock read, never the clock
+    // from before that publication. The original frame/hold deadlines stay fixed.
+    now=GetTickCount64();
+    source_require(intent.enabled,"wallplant_intent_disabled");
+    source_require(!generation || intent.generation==generation,"wallplant_intent_generation_changed");
+    source_require(now>=intent.sampled_at,"wallplant_intent_clock_reversed");
+    source_require(now-intent.sampled_at<=150,"wallplant_intent_expired");
+    source_require(!multiplayer_session_active(),"wallplant_intent_multiplayer");
+}
 struct WallplantBodyObservation {
     std::array<float,3> root{},board{},forward{},velocity0{},velocity8{};
     std::uint32_t pending0{},pending8{};
@@ -889,9 +902,7 @@ std::uint64_t arcade_wallplant_before_selection(std::uintptr_t selector,std::uin
     SourceBusyScope scope{state.busy};
     try {
         arcade_mode::AirMotionIntent intent{};
-        source_require(read_arcade_air(intent,nullptr,nullptr) && intent.enabled &&
-            now>=intent.sampled_at && now-intent.sampled_at<=150 && !multiplayer_session_active(),
-            "Wallplant selection intent is unavailable.");
+        wallplant_read_current_intent(intent,now,0);
         source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor,
             "Wallplant selection yields to editing or flight.");
         const auto& identity=push_speed();
@@ -952,9 +963,7 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
             state.velocity_guard_active.load(std::memory_order_acquire) &&
             state.motion_original.load(std::memory_order_acquire),"Wallplant reconstruction writer unavailable.");
         arcade_mode::AirMotionIntent intent{};
-        source_require(read_arcade_air(intent,nullptr,nullptr) && intent.enabled &&
-            intent.generation==handoff.intent_generation && now>=intent.sampled_at &&
-            now-intent.sampled_at<=150 && !multiplayer_session_active(),"Wallplant reconstruction intent changed.");
+        wallplant_read_current_intent(intent,now,handoff.intent_generation);
         source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor,
             "Wallplant reconstruction yields to editing or flight.");
         const auto& identity=push_speed();
@@ -1100,17 +1109,15 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         source_require(state.initialized.load(std::memory_order_acquire) &&
             state.velocity_guard_active.load(std::memory_order_acquire) &&
             state.motion_original.load(std::memory_order_acquire),"hold_writer_unavailable");
+        arcade_mode::AirMotionIntent intent{};
+        wallplant_read_current_intent(intent,now,hold.intent_generation);
         bool stale_query{};
         const bool authority=frame.valid && arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame,&stale_query);
         if(stale_query)return;
         source_require(held && held.input_sequence==hold.command.input_sequence &&
             held.contact==hold.command.contact && authority,
             "hold_authority");
-        arcade_mode::AirMotionIntent intent{};
-        source_require(read_arcade_air(intent,nullptr,nullptr) && intent.enabled &&
-            intent.generation==hold.intent_generation && now>=intent.sampled_at &&
-            now-intent.sampled_at<=150 && !multiplayer_session_active() &&
-            !state.trial.debug.noclip && !state.trial.debug.park_editor,"hold_control_owner");
+        source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor,"hold_control_owner");
         const auto bodies=debug_noclip_bodies(state.trial.base,hold.client,hold.entity);
         NoBailSkater owner{};
         source_require(no_bail_skater(owner) && owner==hold.owner && bodies.core==core &&
@@ -1225,13 +1232,12 @@ bool wallplant_native_departure(std::uintptr_t object,
         source_require(state.initialized.load(std::memory_order_acquire) &&
             state.velocity_guard_active.load(std::memory_order_acquire) && hold.targets>0,
             "departure_writer_unavailable");
+        arcade_mode::AirMotionIntent intent{};
+        wallplant_read_current_intent(intent,now,hold.intent_generation);
         bool stale{};
         source_require(frame.valid && arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame,&stale),
             "departure_authority");
-        arcade_mode::AirMotionIntent intent{};
-        source_require(read_arcade_air(intent,nullptr,nullptr) && intent.enabled &&
-            intent.generation==hold.intent_generation && now>=intent.sampled_at && now-intent.sampled_at<=150 &&
-            !multiplayer_session_active() && !state.trial.debug.noclip && !state.trial.debug.park_editor,
+        source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor,
             "departure_control_owner");
         NoBailSkater owner{};
         source_require(no_bail_skater(owner) && owner==hold.owner,"departure_body_owner");

@@ -903,11 +903,13 @@ struct State {std::atomic_flag busy{};std::atomic<bool> initialized{true},veloci
  struct {struct {bool noclip{},park_editor{};}debug;}trial;} fixture_state;
 State& source_state(){return fixture_state;}
 struct SourceBusyScope {std::atomic_flag& busy;~SourceBusyScope(){busy.clear();}};
-struct SourceGuard{};
-void source_require(bool ok,const char*){if(!ok)throw SourceGuard{};}
+struct SourceGuard{const char* message;};
+void source_require(bool ok,const char* message){if(!ok)throw SourceGuard{message};}
 std::uint64_t fixture_now{260};
 std::uint64_t GetTickCount64(){return fixture_now;}
 bool enabled=true,current_owner=true,current_authority=true,verified=true,session{},teleport{},pending{};
+bool intent_readable=true,intent_future{};
+std::uint64_t publication_delay{},read_delay{},sample_age{},intent_generation=7;
 std::uint32_t fixture_selected=100;
 unsigned authority_reads{};
 namespace arcade_mode {
@@ -923,8 +925,15 @@ bool hold_current(const Command&,std::uint64_t&,const NativeInputFrame&,bool*){
 }
 }
 }
-bool read_arcade_air(arcade_mode::AirMotionIntent& out,void*,void*){out={enabled,7,fixture_now};return true;}
+bool read_arcade_air(arcade_mode::AirMotionIntent& out,void*,void*){
+ if(!intent_readable)return false;
+ fixture_now+=publication_delay;
+ out={enabled,intent_generation,fixture_now-sample_age+(intent_future?1:0)};
+ fixture_now+=read_delay;
+ return true;
+}
 bool multiplayer_session_active(){return session;}
+@wallplant_wrapper_intent_snapshot@
 bool no_bail_skater(NoBailSkater& out){out={};if(!current_owner)out.context=99;return true;}
 struct SourceReader {
  template<class T>T value(std::uintptr_t at,std::uintptr_t off){
@@ -945,8 +954,39 @@ void reset(){
  fixture_hold.command.after={-1.992847f,12.7f,4.9508963f};wallplant_hold_core.store(1);fixture_state.busy.clear();
  fixture_state.initialized=true;fixture_state.velocity_guard_active=true;fixture_state.trial.debug={};fixture_now=260;authority_reads=0;
  enabled=current_owner=current_authority=verified=true;session=teleport=pending=false;fixture_selected=100;
+ intent_readable=true;intent_future=false;publication_delay=read_delay=sample_age=0;intent_generation=7;
 }
 void run(){
+ {
+  reset();auto earlier=fixture_now;publication_delay=5;
+  arcade_mode::AirMotionIntent intent;
+  wallplant_read_current_intent(intent,earlier,7);
+  check(earlier==265&&intent.sampled_at==265,
+        "publication after controller arbitration is measured against the subsequent clock");
+  reset();earlier=fixture_now;sample_age=150;
+  wallplant_read_current_intent(intent,earlier,7);
+  check(earlier-intent.sampled_at==150,"existing inclusive input lease remains unchanged");
+ }
+ for(unsigned fault=0;fault<7;++fault){
+  reset();auto earlier=fixture_now;arcade_mode::AirMotionIntent intent;
+  const char* expected="";
+  if(fault==0){intent_readable=false;expected="wallplant_intent_publication_busy";}
+  if(fault==1){enabled=false;expected="wallplant_intent_disabled";}
+  if(fault==2){intent_generation=8;expected="wallplant_intent_generation_changed";}
+  if(fault==3){intent_future=true;expected="wallplant_intent_clock_reversed";}
+  if(fault==4){sample_age=151;expected="wallplant_intent_expired";}
+  if(fault==5){session=true;expected="wallplant_intent_multiplayer";}
+  if(fault==6){sample_age=150;read_delay=1;expected="wallplant_intent_expired";}
+  bool rejected=false;
+  try{wallplant_read_current_intent(intent,earlier,7);}
+  catch(const SourceGuard& issue){rejected=std::string(issue.message)==expected;}
+  check(rejected,"invalid snapshots fail closed with the exact diagnostic reason");
+ }
+ {
+  reset();publication_delay=35;trainer::NativeWorldTrajectoryOverride request;
+  check(!wallplant_native_departure(5,request,false)&&!request.receipt&&!fixture_hold.departure_attempted,
+        "refreshing the intent clock cannot extend the original hold release deadline");
+ }
  for(unsigned fault=0;fault<13;++fault){
   reset();auto object=std::uintptr_t{5};trainer::NativeWorldTrajectoryOverride request;
   if(fault==0)fixture_now=259;
