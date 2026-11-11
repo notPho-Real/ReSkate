@@ -9,7 +9,7 @@
 using namespace dingosdk;
 using namespace dingosdk::arcade_mode;
 namespace {
-unsigned checks{};
+unsigned checks{},preparations{};
 bool material_capture{},material_capture_ready{true};
 std::uintptr_t material_base{};
 void check(bool ok,const char* why){++checks;if(!ok){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
@@ -28,7 +28,7 @@ bool start_materials(std::uintptr_t base) noexcept {material_base=base;return ma
 void enable_materials(bool enabled) noexcept {material_capture=enabled;}
 }
 namespace dingosdk::skater_animation {
-void prepare_playback() noexcept {}
+void prepare_playback() noexcept {++preparations;}
 bool can_play() noexcept {return !player.occupied && !player.ticket;}
 bool owns_play(std::uint64_t id) noexcept {return id && id==player.ticket && player.now<player.until;}
 bool controlled_play_current(std::uint64_t id) noexcept {return owns_play(id);}
@@ -312,4 +312,10 @@ void seed_and_pending(){
 }
 int main(){
     check(!custom_flatland_runtime::status().enabled,"dev experiment defaults OFF");
+    custom_flatland_runtime::tick({});
+    check(preparations==0,"disabled experiment does not prepare animation hooks");
+    custom_flatland_runtime::set_enabled(true);
+    custom_flatland_runtime::tick({});
+    check(preparations==1 && player.starts==0,"opt-in prepares shared hooks before a Manual without acquiring a player");
+    custom_flatland_runtime::set_enabled(false);
     balance_range();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

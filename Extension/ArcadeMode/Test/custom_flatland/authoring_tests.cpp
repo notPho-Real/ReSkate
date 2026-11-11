@@ -46,6 +46,13 @@ void clips(){
             check(length(sub(a.position,point(board,{side*.025f,.025f,.25f})))<.015f,"front instep stays at its authored board target across balance");
             check(length(sub(b.position,point(board,{-side*.015f,-.10f,-.32f})))<.015f,"rear sole stays at its authored inverted-tail target across balance");
             check(rotate(board.rotation,{0,1,0})[1]<-.5f,"range keeps trucks above the deck");
+            auto unplaced=seed;unplaced[0]=unplaced[1]=Joint{};
+            const auto shape=board_geometry::from_pose(unplaced,Joint{});
+            check(std::abs(board_geometry::lowest_point(board,shape)-world(unplaced,375).position[1])<.002f,
+                "held cosmetic board support follows native ground across balance and proportions");
+            for(const auto arm:{std::array<std::uint16_t,2>{47,49},std::array<std::uint16_t,2>{276,278}})
+                check(world(pose,arm[1]).position[1]<world(pose,arm[0]).position[1],
+                    "held hands balance below their shoulders");
             for(auto j:{8u,9u,10u,341u,342u,343u})check(pose[j].position==seed[j].position,"contact solve never stretches limb bones");
         }
         for(const auto& clip:{c.entry_hold,c.flip_exit,c.direct_exit}) {
@@ -53,6 +60,16 @@ void clips(){
             check(round.weights==clip->weights && round.joint_weights==clip->joint_weights,"blend envelope and joint mask survive export/import");
             check(round.joint_weight(107)==0 && round.joint_weight(343)==1,"face stays native while the foot is authored");
             for(const auto& joint:round.frames)check(dingosdk::anim_studio::finite(joint),"all baked body keys are finite");
+        }
+        for(float time:{.23f,.31f,.39f}) {
+            c.flip_exit->sample(time,pose);c.flip_exit->sample_board(time,board);
+            pose[0]=pose[1]=Joint{};
+            auto unplaced=seed;unplaced[0]=unplaced[1]=Joint{};
+            const auto shape=board_geometry::from_pose(unplaced,Joint{});
+            float top=board.position[1];
+            for(const auto& point:shape.points)top=std::max(top,board.position[1]+rotate(board.rotation,point)[1]);
+            for(auto foot:{front,back})check(world(pose,foot).position[1]-top>.06f,
+                "released shoes clear the rotating deck and trucks in mid-flip");
         }
         check(c.flip_exit->weight(.6f)==0 && c.direct_exit->weight(.3f)==0,"both exits release to the live native pose");
         const auto joined_exit=joined(*c.direct_exit,*c.entry_hold,1.25f);

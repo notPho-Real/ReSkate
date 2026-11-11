@@ -670,3 +670,22 @@ The solver places visible ankles; it does not create support, move physical
 geometry, suppress bails or establish custom scoring/trick IDs. Native visual
 and contact acceptance, goofy gameplay and exact DLL installation must be
 recorded after the coordinated hardware session.
+
+### Native contact correction
+
+The first authored candidate was rendered in Mega Park on the Deck. Entry,
+balance-driven hold, left/right display rotation, and the flip returning to
+Manual were observed. Frame review rejected its floating lower board tip,
+over-raised hands, and limited shoe clearance during the flip. The first cold
+animation-hook installation also exceeded the existing controller selection
+lease; a warm trial retained ownership. None of those observations is a final
+visual acceptance.
+
+The follow-up uses the existing playback board support geometry in authoring,
+fits the displayed held board to the native skeleton's Ground height, places
+the hands below their shoulders, and increases released-foot clearance. It
+prepares the existing animation hooks while the opt-in is idle, before Manual.
+No collision contact, rigid-body position, balance rule, friction selection, or
+controller mapping changes. Synthetic support, hand-height, mid-flip clearance,
+and cold opt-in tests cover those fixes; the revised exact-source DLL still
+requires native visual and full regression acceptance.

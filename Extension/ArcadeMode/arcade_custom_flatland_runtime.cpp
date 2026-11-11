@@ -154,6 +154,9 @@ void cancel() noexcept {
 void tick(CustomFlatlandContext context) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
     try {
+        // Install the shared animation hooks while the opt-in is idle, before
+        // the first Manual acquires its short controller/physics leases.
+        if(s.enabled)skater_animation::prepare_playback();
         observe_locked(s,context); // Expire a missed heartbeat before renewing it.
         native_wall_contact::enable_materials(s.enabled && context.valid() &&
             native_wall_contact::start_materials(context.frame.owner.base));

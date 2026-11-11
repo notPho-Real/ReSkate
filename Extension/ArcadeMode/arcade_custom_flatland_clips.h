@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_custom_flatland.h"
 #include "Extension/AnimationStudio/motion_authoring.h"
+#include "Extension/AnimationStudio/board_geometry.h"
 #include <stdexcept>
 #include "arcade_casper_motion.inl"
 
@@ -24,6 +25,11 @@ inline CustomTrickClips make_casper_clips(std::span<const anim_studio::Joint> se
     const std::array<std::uint16_t,3> front=left_front?std::array<std::uint16_t,3>{341,342,343}:std::array<std::uint16_t,3>{8,9,10};
     const std::array<std::uint16_t,3> back=left_front?std::array<std::uint16_t,3>{8,9,10}:std::array<std::uint16_t,3>{341,342,343};
     const auto front_foot=world(base,front[2]),back_foot=world(base,back[2]);
+    const auto shape=board_geometry::from_pose(base,board);
+    // Ground is the native skeleton's support height in the placement frame.
+    // Only the displayed board is fitted to it; rigid bodies remain native.
+    constexpr std::uint16_t ground=375;
+    const float support=world(base,ground).position[1];
     const float side=left_front?1.f:-1.f;
     const auto axis=[&](Vec3 v){return rotate(board.rotation,v);};
     // All numbers below are authored controls, not a second runtime pose layer.
@@ -34,6 +40,7 @@ inline CustomTrickClips make_casper_clips(std::span<const anim_studio::Joint> se
         author::PoseKey out;out.time=k.time;out.pose=base;out.board=board;out.weight=k.weight;
         out.board.rotation=normalised(multiply(board.rotation,from_euler({k.pitch,0,side*k.roll})));
         out.board.position=add(board.position,axis({0,k.lift+(author::unpoint(board,back_foot.position)[1]-.08f)*k.contact,0}));
+        out.board.position[1]+=(support-board_geometry::lowest_point(out.board,shape))*k.contact;
         out.pose[hips_joint].position=add(out.pose[hips_joint].position,axis({0,-k.hip_drop,k.hip_back+.025f*balance}));
         author::turn(out.pose,hips_joint,axis_angle(axis({1,0,0}),(-4*k.upper+3*balance)*.01745329252f));
         author::turn(out.pose,42,axis_angle(axis({1,0,0}),(7*k.upper-4*balance)*.01745329252f));
@@ -60,8 +67,9 @@ inline CustomTrickClips make_casper_clips(std::span<const anim_studio::Joint> se
             const auto native=world(base,chain[2]),shoulder=world(base,chain[0]);
             const auto outward=unit(sub(shoulder.position,world(base,45).position),axis({1,0,0}));
             const float response=(chain[0]==47?1.f:-1.f)*balance;
-            const auto target=add(native.position,add(scaled(outward,.08f*k.upper),
-                axis({0,.10f*k.upper+.045f*response,-.025f*k.upper})));
+            const auto balanced=add(shoulder.position,add(scaled(outward,.35f),
+                axis({0,-.14f+.045f*response,-.04f})));
+            const auto target=add(native.position,scaled(sub(balanced,native.position),k.upper));
             (void)author::reach(out.pose,chain,target,add(outward,axis({0,-.3f,0})),native.rotation);
         }
         if(k.contact==0 && k.front_lift==0 && k.back_lift==0 && k.front_side==0 && k.back_side==0 && k.upper==0 &&

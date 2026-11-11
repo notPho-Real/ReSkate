@@ -1,5 +1,6 @@
 #include "display_turn.h"
 #include "skater_animation.h"
+#include "Extension/AnimationStudio/board_geometry.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
 #include "Engine/Game/Build/20260929/native_skater.h"
@@ -139,10 +140,8 @@ float on_ground_share(const Clip& clip, float seconds) noexcept {
 // a little) and the bottoms of its four wheels; a board at rest stands on its wheels with its mount
 // 0.087 m up. Its up is the axis nearest the placement joint's up, its length the one nearest the line
 // of the feet, both from the board at the clip's start. Kept per clip.
-struct BoardShape {
-    std::array<Vec3, 6> points{};
-    Vec3 up{0, 1, 0};
-};
+using BoardShape = board_geometry::Shape;
+using board_geometry::lowest_point;
 const BoardShape& board_shape(const Clip& clip) {
     thread_local const Clip* cached = nullptr;
     thread_local BoardShape shape;
@@ -152,43 +151,8 @@ const BoardShape& board_shape(const Clip& clip) {
     clip.sample(0, pose);
     Joint board;
     (void)clip.sample_board(0, board);
-    const auto placed = world(pose, placement_joint);
-    const auto left = relative(placed, world(pose, left_foot_joint)).position, right = relative(placed, world(pose, right_foot_joint)).position;
-    const Vec3 feet{left[0] - right[0], 0, left[2] - right[2]};
-    std::size_t up = 1, along = 0;
-    float best_up = -1, best_along = -1;
-    std::array<Vec3, 3> axes{};
-    for (std::size_t i = 0; i < 3; ++i) {
-        Vec3 e{};
-        e[i] = 1;
-        axes[i] = rotate(board.rotation, e);
-        if (std::abs(axes[i][1]) > best_up) best_up = std::abs(axes[i][1]), up = i;
-    }
-    for (std::size_t i = 0; i < 3; ++i) {
-        if (i == up) continue;
-        const float d = std::abs(axes[i][0] * feet[0] + axes[i][2] * feet[2]);
-        if (d > best_along) best_along = d, along = i;
-    }
-    const std::size_t side = 3 - up - along;
-    const float up_sign = axes[up][1] >= 0 ? 1.0f : -1.0f;
-    const auto point = [&](float l, float u, float w) {
-        Vec3 v{};
-        v[along] = l;
-        v[up] = u * up_sign;
-        v[side] = w;
-        return v;
-    };
-    shape.up = point(0, 1, 0);
-    constexpr float tip = 0.40f, kick = 0.04f, wheelbase = 0.18f, track = 0.09f, wheels = 0.087f;
-    shape.points = {point(tip, kick, 0), point(-tip, kick, 0), point(wheelbase, -wheels, track), point(wheelbase, -wheels, -track),
-                    point(-wheelbase, -wheels, track), point(-wheelbase, -wheels, -track)};
+    shape = board_geometry::from_pose(pose, board);
     return shape;
-}
-// The lowest point of a board (its mount in the world): what touches the ground first.
-float lowest_point(const Joint& board, const BoardShape& shape) noexcept {
-    float low = board.position[1];
-    for (const auto& pt : shape.points) low = std::min(low, board.position[1] + rotate(board.rotation, pt)[1]);
-    return low;
 }
 // `board` (under the placement joint) under the feet of `pose` (the clip's at `seconds`), only while it
 // lies flat: at the pop the back foot stands on the tail and the board is steep. Full up to 8 degrees of
