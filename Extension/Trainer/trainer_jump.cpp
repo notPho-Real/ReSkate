@@ -7,6 +7,7 @@
 #include "Extension/Skater/no_bail.h"
 #include <windows.h>
 #include <array>
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdio>
@@ -35,8 +36,10 @@ constexpr float no_comply_crouch = 0.12f; // seconds: between an ollie's crouch 
 constexpr std::size_t velocity_y = 0x84 / sizeof(float);
 
 using SetTrajectory = void (*)(std::uintptr_t, float *);
+using ShapeLaunch = void (*)(std::uintptr_t);
 struct Hooked {
     std::atomic<SetTrajectory> original{};
+    std::atomic<ShapeLaunch> shape_original{};
     std::uintptr_t base{};
     std::atomic<float> no_comply{1}, boneless{1}, manual{1};
     std::atomic<std::uint64_t> manual_until{}; // GetTickCount64: the skater was in a manual until about then
@@ -69,6 +72,34 @@ struct Hooked {
 Hooked &hooked() {
     static auto *value = new Hooked;
     return *value;
+}
+// One synchronous setter call may supply an already resolved world-space
+// velocity. Other launches and recursive/native fallback queries keep their
+// own shaping. This permission never survives the setter call.
+struct WorldTrajectoryRequest {
+    std::uintptr_t object{};
+    std::array<float,3> velocity{};
+    bool observed{}, preserved{};
+    std::array<float,3> shaped{};
+};
+thread_local WorldTrajectoryRequest world_trajectory_request;
+void shape_launch_hook(std::uintptr_t trajectory) {
+    const auto original=hooked().shape_original.load(std::memory_order_acquire);
+    if(!original)return;
+    auto& request=world_trajectory_request;
+    const bool preserve=request.object && request.object==trajectory && !request.observed;
+    if(preserve)request.observed=true;
+    original(trajectory);
+    if(!preserve)return;
+    // Keep native classification/configuration side effects. Replace only the
+    // input velocity, before the setter starts its genuine collision queries.
+    // Never repair selected candidates or write a second body impulse.
+    __try {
+        auto* velocity=reinterpret_cast<float*>(trajectory+game::build::v20260929::trajectory::requested_velocity);
+        std::copy_n(velocity,3,request.shaped.begin());
+        std::copy(request.velocity.begin(),request.velocity.end(),velocity);
+        request.preserved=std::equal(request.velocity.begin(),request.velocity.end(),velocity);
+    } __except (EXCEPTION_EXECUTE_HANDLER) { request.preserved=false; }
 }
 // The trick the game has in mind right now (the trainer's own reading is a tick old: out of a manual or a grind the
 // trick is often chosen in the tick of the pop).
@@ -251,20 +282,35 @@ bool consume_ready_native_trajectory(std::uintptr_t base, std::uintptr_t traject
     } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
 bool submit_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
-                              NativeTrajectoryParameters& parameters) noexcept {
+                              NativeTrajectoryParameters& parameters, bool preserve_world_velocity) noexcept {
     namespace native = game::build::v20260929::trajectory;
     auto& h = hooked();
     const auto original = h.original.load(std::memory_order_acquire);
-    if (!base || base != h.base || !h.ready || !trajectory || !original ||
+    if (!base || base != h.base || !h.ready || !trajectory || !original || world_trajectory_request.object ||
+        (preserve_world_velocity && !h.shape_original.load(std::memory_order_acquire)) ||
         !known_bytes(base + native::select_result.rva, native::select_result.bytes.data(), native::select_result.bytes.size())) return false;
+    std::array<float,3> velocity{};
+    std::copy_n(parameters.values.begin()+native::parameter_velocity/sizeof(float),3,velocity.begin());
+    if(preserve_world_velocity && !std::all_of(velocity.begin(),velocity.end(),
+        [](float value){return std::isfinite(value) && std::abs(value)<1000;}))return false;
+    bool submitted{};
     __try {
         if (*reinterpret_cast<const std::uint8_t*>(trajectory + native::query_pending)) return false;
         // Use the verified original, without reapplying trick height modifiers
         // or retaining this packet as a new ground pop for raise_flight.
-        original(trajectory, parameters.values.data());
+        if(preserve_world_velocity)world_trajectory_request={trajectory,velocity,false,false,{}};
+        submitted=call_guarded(original,trajectory,parameters.values.data());
+        if(preserve_world_velocity)submitted=submitted && world_trajectory_request.observed && world_trajectory_request.preserved;
+        const auto request=world_trajectory_request;
+        world_trajectory_request={};
+        if(!submitted)return false;
+        if(preserve_world_velocity)logging::log(logging::Level::info,logging::Channel::skater,
+            "Native trajectory world exit: object={} shaped=[{},{},{}] query_input=[{},{},{}] candidate_acceptance_verified=false",
+            trajectory,request.shaped[0],request.shaped[1],request.shaped[2],
+            request.velocity[0],request.velocity[1],request.velocity[2]);
         reinterpret_cast<bool (*)(std::uintptr_t, bool)>(base + native::select_result.rva)(trajectory, true);
         return true;
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    } __except (EXCEPTION_EXECUTE_HANDLER) { world_trajectory_request={};return false; }
 }
 
 bool start_trick_heights(std::uintptr_t base) noexcept {
@@ -287,7 +333,17 @@ bool start_trick_heights(std::uintptr_t base) noexcept {
             return false;
         }
         h.original.store(reinterpret_cast<SetTrajectory>(original), std::memory_order_release);
-        if (hook_enable(target) != HookOk) return false;
+        namespace native=game::build::v20260929::trajectory;
+        if(!known_bytes(base+native::shape_launch.rva,native::shape_launch.bytes.data(),native::shape_launch.bytes.size()) ||
+           !known_bytes(base+native::shape_launch_call,native::shape_launch_call_prefix.data(),native::shape_launch_call_prefix.size()))return false;
+        auto* shape_target=reinterpret_cast<void*>(base+native::shape_launch.rva);
+        void* shape_original{};
+        if(hook_prepare(shape_target,reinterpret_cast<void*>(&shape_launch_hook),&shape_original)!=HookOk || !shape_original)return false;
+        h.shape_original.store(reinterpret_cast<ShapeLaunch>(shape_original),std::memory_order_release);
+        {
+            HookBatch batch;
+            if(hook_enable(shape_target)!=HookOk || hook_enable(target)!=HookOk)return false;
+        }
         set_physics_step_callback(&raise_step);
         h.ready = true;
         logging::write(logging::Level::info, logging::Channel::skater, "Trainer: no comply and boneless heights ready.");

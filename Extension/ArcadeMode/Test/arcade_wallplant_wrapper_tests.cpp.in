@@ -753,7 +753,93 @@ void run(){
  std::cout<<checks<<" combined production native query checks passed\n";
 }
 }
-void run_wallplant_wrapper_tests(){run();ground_route::run();body_observation_route::run();release_trajectory_route::run();native_query_route::run();}
+namespace world_trajectory_route {
+namespace game=dingosdk::game;
+namespace native=game::build::v20260929::trajectory;
+using NativeTrajectoryParameters=dingosdk::trainer::NativeTrajectoryParameters;
+using Setter=void (*)(std::uintptr_t,float*);
+using Shaper=void (*)(std::uintptr_t);
+struct Hook {std::uintptr_t base{};bool ready{true};std::atomic<Setter> original{};std::atomic<Shaper> shape_original{};} hook;
+Hook& hooked(){return hook;}
+alignas(32) std::array<unsigned char,native::query_pending+1> object{},other{};
+unsigned shapes{},sets{},selections{};
+bool valid_code{true},fail_set{},skip_shape{},nested{};
+std::array<float,3> candidate_velocity{};
+std::array<float,3> get(std::uintptr_t at){std::array<float,3> result;std::memcpy(result.data(),reinterpret_cast<void*>(at+native::requested_velocity),sizeof(result));return result;}
+void put(std::uintptr_t at,const std::array<float,3>& value){std::memcpy(reinterpret_cast<void*>(at+native::requested_velocity),value.data(),sizeof(value));}
+bool select(std::uintptr_t at,bool mode){++selections;check(at==reinterpret_cast<std::uintptr_t>(object.data())&&mode,"original selector owns candidate acceptance");return false;}
+bool known_bytes(std::uintptr_t at,const unsigned char* bytes,std::size_t size){
+ check(at==reinterpret_cast<std::uintptr_t>(&select)&&bytes==native::select_result.bytes.data()&&size==native::select_result.bytes.size(),"submission verifies selector bytes");return valid_code;
+}
+bool call_guarded(Setter fn,std::uintptr_t at,float* parameters){try{fn(at,parameters);return true;}catch(...){return false;}}
+#define __try try
+#define __except(...) catch(...)
+@wallplant_wrapper_shape_trajectory@
+@wallplant_wrapper_submit_trajectory@
+#undef __except
+#undef __try
+void shape(std::uintptr_t at){
+ ++shapes;put(at,{-1.1069391f,13.73243f,.27464858f});
+ // Model a native side effect, independent of the velocity field.
+ *reinterpret_cast<unsigned char*>(at+native::requested_velocity+16)=73;
+}
+void setter(std::uintptr_t at,float* parameters){
+ ++sets;
+ if(fail_set)throw 1;
+ put(at,{parameters[32],parameters[33],parameters[34]});
+ if(nested){
+  NativeTrajectoryParameters p;
+  check(!world_trajectory_route::submit_native_trajectory(hook.base,at,p,true),"recursive submission cannot acquire the same scope");
+  shape_launch_hook(reinterpret_cast<std::uintptr_t>(other.data()));
+ }
+ if(!skip_shape)shape_launch_hook(at);
+ candidate_velocity=get(at); // What the native query receives after shaping.
+ object[native::query_pending]=1; // Pending collision work remains genuine.
+}
+void run(){
+ const auto base=reinterpret_cast<std::uintptr_t>(&select)-native::select_result.rva;
+ const auto at=reinterpret_cast<std::uintptr_t>(object.data());
+ const std::array<float,3> exit{-2.285966f,12.7f,4.967785f};
+ NativeTrajectoryParameters p;std::copy(exit.begin(),exit.end(),p.values.begin()+32);
+ hook.base=base;hook.original.store(&setter);hook.shape_original.store(&shape);
+ for(bool preserve:{false,true}){
+  object.fill(0);sets=shapes=selections=0;
+  check(world_trajectory_route::submit_native_trajectory(base,at,p,preserve),"one valid request submits once");
+  check(sets==1&&shapes==1&&selections==1,"native setter shaping and selection each execute once");
+  check(candidate_velocity==(preserve?exit:std::array<float,3>{-1.1069391f,13.73243f,.27464858f}),"world exit reaches collision generation; ordinary launches keep native shaping");
+  check(object[native::requested_velocity+16]==73&&object[native::query_pending]==1,"classification and pending collision query are not fabricated or cleared");
+  check(!world_trajectory_request.object,"permission ends before later selection or physics");
+ }
+ object.fill(0);nested=true;shapes=sets=selections=0;
+ check(world_trajectory_route::submit_native_trajectory(base,at,p,true)&&sets==1&&shapes==2,"scoped request cannot leak into another native object");
+ check(get(reinterpret_cast<std::uintptr_t>(other.data()))!=exit,"other object's native launch remains unchanged");nested=false;
+ shape_launch_hook(at);check(get(at)!=exit,"later callbacks do not repeat the override");
+ for(unsigned bad=0;bad<7;++bad){
+  object.fill(0);sets=shapes=selections=0;valid_code=true;fail_set=false;skip_shape=false;
+  hook.shape_original.store(&shape);auto parameters=p;
+  if(bad==0)object[native::query_pending]=1;
+  if(bad==1)valid_code=false;
+  if(bad==2)hook.shape_original.store(nullptr);
+  if(bad==3)parameters.values[32]=std::numeric_limits<float>::quiet_NaN();
+  if(bad==4)parameters.values[34]=1000;
+  if(bad==5)fail_set=true;
+  if(bad==6)skip_shape=true;
+  check(!world_trajectory_route::submit_native_trajectory(base,at,parameters,true),"busy, unknown, invalid or unobserved native submissions fail closed");
+  check(!world_trajectory_request.object&&selections==0,"failure clears synchronous permission without another selector or impulse");
+  if(bad<5)check(sets==0,"invalid submission does not reach the native setter");
+ }
+ fail_set=skip_shape=false;
+ world_trajectory_request={at,exit,false,false,{}};
+ std::thread other_thread([&]{
+  check(!world_trajectory_request.object,"world-space permission is confined to the submitting thread");
+  shape_launch_hook(at);
+ });other_thread.join();
+ check(!world_trajectory_request.observed&&get(at)!=exit,"another native thread cannot spend or inherit the request");
+ world_trajectory_request={};
+ std::cout<<checks<<" combined production world trajectory checks passed\n";
+}
+}
+void run_wallplant_wrapper_tests(){run();ground_route::run();body_observation_route::run();release_trajectory_route::run();native_query_route::run();world_trajectory_route::run();}
 #ifdef ARCADE_WALLPLANT_WRAPPER_STANDALONE
 int main(){run_wallplant_wrapper_tests();}
 #endif

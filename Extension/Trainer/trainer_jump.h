@@ -65,6 +65,9 @@ bool prepare_native_trajectory(std::uintptr_t base, std::uintptr_t rig,
 // Consume an already completed native query once. An unfinished query remains
 // pending and is refused; this never clears its flag or submits another query.
 bool consume_ready_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory) noexcept;
+// Explicit world-space exits retain their velocity through native pop shaping.
+// Collision candidate generation and selection remain native and can reject or
+// alter the result. True is submission evidence, never physical acceptance.
 bool submit_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
-                              NativeTrajectoryParameters& parameters) noexcept;
+                              NativeTrajectoryParameters& parameters, bool preserve_world_velocity = false) noexcept;
 } // namespace dingosdk::trainer

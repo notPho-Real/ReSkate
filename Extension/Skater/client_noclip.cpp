@@ -1146,7 +1146,7 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         hold={};wallplant_hold_core.store(0,std::memory_order_release);
         // The same single-release ticket owns the planner request and body
         // write. A busy/failed planner cannot be retried as a second impulse.
-        source_require(trainer::submit_native_trajectory(state.trial.base,trajectory.object,trajectory.parameters),
+        source_require(trainer::submit_native_trajectory(state.trial.base,trajectory.object,trajectory.parameters,true),
             "release_trajectory_submit");
         source_require(no_bail_skater(after) && after==owner,"release_trajectory_owner_changed");
         SourceReader unchanged;

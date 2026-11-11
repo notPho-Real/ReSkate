@@ -76,6 +76,20 @@ after the deadline, one release delta establishes the saved outward/upward exit.
 That release also submits one fresh native trajectory packet, constructed from
 the current owned rig by the pinned native initializer and observation routine.
 Only its requested velocity and native launch-candidate option are changed.
+The world-space exit now survives the setter's pop-shaping stage. In the prior
+native trial the requested horizontal speed was 5.4685 m/s, while the recorded
+planner request fell to 1.1405 m/s. The body consumed the initial up/out release,
+then lost outward travel and bailed on landing. Native release occurred with a
+wall-facing projection vector, so a ground-pop shaping path is inappropriate
+for this already resolved rebound. A synchronous, object-owned option in the
+existing trajectory bridge runs original shaping once, preserves its native
+classification/configuration effects, and restores only the supplied velocity
+before genuine collision-candidate generation. Ordinary launches retain native
+shaping. The option expires before selection; it does not override collision
+results, pending flags, native states, later physics or body impulses. An
+unobserved shaping callback refuses release rather than reporting success.
+Both the shaped vector and the actual query input are logged. Selected results
+can still differ, and sustained physical motion remains an acceptance gate.
 The existing verified setter and collision-query selector receive it once;
 an outstanding query rejects the release. This does not select a gameplay state
 or manufacture a collision result. The release ticket is consumed before either
