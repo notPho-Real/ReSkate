@@ -48,6 +48,7 @@ struct Hooked {
     std::atomic<std::uint32_t> launch_trick{0xff}; // CurrentFlipTrick as the trainer read it last tick
     std::atomic<std::uintptr_t> trick_at{};        // where the game keeps that number (0: not known)
     std::atomic<TrajectoryModifier> modifier{};
+    std::atomic<NativeWorldTrajectoryBridge> world_bridge{};
     std::array<std::atomic<float>, 64> flip_launch{}; // least upward launch speed by trick, m/s; 0: the game's own
     // The last few launches, for the trainer's log line: written by the physics thread, read
     // by the client tick.
@@ -127,6 +128,40 @@ bool call_guarded(SetTrajectory function, std::uintptr_t trajectory, float *para
         return false;
     }
 }
+bool route_native_world_trajectory(std::uintptr_t trajectory, float* parameters) noexcept {
+    namespace native=game::build::v20260929::trajectory;
+    auto& h=hooked();
+    const auto bridge=h.world_bridge.load(std::memory_order_acquire);
+    const auto original=h.original.load(std::memory_order_acquire);
+    if(!bridge || !h.ready || !original || !h.shape_original.load(std::memory_order_acquire) ||
+       !trajectory || !parameters || world_trajectory_request.object)return false;
+    NativeWorldTrajectoryOverride offered{};
+    NativeTrajectoryParameters packet{};
+    __try {
+        // Never spend a receipt on a setter that native pending work will refuse.
+        if(*reinterpret_cast<const std::uint8_t*>(trajectory+native::query_pending))return false;
+        std::memcpy(packet.values.data(),parameters,native::parameter_bytes);
+    } __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
+    if(!bridge(trajectory,offered,false))return false;
+    const bool valid=offered.receipt && std::all_of(offered.velocity.begin(),offered.velocity.end(),
+        [](float value){return std::isfinite(value) && std::abs(value)<1000;});
+    if(valid) {
+        std::copy(offered.velocity.begin(),offered.velocity.end(),packet.values.begin()+native::parameter_velocity/sizeof(float));
+        world_trajectory_request={trajectory,offered.velocity,false,false,{}};
+    }
+    // The caller still owns the native packet options, collision queries and
+    // subsequent selector. A granted exit replaces only this call's velocity.
+    const bool called=call_guarded(original,trajectory,valid?packet.values.data():parameters);
+    const auto result=world_trajectory_request;
+    world_trajectory_request={};
+    offered.submitted=valid && called && result.observed && result.preserved;
+    (void)bridge(trajectory,offered,true);
+    if(offered.submitted)logging::log(logging::Level::info,logging::Channel::skater,
+        "Native trajectory world exit: object={} receipt={} route=native_departure shaped=[{},{},{}] query_input=[{},{},{}] candidate_acceptance_verified=false",
+        trajectory,offered.receipt,result.shaped[0],result.shaped[1],result.shaped[2],
+        result.velocity[0],result.velocity[1],result.velocity[2]);
+    return true;
+}
 // After a physics update: a pop that has to go higher after all is launched again, from where it started (it is a tick
 // or two old), with the higher upward speed. Writing the trajectory object does nothing (measured): the setter has to run.
 void raise_step() noexcept {
@@ -146,6 +181,7 @@ void raise_step() noexcept {
 }
 void set_trajectory_hook(std::uintptr_t trajectory, float *parameters) {
     auto &h = hooked();
+    if(route_native_world_trajectory(trajectory,parameters))return;
     const auto caller = reinterpret_cast<std::uintptr_t>(_ReturnAddress()) - h.base;
     if (const auto modifier = h.modifier.load(std::memory_order_acquire); modifier && parameters) {
         float velocity[3]{parameters[velocity_y - 1], parameters[velocity_y], parameters[velocity_y + 1]};
@@ -505,5 +541,8 @@ bool take_trick_launch(TrickLaunch &out) noexcept {
 }
 void set_trajectory_modifier(TrajectoryModifier modifier) noexcept {
     hooked().modifier.store(modifier, std::memory_order_release);
+}
+void set_native_world_trajectory_bridge(NativeWorldTrajectoryBridge bridge) noexcept {
+    hooked().world_bridge.store(bridge,std::memory_order_release);
 }
 } // namespace dingosdk::trainer

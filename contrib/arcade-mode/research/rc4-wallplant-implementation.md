@@ -90,8 +90,17 @@ results, pending flags, native states, later physics or body impulses. An
 unobserved shaping callback refuses release rather than reporting success.
 Both the shaped vector and the actual query input are logged. Selected results
 can still differ, and sustained physical motion remains an acceptance gate.
-The existing verified setter and collision-query selector receive it once;
-an outstanding query rejects the release. This does not select a gameplay state
+The original departure can submit its own query before the final body callback.
+An observed 169 ms hold ended with that query using the slowed hold velocity;
+the later explicit release was refused as busy. The setter now offers a due,
+locally owned hold one synchronous opportunity to supply its saved world exit
+to that existing native submission. The receipt is consumed before the call.
+The caller's packet options and subsequent selector remain native; no second
+query is submitted. Afterward the body callback revalidates the same object and
+hold before its single release write. Earlier, foreign, expired and repeated
+offers are refused. A failed submission cannot be retried. If no native departure
+was offered, the existing explicit release path remains available.
+An unrelated outstanding query still rejects release. This does not select a gameplay state
 or manufacture a collision result. The release ticket is consumed before either
 operation, so a failure cannot cause a second request or impulse.
 

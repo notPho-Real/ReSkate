@@ -70,4 +70,16 @@ bool consume_ready_native_trajectory(std::uintptr_t base, std::uintptr_t traject
 // alter the result. True is submission evidence, never physical acceptance.
 bool submit_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
                               NativeTrajectoryParameters& parameters, bool preserve_world_velocity = false) noexcept;
+// Supply an owned world-space exit to a launch the game is already submitting.
+// The bridge grants one receipt on entry and receives its submission outcome
+// synchronously. It must validate ownership and deadline; this API does not
+// submit an extra query, select a result, or write physical bodies.
+struct NativeWorldTrajectoryOverride {
+    std::array<float,3> velocity{};
+    std::uint64_t receipt{};
+    bool submitted{};
+};
+using NativeWorldTrajectoryBridge = bool (*)(std::uintptr_t trajectory,
+    NativeWorldTrajectoryOverride& request, bool completed) noexcept;
+void set_native_world_trajectory_bridge(NativeWorldTrajectoryBridge bridge) noexcept;
 } // namespace dingosdk::trainer

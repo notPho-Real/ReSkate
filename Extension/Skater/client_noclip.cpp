@@ -627,6 +627,8 @@ struct WallplantPhysicalHold {
     WallplantBodyObservation physical{},entry_physical{};
     game::orientation_target::Result orientation{};
     float orientation_limit{};
+    std::uintptr_t native_departure{};
+    bool departure_attempted{},departure_submitted{};
 };
 // Payload is protected by SourceState::busy; idle physics/target callbacks only
 // read the atomic hint. Runtime cancellation never needs the source lock.
@@ -1047,13 +1049,19 @@ struct WallplantReleaseTrajectory {
     trainer::NativeTrajectoryParameters parameters{};
 };
 WallplantReleaseTrajectory wallplant_release_trajectory(std::uintptr_t base,
-        const NoBailSkater& owner, const std::array<float,3>& velocity, SourceReader& reader) {
+        const NoBailSkater& owner, const std::array<float,3>& velocity, SourceReader& reader,
+        std::uintptr_t native_departure=0) {
     namespace native = addr::trajectory;
     WallplantReleaseTrajectory result;
     result.object=reader.pointer(owner.core,native::core_object);
     source_require(source_object(result.object) &&
         reader.pointer(result.object,native::object_context)==owner.context &&
         reader.pointer(owner.rig)==owner.context,"release_trajectory_owner");
+    if(native_departure) {
+        source_require(result.object==native_departure,"release_native_departure_owner");
+        reader.verify();
+        return result;
+    }
     // The ordinary solver may leave a completed query awaiting selection at
     // this callback. Let its own selector consume that result once, without
     // clearing pending work or extending the hold when the result is not ready.
@@ -1134,7 +1142,9 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         release.velocity_y=held.after[1];release.delta_x=held.after[0]-velocities[0][0];
         release.delta_z=held.after[2]-velocities[0][2];
         source_require(arcade_mode::AirMotion::apply_bodies(release,velocities,spins,bodies.up),"hold_release_velocity");
-        auto trajectory=wallplant_release_trajectory(state.trial.base,owner,held.after,reader);
+        source_require(!hold.departure_attempted || (hold.departure_submitted && hold.native_departure),
+            "release_native_departure_failed");
+        auto trajectory=wallplant_release_trajectory(state.trial.base,owner,held.after,reader,hold.native_departure);
         reader.verify();NoBailSkater after{};
         source_require(no_bail_skater(after) && after==owner,"hold_release_owner");
         const bool current=arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame,&stale_query);
@@ -1146,8 +1156,9 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         hold={};wallplant_hold_core.store(0,std::memory_order_release);
         // The same single-release ticket owns the planner request and body
         // write. A busy/failed planner cannot be retried as a second impulse.
-        source_require(trainer::submit_native_trajectory(state.trial.base,trajectory.object,trajectory.parameters,true),
-            "release_trajectory_submit");
+        if(!releasing.departure_attempted)
+            source_require(trainer::submit_native_trajectory(state.trial.base,trajectory.object,trajectory.parameters,true),
+                "release_trajectory_submit");
         source_require(no_bail_skater(after) && after==owner,"release_trajectory_owner_changed");
         SourceReader unchanged;
         for(std::size_t i=0;i<bodies.parts.size();++i) {
@@ -1186,6 +1197,58 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         try{throw;}catch(const SourceGuard& issue){wallplant_hold_cancel(issue.message,now);}
         catch(...){wallplant_hold_cancel("hold_exception",now);}
     }
+}
+bool wallplant_native_departure(std::uintptr_t object,
+        trainer::NativeWorldTrajectoryOverride& request,bool completed) noexcept {
+    if(!wallplant_hold_core.load(std::memory_order_acquire))return false;
+    const auto held=arcade_mode::wallplant_runtime::held_command();
+    std::uint64_t now=GetTickCount64();
+    const auto frame=held?arcade_mode::native_wallplant_hold_context(held.native.owner,now):arcade_mode::NativeInputFrame{};
+    auto& state=source_state();
+    if(state.busy.test_and_set(std::memory_order_acquire))return false;
+    SourceBusyScope scope{state.busy};
+    auto& hold=wallplant_physical_hold();
+    if(!hold.command || !held || hold.command.input_sequence!=held.input_sequence ||
+       hold.command.contact!=held.contact)return false;
+    if(completed) {
+        if(!hold.departure_attempted || hold.native_departure!=object ||
+           request.receipt!=hold.command.input_sequence)return false;
+        hold.departure_submitted=request.submitted;
+        return true;
+    }
+    // A natural departure may submit its query before the +58 body callback.
+    // Supply the saved exit at that original submission, once the hold is due,
+    // instead of competing with its pending query after the callback returns.
+    if(hold.departure_attempted || now<hold.started ||
+       now-hold.started<arcade_mode::WallplantHoldContinuity::duration_ms)return false;
+    try {
+        source_require(state.initialized.load(std::memory_order_acquire) &&
+            state.velocity_guard_active.load(std::memory_order_acquire) && hold.targets>0,
+            "departure_writer_unavailable");
+        bool stale{};
+        source_require(frame.valid && arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame,&stale),
+            "departure_authority");
+        arcade_mode::AirMotionIntent intent{};
+        source_require(read_arcade_air(intent,nullptr,nullptr) && intent.enabled &&
+            intent.generation==hold.intent_generation && now>=intent.sampled_at && now-intent.sampled_at<=150 &&
+            !multiplayer_session_active() && !state.trial.debug.noclip && !state.trial.debug.park_editor,
+            "departure_control_owner");
+        NoBailSkater owner{};
+        source_require(no_bail_skater(owner) && owner==hold.owner,"departure_body_owner");
+        SourceReader reader;
+        const auto selected=reader.value<std::uint32_t>(owner.context,
+            game::build::v20260929::arcade_native_probe::selected_state);
+        source_require((selected==100 || selected==200 || selected==201) &&
+            reader.value<std::uint8_t>(hold.entity,0x7e0)==0 &&
+            reader.pointer(owner.core,addr::trajectory::core_object)==object &&
+            reader.pointer(object,addr::trajectory::object_context)==owner.context &&
+            reader.pointer(owner.rig)==owner.context &&
+            reader.value<std::uint8_t>(object,addr::trajectory::query_pending)==0,"departure_native_owner");
+        reader.verify();
+        request.velocity=hold.command.after;request.receipt=hold.command.input_sequence;
+        hold.native_departure=object;hold.departure_attempted=true;hold.departure_submitted=false;
+        return true;
+    } catch(...) { return false; }
 }
 bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
         const std::array<float,16>* supplied,std::array<float,16>& target,
@@ -2798,6 +2861,7 @@ bool start_client_noclip_velocity(std::uintptr_t base) noexcept {
         if (hook_queue_enable(target) != HookOk || hook_queue_enable(motion_target) != HookOk ||
             hook_queue_enable(ground_target)!=HookOk || hook_apply_queued()!=HookOk) return false;
         state.velocity_guard_active.store(true, std::memory_order_release);
+        trainer::set_native_world_trajectory_bridge(&wallplant_native_departure);
         return true;
     } catch (...) { return false; }
 }
