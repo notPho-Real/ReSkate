@@ -27,6 +27,7 @@ struct Play {
         std::uint16_t joint{};
         anim_studio::Vec3 point{}, normal{};
         std::optional<arm_reach::ContactFrame> frame;
+        bool level_body{}; // Keep both feet while removing placement bank/pitch from the held body.
     };
     std::shared_ptr<const Clip> clip;
     float speed{1}, blend{0.15f};
@@ -77,6 +78,7 @@ struct PlaybackEvidence {
         anim_studio::Vec3 reference_point{}, normal{};
         float target_error{};
         bool reachable{};
+        bool body_frame_applied{};
     };
     std::uint64_t ticket{}, samples{}, writes{}, draws{};
     float first_sample{}, last_sample{};

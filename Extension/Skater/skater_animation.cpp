@@ -1,5 +1,6 @@
 #include "skater_animation.h"
 #include "body_pose.h"
+#include "body_contact.h"
 #include "owned_playback_hold.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
@@ -422,6 +423,7 @@ struct Pending {
     std::uintptr_t feet_component{};
     bool feet_valid{};
     bool contact_reachable{};
+    bool contact_body_frame_applied{};
     std::optional<PlaybackEvidence::Contact> contact_evidence;
 };
 Pending& pending() {
@@ -1102,6 +1104,7 @@ void on_render(std::uintptr_t animation_interface) noexcept {
         p.written_ticket=0;
         p.feet_valid=false;
         p.contact_reachable=false;
+        p.contact_body_frame_applied=false;
         p.contact_evidence.reset();
         const auto count = [](int Probe::*n) {
             auto& pr = probe();
@@ -1185,9 +1188,12 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                 // this ticket. Reprojecting every draw would slide on the wall.
                 // The limb solver still refuses unreachable targets.
                 if(p.contact_anchor) {
-                    const auto reached=arm_reach::reach_joint(rendered,play.contact->joint,*p.contact_anchor,weight,p.contact_rotation);
-                    p.contact_reachable=reached.valid && reached.reached;
-                    if(reached.valid && reached.reached)
+                    p.contact_body_frame_applied=play.contact->level_body && p.contact_rotation &&
+                        level_body_contact(rendered,play.contact->joint,*p.contact_anchor,*p.contact_rotation,weight);
+                    const auto reached=p.contact_body_frame_applied?arm_reach::Reached{}:
+                        arm_reach::reach_joint(rendered,play.contact->joint,*p.contact_anchor,weight,p.contact_rotation);
+                    p.contact_reachable=p.contact_body_frame_applied || (reached.valid && reached.reached);
+                    if(p.contact_reachable)
                         for(std::size_t i=0;i<current.size();++i)current[i].rotation=rendered[i+2].rotation;
                 }
             }
@@ -1222,7 +1228,7 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                                 for(std::size_t k=0;k<3;++k)reference[k]-=normal[k]*contact.frame->clearance*foot.scale[0];
                                 const auto target_error=std::hypot(foot.position[0]-(*p.contact_anchor)[0],
                                     foot.position[1]-(*p.contact_anchor)[1],foot.position[2]-(*p.contact_anchor)[2]);
-                                p.contact_evidence=PlaybackEvidence::Contact{contact.joint,reference,normal,target_error,p.contact_reachable};
+                                p.contact_evidence=PlaybackEvidence::Contact{contact.joint,reference,normal,target_error,p.contact_reachable,p.contact_body_frame_applied};
                             }
                         }
                     }

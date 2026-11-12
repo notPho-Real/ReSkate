@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_wallplant_animation_assets.h"
 #include "Extension/ArcadeMode/arcade_wallplant_animation_contact.h"
 #include "Extension/Skater/owned_playback_hold.h"
+#include "Extension/Skater/body_contact.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -34,6 +35,52 @@ struct PhaseLibrary {
 }
 int main() {
     using namespace dingosdk;
+    for(const auto foot:{bonecam::joint::left_foot,bonecam::joint::right_foot}) {
+        std::vector<anim_studio::Joint> pose(anim_studio::skeleton_joints);
+        pose[1].position={3,2,-4};
+        pose[1].rotation=anim_studio::from_euler({35,50,10});
+        for(const auto tip:{bonecam::joint::left_foot,bonecam::joint::right_foot}) {
+            const auto knee=static_cast<std::uint16_t>(anim_studio::parent(tip));
+            const auto thigh=static_cast<std::uint16_t>(anim_studio::parent(knee));
+            pose[thigh].position={tip==foot?.12f:-.12f,0,0};
+            pose[knee].position={0,-.4f,.2f};pose[tip].position={0,-.25f,-.2f};
+        }
+        const auto before=pose;
+        const auto original_hips=anim_studio::world(pose,anim_studio::hips_joint);
+        const auto tip=anim_studio::world(pose,foot);
+        const auto other=foot==bonecam::joint::left_foot?bonecam::joint::right_foot:bonecam::joint::left_foot;
+        const auto board=anim_studio::world(pose,other);
+        check(skater_animation::level_body_contact(pose,foot,tip.position,tip.rotation,1),
+            "A banked authored body levels only when both existing foot endpoints remain reachable");
+        const auto kept=anim_studio::world(pose,other),planted=anim_studio::world(pose,foot);
+        for(unsigned k=0;k<3;++k) {
+            check(near(kept.position[k],board.position[k]),"Board foot stays at its original endpoint");
+            check(near(planted.position[k],tip.position[k]),"Plant foot stays at its observed endpoint");
+        }
+        const auto up=anim_studio::rotate(anim_studio::world(pose,anim_studio::hips_joint).rotation,{0,1,0});
+        check(near(up[0],0)&&near(up[1],1)&&near(up[2],0),"Inherited placement bank and pitch are removed from the authored body frame");
+        check(anim_studio::world(pose,anim_studio::hips_joint).position==original_hips.position,
+            "Levelling pivots about the original hips without a render translation");
+        for(std::size_t i=0;i<pose.size();++i)
+            check(pose[i].position==before[i].position && pose[i].scale==before[i].scale,
+                "Level contact never moves a joint origin locally or changes bone length");
+        check(pose[0].rotation==before[0].rotation && pose[1].rotation==before[1].rotation,
+            "World and native placement are unchanged");
+        pose=before;
+        check(!skater_animation::level_body_contact(pose,foot,{100,100,100},tip.rotation,1),
+            "Unreachable plant refuses the entire correction");
+        for(std::size_t i=0;i<pose.size();++i)
+            check(pose[i].rotation==before[i].rotation,"Failed contact does not partially level the torso or move the other foot");
+        check(!skater_animation::level_body_contact(pose,foot,tip.position,{0,0,0,0},1),
+            "Invalid endpoint orientation refuses the whole correction");
+        check(!skater_animation::level_body_contact(pose,foot,tip.position,tip.rotation,NAN),
+            "Invalid blend cannot publish a body correction");
+        check(skater_animation::level_body_contact(pose,foot,tip.position,tip.rotation,0),
+            "Zero blend remains a valid bounded contact");
+        for(std::size_t i=0;i<pose.size();++i)
+            for(unsigned k=0;k<4;++k)check(near(pose[i].rotation[k],before[i].rotation[k]),
+                "Zero blend retains the original pose");
+    }
     for(const auto planted:{bonecam::joint::right_foot,bonecam::joint::left_foot}) {
         anim_studio::Clip clip;
         clip.joints=anim_studio::skeleton_joints;clip.times={0,.1f};

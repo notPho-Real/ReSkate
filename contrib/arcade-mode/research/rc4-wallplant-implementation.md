@@ -1,5 +1,34 @@
 # RC4 wallplant prototype
 
+## Held body registration
+
+Exact source `0b09695a` passed Windows and integration CI. Its native trial
+produced one 174 ms spring hold and release. The first stable pending-clear
+root velocity was `(-2.26081,12.31398,4.40095)` m/s, versus the requested
+`(-2.23592,12.7,4.80005)`. No later upward overshoot was observed in the retained
+capture. Subsequent air lasted 2.56666 seconds before native ground return,
+without a bail. The video still failed convincing planted-foot acceptance.
+
+The held asset has an extended planting leg, but body-only playback inherits
+the physical placement's bank and pitch. Composing the retained authored frame
+with this trial's admission rotation tilts its hips-to-chest direction away
+from vertical; precise ankle-plane alignment alone does not correct the torso.
+This geometric replay uses retained rig geometry and the admission rotation,
+not a complete reconstruction of every rendered frame.
+
+The existing held contact path now optionally removes that inherited bank and
+pitch about the unchanged hips, retaining actual placement heading. At full blend both feet
+are solved together: the planting foot reaches the observed plane and the
+other foot retains its prior endpoint and orientation. Unreachable geometry
+refuses the entire body correction and retains the previous limb-only path.
+Draw evidence reports `body_frame_applied` separately from endpoint reachability;
+this identifies the applied correction, not full blend or visual acceptance.
+Placement, board transforms, joint translations, bone lengths and physical
+bodies remain unchanged. The original held ticket and release blend bound it.
+This does not finish the native outgoing turn or remove the live orientation
+safety limit. Fresh visual and native acceptance are still required; RC4 is
+not ready for user testing.
+
 ## Authored contact frame correction
 
 The exact `4f832eca` batch produced a 187 ms spring hold, one release, stable

@@ -154,10 +154,10 @@ void report_alignment() noexcept {
                 float alignment{};
                 for(std::size_t i=0;i<3;++i)alignment+=contact.normal[i]*wall_normal[i];
                 logging::log(logging::Level::info,logging::Channel::skater,
-                    "ARCADE WALLPLANT CONTACT FRAME: occurrence={} ticket={} drawn_at={} joint={} reference={},{},{} normal={},{},{} plane={} normal_alignment={} target_error={} reachable={} authored_reference=true sole_surface_verified=false.",
+                    "ARCADE WALLPLANT CONTACT FRAME: occurrence={} ticket={} drawn_at={} joint={} reference={},{},{} normal={},{},{} plane={} normal_alignment={} target_error={} reachable={} body_frame_applied={} authored_reference=true sole_surface_verified=false.",
                     occurrence,ticket,evidence->feet_drawn_at,contact.joint,contact.reference_point[0],contact.reference_point[1],
                     contact.reference_point[2],contact.normal[0],contact.normal[1],contact.normal[2],
-                    reference->signed_plane_distance,alignment,contact.target_error,contact.reachable);
+                    reference->signed_plane_distance,alignment,contact.target_error,contact.reachable,contact.body_frame_applied);
             }
         }
         measured_draw=evidence->draws;++alignment_reports;
@@ -244,6 +244,7 @@ bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t s
         // render-pose path anchors its selected foot on this genuine wall plane
         // using current native placement, without changing physical bodies.
         play.contact=skater_animation::Play::Contact{planted->joint,point,normal,contact->frame};
+        play.contact->level_body=true;
         const auto accepted=skater_animation::try_hold(std::move(play),started_at+hold_duration_ms);
         if(!accepted)return false;
         ticket=accepted;held_owner=owner;occurrence=identity;began=started_at;holding=hold_pose=true;
