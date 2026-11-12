@@ -1,6 +1,7 @@
 // Animation Studio's keyframes apart from the game: turning numbers, blending keys, what a profile
 // and a clip file hold, and that edits never grow a pose.
 #include "Extension/AnimationStudio/anim_core.h"
+#include "Extension/Skater/body_pose.h"
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -134,6 +135,47 @@ void clips_read_back_and_broken_ones_are_refused() {
     check(game.turned_only.size() == 3 && !game.keeps_position(0) && game.keeps_position(2) && near(game.frames[4].position[2], 3),
           "Which joints a clip only turns reads back");
 }
+void body_sampling_uses_the_live_skeleton() {
+    using dingosdk::skater_animation::blend_body_pose;
+    Clip clip;
+    clip.joints = skeleton_joints;
+    clip.times = {0, .5f};
+    clip.frames.resize(2 * skeleton_joints);
+    clip.turned_only.assign(skeleton_joints, 1);
+    clip.turned_only[hips_joint] = 0;
+    constexpr std::uint16_t foot = 10;
+    clip.frames[foot].position = {0, 0, -1};
+    clip.frames[skeleton_joints + foot].position = {0, 0, -.1f};
+    clip.frames[skeleton_joints + hips_joint].position = {0, 0, -.2f};
+    clip.frames[skeleton_joints + placement_joint].position = {10, 20, 30};
+    clip.frames[skeleton_joints + 3].rotation = from_euler({90, 0, 0});
+    std::vector<Joint> native(skeleton_joints);
+    native[placement_joint].position = {3, 2, 1};
+    native[foot].position = {0, 0, -.8f};
+    const auto first_raw = world(clip.frame(0), foot).position[2];
+    const auto second_raw = world(clip.frame(1), foot).position[2] - 30;
+    check(first_raw < second_raw, "The raw clip would select its first frame toward negative Z");
+    auto first = native, second = native;
+    blend_body_pose(first, clip.frame(0), clip, 1);
+    blend_body_pose(second, clip.frame(1), clip, 1);
+    check(near(world(first, foot).position[2], .2f) && near(world(second, foot).position[2], 0),
+        "The rendered native skeleton instead reaches the wall with the second frame");
+    check(second[placement_joint].position == native[placement_joint].position,
+        "A clip's placement cannot translate the live root");
+    check(same_turn(second[3].rotation, native[3].rotation), "Non-body joints remain native");
+    check(second[foot].position == native[foot].position, "Rotation-only tracks keep actual bone lengths");
+    auto halfway = native;
+    blend_body_pose(halfway, clip.frame(1), clip, .5f);
+    check(near(halfway[hips_joint].position[2], -.1f), "Authored hip translation retains playback blending");
+    clip.frames[foot].rotation = from_euler({0, 45, 0});
+    auto turned = native;
+    blend_body_pose(turned, clip.frame(0), clip, 1);
+    check(same_turn(turned[foot].rotation, clip.frames[foot].rotation),
+        "Rotation-only tracks still apply their authored rotation");
+    auto unchanged = native;
+    blend_body_pose(unchanged, clip.frame(1), clip, 0);
+    check(unchanged[hips_joint].position == native[hips_joint].position, "Zero blend retains the native pose");
+}
 } // namespace
 
 int main() {
@@ -146,6 +188,7 @@ int main() {
         joints_hang_from_their_parents();
         profiles_read_back_and_bad_ones_are_refused();
         clips_read_back_and_broken_ones_are_refused();
+        body_sampling_uses_the_live_skeleton();
     } catch (const std::exception& error) {
         std::cerr << "FAILED: " << error.what() << '\n';
         return 1;

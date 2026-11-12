@@ -2,6 +2,7 @@
 #include "arcade_wallplant_animation_measurement.h"
 #include "Extension/AnimationStudio/game_clips.h"
 #include "Extension/Skater/skater_animation.h"
+#include "Extension/Skater/body_pose.h"
 #include "Extension/Skater/skater_skeleton.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
@@ -48,15 +49,17 @@ std::uint64_t previous_hold_occurrence{},previous_hold_start{};
 enum class Availability { unknown, not_started, loading, failed, busy, cannot_play, context_rejected, ready };
 Availability last_availability{Availability::unknown};
 unsigned availability_reports{};
-std::optional<PlantFrame> plant_frame(const anim_studio::Clip& clip,const std::array<float,3>& wall_direction) {
-    if(clip.joints<=bonecam::joint::left_foot || clip.frames.size()/clip.joints<clip.times.size())return {};
+std::optional<PlantFrame> plant_frame(const anim_studio::Clip& clip,const std::array<float,3>& wall_direction, std::span<const anim_studio::Joint> native) {
+    if(native.size()!=anim_studio::skeleton_joints || clip.joints!=native.size() || clip.joints<=bonecam::joint::left_foot || clip.frames.size()/clip.joints<clip.times.size())return {};
     std::optional<PlantFrame> best;
     // Select from authored native poses by reach toward the actual wall in
-    // the observed placement's frame. No guessed timestamp, imported
-    // animation, added body translation, or fabricated contact is involved.
+    // the observed placement's frame. Evaluate the same body-only replacement
+    // and preserved native bone positions as playback, not the clip's rest rig.
+    std::vector<anim_studio::Joint> pose(native.begin(),native.end());
     for(std::size_t i=0;i<clip.times.size();++i) {
         if(!std::isfinite(clip.times[i]) || clip.times[i]<0 || clip.times[i]>clip.duration())return {};
-        const auto pose=clip.frame(i);
+        std::copy(native.begin(),native.end(),pose.begin());
+        skater_animation::blend_body_pose(pose,clip.frame(i),clip,1.f);
         const auto placement=anim_studio::world(pose,anim_studio::placement_joint);
         const auto scale=(placement.scale[0]+placement.scale[1]+placement.scale[2])/3;
         if(!anim_studio::finite(placement) || !std::isfinite(scale) || scale<=.00001f)return {};
@@ -195,7 +198,7 @@ void tick(bool gameplay) noexcept {
         if (gameplay) {
             preload();
             skater_animation::prepare_playback();
-            (void)skater_animation::joint_observation(anim_studio::placement_joint);
+            (void)skater_animation::pose_observation();
         }
         if (!ticket) return;
         unsigned pose{};
@@ -239,15 +242,17 @@ bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t s
         if(!clips)return false;
         const auto& clip=clips->poses[pose];
         if(!hold_remaining_ms(started_at,GetTickCount64()) || started_at>UINT64_MAX-hold_duration_ms)return false;
-        const auto placement=skater_animation::joint_observation(anim_studio::placement_joint);
+        const auto native_pose=skater_animation::pose_observation();
         unsigned checked_pose{};
         // Match the existing render-publication freshness bound. A missing or
         // stale observation cannot be replaced by the requested future facing.
-        if(!placement || !std::isfinite(placement->age) || placement->age<0 || placement->age>.1 ||
-           !anim_studio::finite(placement->joint) || !context(owner,checked_pose,true) || checked_pose!=pose)return false;
-        const auto direction=hold_wall_direction(normal,placement->joint.rotation);
+        if(!native_pose || !std::isfinite(native_pose->age) || native_pose->age<0 || native_pose->age>.1 ||
+           !context(owner,checked_pose,true) || checked_pose!=pose)return false;
+        const auto placement=anim_studio::world(native_pose->joints,anim_studio::placement_joint);
+        if(!anim_studio::finite(placement))return false;
+        const auto direction=hold_wall_direction(normal,placement.rotation);
         if(!direction)return false;
-        const auto planted=plant_frame(*clip,*direction);
+        const auto planted=plant_frame(*clip,*direction,native_pose->joints);
         if(!planted)return false;
         skater_animation::Play play;
         play.clip=clip;play.blend=.04f;play.at=planted->time;
@@ -262,10 +267,10 @@ bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t s
         wall_point=point;wall_normal=normal;outgoing=forward;pose_reported=false;alignment_reports=0;measured_draw=0;
         if(!hold_remaining_ms(started_at,GetTickCount64()) || !context(owner,checked_pose,true) || checked_pose!=pose){cancel();return false;}
         logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE WALLPLANT POSE HOLD: ms={} occurrence={} ticket={} started={} clip_at={} joint={} reach={} clip={} mirrored={} duration={} held=true selection_basis=observed_native_placement component={} pose_sequence={} pose_age={} placement_rotation={},{},{},{} native_bind_pose_unobserved=true approximation=true actor_initialized=false foot_wall_alignment_verified=false.",
+            "ARCADE WALLPLANT POSE HOLD: ms={} occurrence={} ticket={} started={} clip_at={} joint={} reach={} clip={} mirrored={} duration={} held=true selection_basis=observed_native_body_pose component={} pose_sequence={} pose_age={} placement_rotation={},{},{},{} native_body_pose_observed=true approximation=true actor_initialized=false foot_wall_alignment_verified=false.",
             GetTickCount64(),identity,ticket,started_at,planted->time,planted->joint,planted->reach,names[pose/2],(pose&1u)!=0,duration,
-            placement->component,placement->sequence,placement->age,placement->joint.rotation[0],placement->joint.rotation[1],
-            placement->joint.rotation[2],placement->joint.rotation[3]);
+            native_pose->component,native_pose->sequence,native_pose->age,placement.rotation[0],placement.rotation[1],
+            placement.rotation[2],placement.rotation[3]);
         return true;
     } catch(...) {return false;}
 }

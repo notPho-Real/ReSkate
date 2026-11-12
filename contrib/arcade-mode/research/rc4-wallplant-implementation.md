@@ -155,13 +155,18 @@ pose facility borrows a bounded native pose during the physical plant. Placement
 joints and physics are untouched by the pose player. Playback ownership tickets prevent cleanup
 from cancelling a newer plugin clip. New trick input cancels the approximation.
 The held sample maximizes authored foot reach toward the contacted wall in a
-recently observed native placement frame, then blends back to native animation
-over 40 ms. The joint subscription reports its component, sequence and sample
+recently observed native body pose, then blends back to native animation
+over 40 ms. The pose subscription reports its component, sequence and sample
 age; a replaced component, missing sample or sample older than the existing
 100 ms render-publication bound cannot substitute the requested outgoing facing.
 Selection retains observed pitch and roll while the native body is still
 turning. The stance is rechecked before submission and after borrowing playback.
-The clip's native bind pose is still assumed for limb lengths. At draw time,
+Selection and playback share the body-only blend: native placement and bone
+positions without authored translation tracks are preserved, while authored hip
+translation and body rotations are applied. The snapshot precedes all pose-player
+changes, so selection cannot feed back a previously displayed replacement.
+A regression demonstrates that choosing from the clip rest rig can select the
+opposite frame from playback on the live skeleton. At draw time,
 the existing limb solver bends the selected leg toward the nearest point on the
 observed wall plane from its first drawn placement. The body collision point
 defines the plane, not the foot's height. That endpoint stays fixed for the
@@ -180,6 +185,15 @@ collection, their render times were unverified, and cleanup interrupted frame
 collection. A future capture must retain completed partial frames and start
 before waiting for the hold's rendered-foot log. These images cannot justify
 inventing a sole offset or claiming that a new pose has passed visual acceptance.
+
+The d77a10c6 trial retained continuous video through contact and release. It
+showed sustained outward/upward flight and clean landing, but the tucked pose
+did not establish a convincing planted sole. The spring hold lasted 181 ms and
+the measured physical root drifted 0.1174 m. The first stable pending-clear body
+velocity was (-2.3821,12.4946,5.2438) m/s versus requested
+(-2.4226,12.7,5.2031). Later native motion still requires comparison; this first
+consumed sample does not establish exact trajectory fidelity. The new live-body
+pose selection has not yet been validated on hardware.
 
 This is a native asset displayed through the existing pose player, not an
 authentic Footplant StateFlow/ActorController transition. The 160ms plant

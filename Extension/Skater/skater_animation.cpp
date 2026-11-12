@@ -1,4 +1,5 @@
 #include "skater_animation.h"
+#include "body_pose.h"
 #include "owned_playback_hold.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
@@ -103,22 +104,6 @@ Joint joint_of(const NativeBone& b) noexcept {
 constexpr std::uint32_t board_bones = 16;
 constexpr std::size_t board_mount = 2;
 Joint board_parent(const std::array<NativeBone, board_bones>& b) noexcept { return compose(joint_of(b[0]), joint_of(b[1])); }
-
-// The body: Hips (7) and every joint below it. A clip replaces these only, never the placement
-// joints the game moves the skater with, nor the board's bones in the skater's rig.
-const std::array<bool, skeleton_joints>& body_joints() {
-    static const auto mask = [] {
-        std::array<bool, skeleton_joints> m{};
-        for (std::uint16_t i = 0; i < skeleton_joints; ++i)
-            for (int at = i; at >= 0; at = parent(static_cast<std::uint16_t>(at)))
-                if (at == hips_joint) {
-                    m[i] = true;
-                    break;
-                }
-        return m;
-    }();
-    return mask;
-}
 
 // ---- a clip on the floor (Play::floor; PR 297's anim_studio.cpp) ------------------------------------------
 // The board under the feet, as when riding. The game's clips leave the board where the animators had it,
@@ -271,6 +256,7 @@ struct Plan {
     float record_seconds{}; // > 0: record this long, from the next update
     std::uint64_t record_serial{};
     std::optional<arm_reach::Goal> reach;
+    double pose_until{};
     double reach_until{}, joints_until{}; // now_seconds() until which the reach holds, and the joints are read
     Shown reach_shown{};
     std::optional<carry::Goal> carry;       // carry(), until carry_until
@@ -311,6 +297,9 @@ std::vector<std::pair<std::uint16_t, Joint>> joints_now;
 std::uintptr_t joints_component{};
 double joints_at{};
 std::uint64_t joints_sequence{};
+std::mutex pose_mutex;
+PoseObservation pose_now;
+double pose_at{};
 // The client thread's: each joint asked for and when it was last.
 std::vector<std::pair<std::uint16_t, double>> joints_asked;
 std::mutex plan_mutex;
@@ -629,10 +618,11 @@ void on_animation(std::uintptr_t component) noexcept {
         const double now = now_seconds();
         const bool reaching = snap->reach && now < snap->reach_until;
         const bool joints_wanted = now < snap->joints_until && !snap->joints_read.empty();
+        const bool pose_wanted = now < snap->pose_until;
         const bool posing = !snap->offsets.empty() && now < snap->offsets_until;
         const bool carrying = snap->carry && now < snap->carry_until;
         const bool in_room = room_shown.load(std::memory_order_acquire);
-        if (!busy && !reaching && !carrying && !joints_wanted && !posing && !in_room &&
+        if (!busy && !reaching && !carrying && !joints_wanted && !pose_wanted && !posing && !in_room &&
             (!snap->allowed || (!snap->play && snap->replacements.empty()))) {
             std::lock_guard lock(pending().mutex);
             pending().bones.clear();
@@ -675,6 +665,13 @@ void on_animation(std::uintptr_t component) noexcept {
         if (!room_shown.load(std::memory_order_acquire)) l.room_written_valid = false;
         l.pose.resize(layout.count);
         for (std::size_t i = 0; i < layout.count; ++i) l.pose[i] = joint_of(l.bones[i]);
+        if (pose_wanted && std::all_of(l.pose.begin(), l.pose.end(), anim_studio::finite)) {
+            std::lock_guard lock(pose_mutex);
+            pose_now.joints = l.pose;
+            pose_now.component = component;
+            ++pose_now.sequence;
+            pose_at = now;
+        }
         if (snap->play) {
             auto& pr = probe();
             std::lock_guard probe_lock(pr.mutex);
@@ -806,15 +803,7 @@ void on_animation(std::uintptr_t component) noexcept {
                 board_target = compose(placement, rel);
                 board_weight = weight;
             }
-            const auto& body = body_joints();
-            for (std::size_t i = 0; i < std::min<std::size_t>(layout.count, clip->joints); ++i) {
-                if (!body[i]) continue;
-                auto& j = l.pose[i];
-                const auto& c = l.custom[i];
-                j.rotation = slerp(j.rotation, c.rotation, weight);
-                if (clip->keeps_position(i)) continue; // the skater's own build
-                for (std::size_t k = 0; k < 3; ++k) j.position[k] += (c.position[k] - j.position[k]) * weight;
-            }
+            blend_body_pose(l.pose, l.custom, *clip, weight);
             first = 2;
             last = layout.count;
         }
@@ -1498,6 +1487,20 @@ std::optional<JointObservation> joint_observation(std::uint16_t index) {
     for(const auto& [at,w]:joints_now)
         if(at==index)return JointObservation{w,joints_component,now-joints_at,joints_sequence};
     return {};
+}
+std::optional<PoseObservation> pose_observation() {
+    const auto now = now_seconds();
+    if (plan_draft.pose_until < now + 1.0) {
+        plan_draft.pose_until = now + 2.0;
+        publish();
+    }
+    std::lock_guard lock(pose_mutex);
+    if (!pose_now.component || pose_now.component != live().component.load(std::memory_order_acquire) ||
+        !pose_now.sequence || now < pose_at || now - pose_at > .1 ||
+        pose_now.joints.size() != skeleton_joints) return {};
+    auto result = pose_now;
+    result.age = now - pose_at;
+    return result;
 }
 void set_replacements(std::vector<Replacement> list) {
     plan_draft.replacements = std::move(list);

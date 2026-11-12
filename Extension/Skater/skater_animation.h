@@ -126,6 +126,15 @@ struct JointObservation {
     std::uint64_t sequence{};
 };
 std::optional<JointObservation> joint_observation(std::uint16_t index);
+// Immutable parent-local pose, before this API applies clips or offsets. Reading
+// renews a bounded observation lease; component, age and sequence identify it.
+struct PoseObservation {
+    std::vector<anim_studio::Joint> joints;
+    std::uintptr_t component{};
+    double age{};
+    std::uint64_t sequence{};
+};
+std::optional<PoseObservation> pose_observation();
 // The hand joint's (joint()).
 std::optional<arm_reach::Placed> hand(arm_reach::Hand side);
 // The game menu's character room (Extension/World/character_room.h). While the walk looks for it,
