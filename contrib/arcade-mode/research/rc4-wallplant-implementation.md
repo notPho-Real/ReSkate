@@ -149,8 +149,10 @@ separate hardware evidence.
 
 ## Animation approximation
 
-The original regular/fakie Judo footplant clips are loaded from the installed
-game and mirrored through the existing animation library. The guarded local
+The original stationary Judo footplant loop is loaded from the installed
+game and mirrored through the existing animation library. Native/fakie context
+still requires the same independent corroboration; both borrow the shared held
+phase, rather than either variant's absorb/trick-out clip. The guarded local
 pose facility borrows a bounded native pose during the physical plant. Placement
 joints and physics are untouched by the pose player. Playback ownership tickets prevent cleanup
 from cancelling a newer plugin clip. New trick input cancels the approximation.
@@ -177,6 +179,18 @@ pose afterward. The same ownership ticket, hold deadline and release blend bound
 this contact constraint; it cannot change the root, board or physical bodies.
 Endpoint reach is not sole alignment, and the authored foot orientation is not
 replaced with a wall-normal alignment. Actual appearance still requires testing.
+
+The exact `42faaa55` trial failed visual acceptance despite one 182 ms spring
+hold, one outward/upward release, 2.688 s of subsequent airborne gameplay and a
+clean landing. Its selected 0.1167 s sample was frame 7 of the full clip. Native
+asset records identify frames 0–15 of that clip as absorb and frames 15–40 as
+trick-out; a separate 305-frame, 60 Hz, zero-distance loop supplies the held
+sequence. The correction loads that held asset exclusively. Focused regressions
+refuse absorb/release substitution, preserve the original and mirrored held
+poses, and reject failed loads without publishing a partial stance set.
+This routing correction does not establish sole alignment or physical freezing.
+The existing spring hold, actual draw evidence and native release still require
+fresh exact-source hardware acceptance before follow-up/combo tests.
 
 The exact 9987484b hardware trial sustained outward/upward motion through a
 clean landing after one 187 ms physical hold. Its two recovered screenshots

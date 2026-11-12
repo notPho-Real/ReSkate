@@ -1,5 +1,6 @@
 #include "arcade_wallplant_animation.h"
 #include "arcade_wallplant_animation_measurement.h"
+#include "arcade_wallplant_animation_assets.h"
 #include "Extension/AnimationStudio/game_clips.h"
 #include "Extension/Skater/skater_animation.h"
 #include "Extension/Skater/body_pose.h"
@@ -19,15 +20,12 @@
 
 namespace dingosdk::arcade_mode::wallplant_animation {
 namespace {
-// Original build-20260929 ClipControllerAssets in the level manifest. These
-// are read from the installed game; no animation data is shipped by RC4.
-constexpr std::array names{
-    "animation/dingo/c_proto_onb_grab_bs_1ft_judo_footplant_full",
-    "animation/dingo/c_proto_onb_grab_fakie_bs_1ft_judo_footplant_full"
-};
+// The native sequence uses this stationary clip for its held phase. The
+// similarly named full clips contain absorb and trick-out motion, not the
+// plant hold. Read the shared held clip from the installed game and mirror
+// it for the observed stance; no animation data is shipped by RC4.
 constexpr float duration = .16f; // The admitted physical hold; visual quality still needs native measurements.
 constexpr std::uint64_t lifetime_ms = 200; // 160 ms hold plus its 40 ms native-pose blend out.
-struct Clips { std::array<std::shared_ptr<const anim_studio::Clip>, 4> poses; };
 struct Loader {
     std::once_flag started;
     std::atomic<std::shared_ptr<const Clips>> clips;
@@ -105,14 +103,7 @@ void preload() {
         std::thread([library, &state] {
             state.loading_started.store(true, std::memory_order_release);
             try {
-                auto clips = std::make_shared<Clips>();
-                for (std::size_t i = 0; i < names.size(); ++i) {
-                    auto clip = library->load(names[i]);
-                    if (clip.empty() || !std::isfinite(clip.duration()) || clip.duration() <= 0)
-                        throw std::runtime_error("empty native footplant clip");
-                    clips->poses[i * 2 + 1] = std::make_shared<const anim_studio::Clip>(library->mirror(clip));
-                    clips->poses[i * 2] = std::make_shared<const anim_studio::Clip>(std::move(clip));
-                }
+                auto clips = std::make_shared<Clips>(load_held_poses(*library));
                 state.clips.store(std::move(clips), std::memory_order_release);
             } catch (...) { state.failed.store(true, std::memory_order_release); }
         }).detach();
@@ -143,7 +134,9 @@ bool context(const NoBailSkater& expected, unsigned& pose,bool admitted_hold=fal
         !memory::peek(exported + layout::exported_flags, exports) || exports[0] != flags[4] ||
         exports[1] != flags[2] || exports[2] != flags[3] ||
         !no_bail_skater(after) || after != before) return false;
-    pose = (flags[4] ? 2u : 0u) + (flags[2] ? 1u : 0u);
+    // Native/fakie context remains corroborated above. Its distinct full
+    // release clips do not select a different stationary held phase.
+    pose = flags[2] ? 1u : 0u;
     return true;
 }
 void report_pose(bool final) noexcept {
@@ -268,7 +261,7 @@ bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t s
         if(!hold_remaining_ms(started_at,GetTickCount64()) || !context(owner,checked_pose,true) || checked_pose!=pose){cancel();return false;}
         logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE WALLPLANT POSE HOLD: ms={} occurrence={} ticket={} started={} clip_at={} joint={} reach={} clip={} mirrored={} duration={} held=true selection_basis=observed_native_body_pose component={} pose_sequence={} pose_age={} placement_rotation={},{},{},{} native_body_pose_observed=true approximation=true actor_initialized=false foot_wall_alignment_verified=false.",
-            GetTickCount64(),identity,ticket,started_at,planted->time,planted->joint,planted->reach,names[pose/2],(pose&1u)!=0,duration,
+            GetTickCount64(),identity,ticket,started_at,planted->time,planted->joint,planted->reach,held_clip_name,pose!=0,duration,
             native_pose->component,native_pose->sequence,native_pose->age,placement.rotation[0],placement.rotation[1],
             placement.rotation[2],placement.rotation[3]);
         return true;

@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_wallplant_animation_measurement.h"
+#include "Extension/ArcadeMode/arcade_wallplant_animation_assets.h"
 #include "Extension/Skater/owned_playback_hold.h"
 #include <cstdlib>
 #include <iostream>
@@ -10,8 +11,37 @@ void check(bool value,const char* label) {
     ++checks;if(!value){std::cerr<<label<<'\n';std::exit(1);}
 }
 bool near(float a,float b){return std::abs(a-b)<.0001f;}
+struct PhaseLibrary {
+    mutable unsigned reads{}, mirrors{};
+    bool empty{}, fail_mirror{};
+    dingosdk::anim_studio::Clip load(std::string_view name) const {
+        ++reads;
+        // Absorb/trick-out assets are deliberately unavailable: a held play
+        // must resolve the native sequence's separate stationary asset.
+        if(name!="animation/dingo/c_proto_onb_grab_bs_1ft_judo_footplant_loop")
+            throw std::runtime_error("not the native held phase");
+        dingosdk::anim_studio::Clip clip;
+        if(!empty){clip.joints=1;clip.times={0,305.f/60.f};clip.frames.resize(2);clip.frames[0].position[0]=1;}
+        return clip;
+    }
+    dingosdk::anim_studio::Clip mirror(dingosdk::anim_studio::Clip clip) const {
+        ++mirrors;if(fail_mirror)throw std::runtime_error("mirror unavailable");
+        clip.frames[0].position[0]*=-1;return clip;
+    }
+};
 }
 int main() {
+    PhaseLibrary phases;
+    const auto poses=load_held_poses(phases);
+    check(phases.reads==1 && phases.mirrors==1,"both stances resolve one stationary native phase");
+    check(poses.poses[0] && poses.poses[1] && poses.poses[0]->frames[0].position[0]==1 &&
+        poses.poses[1]->frames[0].position[0]==-1,"held stance mirroring retains the original clip");
+    PhaseLibrary missing;missing.empty=true;bool refused=false;
+    try{(void)load_held_poses(missing);}catch(const std::runtime_error&){refused=true;}
+    check(refused && !missing.mirrors,"missing held asset cannot fall back to absorb or release");
+    PhaseLibrary unmirrored;unmirrored.fail_mirror=true;refused=false;
+    try{(void)load_held_poses(unmirrored);}catch(const std::runtime_error&){refused=true;}
+    check(refused,"mirror failure cannot publish a partial stance set");
     check(hold_remaining_ms(1000,1000)==160,"entry retains original160ms");
     check(hold_remaining_ms(1000,1080)==80,"delayed client gets only remaining hold time");
     check(hold_remaining_ms(1000,1159)==1,"last millisecond remains eligible");
