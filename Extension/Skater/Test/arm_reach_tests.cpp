@@ -177,6 +177,59 @@ void contact_plane_preserves_the_foot_height() {
           !plane_point({INFINITY,0,0},point,{0,0,1}) && !plane_point(foot,{0,NAN,0},{0,0,1}),
           "Invalid surface or pose cannot produce a contact target");
 }
+void authored_contact_frame_transfers_without_root_motion() {
+    for(const auto tip:{std::uint16_t{10},std::uint16_t{343}}) {
+        Joint source,support;
+        support.rotation=anim_studio::from_euler({25,-40,19});
+        support.position={3,4,-2};
+        const auto up=anim_studio::rotate(support.rotation,{0,1,0});
+        source.rotation=anim_studio::from_euler({-23,67,11});
+        source.scale={2,2,2};
+        for(std::size_t k=0;k<3;++k)source.position[k]=support.position[k]+up[k]*.24f;
+        const auto frame=contact_frame(source,support);
+        check(frame && std::abs(frame->clearance-.12f)<1e-5f,"Authored clearance removes source scale exactly once");
+        check(distance(anim_studio::rotate(source.rotation,frame->normal),up)<1e-5f,
+            "Contact normal comes from the rotated authored plane, not a guessed foot axis");
+        auto pose=t_pose();
+        const auto middle=static_cast<std::uint16_t>(anim_studio::parent(tip));
+        const auto upper_joint=static_cast<std::uint16_t>(anim_studio::parent(middle));
+        pose[middle].position={0,-.45f,.1f};pose[tip].position={0,-.4f,-.1f};
+        const auto before=pose;
+        const auto foot=anim_studio::world(pose,tip);
+        const auto root=anim_studio::world(pose,upper_joint);
+        const Vec3 plane{foot.position[0],root.position[1]-.6f,foot.position[2]-.12f};
+        const auto target=contact_target(foot,*frame,plane,{0,0,2});
+        check(target && std::abs(target->position[2]-plane[2]-.12f)<1e-5f,
+            "Joint origin stays outside the observed plane by the authored clearance");
+        auto at=target->position;at[1]=plane[1];
+        const auto reached=reach_joint(pose,tip,at,1,target->rotation);
+        check(reached.valid && reached.reached && distance(reached.hand.position,at)<2e-4f,
+            "Both legs reach the supported joint origin");
+        check(distance(anim_studio::rotate(reached.hand.rotation,frame->normal),{0,0,1})<2e-4f,
+            "The actual reached endpoint contact normal aligns with the wall");
+        for(std::size_t i=0;i<pose.size();++i) {
+            check(pose[i].position==before[i].position && pose[i].scale==before[i].scale,
+                "Contact orientation changes no joint translations or scales");
+            if(i!=tip && i!=middle && i!=upper_joint)
+                check(same_turn(pose[i].rotation,before[i].rotation),"Root, board and unrelated joints remain native");
+        }
+        pose=before;
+        check(!reach_joint(pose,tip,at,1,Quat{0,0,0,0}).valid && same_pose(pose,before),
+            "Invalid orientation cannot write a limb");
+        const auto far=reach_joint(pose,tip,{100,100,100},1,target->rotation);
+        check(far.valid && !far.reached && same_pose(pose,before),"Unreachable oriented contact does not stretch or teleport");
+        auto larger=foot;larger.scale={1.5f,1.5f,1.5f};
+        const auto scaled=contact_target(larger,*frame,plane,{0,0,1});
+        check(scaled && std::abs(scaled->position[2]-plane[2]-.18f)<1e-5f,"Current native scale applies clearance once");
+        larger.scale[1]=2;
+        check(!contact_target(larger,*frame,plane,{0,0,1}),"Nonuniform scale cannot silently change the contact frame");
+        auto invalid=*frame;invalid.clearance=-.01f;
+        check(!contact_target(foot,invalid,plane,{0,0,1}),"Negative clearance cannot embed the endpoint");
+        invalid=*frame;invalid.normal={0,0,0};
+        check(!contact_target(foot,invalid,plane,{0,0,1}),"Missing source normal is refused");
+        check(!contact_target(foot,*frame,plane,{0,0,0}),"Missing collision plane is refused");
+    }
+}
 } // namespace
 
 int main() {
@@ -189,6 +242,7 @@ int main() {
         a_broken_pose_is_left_alone();
         held_endpoint_uses_native_placement_without_stretching();
         contact_plane_preserves_the_foot_height();
+        authored_contact_frame_transfers_without_root_motion();
     } catch (const std::exception& error) {
         std::cerr << "FAILED: " << error.what() << '\n';
         return 1;

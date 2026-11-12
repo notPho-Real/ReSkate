@@ -128,8 +128,45 @@ std::optional<Vec3> plane_point(const Vec3& tip, const Vec3& point, const Vec3& 
     return finite(result) ? std::optional(result) : std::nullopt;
 }
 
-Reached reach_joint(std::span<Joint> pose, std::uint16_t tip, const Vec3& at, float weight) noexcept {
+bool valid_contact_frame(const ContactFrame& frame) noexcept {
+    return finite(frame.normal) && std::abs(dot(frame.normal,frame.normal)-1.f)<.001f &&
+        std::isfinite(frame.clearance) && frame.clearance>=0;
+}
+namespace {
+bool usable(const Joint& joint) {
+    float square{};
+    for(const auto value:joint.rotation)square+=value*value;
+    return anim_studio::finite(joint) && std::abs(square-1.f)<.001f && joint.scale[0]>1e-6f &&
+        std::abs(joint.scale[0]-joint.scale[1])<1e-5f && std::abs(joint.scale[0]-joint.scale[2])<1e-5f;
+}
+}
+std::optional<ContactFrame> contact_frame(const Joint& endpoint,const Joint& support) noexcept {
+    if(!usable(endpoint) || !usable(support))return {};
+    const auto normal=rotate(support.rotation,{0,1,0});
+    ContactFrame frame{rotate(conjugate(endpoint.rotation),normal),
+        dot(sub(endpoint.position,support.position),normal)/endpoint.scale[0]};
+    return valid_contact_frame(frame)?std::optional(frame):std::nullopt;
+}
+std::optional<Placed> contact_target(const Joint& endpoint,const ContactFrame& frame,
+        const Vec3& point,const Vec3& normal) noexcept {
+    if(!usable(endpoint) || !valid_contact_frame(frame))return {};
+    const auto projected=plane_point(endpoint.position,point,normal);
+    if(!projected)return {};
+    const auto outward=unit(normal,{0,1,0});
+    const auto rotation=normalised(multiply(arc(rotate(endpoint.rotation,frame.normal),outward),endpoint.rotation));
+    const auto position=add(*projected,scaled(outward,frame.clearance*endpoint.scale[0]));
+    if(!finite(position) || !finite(rotation))return {};
+    return Placed{position,rotation,endpoint.scale[0]};
+}
+
+Reached reach_joint(std::span<Joint> pose, std::uint16_t tip, const Vec3& at, float weight,
+        const std::optional<Quat>& rotation) noexcept {
     if(!finite(at) || !std::isfinite(weight) || weight<0 || weight>1)return {};
+    if(rotation) {
+        float square{};
+        for(const auto value:*rotation)square+=value*value;
+        if(!finite(*rotation) || std::abs(square-1.f)>.001f)return {};
+    }
     std::array<std::uint16_t,64> joints{};
     std::size_t count{};
     int index=tip;
@@ -174,8 +211,9 @@ Reached reach_joint(std::span<Joint> pose, std::uint16_t tip, const Vec3& at, fl
     pose[joints[count-3]].rotation=blend(saved_root.rotation,normalised(multiply(conjugate(placed[count-4].rotation),root_rotation)),weight);
     pose[joints[count-2]].rotation=blend(saved_middle.rotation,normalised(multiply(conjugate(root_rotation),middle_rotation)),weight);
     if(compose(pose,chain_joints,placed)) {
-        // Keep the authored endpoint orientation as the two bones bend.
-        pose[tip].rotation=blend(saved_tip.rotation,normalised(multiply(conjugate(placed[count-2].rotation),end.rotation)),weight);
+        // Preserve the authored endpoint orientation unless the caller supplied
+        // a measured contact frame. Root and bone lengths remain untouched.
+        pose[tip].rotation=blend(saved_tip.rotation,normalised(multiply(conjugate(placed[count-2].rotation),rotation.value_or(end.rotation))),weight);
         if(compose(pose,chain_joints,placed))return {true,placed[count-1],true};
     }
     pose[joints[count-3]]=saved_root;pose[joints[count-2]]=saved_middle;pose[tip]=saved_tip;

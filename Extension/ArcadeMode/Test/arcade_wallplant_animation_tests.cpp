@@ -1,5 +1,6 @@
 #include "Extension/ArcadeMode/arcade_wallplant_animation_measurement.h"
 #include "Extension/ArcadeMode/arcade_wallplant_animation_assets.h"
+#include "Extension/ArcadeMode/arcade_wallplant_animation_contact.h"
 #include "Extension/Skater/owned_playback_hold.h"
 #include <cstdlib>
 #include <iostream>
@@ -13,7 +14,8 @@ void check(bool value,const char* label) {
 bool near(float a,float b){return std::abs(a-b)<.0001f;}
 struct PhaseLibrary {
     mutable unsigned reads{}, mirrors{};
-    bool empty{}, fail_mirror{};
+    bool empty{}, fail_mirror{}, missing_ground{};
+    std::string_view joint_name(std::uint16_t joint) const {return !missing_ground && joint==0?"Ground":"";}
     dingosdk::anim_studio::Clip load(std::string_view name) const {
         ++reads;
         // Absorb/trick-out assets are deliberately unavailable: a held play
@@ -31,6 +33,28 @@ struct PhaseLibrary {
 };
 }
 int main() {
+    using namespace dingosdk;
+    for(const auto planted:{bonecam::joint::right_foot,bonecam::joint::left_foot}) {
+        anim_studio::Clip clip;
+        clip.joints=anim_studio::skeleton_joints;clip.times={0,.1f};
+        clip.frames.resize(2*clip.joints);clip.turned_only.resize(clip.joints,1);
+        for(std::size_t i=0;i<2;++i) {
+            auto* pose=clip.frames.data()+i*clip.joints;
+            // Ground is below the lower foot. The raised foot reaches farther
+            // toward the wall but must not replace the authored planted foot.
+            pose[2].position={0,-1,0};
+            pose[planted].position={0,-.9f,0};
+            const auto raised=planted==bonecam::joint::right_foot?bonecam::joint::left_foot:bonecam::joint::right_foot;
+            pose[raised].position={0,-.4f,2};
+        }
+        std::vector<anim_studio::Joint> native(clip.frame(0).begin(),clip.frame(0).end());
+        const auto selected=plant_contact(clip,2,{0,0,1},native);
+        check(selected && selected->sample.joint==planted && near(selected->frame.clearance,.1f),
+            "Both stances select the authored ground foot even when the tucked foot reaches farther toward the wall");
+        check(selected && selected->sample.time==0,"Equal held geometry keeps the first sample");
+        clip.frames[2].rotation={NAN,0,0,1};
+        check(!plant_contact(clip,2,{0,0,1},native),"Broken authored plane refuses selection");
+    }
     PhaseLibrary phases;
     const auto poses=load_held_poses(phases);
     check(phases.reads==1 && phases.mirrors==1,"both stances resolve one stationary native phase");
@@ -42,6 +66,9 @@ int main() {
     PhaseLibrary unmirrored;unmirrored.fail_mirror=true;refused=false;
     try{(void)load_held_poses(unmirrored);}catch(const std::runtime_error&){refused=true;}
     check(refused,"mirror failure cannot publish a partial stance set");
+    PhaseLibrary no_ground;no_ground.missing_ground=true;refused=false;
+    try{(void)load_held_poses(no_ground);}catch(const std::runtime_error&){refused=true;}
+    check(refused,"missing authored support plane cannot publish a contact clip");
     check(hold_remaining_ms(1000,1000)==160,"entry retains original160ms");
     check(hold_remaining_ms(1000,1080)==80,"delayed client gets only remaining hold time");
     check(hold_remaining_ms(1000,1159)==1,"last millisecond remains eligible");

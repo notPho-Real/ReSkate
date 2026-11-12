@@ -1,6 +1,7 @@
 #include "arcade_wallplant_animation.h"
 #include "arcade_wallplant_animation_measurement.h"
 #include "arcade_wallplant_animation_assets.h"
+#include "arcade_wallplant_animation_contact.h"
 #include "Extension/AnimationStudio/game_clips.h"
 #include "Extension/Skater/skater_animation.h"
 #include "Extension/Skater/body_pose.h"
@@ -47,31 +48,6 @@ std::uint64_t previous_hold_occurrence{},previous_hold_start{};
 enum class Availability { unknown, not_started, loading, failed, busy, cannot_play, context_rejected, ready };
 Availability last_availability{Availability::unknown};
 unsigned availability_reports{};
-std::optional<PlantFrame> plant_frame(const anim_studio::Clip& clip,const std::array<float,3>& wall_direction, std::span<const anim_studio::Joint> native) {
-    if(native.size()!=anim_studio::skeleton_joints || clip.joints!=native.size() || clip.joints<=bonecam::joint::left_foot || clip.frames.size()/clip.joints<clip.times.size())return {};
-    std::optional<PlantFrame> best;
-    // Select from authored native poses by reach toward the actual wall in
-    // the observed placement's frame. Evaluate the same body-only replacement
-    // and preserved native bone positions as playback, not the clip's rest rig.
-    std::vector<anim_studio::Joint> pose(native.begin(),native.end());
-    for(std::size_t i=0;i<clip.times.size();++i) {
-        if(!std::isfinite(clip.times[i]) || clip.times[i]<0 || clip.times[i]>clip.duration())return {};
-        std::copy(native.begin(),native.end(),pose.begin());
-        skater_animation::blend_body_pose(pose,clip.frame(i),clip,1.f);
-        const auto placement=anim_studio::world(pose,anim_studio::placement_joint);
-        const auto scale=(placement.scale[0]+placement.scale[1]+placement.scale[2])/3;
-        if(!anim_studio::finite(placement) || !std::isfinite(scale) || scale<=.00001f)return {};
-        for(const auto joint:{bonecam::joint::left_foot,bonecam::joint::right_foot}) {
-            const auto foot=anim_studio::world(pose,joint);
-            if(!anim_studio::finite(foot))return {};
-            auto relative=anim_studio::rotate(anim_studio::conjugate(placement.rotation),
-                {foot.position[0]-placement.position[0],foot.position[1]-placement.position[1],foot.position[2]-placement.position[2]});
-            for(auto& value:relative)value/=scale;
-            if(!consider_plant_frame(best,clip.times[i],joint,relative,wall_direction))return {};
-        }
-    }
-    return best;
-}
 
 void report_availability(const NoBailSkater& expected, Availability reason) noexcept {
     if (reason == last_availability || availability_reports >= 32) return;
@@ -171,6 +147,19 @@ void report_alignment() noexcept {
             evidence->right_foot[0],evidence->right_foot[1],evidence->right_foot[2],
             wall_point[0],wall_point[1],wall_point[2],wall_normal[0],wall_normal[1],wall_normal[2],
             left->signed_plane_distance,left->tangent_distance,right->signed_plane_distance,right->tangent_distance);
+        if(evidence->contact) {
+            const auto& contact=*evidence->contact;
+            const auto reference=measure_foot_wall(contact.reference_point,wall_point,wall_normal);
+            if(reference) {
+                float alignment{};
+                for(std::size_t i=0;i<3;++i)alignment+=contact.normal[i]*wall_normal[i];
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE WALLPLANT CONTACT FRAME: occurrence={} ticket={} drawn_at={} joint={} reference={},{},{} normal={},{},{} plane={} normal_alignment={} target_error={} reachable={} authored_reference=true sole_surface_verified=false.",
+                    occurrence,ticket,evidence->feet_drawn_at,contact.joint,contact.reference_point[0],contact.reference_point[1],
+                    contact.reference_point[2],contact.normal[0],contact.normal[1],contact.normal[2],
+                    reference->signed_plane_distance,alignment,contact.target_error,contact.reachable);
+            }
+        }
         measured_draw=evidence->draws;++alignment_reports;
     } catch(...) {}
 }
@@ -245,14 +234,16 @@ bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t s
         if(!anim_studio::finite(placement))return false;
         const auto direction=hold_wall_direction(normal,placement.rotation);
         if(!direction)return false;
-        const auto planted=plant_frame(*clip,*direction,native_pose->joints);
+        const auto contact=plant_contact(*clip,clips->ground,*direction,native_pose->joints);
+        if(!contact)return false;
+        const auto planted=std::optional(contact->sample);
         if(!planted)return false;
         skater_animation::Play play;
         play.clip=clip;play.blend=.04f;play.at=planted->time;
         // The authored clip supplies the pose and leg bend. The existing
         // render-pose path anchors its selected foot on this genuine wall plane
         // using current native placement, without changing physical bodies.
-        play.contact=skater_animation::Play::Contact{planted->joint,point,normal};
+        play.contact=skater_animation::Play::Contact{planted->joint,point,normal,contact->frame};
         const auto accepted=skater_animation::try_hold(std::move(play),started_at+hold_duration_ms);
         if(!accepted)return false;
         ticket=accepted;held_owner=owner;occurrence=identity;began=started_at;holding=hold_pose=true;

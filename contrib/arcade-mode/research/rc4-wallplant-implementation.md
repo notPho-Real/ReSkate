@@ -1,5 +1,45 @@
 # RC4 wallplant prototype
 
+## Authored contact frame correction
+
+The exact `4f832eca` batch produced a 187 ms spring hold, one release, stable
+consumed root velocity `(-1.76857,12.42918,4.82503)` m/s and 2.701 seconds of
+air before a clean landing. The continuous video still showed a tucked pose;
+ankle proximity alone was not convincing foot contact. The same build separately
+showed a native Kickflip followed by physical Tail Manual for 1.44984 seconds.
+That capture ended during Manual, so a completed return to both axles was not
+observed. A genuine no-air-A wall contact produced no rebound. The repeated-A
+trial did not produce its first rebound and is inconclusive. Native combo
+ownership and scoring remain unverified.
+
+The held asset's installed rig and channels identify an authored `Ground`
+reference and a lower, extended foot; the other foot is tucked with the board.
+The native on-board scalars remain set for both feet and cannot identify the
+plant. The existing renderer previously projected an ankle onto the wall while
+retaining its original orientation. It neither preserved authored ankle
+clearance nor aligned the foot's contact frame with the wall.
+
+The correction resolves `Ground` by the existing library's joint-name API and
+selects the lower foot in that reference frame before comparing held-frame wall
+reach on the observed body. It derives a foot-local support normal and unscaled
+clearance from those actual transforms. The generic render-only limb solver
+transfers that reference to the observed wall plane, keeps its first tangential
+anchor and orientation throughout the bounded ticket, and rotates only the last
+three limb joints. No assumed sole axis, fixed sole thickness, root translation,
+bone stretching or native physics write is added. Missing or invalid reference
+geometry is refused. An unreachable target remains unchanged and is reported
+as unreachable, rather than counted as a successful contact.
+
+Draw-correlated evidence now reports the resulting authored reference point,
+normal alignment, target error and reachability. This is not extracted mesh sole
+geometry, a physical collision or proof of visual acceptance. The new candidate
+requires continuous video and native measurements. The prior spring drift
+(0.115 m root, 0.156 m board), later velocity overshoot and orientation limit
+remain limitations: that trial requested a 2.0569 radian turn, while the native
+1.1 radian constraint permitted 1.0139 radians after the motion reserve. The
+contact correction does not alter that safety constraint or claim full outgoing
+alignment. RC4 remains experimental and is not ready for user testing.
+
 This implements an experimental wallplant path. Windows compilation and live
 wallplant acceptance are pending. No native score, combo credit, animation state
 ID, landing state or bail flag is manufactured. The milestone contract remains

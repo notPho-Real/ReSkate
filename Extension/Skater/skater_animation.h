@@ -23,7 +23,11 @@ using anim_studio::Clip;
 // A clip from now on, in place: `speed` times as fast, blended in and out over `blend` seconds,
 // once or over and over.
 struct Play {
-    struct Contact { std::uint16_t joint{}; anim_studio::Vec3 point{}, normal{}; };
+    struct Contact {
+        std::uint16_t joint{};
+        anim_studio::Vec3 point{}, normal{};
+        std::optional<arm_reach::ContactFrame> frame;
+    };
     std::shared_ptr<const Clip> clip;
     float speed{1}, blend{0.15f};
     bool loop{};
@@ -68,6 +72,12 @@ void cancel_play(std::uint64_t ticket);
 // Copied evidence from actual local animation/render callbacks for an owned play.
 // These counters do not establish a native ActorController or a foot-wall contact.
 struct PlaybackEvidence {
+    struct Contact {
+        std::uint16_t joint{};
+        anim_studio::Vec3 reference_point{}, normal{};
+        float target_error{};
+        bool reachable{};
+    };
     std::uint64_t ticket{}, samples{}, writes{}, draws{};
     float first_sample{}, last_sample{};
     // World joint origins from the exact body pose copied by the renderer,
@@ -77,6 +87,9 @@ struct PlaybackEvidence {
     std::uint64_t feet_drawn_at{};
     anim_studio::Vec3 left_foot{}, right_foot{};
     bool feet_valid{};
+    // Authored support reference after the renderer copied it, not mesh sole
+    // geometry or a manufactured native collision.
+    std::optional<Contact> contact;
 };
 std::optional<PlaybackEvidence> playback_evidence(std::uint64_t ticket) noexcept;
 // The clip of play(), moved to `seconds` (clamped to it), held there or playing on from it.

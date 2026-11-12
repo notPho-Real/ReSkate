@@ -330,6 +330,7 @@ bool observe_playback(std::uint64_t ticket,unsigned phase,float time=0) {
     else if(phase==2) {
         if(evidence.draws!=UINT64_MAX)++evidence.draws;
         evidence.feet_valid=false;
+        evidence.contact.reset();
     }
     return true;
 }
@@ -416,9 +417,12 @@ struct Pending {
     std::uint64_t play_ticket{}, written_ticket{};
     std::uint64_t contact_ticket{};
     std::optional<Vec3> contact_anchor;
+    std::optional<Quat> contact_rotation;
     Vec3 left_foot{}, right_foot{};
     std::uintptr_t feet_component{};
     bool feet_valid{};
+    bool contact_reachable{};
+    std::optional<PlaybackEvidence::Contact> contact_evidence;
 };
 Pending& pending() {
     static auto* p = new Pending;
@@ -1097,6 +1101,8 @@ void on_render(std::uintptr_t animation_interface) noexcept {
         p.game.clear(); // only ever what this render wrote over
         p.written_ticket=0;
         p.feet_valid=false;
+        p.contact_reachable=false;
+        p.contact_evidence.reset();
         const auto count = [](int Probe::*n) {
             auto& pr = probe();
             std::lock_guard probe_lock(pr.mutex);
@@ -1165,14 +1171,25 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                 if(p.contact_ticket!=p.play_ticket) {
                     p.contact_ticket=p.play_ticket;
                     const auto foot=world(rendered,play.contact->joint);
+                    p.contact_rotation.reset();
                     p.contact_anchor=finite(foot)?arm_reach::plane_point(foot.position,
                         play.contact->point,play.contact->normal):std::nullopt;
+                    if(play.contact->frame) {
+                        const auto target=arm_reach::contact_target(foot,*play.contact->frame,
+                            play.contact->point,play.contact->normal);
+                        p.contact_anchor=target?std::optional(target->position):std::nullopt;
+                        if(target)p.contact_rotation=target->rotation;
+                    }
                 }
                 // Keep the first drawn foot's tangential position throughout
                 // this ticket. Reprojecting every draw would slide on the wall.
                 // The limb solver still refuses unreachable targets.
-                if(p.contact_anchor && arm_reach::reach_joint(rendered,play.contact->joint,*p.contact_anchor,weight).valid)
-                    for(std::size_t i=0;i<current.size();++i)current[i].rotation=rendered[i+2].rotation;
+                if(p.contact_anchor) {
+                    const auto reached=arm_reach::reach_joint(rendered,play.contact->joint,*p.contact_anchor,weight,p.contact_rotation);
+                    p.contact_reachable=reached.valid && reached.reached;
+                    if(reached.valid && reached.reached)
+                        for(std::size_t i=0;i<current.size();++i)current[i].rotation=rendered[i+2].rotation;
+                }
             }
         }
         if (poke(layout.buffer + p.first * sizeof(NativeBone), current.data(), current.size() * sizeof(NativeBone))) {
@@ -1195,6 +1212,19 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                     if(finite(left) && finite(right)) {
                         p.left_foot=left.position;p.right_foot=right.position;
                         p.feet_component=component;p.feet_valid=true;
+                        if(contact_plan->serial==p.written_ticket && contact_plan->play && contact_plan->play->contact &&
+                           contact_plan->play->contact->frame && p.contact_anchor) {
+                            const auto& contact=*contact_plan->play->contact;
+                            const auto foot=world(rendered,contact.joint);
+                            if(finite(foot)) {
+                                const auto normal=rotate(foot.rotation,contact.frame->normal);
+                                auto reference=foot.position;
+                                for(std::size_t k=0;k<3;++k)reference[k]-=normal[k]*contact.frame->clearance*foot.scale[0];
+                                const auto target_error=std::hypot(foot.position[0]-(*p.contact_anchor)[0],
+                                    foot.position[1]-(*p.contact_anchor)[1],foot.position[2]-(*p.contact_anchor)[2]);
+                                p.contact_evidence=PlaybackEvidence::Contact{contact.joint,reference,normal,target_error,p.contact_reachable};
+                            }
+                        }
                     }
                 }
             }
@@ -1221,6 +1251,7 @@ void on_drawn(std::uintptr_t animation_interface) noexcept {
                     playback_observed.left_foot=p.left_foot;
                     playback_observed.right_foot=p.right_foot;
                     playback_observed.feet_valid=true;
+                    playback_observed.contact=p.contact_evidence;
                 }
             }
             (void)poke(p.game_buffer + p.game_first * sizeof(NativeBone), p.game.data(), p.game.size() * sizeof(NativeBone));
@@ -1341,7 +1372,8 @@ std::uint64_t try_hold(Play clip,std::uint64_t deadline) {
     if(clip.contact && (clip.contact->joint>=clip.clip->joints || clip.contact->joint<2 ||
        !std::all_of(clip.contact->point.begin(),clip.contact->point.end(),
            [](float value){return std::isfinite(value) && std::abs(value)<1e6f;}) ||
-       !arm_reach::plane_point(clip.contact->point,clip.contact->point,clip.contact->normal)))return 0;
+       !arm_reach::plane_point(clip.contact->point,clip.contact->point,clip.contact->normal) ||
+       (clip.contact->frame && !arm_reach::valid_contact_frame(*clip.contact->frame))))return 0;
     // Publish the pause and its expiry together; no intermediate unbounded
     // paused plan is ever visible to the animation thread.
     clip.paused=true;borrowed_play=0;plan_draft.play=std::move(clip);

@@ -53,8 +53,19 @@ Reached hand_of(std::span<const Joint> pose, Hand hand) noexcept;
 // A bounded two-bone reach using the pose's own parent chain and bend plane.
 // Rotates only the last three joints; no root movement, scaling or stretching.
 // An unreachable point leaves the pose unchanged. `hand` reports the tip.
-Reached reach_joint(std::span<Joint> pose, std::uint16_t tip, const Vec3& at, float weight) noexcept;
+Reached reach_joint(std::span<Joint> pose, std::uint16_t tip, const Vec3& at, float weight,
+                    const std::optional<Quat>& rotation = {}) noexcept;
 // Nearest point on an observed surface plane. This is an animation target,
 // not a collision observation; callers still validate the surface and reach.
 std::optional<Vec3> plane_point(const Vec3& tip, const Vec3& point, const Vec3& normal) noexcept;
+// An authored support plane expressed in the endpoint's frame. Clearance is
+// in unscaled endpoint units, not an assumed sole thickness or a collision.
+struct ContactFrame { Vec3 normal{}; float clearance{}; };
+bool valid_contact_frame(const ContactFrame& frame) noexcept;
+std::optional<ContactFrame> contact_frame(const Joint& endpoint, const Joint& support) noexcept;
+// Transfer that reference to an observed plane, retaining the endpoint's twist
+// and tangential position. The returned point is the joint origin, outside the
+// surface by the authored clearance. Reachability remains a separate check.
+std::optional<Placed> contact_target(const Joint& endpoint, const ContactFrame& frame,
+                                     const Vec3& point, const Vec3& normal) noexcept;
 }
