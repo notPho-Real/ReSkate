@@ -5,6 +5,25 @@
 #include <cmath>
 
 namespace dingosdk::skater_animation {
+// Fix the endpoint from the held authored pose, before the entry blend. Using
+// the first partially blended foot would lock a different anchor at each draw
+// cadence and force the fully blended leg back into the incoming crouch.
+inline std::optional<arm_reach::Placed> held_contact_target(
+        std::span<const anim_studio::Joint> native, const anim_studio::Clip& clip,
+        float time, std::uint16_t foot, const arm_reach::ContactFrame& frame,
+        const anim_studio::Vec3& point, const anim_studio::Vec3& normal) {
+    using namespace anim_studio;
+    if(native.size()!=skeleton_joints || clip.joints!=skeleton_joints ||
+       clip.times.empty() || clip.frames.size()/clip.joints<clip.times.size() ||
+       !std::isfinite(time) || time<0 || time>clip.duration() ||
+       (foot!=bonecam::joint::left_foot && foot!=bonecam::joint::right_foot))return {};
+    std::array<Joint,skeleton_joints> pose,sample;
+    std::copy(native.begin(),native.end(),pose.begin());
+    sample=pose;
+    clip.sample(time,sample);
+    blend_body_pose(pose,sample,clip,1);
+    return arm_reach::contact_target(world(pose,foot),frame,point,normal);
+}
 // A held authored body can inherit the physical placement's bank and pitch.
 // Level its frame about the existing hips, then solve both feet: the observed
 // surface endpoint and the other foot's original board-relative endpoint.

@@ -113,6 +113,7 @@ struct AirMotionFrame {
     bool native_required{}; // Production always requires original native proof.
     NativeAirSpinProof native{};
     NativeFlipSelection native_action{}; // From that same original physics frame.
+    bool retained_air_contact{}; // An owned contact hold, not a new grounded launch basis.
 };
 struct AirMotionOutput {
     bool ready{}, vertical{}, angular{};
@@ -178,7 +179,7 @@ public:
     }
     explicit AirMotion(GameplayProfile profile = {}) noexcept : profile_(profile), air_limits_(profile) {}
     void yield_ordinary_motion() noexcept {
-        pending_ = vertical_ = limits_active_ = false;
+        pending_ = vertical_ = limits_active_ = grounded_ = false;
         launch_blocked_ = true;
         air_limits_.reset();
     }
@@ -219,6 +220,13 @@ public:
         if (pending_ && (frame.now < pending_at_ || frame.now - pending_at_ > 150)) pending_ = false;
         if(intent.release_sequence && !intent.launch.ordinary_writer()) { pending_=vertical_=false; launch_blocked_=true; }
         if (intent.angular_allowed && intent.yaw_rate == 0) spin_blocked_ = false;
+        if (frame.state==100 && frame.retained_air_contact) {
+            // Native wall reconstruction briefly reports ground during an
+            // owned air hold. Do not re-arm ledge gravity, speed limits or a
+            // charged launch when that hold releases into its native curve.
+            yield_ordinary_motion();
+            return {};
+        }
         if (ground) {
             // Physics can observe landing and relaunch between input polls.
             // A stale held rate cannot restart the completed spin episode.

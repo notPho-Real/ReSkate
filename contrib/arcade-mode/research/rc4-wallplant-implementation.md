@@ -1,5 +1,37 @@
 # RC4 wallplant prototype
 
+## Contact motion ownership and anchor sampling
+
+The `cd4b7e41` trial did not pass gameplay acceptance. It held for 188 ms,
+released once, and first reached consumed root velocity
+`(-2.23201,12.48428,5.21087)` m/s. A later consumed sample reached
+`(-3.37574,15.67908,7.95185)`: the requested 12.7 m/s launch does not establish
+the subsequent native trajectory. The video still showed folded legs, and
+the actual outgoing physical orientation remained incomplete. Subsequent air
+lasted 2.69924 seconds before native ground return without a bail. No combo
+chain or negative-input acceptance is claimed for this build.
+
+Two routing defects are corrected in the existing path. Ordinary motion now
+retires its remembered ground basis when yielding, and the same owner-bound
+contact proof used for combo continuity prevents transient native ground from
+re-arming ordinary gravity and speed limits. This preserves native trajectory
+ownership without another impulse. Genuine later ground restores normal Ollie
+controls. The proof does not create or alter native states.
+
+The render contact anchor previously came from the first partially blended
+foot. That made its fixed position and twist depend on entry draw timing and
+could constrain the held animation back toward the incoming crouch. It now
+samples the held authored frame at full weight using current placement and
+native bone lengths, then retains that one surface anchor for the ticket.
+Entry/release blends, reachability refusal, board transforms and physical
+bodies retain their existing behavior.
+
+These defects have focused regressions. They are not established as the sole
+causes of the captured acceleration or visual failure. Actual spring motion,
+sole appearance, outgoing orientation and native combo/scoring still require
+fresh exact-build verification. RC4 remains experimental and is not ready for
+user testing.
+
 ## Held body registration
 
 Exact source `0b09695a` passed Windows and integration CI. Its native trial

@@ -1547,7 +1547,8 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
         const auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,
             bodies.root[1], velocities[0][1], spins[0][1], ordinary, velocities[0][0], velocities[0][2],true,
             arcade_mode::NativeAirSpinProof::from_frame(native_frame),
-            {native_frame.flip_known,native_frame.flip_id,native_frame.selection_object}});
+            {native_frame.flip_known,native_frame.flip_id,native_frame.selection_object},
+            arcade_mode::wallplant_runtime::preserves_combo(native_frame,now)});
         // Angular writer observation: controller result, before native writes.
         angular_row.output_known=true;angular_row.output_ready=output.ready;angular_row.output_angular=output.angular;angular_row.output_rate=output.spin_y;
         NoBailSkater after{};

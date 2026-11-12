@@ -1178,14 +1178,14 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                     p.contact_anchor=finite(foot)?arm_reach::plane_point(foot.position,
                         play.contact->point,play.contact->normal):std::nullopt;
                     if(play.contact->frame) {
-                        const auto target=arm_reach::contact_target(foot,*play.contact->frame,
-                            play.contact->point,play.contact->normal);
+                        const auto target=held_contact_target(rendered,*play.clip,play.at,
+                            play.contact->joint,*play.contact->frame,play.contact->point,play.contact->normal);
                         p.contact_anchor=target?std::optional(target->position):std::nullopt;
                         if(target)p.contact_rotation=target->rotation;
                     }
                 }
-                // Keep the first drawn foot's tangential position throughout
-                // this ticket. Reprojecting every draw would slide on the wall.
+                // Keep the held pose's first anchor throughout this ticket.
+                // Reprojecting every draw would slide on the wall.
                 // The limb solver still refuses unreachable targets.
                 if(p.contact_anchor) {
                     p.contact_body_frame_applied=play.contact->level_body && p.contact_rotation &&

@@ -36,6 +36,40 @@ struct PhaseLibrary {
 int main() {
     using namespace dingosdk;
     for(const auto foot:{bonecam::joint::left_foot,bonecam::joint::right_foot}) {
+        std::array<anim_studio::Joint,anim_studio::skeleton_joints> native;
+        native[1].position={3,2,-4};
+        native[1].rotation=anim_studio::from_euler({35,50,10});
+        const auto knee=static_cast<std::uint16_t>(anim_studio::parent(foot));
+        const auto thigh=static_cast<std::uint16_t>(anim_studio::parent(knee));
+        native[knee].position={0,-.4f,0};native[foot].position={0,-.4f,0};
+        native[thigh].rotation=anim_studio::from_euler({110,0,0});
+        anim_studio::Clip clip;
+        clip.joints=anim_studio::skeleton_joints;clip.times={0};
+        clip.frames.assign(native.begin(),native.end());clip.turned_only.resize(clip.joints,1);
+        clip.frames[thigh].rotation=anim_studio::from_euler({10,0,0});
+        const arm_reach::ContactFrame frame{{0,1,0},.05f};
+        const anim_studio::Vec3 point{3,2,-5},normal{0,0,1};
+        auto full=native;
+        skater_animation::blend_body_pose(full,clip.frame(0),clip,1);
+        const auto expected=arm_reach::contact_target(anim_studio::world(full,foot),frame,point,normal);
+        check(expected.has_value(),"Full authored endpoint supplies a valid surface anchor");
+        for(const float blend:{0.f,.25f,.5f,.75f,1.f}) {
+            auto drawn=native;
+            skater_animation::blend_body_pose(drawn,clip.frame(0),clip,blend);
+            const auto before=drawn;
+            const auto target=skater_animation::held_contact_target(drawn,clip,0,foot,frame,point,normal);
+            check(target.has_value(),"Entry blend admits the same authored contact");
+            for(unsigned k=0;k<3;++k)
+                check(near(target->position[k],expected->position[k]),"First render weight cannot pin the incoming crouch endpoint");
+            for(unsigned k=0;k<4;++k)
+                check(near(target->rotation[k],expected->rotation[k]),"First render weight cannot pin the incoming foot twist");
+            check(drawn[1].rotation==before[1].rotation && drawn[foot].position==before[foot].position,
+                "Anchor selection does not alter placement or native limb length");
+        }
+        check(!skater_animation::held_contact_target(native,clip,1,foot,frame,point,normal),"Out-of-clip held time refuses anchoring");
+        check(!skater_animation::held_contact_target(native,clip,0,anim_studio::hips_joint,frame,point,normal),"Non-foot endpoint refuses anchoring");
+    }
+    for(const auto foot:{bonecam::joint::left_foot,bonecam::joint::right_foot}) {
         std::vector<anim_studio::Joint> pose(anim_studio::skeleton_joints);
         pose[1].position={3,2,-4};
         pose[1].rotation=anim_studio::from_euler({35,50,10});
