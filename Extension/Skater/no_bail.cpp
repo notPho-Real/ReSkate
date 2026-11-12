@@ -2088,7 +2088,9 @@ std::uint32_t choose_state(std::uintptr_t selector, std::uint32_t current) {
     return chosen;
 }
 void skeleton_response(std::uintptr_t rig, float seconds, bool wipeout) {
-    observe_arcade_wallplant_native_response(rig,wipeout);
+    static thread_local std::uint64_t sequence{};
+    const auto callback=++sequence;
+    observe_arcade_wallplant_native_response(rig,wipeout,callback,0);
     // The state post-update can raise another request after the selector ran.
     // Filter at this consumer, then let native constraints and recovery run.
     if (filter_requests(rig, &Owner::rig)) wipeout = false;
@@ -2108,7 +2110,9 @@ void skeleton_response(std::uintptr_t rig, float seconds, bool wipeout) {
                 if (listener) listener(skater, seconds, wipeout);
         }
     }
+    observe_arcade_wallplant_native_response(rig,wipeout,callback,1);
     protection().skeleton_original(rig, seconds, wipeout);
+    observe_arcade_wallplant_native_response(rig,wipeout,callback,2);
 }
 bool clear_contact_output(std::uintptr_t contacts) noexcept {
     if (contacts < 0x10000 || contacts > highest - body_contact_output_offset) return false;

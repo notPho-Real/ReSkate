@@ -36,6 +36,32 @@ struct PhaseLibrary {
 int main() {
     using namespace dingosdk;
     for(const auto foot:{bonecam::joint::left_foot,bonecam::joint::right_foot}) {
+        std::array<anim_studio::Joint,anim_studio::skeleton_joints> pose;
+        for(const auto tip:{bonecam::joint::left_foot,bonecam::joint::right_foot}) {
+            pose[static_cast<std::size_t>(anim_studio::parent(tip))].position={0,-.4f,0};
+            pose[tip].position={0,-.4f,0};
+        }
+        const auto original=pose;
+        const arm_reach::ContactFrame frame{{0,1,0},.05f};
+        const anim_studio::Vec3 point{0,-.2f,-.6f},normal{0,0,1};
+        const auto endpoint=anim_studio::world(pose,foot);
+        const auto projected=arm_reach::contact_target(endpoint,frame,point,normal);
+        check(projected.has_value(),"Downward authored foot has a wall projection");
+        check(!arm_reach::reach_joint(pose,foot,projected->position,1,projected->rotation).reached,
+            "Projecting the downward foot cannot reach the observed wall");
+        const auto target=skater_animation::held_surface_target(endpoint,frame,point,normal);
+        check(target && near(target->position[0],point[0]) && near(target->position[1],point[1]) &&
+            near(target->position[2],point[2]+frame.clearance),"Held foot targets the measured contact with authored clearance");
+        check(arm_reach::reach_joint(pose,foot,target->position,1,target->rotation).reached,
+            "Measured collision point is reachable without stretching the leg");
+        for(std::size_t j=0;j<pose.size();++j)
+            check(pose[j].position==original[j].position && pose[j].scale==original[j].scale,
+                "Reaching the collision point preserves articulation lengths and placement");
+        check(!skater_animation::held_surface_target(endpoint,frame,point,{0,0,0}),"Invalid contact normal is refused");
+        const auto scaled=skater_animation::held_surface_target(endpoint,frame,point,{0,0,2});
+        check(scaled && scaled->position==target->position,"Normal magnitude cannot change authored clearance");
+    }
+    for(const auto foot:{bonecam::joint::left_foot,bonecam::joint::right_foot}) {
         std::array<anim_studio::Joint,anim_studio::skeleton_joints> native;
         native[1].position={3,2,-4};
         native[1].rotation=anim_studio::from_euler({35,50,10});
@@ -136,8 +162,6 @@ int main() {
             check(early[j].position==early_before[j].position && early[j].rotation==early_before[j].rotation,
                 "Refused first draw preserves the native pose");
         auto later=pose;
-        check(!skater_animation::blend_held_contact(later,held,0,foot,rejected_target->position,rejected_target->rotation,1),
-            "Retaining the refused endpoint would reject the later reachable placement");
         check(skater_animation::blend_held_surface_contact(later,held,0,foot,surface,
             levelled_tip.position,wall_normal,1,held_anchor),"A later reachable placement establishes the held contact");
         check(held_anchor.has_value(),"Successful solve commits the anchor");
@@ -252,7 +276,7 @@ int main() {
         held.frames[held.joints+anim_studio::hips_joint].position={0,0,-5};
         const auto unconstrained=plant_contact(held,2,{0,0,-1},native,true);
         check(unconstrained && near(unconstrained->sample.time,.1f),"Direction-only ranking prefers a pose beyond the real wall");
-        const auto constrained=plant_contact(held,2,{0,0,-1},native,true,ContactSurface{{0,0,-.35f},{0,0,1}});
+        const auto constrained=plant_contact(held,2,{0,0,-1},native,true,ContactSurface{{0,-.4f,-.35f},{0,0,1}});
         check(constrained && constrained->sample.time==0,"Actual wall reach selects the feasible authored sample");
         check(!plant_contact(held,2,{0,0,-1},native,true,ContactSurface{{0,0,-50},{0,0,1}}),
             "No feasible held sample means no visual contact admission");

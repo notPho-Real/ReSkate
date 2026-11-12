@@ -2669,7 +2669,10 @@ void noclip_skater_motion(std::uintptr_t rig, std::uintptr_t context,
 
 namespace dingosdk {
 using namespace client_source::detail;
-void observe_arcade_wallplant_native_response(std::uintptr_t rig,bool wipeout) noexcept {
+void observe_arcade_wallplant_native_response(std::uintptr_t rig,bool wipeout,
+        std::uint64_t callback,unsigned stage) noexcept {
+    if(stage>2)return;
+    const auto phase=stage==0?"before_listeners":stage==1?"before_skeleton":"after_skeleton";
     if(!wallplant_hold_core.load(std::memory_order_acquire) &&
        !wallplant_observed_release_core.load(std::memory_order_acquire))return;
     SourceLastError error;
@@ -2687,7 +2690,7 @@ void observe_arcade_wallplant_native_response(std::uintptr_t rig,bool wipeout) n
            now-observation.at>arcade_mode::WallplantHoldContinuity::duration_ms) {
             observation={};wallplant_observed_release_core.store(0,std::memory_order_release);return;
         }
-        --observation.remaining;
+        if(stage==2)--observation.remaining;
     } else if(now<hold.started || now-hold.started>arcade_mode::WallplantHoldContinuity::duration_ms+grace)return;
     try {
         NoBailSkater owner{};
@@ -2731,8 +2734,8 @@ void observe_arcade_wallplant_native_response(std::uintptr_t rig,bool wipeout) n
         reader.verify();NoBailSkater after{};
         if(!no_bail_skater(after) || after!=owner)return;
         logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE WALLPLANT DRIVE: occurrence={} contact={} ms={} phase={} state={} root={},{},{} board={},{},{} velocity0={},{},{} velocity8={},{},{} target={},{},{} reference={},{},{} derived_valid={} derived_velocity={},{},{} previous_target={},{},{} read_only=true atomic_snapshot=false.",
-            hold.command.input_sequence,hold.command.contact,now,released?"released":"held",selected,
+            "ARCADE WALLPLANT DRIVE: occurrence={} contact={} ms={} phase={} stage={} callback={} state={} root={},{},{} board={},{},{} velocity0={},{},{} velocity8={},{},{} target={},{},{} reference={},{},{} derived_valid={} derived_velocity={},{},{} previous_target={},{},{} read_only=true atomic_snapshot=false.",
+            hold.command.input_sequence,hold.command.contact,now,released?"released":"held",phase,callback,selected,
             root_position[0],root_position[1],root_position[2],board_position[0],board_position[1],board_position[2],
             root_velocity[0],root_velocity[1],root_velocity[2],velocity[0],velocity[1],velocity[2],
             target_position[0],target_position[1],target_position[2],reference_position[0],reference_position[1],reference_position[2],
@@ -2741,8 +2744,8 @@ void observe_arcade_wallplant_native_response(std::uintptr_t rig,bool wipeout) n
         // This is an original native callback observation, not the earlier
         // pending-write readback and not a hook of the bail predicate itself.
         logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE WALLPLANT NATIVE: occurrence={} contact={} ms={} elapsed={} phase=before_skeleton state={} core={} rig={} context={} original_wipeout={} limit={} observed_error={} last_target_error={} flags={} velocity8={},{},{} spin0={},{},{} spin8={},{},{} actual={},{},{},{},{},{},{},{},{} reference={},{},{},{},{},{},{},{},{}.",
-            hold.command.input_sequence,hold.command.contact,now,now-hold.started,selected,owner.core,owner.rig,owner.context,
+            "ARCADE WALLPLANT NATIVE: occurrence={} contact={} ms={} elapsed={} phase={} callback={} state={} core={} rig={} context={} original_wipeout={} limit={} observed_error={} last_target_error={} flags={} velocity8={},{},{} spin0={},{},{} spin8={},{},{} actual={},{},{},{},{},{},{},{},{} reference={},{},{},{},{},{},{},{},{}.",
+            hold.command.input_sequence,hold.command.contact,now,now-hold.started,phase,callback,selected,owner.core,owner.rig,owner.context,
             wipeout,orientation.limit,game::orientation_target::error(a,r),hold.orientation.applied_error,flags,
             velocity[0],velocity[1],velocity[2],spin0[0],spin0[1],spin0[2],spin8[0],spin8[1],spin8[2],
             a[0],a[1],a[2],a[4],a[5],a[6],a[8],a[9],a[10],r[0],r[1],r[2],r[4],r[5],r[6],r[8],r[9],r[10]);

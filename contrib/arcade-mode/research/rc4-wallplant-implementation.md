@@ -503,8 +503,41 @@ atomic. Measurements retain the attempted endpoint separately from the held
 endpoint, including when the first solve fails.
 
 Both-foot regressions cover an unreachable first placement, a reachable later
-placement that the old retained target would reject, and refusal to slide an
+placement, and refusal to slide an
 established anchor. This isolates a source defect, not the exclusive cause of
 the captured failure. Hold duration, physical placement, launch velocity and
 native orientation constraints are unchanged. Hardware fidelity and the full
 trick/combo sequence remain unverified.
+
+# Anchor the held foot to the collision point
+
+Projecting the low authored ground foot onto the wall preserves its tangential
+coordinates. That point can be beyond the leg's reach even when the observed
+collision point is reachable. Held-body selection and drawing now use the
+validated collision point plus the authored sole clearance along the unit
+wall normal. They retain the same authored contact rotation, joint lengths,
+board-foot constraint and atomic reach refusal. Other contact modes keep
+their existing projection. The first successful held endpoint stays fixed.
+
+Both-foot regressions reproduce a low foot whose wall projection is beyond
+reach while the actual contact point is reachable. They also verify that
+normal magnitude cannot change clearance and that the solve preserves bone
+lengths and placement. This corrects the target construction without moving
+physical bodies or manufacturing a collision.
+
+The latest native capture still does not establish the intended release:
+root vertical velocity was 12.4882 m/s, briefly fell to 1.0936 m/s, then rose
+to 13.4746 m/s despite a 12.7 m/s request. The selected native curve began
+near 12.7960 m/s. The source of the later acceleration is not established.
+The existing bounded observer now records before listeners, immediately
+before the original skeleton response, and immediately after it, with a
+shared callback sequence. Four release callbacks remain the maximum within
+the existing 160 ms window. These are read-only observations, not additional
+impulses, and do not certify motion from a pending-write receipt.
+
+Offline captured-pose inspection is supporting evidence only. The external
+capture clock and native millisecond clock are not aligned; matching their
+numeric values does not identify the same draw or hold. Contact-state poses
+support the target correction but do not replace a new exact-source native
+trial. Planted-foot alignment, outgoing orientation, release motion, the
+full trick chain and native combo/scoring remain unverified.

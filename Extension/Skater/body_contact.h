@@ -5,6 +5,21 @@
 #include <cmath>
 
 namespace dingosdk::skater_animation {
+// A held contact uses the observed point, not the tangential coordinates of
+// an authored ground foot. Projecting that low foot onto a wall can put the
+// target beyond the leg even when the actual collision point is reachable.
+inline std::optional<arm_reach::Placed> held_surface_target(const anim_studio::Joint& foot,
+        const arm_reach::ContactFrame& frame, const anim_studio::Vec3& point,
+        const anim_studio::Vec3& normal) {
+    auto target=arm_reach::contact_target(foot,frame,point,normal);
+    if(target) {
+        const float length=std::hypot(normal[0],normal[1],normal[2]);
+        for(unsigned axis=0;axis<3;++axis)
+            target->position[axis]=point[axis]+normal[axis]/length*frame.clearance*foot.scale[0];
+        for(const auto value:target->position)if(!std::isfinite(value))return {};
+    }
+    return target;
+}
 // Prepare the same body frame for contact selection, anchoring and drawing.
 // Keep the board foot fixed while the hips lose inherited placement bank.
 inline bool level_contact_pose(std::span<anim_studio::Joint> pose, std::uint16_t foot) {
@@ -54,7 +69,8 @@ inline std::optional<arm_reach::Placed> held_contact_target(
     clip.sample(time,sample);
     blend_body_pose(pose,sample,clip,1);
     if(level_body && !level_contact_pose(pose,foot))return {};
-    return arm_reach::contact_target(world(pose,foot),frame,point,normal);
+    return level_body?held_surface_target(world(pose,foot),frame,point,normal):
+        arm_reach::contact_target(world(pose,foot),frame,point,normal);
 }
 // A held authored body can inherit the physical placement's bank and pitch.
 // Level its frame about the existing hips, then solve both feet: the observed
@@ -94,7 +110,7 @@ inline bool blend_held_contact(std::span<anim_studio::Joint> native,
     blend_body_pose(native,posed,clip,weight);
     return true;
 }
-// A projected endpoint is only a candidate until the full pose can reach it.
+// A surface endpoint is only a candidate until the full pose can reach it.
 // Keep the first successful endpoint fixed; a refused first draw must not lock
 // subsequent draws to an unreachable point from an earlier placement.
 inline bool blend_held_surface_contact(std::span<anim_studio::Joint> native,

@@ -55,7 +55,8 @@ inline std::optional<PlantContact> plant_contact(const anim_studio::Clip& clip,s
         const auto foot=anim_studio::world(pose,selected);
         if(!anim_studio::finite(placement) || !anim_studio::finite(foot) || !std::isfinite(scale) || scale<=.00001f)return {};
         if(surface) {
-            const auto target=arm_reach::contact_target(foot,*reference,surface->point,surface->normal);
+            const auto target=level_body?skater_animation::held_surface_target(foot,*reference,surface->point,surface->normal):
+                arm_reach::contact_target(foot,*reference,surface->point,surface->normal);
             if(!target)return {};
             auto reached_pose=pose;
             const auto reached=arm_reach::reach_joint(reached_pose,selected,target->position,1,target->rotation);
