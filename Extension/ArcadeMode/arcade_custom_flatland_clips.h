@@ -25,6 +25,9 @@ inline CustomTrickClips make_casper_clips(std::span<const anim_studio::Joint> se
     const std::array<std::uint16_t,3> front=left_front?std::array<std::uint16_t,3>{341,342,343}:std::array<std::uint16_t,3>{8,9,10};
     const std::array<std::uint16_t,3> back=left_front?std::array<std::uint16_t,3>{8,9,10}:std::array<std::uint16_t,3>{341,342,343};
     const auto front_foot=world(base,front[2]),back_foot=world(base,back[2]);
+    const auto front_toe=author::unpoint(front_foot,world(base,static_cast<std::uint16_t>(front[2]+1)).position);
+    if(length(front_toe)<.05f || length(front_toe)>.25f)
+        throw std::invalid_argument("flatland forefoot proportions");
     const auto shape=board_geometry::from_pose(base,board);
     // Ground is the native skeleton's support height in the placement frame.
     // Only the displayed board is fitted to it; rigid bodies remain native.
@@ -51,21 +54,35 @@ inline CustomTrickClips make_casper_clips(std::span<const anim_studio::Joint> se
         author::turn(out.pose,42,axis_angle(axis({1,0,0}),(7*k.upper-12*balance)*.01745329252f));
         author::turn(out.pose,44,axis_angle(axis({0,0,1}),side*(5*k.upper+10*balance)*.01745329252f));
         author::turn(out.pose,103,axis_angle(axis({1,0,0}),-5*k.upper*.01745329252f));
+        const auto foot_rotation=[&](const Joint& native,float ankle) {
+            const auto level_foot=normalised(multiply(multiply(level,conjugate(board.rotation)),native.rotation));
+            return normalised(multiply(axis_angle(axis({1,0,0}),ankle*k.contact*.01745329252f),
+                slerp(native.rotation,level_foot,k.contact)));
+        };
+        const auto front_rotation=foot_rotation(front_foot,-6);
+        const auto front_direction=rotate(front_rotation,front_toe);
+        const auto board_direction=rotate(conjugate(out.board.rotation),front_direction);
+        // Hook the toe end under the near rail; the toe joint stays outside it.
+        // The ankle and lower leg
+        // stay outside the deck; a centered ankle target cuts through the board.
+        Joint front_frame=front_foot;front_frame.rotation=front_rotation;
+        const auto supported=author::anchored(front_frame,front_toe,
+            author::point(out.board,{-std::copysign(.13f,board_direction[0]),.045f,.25f}));
+        const float front_outward=-std::copysign(1.f,dot(front_direction,axis({1,0,0})));
+        const auto front_target=add(add(front_foot.position,scaled(sub(supported.position,front_foot.position),k.contact)),
+            axis({front_outward*k.front_side,k.front_lift,0}));
         const auto foot_target=[&](const Joint& native,Vec3 contact,float lift,float lateral) {
             const auto on_board=author::point(out.board,contact);
             const auto target=add(native.position,scaled(sub(on_board,native.position),k.contact));
             const float outward=author::unpoint(board,native.position)[0]<0?-1.f:1.f;
             return add(target,axis({outward*lateral,lift,0}));
         };
-        const auto front_target=foot_target(front_foot,{side*.025f,.025f,.25f},k.front_lift,k.front_side);
         const auto back_target=foot_target(back_foot,{-side*.015f,-.10f,-.32f},k.back_lift,k.back_side);
         const std::array<author::ReachTarget,2> supports{{{front,front_target},{back,back_target}}};
         (void)author::lower_for_reach(out.pose,hips_joint,supports,.15f*k.contact);
         const auto foot=[&](const std::array<std::uint16_t,3>& chain,const Joint& native,
                 const Vec3& target,float ankle) {
-            const auto level_foot=normalised(multiply(multiply(level,conjugate(board.rotation)),native.rotation));
-            const auto rotation=normalised(multiply(axis_angle(axis({1,0,0}),ankle*k.contact*.01745329252f),
-                slerp(native.rotation,level_foot,k.contact)));
+            const auto rotation=foot_rotation(native,ankle);
             // Preserve the native knee's side of the leg; use its bend plane,
             // with the skater's forward direction only as a straight-leg fallback.
             const auto hip=world(base,chain[0]),knee=world(base,chain[1]);

@@ -43,7 +43,10 @@ void clips(){
             check(same(seed[0],pose[0]) && same(seed[1],pose[1]),"native placement is never authored");
             pose[0]=pose[1]=Joint{};
             const auto a=world(pose,front),b=world(pose,back);
-            check(length(sub(a.position,point(board,{side*.025f,.025f,.25f})))<.015f,"front instep stays at its authored board target across balance");
+            const auto toe=unpoint(board,world(pose,static_cast<std::uint16_t>(front+1)).position);
+            check(std::abs(unpoint(board,a.position)[0])>.15f,"front ankle stays outside the board across balance");
+            check(toe[1]>.025f && toe[1]<.065f && std::abs(toe[0])>.115f && std::abs(toe[0])<.145f,
+                "front forefoot supports the grip side near the rail");
             check(length(sub(b.position,point(board,{-side*.015f,-.10f,-.32f})))<.015f,"rear sole stays at its authored inverted-tail target across balance");
             check(rotate(board.rotation,{0,1,0})[1]<-.5f,"range keeps trucks above the deck");
             auto unplaced=seed;unplaced[0]=unplaced[1]=Joint{};
@@ -133,14 +136,77 @@ void tall_manual_support(){
         for(float time:{1.f,1.5f,2.f,2.5f,3.f}) {
             std::vector<Joint> pose(skeleton_joints);Joint board;
             clips.entry_hold->sample(time,pose);clips.entry_hold->sample_board(time,board);
-            check(length(sub(world(pose,front).position,point(board,{side*.025f,.025f,.25f})))<.015f,
-                "a tall rear-weighted Manual still reaches the low front support target");
+            const auto toe=unpoint(board,world(pose,static_cast<std::uint16_t>(front+1)).position);
+            check(toe[1]>.025f && toe[1]<.065f && std::abs(toe[0])>.115f && std::abs(toe[0])<.145f,
+                "a tall rear-weighted Manual still reaches the low forefoot support");
             check(length(sub(world(pose,back).position,point(board,{-side*.015f,-.10f,-.32f})))<.015f,
                 "settling the pelvis preserves rear foot support");
             check(seed[hips_joint].position[1]-pose[hips_joint].position[1]<=.201f,
                 "support settling is bounded and never stretches leg bones");
         }
     }
+}
+void front_ankle_clearance(){
+    // The under-board support belongs to the forefoot. Putting the ankle there
+    // makes the lower leg pass through the deck, even when an IK target is met.
+    for(bool goofy:{false,true}) {
+        const auto clips=make_casper_clips(flatland_pose_fixture(goofy),{});
+        const auto ankle=static_cast<std::uint16_t>(goofy?10:343);
+        for(float time:{1.f,1.5f,2.f,2.5f,3.f}) {
+            std::vector<Joint> pose(skeleton_joints);Joint board;
+            clips.entry_hold->sample(time,pose);clips.entry_hold->sample_board(time,board);
+            const auto a=unpoint(board,world(pose,ankle).position);
+            const auto knee=unpoint(board,world(pose,static_cast<std::uint16_t>(ankle-1)).position);
+            check(std::abs(a[0])>.15f,"front ankle clears the deck rail instead of entering the deck");
+            if(a[1]*knee[1]<=0 && std::abs(knee[1]-a[1])>.0001f) {
+                const auto crossing=add(a,scaled(sub(knee,a),-a[1]/(knee[1]-a[1])));
+                check(std::abs(crossing[0])>.15f || std::abs(crossing[2])>.45f,
+                    "lower leg crosses the deck plane outside its silhouette with clearance");
+            }
+        }
+    }
+}
+void shoe_clearance(){
+    // Independent volume proxy, not equality with the author's IK target.
+    // Sample the lower leg, instep and toe end against the deck slab throughout
+    // the baked path. Rendered shoe meshes still require separate game review.
+    const auto slab_distance=[](const Vec3& point) {
+        const Vec3 half{.105f,.012f,.4f};float squared=0;
+        for(unsigned i=0;i<3;++i){const float d=std::max(0.f,std::abs(point[i])-half[i]);squared+=d*d;}
+        return std::sqrt(squared);
+    };
+    for(bool goofy:{false,true}) {
+        auto seed=flatland_pose_fixture(goofy);seed[hips_joint].position[1]+=.05f;
+        const auto clips=make_casper_clips(seed,{});
+        const auto front=static_cast<std::uint16_t>(goofy?10:343);
+        for(const auto& clip:{clips.entry_hold,clips.direct_exit,clips.flip_exit}) {
+            const float duration=clip==clips.entry_hold?.3f:clip->duration();
+            for(unsigned frame=0;frame<=static_cast<unsigned>(duration*240);++frame) {
+                const float time=static_cast<float>(frame)/240;
+                std::vector<Joint> pose(skeleton_joints);Joint board;
+                clip->sample(time,pose);clip->sample_board(time,board);
+                const auto ankle=world(pose,front).position;
+                const auto toe=world(pose,static_cast<std::uint16_t>(front+1)).position;
+                auto direction=sub(toe,ankle);direction[1]=0;
+                const std::array<Vec3,4> line{world(pose,static_cast<std::uint16_t>(front-1)).position,
+                    ankle,toe,add(toe,scaled(unit(direction,{1,0,0}),.06f))};
+                for(unsigned segment=0;segment<3;++segment)for(unsigned i=0;i<=96;++i) {
+                    const auto at=add(line[segment],scaled(sub(line[segment+1],line[segment]),static_cast<float>(i)/96));
+                    const float radius=segment==0?.045f:.03f;
+                    check(slab_distance(unpoint(board,at))>=radius,
+                        "lower leg and shoe envelope clear the deck throughout entry, flip and reversed exit");
+                }
+            }
+        }
+    }
+}
+void contact_anchor(){
+    Joint frame;frame.position={3,2,1};frame.rotation=from_euler({17,43,-12});frame.scale={.9f,1.1f,1.2f};
+    const Vec3 anchor{.12f,-.06f,.01f},target{-1,.2f,4};
+    const auto placed=anchored(frame,anchor,target);
+    check(length(sub(point(placed,anchor),target))<.00001f,"contact anchor accounts for rotation and scale");
+    check(placed.rotation==frame.rotation && placed.scale==frame.scale,"contact anchoring preserves orientation and scale");
+    frame.position[0]=std::numeric_limits<float>::quiet_NaN();rejected([&]{(void)anchored(frame,anchor,target);});
 }
 void range_motion(){
     RangeMotion still{},moving{.08f,.16f};
@@ -177,4 +243,4 @@ void validation(){
     rejected([&]{(void)bake(invalid);});
 }
 }
-int main(){low_stance();clips();raised_shoulders();tall_manual_support();range_motion();validation();std::cout<<checks<<" authored motion checks passed (synthetic rig; not native contact acceptance)\n";}
+int main(){contact_anchor();shoe_clearance();front_ankle_clearance();low_stance();clips();raised_shoulders();tall_manual_support();range_motion();validation();std::cout<<checks<<" authored motion checks passed (synthetic rig; not native contact acceptance)\n";}

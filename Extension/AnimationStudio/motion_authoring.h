@@ -39,6 +39,14 @@ inline Vec3 unpoint(const Joint& frame,const Vec3& p) noexcept {
     for(unsigned i=0;i<3;++i)v[i]/=frame.scale[i];
     return v;
 }
+// Place a particular point of a rigid joint frame on a support target. An
+// ankle pivot is not the sole or instep; author contacts using their own anchor.
+inline Joint anchored(Joint frame,const Vec3& local_anchor,const Vec3& target) {
+    if(!anim_studio::finite(frame) || !pose_math::finite(local_anchor) || !pose_math::finite(target))
+        throw std::invalid_argument("invalid authored contact anchor");
+    frame.position=add(frame.position,sub(target,point(frame,local_anchor)));
+    return frame;
+}
 // Turn a joint in the composed frame without changing any bone length.
 inline void turn(std::span<Joint> pose,std::uint16_t joint,const Quat& delta) noexcept {
     const auto p=parent(joint);

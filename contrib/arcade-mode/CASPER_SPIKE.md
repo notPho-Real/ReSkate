@@ -748,3 +748,25 @@ checks observation renewal, unchanged active ownership and exit continuity, and
 rejects absent, wrong-owner, expired, negative-age and nonfinite samples. Focused
 sanitizer and six related integration suites pass. The exact-source Windows
 build and repeated native rolling-entry visual check remain required.
+
+### Keep the front ankle outside the deck
+
+The owner identified a visible front ankle/deck intersection in the previously
+accepted capture. That visual acceptance is withdrawn. Reaching an authored
+ankle target did not prove a valid shoe contact: the target put the ankle beneath
+the middle of the board and left the lower leg passing through it.
+
+The support now anchors the forefoot using its native toe offset. The toe end
+hooks under the near rail while the ankle and lower leg stay outside the deck.
+Animation Studio's reusable rigid-point anchor preserves joint rotation and
+scale. Entry lowers the front shoe outside the rail before sliding underneath;
+the flip first withdraws it, then lifts it before rotating the board. Recovery
+waits for an upright deck. The direct exit reverses the same clear entry path.
+
+A new regression fails on the old centered ankle target. Independent deck-slab
+and shoe/lower-leg volume checks sample the baked transitions in both stances;
+these checks do not equate successful IK with contact acceptance. Focused
+sanitizer and related integration suites pass. Captured native-rig checks stay
+private. These geometric proxies do not describe the exact rendered shoe mesh:
+new game-rendered contact and transition review remains mandatory before any
+readiness claim. Native collision, balance, friction and inputs are unchanged.
