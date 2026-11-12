@@ -94,4 +94,19 @@ inline bool blend_held_contact(std::span<anim_studio::Joint> native,
     blend_body_pose(native,posed,clip,weight);
     return true;
 }
+// A projected endpoint is only a candidate until the full pose can reach it.
+// Keep the first successful endpoint fixed; a refused first draw must not lock
+// subsequent draws to an unreachable point from an earlier placement.
+inline bool blend_held_surface_contact(std::span<anim_studio::Joint> native,
+        const anim_studio::Clip& clip, float time, std::uint16_t foot,
+        const arm_reach::ContactFrame& frame, const anim_studio::Vec3& point,
+        const anim_studio::Vec3& normal, float weight,
+        std::optional<arm_reach::Placed>& anchor,
+        std::optional<arm_reach::Placed>* attempted=nullptr) {
+    const auto candidate=anchor?anchor:held_contact_target(native,clip,time,foot,frame,point,normal,true);
+    if(attempted)*attempted=candidate;
+    if(!candidate || !blend_held_contact(native,clip,time,foot,candidate->position,candidate->rotation,weight))return false;
+    anchor=candidate;
+    return true;
+}
 }

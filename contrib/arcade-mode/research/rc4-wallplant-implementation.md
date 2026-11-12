@@ -484,3 +484,27 @@ atomic refusal, and choosing a feasible sample over an unreachable sample with
 greater directional reach. Native planted-foot alignment, complete outgoing
 orientation, the full trick chain and native combo/scoring remain acceptance
 gates. Keep this branch experimental until those gates pass.
+
+# Commit the held endpoint after a successful solve
+
+The next exact-source trial again refused all four observed contact draws.
+It recorded a 186 ms spring hold, one release and a clean native landing.
+The compositor subsequently crashed; final loaded-image and map checks are
+missing, so the retained capture is explicitly incomplete. Neither the launch
+receipt nor the landing accepts the visible plant or outgoing orientation.
+
+The draw path retained its first projected endpoint before verifying that the
+full authored pose could reach it. A refused endpoint could therefore lock
+every subsequent draw to geometry from an earlier placement. The endpoint is
+now committed only after a successful full solve. Before that success, each
+draw can propose a target using its current placement; after success, the
+endpoint remains fixed even when a later draw cannot reach it. Refusal remains
+atomic. Measurements retain the attempted endpoint separately from the held
+endpoint, including when the first solve fails.
+
+Both-foot regressions cover an unreachable first placement, a reachable later
+placement that the old retained target would reject, and refusal to slide an
+established anchor. This isolates a source defect, not the exclusive cause of
+the captured failure. Hold duration, physical placement, launch velocity and
+native orientation constraints are unchanged. Hardware fidelity and the full
+trick/combo sequence remain unverified.

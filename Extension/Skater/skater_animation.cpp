@@ -419,6 +419,7 @@ struct Pending {
     std::uint64_t contact_ticket{};
     std::optional<Vec3> contact_anchor;
     std::optional<Quat> contact_rotation;
+    std::optional<arm_reach::Placed> contact_attempt;
     Vec3 left_foot{}, right_foot{};
     std::uintptr_t feet_component{};
     bool feet_valid{};
@@ -1106,6 +1107,7 @@ void on_render(std::uintptr_t animation_interface) noexcept {
         p.contact_reachable=false;
         p.contact_body_frame_applied=false;
         p.contact_evidence.reset();
+        p.contact_attempt.reset();
         const auto count = [](int Probe::*n) {
             auto& pr = probe();
             std::lock_guard probe_lock(pr.mutex);
@@ -1178,33 +1180,37 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                     p.contact_ticket=p.play_ticket;
                     const auto foot=world(rendered,play.contact->joint);
                     p.contact_rotation.reset();
-                    p.contact_anchor=finite(foot)?arm_reach::plane_point(foot.position,
+                    p.contact_anchor=!play.contact->level_body && finite(foot)?arm_reach::plane_point(foot.position,
                         play.contact->point,play.contact->normal):std::nullopt;
-                    if(play.contact->frame) {
+                    if(play.contact->frame && !play.contact->level_body) {
                         const auto target=held_contact_target(rendered,*play.clip,play.at,
                             play.contact->joint,*play.contact->frame,play.contact->point,play.contact->normal,play.contact->level_body);
                         p.contact_anchor=target?std::optional(target->position):std::nullopt;
                         if(target)p.contact_rotation=target->rotation;
                     }
                 }
-                // Keep the held pose's first anchor throughout this ticket.
-                // Reprojecting every draw would slide on the wall.
-                // The limb solver still refuses unreachable targets.
-                if(p.contact_anchor) {
-                    p.contact_body_frame_applied=play.contact->level_body && p.contact_rotation &&
-                        blend_held_contact(rendered,*play.clip,play.at,play.contact->joint,
-                            *p.contact_anchor,*p.contact_rotation,weight);
-                    // A levelled contact cannot fall back to a different body
-                    // frame while reporting the prepared endpoint as reached.
-                    const auto reached=play.contact->level_body?arm_reach::Reached{}:
-                        arm_reach::reach_joint(rendered,play.contact->joint,*p.contact_anchor,weight,p.contact_rotation);
-                    p.contact_reachable=p.contact_body_frame_applied || (reached.valid && reached.reached);
-                    if(p.contact_reachable)
-                        for(std::size_t i=0;i<current.size();++i) {
-                            current[i].rotation=rendered[i+2].rotation;
-                            std::memcpy(current[i].position.data(),rendered[i+2].position.data(),12);
-                        }
+                if(play.contact->level_body && play.contact->frame) {
+                    std::optional<arm_reach::Placed> anchor;
+                    if(p.contact_anchor && p.contact_rotation)
+                        anchor=arm_reach::Placed{*p.contact_anchor,*p.contact_rotation};
+                    p.contact_body_frame_applied=blend_held_surface_contact(rendered,*play.clip,play.at,
+                        play.contact->joint,*play.contact->frame,play.contact->point,play.contact->normal,weight,anchor,&p.contact_attempt);
+                    p.contact_reachable=p.contact_body_frame_applied;
+                    if(p.contact_reachable) {
+                        p.contact_anchor=anchor->position;p.contact_rotation=anchor->rotation;
+                    }
                 }
+                // The limb-only path retains its existing endpoint. Levelled
+                // contacts above commit their endpoint only after a full solve.
+                if(p.contact_anchor && !play.contact->level_body) {
+                    const auto reached=arm_reach::reach_joint(rendered,play.contact->joint,*p.contact_anchor,weight,p.contact_rotation);
+                    p.contact_reachable=reached.valid && reached.reached;
+                }
+                if(p.contact_reachable)
+                    for(std::size_t i=0;i<current.size();++i) {
+                        current[i].rotation=rendered[i+2].rotation;
+                        std::memcpy(current[i].position.data(),rendered[i+2].position.data(),12);
+                    }
             }
         }
         if (poke(layout.buffer + p.first * sizeof(NativeBone), current.data(), current.size() * sizeof(NativeBone))) {
@@ -1227,16 +1233,17 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                     if(finite(left) && finite(right)) {
                         p.left_foot=left.position;p.right_foot=right.position;
                         p.feet_component=component;p.feet_valid=true;
+                        const auto measured_target=p.contact_attempt?std::optional(p.contact_attempt->position):p.contact_anchor;
                         if(contact_plan->serial==p.written_ticket && contact_plan->play && contact_plan->play->contact &&
-                           contact_plan->play->contact->frame && p.contact_anchor) {
+                           contact_plan->play->contact->frame && measured_target) {
                             const auto& contact=*contact_plan->play->contact;
                             const auto foot=world(rendered,contact.joint);
                             if(finite(foot)) {
                                 const auto normal=rotate(foot.rotation,contact.frame->normal);
                                 auto reference=foot.position;
                                 for(std::size_t k=0;k<3;++k)reference[k]-=normal[k]*contact.frame->clearance*foot.scale[0];
-                                const auto target_error=std::hypot(foot.position[0]-(*p.contact_anchor)[0],
-                                    foot.position[1]-(*p.contact_anchor)[1],foot.position[2]-(*p.contact_anchor)[2]);
+                                const auto target_error=std::hypot(foot.position[0]-(*measured_target)[0],
+                                    foot.position[1]-(*measured_target)[1],foot.position[2]-(*measured_target)[2]);
                                 p.contact_evidence=PlaybackEvidence::Contact{contact.joint,reference,normal,target_error,p.contact_reachable,p.contact_body_frame_applied};
                             }
                         }

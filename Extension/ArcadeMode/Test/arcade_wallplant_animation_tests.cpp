@@ -118,6 +118,36 @@ int main() {
         auto anchored=pose;
         check(skater_animation::level_body_contact(anchored,foot,anchor->position,anchor->rotation,1),
             "Prepared anchor is reachable in the drawn body frame");
+        std::optional<arm_reach::Placed> held_anchor;
+        auto early=pose;
+        early[anim_studio::placement_joint].position[0]+=2;
+        early[anim_studio::placement_joint].position[2]+=2;
+        const auto early_before=early;
+        const auto rejected_target=skater_animation::held_contact_target(early,held,0,foot,surface,
+            levelled_tip.position,wall_normal,true);
+        check(rejected_target.has_value(),"An unreachable projection still produces a candidate endpoint");
+        std::optional<arm_reach::Placed> attempted;
+        check(!skater_animation::blend_held_surface_contact(early,held,0,foot,surface,
+            levelled_tip.position,wall_normal,1,held_anchor,&attempted),"Unreachable first draw refuses the held contact");
+        check(!held_anchor,"Refused first draw does not retain its candidate anchor");
+        check(attempted && attempted->position==rejected_target->position,
+            "Refused candidate remains available for draw measurements without becoming the anchor");
+        for(std::size_t j=0;j<early.size();++j)
+            check(early[j].position==early_before[j].position && early[j].rotation==early_before[j].rotation,
+                "Refused first draw preserves the native pose");
+        auto later=pose;
+        check(!skater_animation::blend_held_contact(later,held,0,foot,rejected_target->position,rejected_target->rotation,1),
+            "Retaining the refused endpoint would reject the later reachable placement");
+        check(skater_animation::blend_held_surface_contact(later,held,0,foot,surface,
+            levelled_tip.position,wall_normal,1,held_anchor),"A later reachable placement establishes the held contact");
+        check(held_anchor.has_value(),"Successful solve commits the anchor");
+        const auto fixed=*held_anchor;
+        auto moved=pose;
+        moved[anim_studio::placement_joint].position[0]+=2;
+        check(!skater_animation::blend_held_surface_contact(moved,held,0,foot,surface,
+            levelled_tip.position,wall_normal,1,held_anchor),"Established anchor cannot slide to follow later placement");
+        check(held_anchor->position==fixed.position && held_anchor->rotation==fixed.rotation,
+            "A later refusal preserves the established wall anchor");
         // The native incoming hips can be somewhere else even though the
         // authored held sample and its wall contact are reachable.
         auto incoming=before;
