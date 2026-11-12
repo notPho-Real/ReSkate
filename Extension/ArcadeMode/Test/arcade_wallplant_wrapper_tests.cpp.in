@@ -782,6 +782,8 @@ alignas(32) std::array<unsigned char,native::query_pending+1> object{},other{};
 unsigned shapes{},sets{},selections{};
 bool valid_code{true},fail_set{},skip_shape{},nested{};
 std::array<float,3> candidate_velocity{};
+std::array<float,3> candidate_reference{},submitted_reference{};
+NativeTrajectoryParameters submitted_packet{};
 std::array<float,3> get(std::uintptr_t at){std::array<float,3> result;std::memcpy(result.data(),reinterpret_cast<void*>(at+native::requested_velocity),sizeof(result));return result;}
 void put(std::uintptr_t at,const std::array<float,3>& value){std::memcpy(reinterpret_cast<void*>(at+native::requested_velocity),value.data(),sizeof(value));}
 bool select(std::uintptr_t at,bool mode){++selections;check(at==reinterpret_cast<std::uintptr_t>(object.data())&&mode,"original selector owns candidate acceptance");return false;}
@@ -799,12 +801,17 @@ bool call_guarded(Setter fn,std::uintptr_t at,float* parameters){try{fn(at,param
 void shape(std::uintptr_t at){
  ++shapes;put(at,{-1.1069391f,13.73243f,.27464858f});
  // Model a native side effect, independent of the velocity field.
- *reinterpret_cast<unsigned char*>(at+native::requested_velocity+16)=73;
+ *reinterpret_cast<unsigned char*>(at+native::reference_velocity+16)=73;
 }
 void setter(std::uintptr_t at,float* parameters){
  ++sets;
  if(fail_set)throw 1;
- put(at,{parameters[32],parameters[33],parameters[34]});
+ std::copy_n(parameters,submitted_packet.values.size(),submitted_packet.values.begin());
+ std::memcpy(reinterpret_cast<void*>(at+native::requested_velocity),
+     parameters+native::parameter_velocity/sizeof(float),16);
+ std::memcpy(reinterpret_cast<void*>(at+native::reference_velocity),
+     parameters+native::parameter_reference_velocity/sizeof(float),16);
+ std::copy_n(parameters+native::parameter_reference_velocity/sizeof(float),3,submitted_reference.begin());
  if(nested){
   NativeTrajectoryParameters p;
   check(!world_trajectory_route::submit_native_trajectory(hook.base,at,p,true),"recursive submission cannot acquire the same scope");
@@ -812,6 +819,7 @@ void setter(std::uintptr_t at,float* parameters){
  }
  if(!skip_shape)shape_launch_hook(at);
  candidate_velocity=get(at); // What the native query receives after shaping.
+ std::memcpy(candidate_reference.data(),reinterpret_cast<void*>(at+native::reference_velocity),sizeof(candidate_reference));
  object[native::query_pending]=1; // Pending collision work remains genuine.
 }
 unsigned offers{},completions{};
@@ -829,13 +837,20 @@ void run(){
  const auto at=reinterpret_cast<std::uintptr_t>(object.data());
  const std::array<float,3> exit{-2.285966f,12.7f,4.967785f};
  NativeTrajectoryParameters p;std::copy(exit.begin(),exit.end(),p.values.begin()+32);
+ const std::array<float,3> held_velocity{.22170794f,-.6215819f,.6f};
+ std::copy(held_velocity.begin(),held_velocity.end(),p.values.begin()+36);
+ p.values[35]=17;p.values[39]=23;p.values[40]=31;
+ reinterpret_cast<unsigned char*>(p.values.data())[native::parameter_launch]=1;
  hook.base=base;hook.original.store(&setter);hook.shape_original.store(&shape);
  for(bool preserve:{false,true}){
   object.fill(0);sets=shapes=selections=0;
   check(world_trajectory_route::submit_native_trajectory(base,at,p,preserve),"one valid request submits once");
   check(sets==1&&shapes==1&&selections==1,"native setter shaping and selection each execute once");
   check(candidate_velocity==(preserve?exit:std::array<float,3>{-1.1069391f,13.73243f,.27464858f}),"world exit reaches collision generation; ordinary launches keep native shaping");
-  check(object[native::requested_velocity+16]==73&&object[native::query_pending]==1,"classification and pending collision query are not fabricated or cleared");
+  check(candidate_reference==(preserve?exit:held_velocity)&&submitted_reference==candidate_reference,"explicit exits supply matching reference speed before shaping and candidate generation");
+  check(p.values[36]==held_velocity[0]&&p.values[39]==23,"submission leaves the caller's observed packet intact");
+  check(object[native::reference_velocity+16]==73&&object[native::query_pending]==1,"classification and pending collision query are not fabricated or cleared");
+  check(submitted_packet.values[35]==17&&submitted_packet.values[39]==23&&submitted_packet.values[40]==31,"paired velocity update preserves native homogeneous components and other packet fields");
   check(!world_trajectory_request.object,"permission ends before later selection or physics");
  }
  object.fill(0);nested=true;shapes=sets=selections=0;
@@ -884,6 +899,14 @@ void run(){
   if(scenario==1)check(offers==0&&object[native::query_pending]==1,"busy native query does not spend hold authority");
   if(scenario==2){
    check(candidate_velocity==exit&&object[native::query_pending]==1,"recorded slow departure is replaced before genuine query generation");
+   check(submitted_reference==exit&&candidate_reference==exit,"native departure cannot retain the held speed in its reference record");
+   const float speed=std::hypot(candidate_reference[0],candidate_reference[1],candidate_reference[2]);
+   check(std::abs(speed-std::hypot(exit[0],exit[1],exit[2]))<1e-5f&&speed>13,
+       "launch-enabled native candidate speed uses the full exit instead of sub-metre held motion");
+   auto expected=original_packet;
+   std::copy(exit.begin(),exit.end(),expected.values.begin()+32);
+   std::copy(exit.begin(),exit.end(),expected.values.begin()+36);
+   check(submitted_packet.values==expected.values,"native departure changes exactly the two three-component velocity records");
    object[native::query_pending]=0;
    check(!route_native_world_trajectory(at,packet.values.data(),native::pop_query_call.rva)&&sets==1&&completions==1,"same receipt cannot launch twice after query completion");
   }

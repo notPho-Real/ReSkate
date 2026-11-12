@@ -93,13 +93,18 @@ void shape_launch_hook(std::uintptr_t trajectory) {
     original(trajectory);
     if(!preserve)return;
     // Keep native classification/configuration side effects. Replace only the
-    // input velocity, before the setter starts its genuine collision queries.
+    // paired launch/reference velocities before genuine collision queries.
+    // Leaving the held reference speed would generate candidates for a different
+    // departure even though the requested velocity itself was correct.
     // Never repair selected candidates or write a second body impulse.
     __try {
         auto* velocity=reinterpret_cast<float*>(trajectory+game::build::v20260929::trajectory::requested_velocity);
+        auto* reference=reinterpret_cast<float*>(trajectory+game::build::v20260929::trajectory::reference_velocity);
         std::copy_n(velocity,3,request.shaped.begin());
         std::copy(request.velocity.begin(),request.velocity.end(),velocity);
-        request.preserved=std::equal(request.velocity.begin(),request.velocity.end(),velocity);
+        std::copy(request.velocity.begin(),request.velocity.end(),reference);
+        request.preserved=std::equal(request.velocity.begin(),request.velocity.end(),velocity) &&
+            std::equal(request.velocity.begin(),request.velocity.end(),reference);
     } __except (EXCEPTION_EXECUTE_HANDLER) { request.preserved=false; }
 }
 // The trick the game has in mind right now (the trainer's own reading is a tick old: out of a manual or a grind the
@@ -149,10 +154,11 @@ bool route_native_world_trajectory(std::uintptr_t trajectory, float* parameters,
         [](float value){return std::isfinite(value) && std::abs(value)<1000;});
     if(valid) {
         std::copy(offered.velocity.begin(),offered.velocity.end(),packet.values.begin()+native::parameter_velocity/sizeof(float));
+        std::copy(offered.velocity.begin(),offered.velocity.end(),packet.values.begin()+native::parameter_reference_velocity/sizeof(float));
         world_trajectory_request={trajectory,offered.velocity,false,false,{}};
     }
     // The caller still owns the native packet options, collision queries and
-    // subsequent selector. A granted exit replaces only this call's velocity.
+    // subsequent selector. A granted exit replaces this call's paired velocities.
     const bool called=call_guarded(original,trajectory,valid?packet.values.data():parameters);
     const auto result=world_trajectory_request;
     world_trajectory_request={};
@@ -331,13 +337,16 @@ bool submit_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
     std::copy_n(parameters.values.begin()+native::parameter_velocity/sizeof(float),3,velocity.begin());
     if(preserve_world_velocity && !std::all_of(velocity.begin(),velocity.end(),
         [](float value){return std::isfinite(value) && std::abs(value)<1000;}))return false;
+    auto packet=parameters;
+    if(preserve_world_velocity)
+        std::copy(velocity.begin(),velocity.end(),packet.values.begin()+native::parameter_reference_velocity/sizeof(float));
     bool submitted{};
     __try {
         if (*reinterpret_cast<const std::uint8_t*>(trajectory + native::query_pending)) return false;
         // Use the verified original, without reapplying trick height modifiers
         // or retaining this packet as a new ground pop for raise_flight.
         if(preserve_world_velocity)world_trajectory_request={trajectory,velocity,false,false,{}};
-        submitted=call_guarded(original,trajectory,parameters.values.data());
+        submitted=call_guarded(original,trajectory,preserve_world_velocity?packet.values.data():parameters.values.data());
         if(preserve_world_velocity)submitted=submitted && world_trajectory_request.observed && world_trajectory_request.preserved;
         const auto request=world_trajectory_request;
         world_trajectory_request={};
@@ -373,6 +382,8 @@ bool start_trick_heights(std::uintptr_t base) noexcept {
         h.original.store(reinterpret_cast<SetTrajectory>(original), std::memory_order_release);
         namespace native=game::build::v20260929::trajectory;
         if(!known_bytes(base+native::shape_launch.rva,native::shape_launch.bytes.data(),native::shape_launch.bytes.size()) ||
+           !known_bytes(base+native::reference_speed_contract.rva,native::reference_speed_contract.bytes.data(),native::reference_speed_contract.bytes.size()) ||
+           !known_bytes(base+native::departure_velocity_pair.rva,native::departure_velocity_pair.bytes.data(),native::departure_velocity_pair.bytes.size()) ||
            !known_bytes(base+native::shape_launch_call,native::shape_launch_call_prefix.data(),native::shape_launch_call_prefix.size()))return false;
         auto* shape_target=reinterpret_cast<void*>(base+native::shape_launch.rva);
         void* shape_original{};

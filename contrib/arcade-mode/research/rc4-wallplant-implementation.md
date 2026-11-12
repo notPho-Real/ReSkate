@@ -339,3 +339,35 @@ caller propagation, single-use/refused receipts, observation boundaries and
 unrelated owner/trick/state/pending-body negatives. Hardware must independently
 show the retained outward trajectory, actual hold/release, orientation, clean
 landing, follow-up controls and scoring before this branch is ready to test.
+
+## Paired departure velocity
+
+The 04a2 trial first consumed the release in native100: physical root upward
+velocity was 12.4328m/s and body8 was 12.3744m/s. A subsequent native201 sample
+reached 15.9534m/s on body8, 25.6% above the requested 12.7m/s. The first
+consumed sample must not be confused with that later overshoot. The spring
+hold lasted184ms; neither the full outgoing turn nor sole contact was accepted.
+
+Private inspection of the pinned executable identified a concrete query-input
+mismatch. Native departure construction at4839c5f duplicates its world velocity
+into packet80 and90 before setting launch option10c. The setter copies these
+to object1290 and12a0. Query preparation at475179c calculates the second
+record's magnitude, and4751807 selects it for launch-enabled speed-dependent
+candidate generation. RC4 previously replaced only packet80, leaving the
+reference speed from the slow held departure. This is a routing defect, not a
+reason to reduce the exit constants or alter selected collision candidates.
+
+Explicit world exits now provide both three-component records before shaping
+and preserve both before native candidate generation. Ordinary launches retain
+their existing packet and shaping. The caller's packet, vector fourth lanes,
+query options, genuine collision work and selector remain native. Both source
+contracts are fingerprinted before the bridge becomes available. Regression
+tests execute the production submission and bridge, verify both speeds and
+unchanged packet fields, and reject a mutation that restores the old mismatch.
+
+This fixes the packet inconsistency; it does not establish that the inconsistency
+was the sole cause of the later acceleration. Target-history rebasing and curve
+position edits were not introduced without that proof. The next exact-source
+trial must record both native velocity records, consumed and subsequent body
+motion, actual hold/release and orientation. All remaining visual, combo and
+follow-up acceptance gates remain open; the draft is not ready for user testing.
