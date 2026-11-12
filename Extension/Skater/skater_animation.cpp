@@ -308,6 +308,9 @@ std::array<PreviewSample, 2> preview_samples;
 // The joints asked for as last evaluated (joint()), for the client thread.
 std::mutex joints_mutex;
 std::vector<std::pair<std::uint16_t, Joint>> joints_now;
+std::uintptr_t joints_component{};
+double joints_at{};
+std::uint64_t joints_sequence{};
 // The client thread's: each joint asked for and when it was last.
 std::vector<std::pair<std::uint16_t, double>> joints_asked;
 std::mutex plan_mutex;
@@ -904,6 +907,9 @@ void on_animation(std::uintptr_t component) noexcept {
                     if (const auto w = anim_studio::world(pose, index); anim_studio::finite(w)) placed.emplace_back(index, w);
             std::lock_guard lock(joints_mutex);
             joints_now.swap(placed);
+            joints_component=component;
+            joints_at=at;
+            ++joints_sequence;
         }
         // In the room the placement is written too (it is the room's), and nothing else need change.
         if (in_room) {
@@ -1482,6 +1488,16 @@ std::optional<arm_reach::Placed> hand(arm_reach::Hand side) {
     const auto at = joint(arm_reach::chain(side).back());
     if (!at) return std::nullopt;
     return arm_reach::Placed{at->position, at->rotation, at->scale[0]};
+}
+std::optional<JointObservation> joint_observation(std::uint16_t index) {
+    (void)joint(index); // Keep the existing bounded subscription alive.
+    const auto now=now_seconds();
+    std::lock_guard lock(joints_mutex);
+    if(!joints_component || joints_component!=live().component.load(std::memory_order_acquire) ||
+       !joints_sequence || now<joints_at)return {};
+    for(const auto& [at,w]:joints_now)
+        if(at==index)return JointObservation{w,joints_component,now-joints_at,joints_sequence};
+    return {};
 }
 void set_replacements(std::vector<Replacement> list) {
     plan_draft.replacements = std::move(list);

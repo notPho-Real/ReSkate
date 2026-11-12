@@ -26,17 +26,21 @@ inline bool consider_plant_frame(std::optional<PlantFrame>& best,float time,std:
     if(!best || reach>best->reach)best=PlantFrame{time,reach,joint};
     return true;
 }
-// Express the real wall-facing direction in an upright outgoing target basis.
-// Native pitch/roll and the player's bind pose are not inferred from this;
-// actual rendered-foot measurements remain the independent evidence.
+// Express the real wall-facing direction in the observed placement's frame.
+// The intended outgoing direction is not the body's current orientation: the
+// articulated native body can still be pitched, rolled or turning at admission.
 inline std::optional<std::array<float,3>> hold_wall_direction(const std::array<float,3>& normal,
-        const std::array<float,3>& forward) noexcept {
-    for(std::size_t i=0;i<3;++i)if(!std::isfinite(normal[i]) || !std::isfinite(forward[i]))return {};
+        const std::array<float,4>& rotation) noexcept {
+    for(auto value:normal)if(!std::isfinite(value))return {};
+    float square{};
+    for(auto value:rotation){if(!std::isfinite(value))return {};square+=value*value;}
     const auto n=std::hypot(normal[0],normal[1],normal[2]);
-    const auto f=std::hypot(forward[0],forward[2]);
-    if(n<.99f || n>1.01f || f<.99f || f>1.01f)return {};
-    return std::array<float,3>{(-normal[0]*forward[2]+normal[2]*forward[0])/(n*f),
-        -normal[1]/n,(-normal[0]*forward[0]-normal[2]*forward[2])/(n*f)};
+    if(n<.99f || n>1.01f || !std::isfinite(square) || std::abs(square-1.f)>.001f)return {};
+    const std::array<float,3> q{-rotation[0],-rotation[1],-rotation[2]};
+    const std::array<float,3> v{-normal[0]/n,-normal[1]/n,-normal[2]/n};
+    const std::array<float,3> t{2*(q[1]*v[2]-q[2]*v[1]),2*(q[2]*v[0]-q[0]*v[2]),2*(q[0]*v[1]-q[1]*v[0])};
+    return std::array<float,3>{v[0]+rotation[3]*t[0]+q[1]*t[2]-q[2]*t[1],
+        v[1]+rotation[3]*t[1]+q[2]*t[0]-q[0]*t[2],v[2]+rotation[3]*t[2]+q[0]*t[1]-q[1]*t[0]};
 }
 // Joint origins and collision point share world space. Report distances only:
 // joint proximity does not prove the sole touches the wall or physical anchoring.

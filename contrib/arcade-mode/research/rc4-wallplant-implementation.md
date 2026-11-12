@@ -154,9 +154,14 @@ game and mirrored through the existing animation library. The guarded local
 pose facility borrows a bounded native pose during the physical plant. Placement
 joints and physics are untouched by the pose player. Playback ownership tickets prevent cleanup
 from cancelling a newer plugin clip. New trick input cancels the approximation.
-The held sample maximizes authored foot reach toward the contacted wall in the
-outgoing upright basis, then blends back to native animation over 40 ms. This
-selection assumes an upright basis and the clip's native bind pose. At draw time,
+The held sample maximizes authored foot reach toward the contacted wall in a
+recently observed native placement frame, then blends back to native animation
+over 40 ms. The joint subscription reports its component, sequence and sample
+age; a replaced component, missing sample or sample older than the existing
+100 ms render-publication bound cannot substitute the requested outgoing facing.
+Selection retains observed pitch and roll while the native body is still
+turning. The stance is rechecked before submission and after borrowing playback.
+The clip's native bind pose is still assumed for limb lengths. At draw time,
 the existing limb solver bends the selected leg toward the nearest point on the
 observed wall plane from its first drawn placement. The body collision point
 defines the plane, not the foot's height. That endpoint stays fixed for the
@@ -167,6 +172,14 @@ pose afterward. The same ownership ticket, hold deadline and release blend bound
 this contact constraint; it cannot change the root, board or physical bodies.
 Endpoint reach is not sole alignment, and the authored foot orientation is not
 replaced with a wall-normal alignment. Actual appearance still requires testing.
+
+The exact 9987484b hardware trial sustained outward/upward motion through a
+clean landing after one 187 ms physical hold. Its two recovered screenshots
+do not establish the pose during the hold: screenshot requests followed log
+collection, their render times were unverified, and cleanup interrupted frame
+collection. A future capture must retain completed partial frames and start
+before waiting for the hold's rendered-foot log. These images cannot justify
+inventing a sole offset or claiming that a new pose has passed visual acceptance.
 
 This is a native asset displayed through the existing pose player, not an
 authentic Footplant StateFlow/ActorController transition. The 160ms plant

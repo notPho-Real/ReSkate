@@ -52,7 +52,7 @@ std::optional<PlantFrame> plant_frame(const anim_studio::Clip& clip,const std::a
     if(clip.joints<=bonecam::joint::left_foot || clip.frames.size()/clip.joints<clip.times.size())return {};
     std::optional<PlantFrame> best;
     // Select from authored native poses by reach toward the actual wall in
-    // the outgoing target's upright basis. No guessed timestamp, imported
+    // the observed placement's frame. No guessed timestamp, imported
     // animation, added body translation, or fabricated contact is involved.
     for(std::size_t i=0;i<clip.times.size();++i) {
         if(!std::isfinite(clip.times[i]) || clip.times[i]<0 || clip.times[i]>clip.duration())return {};
@@ -195,6 +195,7 @@ void tick(bool gameplay) noexcept {
         if (gameplay) {
             preload();
             skater_animation::prepare_playback();
+            (void)skater_animation::joint_observation(anim_studio::placement_joint);
         }
         if (!ticket) return;
         unsigned pose{};
@@ -238,7 +239,13 @@ bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t s
         if(!clips)return false;
         const auto& clip=clips->poses[pose];
         if(!hold_remaining_ms(started_at,GetTickCount64()) || started_at>UINT64_MAX-hold_duration_ms)return false;
-        const auto direction=hold_wall_direction(normal,forward);
+        const auto placement=skater_animation::joint_observation(anim_studio::placement_joint);
+        unsigned checked_pose{};
+        // Match the existing render-publication freshness bound. A missing or
+        // stale observation cannot be replaced by the requested future facing.
+        if(!placement || !std::isfinite(placement->age) || placement->age<0 || placement->age>.1 ||
+           !anim_studio::finite(placement->joint) || !context(owner,checked_pose,true) || checked_pose!=pose)return false;
+        const auto direction=hold_wall_direction(normal,placement->joint.rotation);
         if(!direction)return false;
         const auto planted=plant_frame(*clip,*direction);
         if(!planted)return false;
@@ -253,10 +260,12 @@ bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t s
         ticket=accepted;held_owner=owner;occurrence=identity;began=started_at;holding=hold_pose=true;
         previous_hold_owner=owner;previous_hold_occurrence=identity;previous_hold_start=started_at;
         wall_point=point;wall_normal=normal;outgoing=forward;pose_reported=false;alignment_reports=0;measured_draw=0;
-        if(!hold_remaining_ms(started_at,GetTickCount64()) || !context(owner,pose,true)){cancel();return false;}
+        if(!hold_remaining_ms(started_at,GetTickCount64()) || !context(owner,checked_pose,true) || checked_pose!=pose){cancel();return false;}
         logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE WALLPLANT POSE HOLD: ms={} occurrence={} ticket={} started={} clip_at={} joint={} reach={} clip={} mirrored={} duration={} held=true selection_basis=upright_outgoing_native_clip selection_pitch_roll_unobserved=true native_bind_pose_unobserved=true approximation=true actor_initialized=false foot_wall_alignment_verified=false.",
-            GetTickCount64(),identity,ticket,started_at,planted->time,planted->joint,planted->reach,names[pose/2],(pose&1u)!=0,duration);
+            "ARCADE WALLPLANT POSE HOLD: ms={} occurrence={} ticket={} started={} clip_at={} joint={} reach={} clip={} mirrored={} duration={} held=true selection_basis=observed_native_placement component={} pose_sequence={} pose_age={} placement_rotation={},{},{},{} native_bind_pose_unobserved=true approximation=true actor_initialized=false foot_wall_alignment_verified=false.",
+            GetTickCount64(),identity,ticket,started_at,planted->time,planted->joint,planted->reach,names[pose/2],(pose&1u)!=0,duration,
+            placement->component,placement->sequence,placement->age,placement->joint.rotation[0],placement->joint.rotation[1],
+            placement->joint.rotation[2],placement->joint.rotation[3]);
         return true;
     } catch(...) {return false;}
 }

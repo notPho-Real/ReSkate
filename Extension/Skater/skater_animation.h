@@ -116,6 +116,16 @@ void pose(std::vector<PoseOffset> offsets, float weight, Shown shown = Shown::ev
 // empty without a skater. Asking keeps that joint read for two seconds, so the first ask comes back
 // empty; at most 32 joints are read at once.
 std::optional<anim_studio::Joint> joint(std::uint16_t index);
+// The same subscription with its animation component, sample age and sequence.
+// A sample from a replaced component is not returned. Callers choosing geometry
+// from a pose must check its age rather than treating a cached joint as current.
+struct JointObservation {
+    anim_studio::Joint joint;
+    std::uintptr_t component{};
+    double age{};
+    std::uint64_t sequence{};
+};
+std::optional<JointObservation> joint_observation(std::uint16_t index);
 // The hand joint's (joint()).
 std::optional<arm_reach::Placed> hand(arm_reach::Hand side);
 // The game menu's character room (Extension/World/character_room.h). While the walk looks for it,
