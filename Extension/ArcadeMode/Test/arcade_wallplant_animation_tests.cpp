@@ -118,6 +118,37 @@ int main() {
         auto anchored=pose;
         check(skater_animation::level_body_contact(anchored,foot,anchor->position,anchor->rotation,1),
             "Prepared anchor is reachable in the drawn body frame");
+        // The native incoming hips can be somewhere else even though the
+        // authored held sample and its wall contact are reachable.
+        auto incoming=before;
+        incoming[anim_studio::hips_joint].position={0,1.5f,0};
+        held.turned_only[anim_studio::hips_joint]=0;
+        held.frames[anim_studio::hips_joint].position=before[anim_studio::hips_joint].position;
+        auto premature=incoming;
+        check(!skater_animation::level_body_contact(premature,foot,anchor->position,anchor->rotation,1),
+            "Incoming pose cannot reach the held pose anchor before authored hips are applied");
+        for(const float weight:{0.f,.25f,.5f,.75f,1.f}) {
+            auto drawn=incoming;
+            check(skater_animation::blend_held_contact(drawn,held,0,foot,anchor->position,anchor->rotation,weight),
+                "Full authored contact is solved before the entry blend");
+            auto expected=incoming;
+            skater_animation::blend_body_pose(expected,anchored,held,weight);
+            for(std::size_t j=0;j<drawn.size();++j) {
+                for(unsigned k=0;k<3;++k)
+                    check(near(drawn[j].position[k],expected[j].position[k]),"Held contact blends authored translation once");
+                for(unsigned k=0;k<4;++k)
+                    check(near(drawn[j].rotation[k],expected[j].rotation[k]),"Held contact blends solved rotation once");
+                check(drawn[j].scale==incoming[j].scale,"Held contact does not change body scale");
+            }
+        }
+        auto failed=incoming;
+        check(!skater_animation::blend_held_contact(failed,held,0,foot,{100,100,100},anchor->rotation,1),
+            "Unreachable full authored contact still refuses atomically");
+        for(std::size_t j=0;j<failed.size();++j)
+            check(failed[j].position==incoming[j].position && failed[j].rotation==incoming[j].rotation,
+                "Failed authored contact preserves the entire incoming pose");
+        check(!plant_contact(held,2,*direction,pose,true,ContactSurface{{100,100,100},wall_normal}),
+            "Directional reach alone cannot select a pose for an unreachable actual wall");
         for(unsigned k=0;k<3;++k) {
             check(near(anim_studio::world(anchored,foot).position[k],levelled_tip.position[k]),
                 "Drawn plant retains the levelled authored endpoint");
@@ -175,6 +206,26 @@ int main() {
         check(selected && selected->sample.time==0,"Equal held geometry keeps the first sample");
         clip.frames[2].rotation={NAN,0,0,1};
         check(!plant_contact(clip,2,{0,0,1},native),"Broken authored plane refuses selection");
+    }
+    {
+        std::vector<anim_studio::Joint> native(anim_studio::skeleton_joints);
+        native[2].position={0,-1,0};
+        for(const auto foot:{bonecam::joint::left_foot,bonecam::joint::right_foot}) {
+            const auto knee=anim_studio::parent(foot),thigh=anim_studio::parent(static_cast<std::uint16_t>(knee));
+            native[thigh].position={foot==bonecam::joint::right_foot?.12f:-.12f,0,0};
+            native[knee].position={0,-.4f,.2f};native[foot].position={0,-.25f,-.2f};
+        }
+        anim_studio::Clip held;
+        held.joints=anim_studio::skeleton_joints;held.times={0,.1f};
+        held.frames=native;held.frames.insert(held.frames.end(),native.begin(),native.end());
+        held.turned_only.resize(held.joints,1);held.turned_only[anim_studio::hips_joint]=0;
+        held.frames[held.joints+anim_studio::hips_joint].position={0,0,-5};
+        const auto unconstrained=plant_contact(held,2,{0,0,-1},native,true);
+        check(unconstrained && near(unconstrained->sample.time,.1f),"Direction-only ranking prefers a pose beyond the real wall");
+        const auto constrained=plant_contact(held,2,{0,0,-1},native,true,ContactSurface{{0,0,-.35f},{0,0,1}});
+        check(constrained && constrained->sample.time==0,"Actual wall reach selects the feasible authored sample");
+        check(!plant_contact(held,2,{0,0,-1},native,true,ContactSurface{{0,0,-50},{0,0,1}}),
+            "No feasible held sample means no visual contact admission");
     }
     PhaseLibrary phases;
     const auto poses=load_held_poses(phases);

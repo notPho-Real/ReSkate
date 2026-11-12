@@ -1170,7 +1170,10 @@ void on_render(std::uintptr_t animation_interface) noexcept {
             if(weight>0 && peek(layout.buffer,placement.data(),sizeof(placement))) {
                 thread_local std::array<Joint,skeleton_joints> rendered;
                 for(std::size_t i=0;i<placement.size();++i)rendered[i]=joint_of(placement[i]);
-                for(std::size_t i=0;i<current.size();++i)rendered[i+2]=joint_of(current[i]);
+                // A levelled held contact owns its one blend from the current
+                // native draw pose, not from the earlier animation blend.
+                for(std::size_t i=0;i<current.size();++i)
+                    rendered[i+2]=joint_of(play.contact->level_body?p.game[i]:current[i]);
                 if(p.contact_ticket!=p.play_ticket) {
                     p.contact_ticket=p.play_ticket;
                     const auto foot=world(rendered,play.contact->joint);
@@ -1189,14 +1192,18 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                 // The limb solver still refuses unreachable targets.
                 if(p.contact_anchor) {
                     p.contact_body_frame_applied=play.contact->level_body && p.contact_rotation &&
-                        level_body_contact(rendered,play.contact->joint,*p.contact_anchor,*p.contact_rotation,weight);
+                        blend_held_contact(rendered,*play.clip,play.at,play.contact->joint,
+                            *p.contact_anchor,*p.contact_rotation,weight);
                     // A levelled contact cannot fall back to a different body
                     // frame while reporting the prepared endpoint as reached.
                     const auto reached=play.contact->level_body?arm_reach::Reached{}:
                         arm_reach::reach_joint(rendered,play.contact->joint,*p.contact_anchor,weight,p.contact_rotation);
                     p.contact_reachable=p.contact_body_frame_applied || (reached.valid && reached.reached);
                     if(p.contact_reachable)
-                        for(std::size_t i=0;i<current.size();++i)current[i].rotation=rendered[i+2].rotation;
+                        for(std::size_t i=0;i<current.size();++i) {
+                            current[i].rotation=rendered[i+2].rotation;
+                            std::memcpy(current[i].position.data(),rendered[i+2].position.data(),12);
+                        }
                 }
             }
         }

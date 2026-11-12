@@ -9,6 +9,7 @@ struct PlantContact {
     PlantFrame sample;
     arm_reach::ContactFrame frame;
 };
+struct ContactSurface { anim_studio::Vec3 point,normal; };
 inline bool valid_contact_pose(std::span<const anim_studio::Joint> pose) noexcept {
     for(const auto& joint:pose) {
         if(!anim_studio::finite(joint))return false;
@@ -23,7 +24,8 @@ inline bool valid_contact_pose(std::span<const anim_studio::Joint> pose) noexcep
 // its wall reach on the same observed native body geometry used by playback;
 // a raised foot cannot win merely because it happens to face the wall.
 inline std::optional<PlantContact> plant_contact(const anim_studio::Clip& clip,std::uint16_t ground,
-        const anim_studio::Vec3& wall_direction,std::span<const anim_studio::Joint> native,bool level_body=false) {
+        const anim_studio::Vec3& wall_direction,std::span<const anim_studio::Joint> native,bool level_body=false,
+        std::optional<ContactSurface> surface={}) {
     if(native.size()!=anim_studio::skeleton_joints || clip.joints!=native.size() ||
        ground>=clip.joints || clip.times.empty() || clip.frames.size()/clip.joints<clip.times.size() ||
        !valid_contact_pose(native))return {};
@@ -52,6 +54,13 @@ inline std::optional<PlantContact> plant_contact(const anim_studio::Clip& clip,s
         const auto scale=(placement.scale[0]+placement.scale[1]+placement.scale[2])/3;
         const auto foot=anim_studio::world(pose,selected);
         if(!anim_studio::finite(placement) || !anim_studio::finite(foot) || !std::isfinite(scale) || scale<=.00001f)return {};
+        if(surface) {
+            const auto target=arm_reach::contact_target(foot,*reference,surface->point,surface->normal);
+            if(!target)return {};
+            auto reached_pose=pose;
+            const auto reached=arm_reach::reach_joint(reached_pose,selected,target->position,1,target->rotation);
+            if(!reached.valid || !reached.reached)continue;
+        }
         auto relative=anim_studio::rotate(anim_studio::conjugate(placement.rotation),
             {foot.position[0]-placement.position[0],foot.position[1]-placement.position[1],foot.position[2]-placement.position[2]});
         for(auto& value:relative)value/=scale;

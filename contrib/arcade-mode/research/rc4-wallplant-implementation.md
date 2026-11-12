@@ -459,3 +459,28 @@ velocity; nonfinite SIMD padding is not interpreted as geometry. The added
 read addresses and drive fingerprint are pinned in the supported build header.
 This is intended to identify the release discontinuity, not certify its cause
 or conceal it with another velocity write. Native acceptance remains pending.
+# Held contact solve and blend order
+
+The next native trial of the consistent body frame still rejected all four
+drawn contact solves. Its first consumed body velocity was approximately
+(-2.4431, 12.3248, 4.8259) m/s; stable pending-clear observations did not show a
+later upward overshoot. The 180 ms hold and clean landing do not establish
+visual fidelity: the footage still shows a tucked pose rather than a planted
+foot. Follow-up and negative trials were not run after this failure.
+
+Two remaining source defects are independently reproducible. Directional pose
+ranking did not test reach to the actual collision plane. Also, drawing solved
+the held endpoint on an already blended incoming pose, whose hips and board
+foot could differ from the fully authored pose used for anchoring. The contact
+correction then blended those rotations again. Selection now rejects samples
+that cannot reach the real plane. Drawing samples and solves the full held
+pose against its fixed anchor before blending once from the current native
+draw pose. An unreachable solve remains atomic and cannot stretch limbs or
+move physical placement. This corrects the demonstrated source defects; it
+does not establish that they exclusively caused the recorded native failure.
+
+Focused regressions cover translated incoming hips, both feet, entry weights,
+atomic refusal, and choosing a feasible sample over an unreachable sample with
+greater directional reach. Native planted-foot alignment, complete outgoing
+orientation, the full trick chain and native combo/scoring remain acceptance
+gates. Keep this branch experimental until those gates pass.

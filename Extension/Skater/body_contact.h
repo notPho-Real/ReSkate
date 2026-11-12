@@ -75,4 +75,23 @@ inline bool level_body_contact(std::span<anim_studio::Joint> pose, std::uint16_t
         if(body[i])pose[i].rotation=slerp(pose[i].rotation,result[i].rotation,weight);
     return true;
 }
+// Solve the held authored pose before its entry/release blend. Solving an
+// already blended pose uses different hips and board-foot positions from the
+// pose that supplied the anchor, and applies the blend a second time.
+inline bool blend_held_contact(std::span<anim_studio::Joint> native,
+        const anim_studio::Clip& clip, float time, std::uint16_t foot,
+        const anim_studio::Vec3& point, const anim_studio::Quat& rotation, float weight) {
+    using namespace anim_studio;
+    if(native.size()!=skeleton_joints || clip.joints!=skeleton_joints ||
+       clip.times.empty() || clip.frames.size()/clip.joints<clip.times.size() ||
+       !std::isfinite(time) || time<0 || time>clip.duration() ||
+       !std::isfinite(weight) || weight<0 || weight>1)return false;
+    std::array<Joint,skeleton_joints> posed,sample;
+    std::copy(native.begin(),native.end(),posed.begin());sample=posed;
+    clip.sample(time,sample);
+    blend_body_pose(posed,sample,clip,1);
+    if(!level_body_contact(posed,foot,point,rotation,1))return false;
+    blend_body_pose(native,posed,clip,weight);
+    return true;
+}
 }
