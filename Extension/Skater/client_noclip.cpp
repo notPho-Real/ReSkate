@@ -656,6 +656,15 @@ struct WallplantReleasedDeparture {
 };
 WallplantReleasedDeparture& wallplant_released_departure() {static WallplantReleasedDeparture value;return value;}
 std::atomic<std::uintptr_t> wallplant_released_core{};
+// A short read-only window across the same release. This never grants a writer
+// or trajectory request and cannot prolong the physical hold.
+struct WallplantReleaseObservation {
+    WallplantPhysicalHold release{};
+    std::uint64_t at{};
+    unsigned remaining{};
+};
+WallplantReleaseObservation& wallplant_release_observation() {static WallplantReleaseObservation value;return value;}
+std::atomic<std::uintptr_t> wallplant_observed_release_core{};
 void wallplant_hold_log(const WallplantPhysicalHold& hold,const char* phase,const char* reason,
         std::uint64_t now,std::uint32_t selected) noexcept {
     try {
@@ -1047,6 +1056,7 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
             "Wallplant hold authority changed after entry brake.");
         auto& hold=wallplant_physical_hold();
         wallplant_released_departure()={};wallplant_released_core.store(0,std::memory_order_release);
+        wallplant_release_observation()={};wallplant_observed_release_core.store(0,std::memory_order_release);
         hold={};hold.command=command;hold.owner=owner;hold.client=client;hold.entity=entity;
         hold.started=started;hold.intent_generation=intent.generation;hold.entry_root=hold.last_root=bodies.root;
         hold.last_velocity=velocities[0];
@@ -1203,6 +1213,8 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
             request_velocity[0],request_velocity[1],request_velocity[2],curve_position[0],curve_position[1],curve_position[2],
             curve_velocity[0],curve_velocity[1],curve_velocity[2]);
         arcade_mode::wallplant_runtime::finish_hold(releasing.command,true,now);
+        wallplant_release_observation()={releasing,now,4};
+        wallplant_observed_release_core.store(core,std::memory_order_release);
         // The impulse is already spent. Retain only enough provenance for the
         // first native100->200 query to use consumed motion, not a new kick.
         if(selected==100 && frame.state==100 && !frame.airborne) {
@@ -2658,16 +2670,25 @@ void noclip_skater_motion(std::uintptr_t rig, std::uintptr_t context,
 namespace dingosdk {
 using namespace client_source::detail;
 void observe_arcade_wallplant_native_response(std::uintptr_t rig,bool wipeout) noexcept {
-    if(!wallplant_hold_core.load(std::memory_order_acquire))return;
+    if(!wallplant_hold_core.load(std::memory_order_acquire) &&
+       !wallplant_observed_release_core.load(std::memory_order_acquire))return;
     SourceLastError error;
     auto& state=source_state();
     if(state.busy.test_and_set(std::memory_order_acquire))return;
     SourceBusyScope scope{state.busy};
-    const auto& hold=wallplant_physical_hold();
+    auto& observation=wallplant_release_observation();
+    const bool released=!wallplant_physical_hold().command;
+    const auto& hold=released?observation.release:wallplant_physical_hold();
     if(!hold.command || hold.owner.rig!=rig)return;
     const auto now=GetTickCount64();
     const auto grace=static_cast<std::uint64_t>(std::ceil(hold.command.native.physics_seconds*1000.0));
-    if(now<hold.started || now-hold.started>arcade_mode::WallplantHoldContinuity::duration_ms+grace)return;
+    if(released) {
+        if(!observation.remaining || now<observation.at ||
+           now-observation.at>arcade_mode::WallplantHoldContinuity::duration_ms) {
+            observation={};wallplant_observed_release_core.store(0,std::memory_order_release);return;
+        }
+        --observation.remaining;
+    } else if(now<hold.started || now-hold.started>arcade_mode::WallplantHoldContinuity::duration_ms+grace)return;
     try {
         NoBailSkater owner{};
         if(!no_bail_skater(owner) || owner!=hold.owner)return;
@@ -2687,12 +2708,35 @@ void observe_arcade_wallplant_native_response(std::uintptr_t rig,bool wipeout) n
         const auto spin8=reader.value<std::array<float,3>>(orientation.reference_body,native::body_spin_offset);
         const auto flags=reader.value<std::uint32_t>(orientation.reference_body,native::body_pending_flags_offset);
         const auto selected=reader.value<std::uint32_t>(owner.context,native::physics_state_offset);
+        const auto root_velocity=reader.value<std::array<float,3>>(orientation.root_body,native::body_velocity_offset);
+        const auto root_position=reader.value<std::array<float,3>>(orientation.root_body,addr::skater_body::body_transform_offset+48);
+        const auto board_position=reader.value<std::array<float,3>>(orientation.reference_body,addr::skater_body::body_transform_offset+48);
+        const auto target_position=reader.value<std::array<float,3>>(owner.rig,spawn::rig_world_motion_target+48);
+        const auto reference_position=reader.value<std::array<float,3>>(owner.context,spawn::context_motion_reference+48);
+        std::array<unsigned char,32> drive_code{};
+        source_require(reader.raw(owner.base+spawn::rig_drive_contract.rva,drive_code.data(),drive_code.size()) &&
+            drive_code==spawn::rig_drive_contract.bytes,"hold_observer_drive_contract");
+        // Read XYZ separately. SIMD padding and an uninitialised drive record
+        // must not discard the independently valid body/reference observation.
+        const auto drive_velocity=reader.value<std::array<float,3>>(owner.rig,spawn::rig_target_velocity);
+        const auto previous_target=reader.value<std::array<float,3>>(owner.rig,spawn::rig_previous_target_position);
+        const auto finite_vector=[](const auto& vector) {
+            return std::all_of(vector.begin(),vector.end(),[](float value){return std::isfinite(value);});
+        };
+        const bool drive_valid=finite_vector(drive_velocity) && finite_vector(previous_target);
         source_require(game::orientation_target::basis_valid(reference) &&
             game::orientation_target::basis_valid(orientation.actual),"hold_observer_basis");
         for(const auto& vector:{velocity,spin0,spin8})for(float v:vector)
             source_require(std::isfinite(v),"hold_observer_motion");
         reader.verify();NoBailSkater after{};
         if(!no_bail_skater(after) || after!=owner)return;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT DRIVE: occurrence={} contact={} ms={} phase={} state={} root={},{},{} board={},{},{} velocity0={},{},{} velocity8={},{},{} target={},{},{} reference={},{},{} derived_valid={} derived_velocity={},{},{} previous_target={},{},{} read_only=true atomic_snapshot=false.",
+            hold.command.input_sequence,hold.command.contact,now,released?"released":"held",selected,
+            root_position[0],root_position[1],root_position[2],board_position[0],board_position[1],board_position[2],
+            root_velocity[0],root_velocity[1],root_velocity[2],velocity[0],velocity[1],velocity[2],
+            target_position[0],target_position[1],target_position[2],reference_position[0],reference_position[1],reference_position[2],
+            drive_valid,drive_velocity[0],drive_velocity[1],drive_velocity[2],previous_target[0],previous_target[1],previous_target[2]);
         const auto& a=orientation.actual;const auto& r=reference;
         // This is an original native callback observation, not the earlier
         // pending-write readback and not a hook of the bail predicate itself.

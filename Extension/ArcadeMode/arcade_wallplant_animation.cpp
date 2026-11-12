@@ -234,7 +234,7 @@ bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t s
         if(!anim_studio::finite(placement))return false;
         const auto direction=hold_wall_direction(normal,placement.rotation);
         if(!direction)return false;
-        const auto contact=plant_contact(*clip,clips->ground,*direction,native_pose->joints);
+        const auto contact=plant_contact(*clip,clips->ground,*direction,native_pose->joints,true);
         if(!contact)return false;
         const auto planted=std::optional(contact->sample);
         if(!planted)return false;

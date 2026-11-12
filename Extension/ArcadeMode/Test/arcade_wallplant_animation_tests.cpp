@@ -84,6 +84,46 @@ int main() {
         const auto tip=anim_studio::world(pose,foot);
         const auto other=foot==bonecam::joint::left_foot?bonecam::joint::right_foot:bonecam::joint::left_foot;
         const auto board=anim_studio::world(pose,other);
+        auto levelled=pose;
+        check(skater_animation::level_contact_pose(levelled,foot),"Contact preparation retains a reachable board foot");
+        const auto levelled_tip=anim_studio::world(levelled,foot);
+        const arm_reach::ContactFrame surface{{0,1,0},0};
+        const anim_studio::Vec3 wall_normal{0,0,1};
+        anim_studio::Clip held;
+        held.joints=anim_studio::skeleton_joints;held.times={0};
+        held.frames=pose;held.turned_only.resize(held.joints,1);
+        held.frames[2].position={0,-1,0};
+        const auto direction=hold_wall_direction(wall_normal,pose[1].rotation);
+        check(direction.has_value(),"Banked fixture has a measured wall direction");
+        const auto selection=plant_contact(held,2,*direction,pose,true);
+        check(selection.has_value(),"Levelled selection admits an authored support foot");
+        auto selected_pose=pose;
+        check(skater_animation::level_contact_pose(selected_pose,selection->sample.joint),
+            "Selected contact uses the same reachable levelled frame");
+        const auto selected_tip=anim_studio::world(selected_pose,selection->sample.joint);
+        const auto selected_relative=anim_studio::rotate(anim_studio::conjugate(pose[1].rotation),
+            {selected_tip.position[0]-pose[1].position[0],selected_tip.position[1]-pose[1].position[1],
+             selected_tip.position[2]-pose[1].position[2]});
+        float expected_reach{};
+        for(unsigned k=0;k<3;++k)expected_reach+=selected_relative[k]*(*direction)[k];
+        check(near(selection->sample.reach,expected_reach),"Selection ranks the drawn frame rather than inherited bank");
+        const auto anchor=skater_animation::held_contact_target(pose,held,0,foot,surface,
+            levelled_tip.position,wall_normal,true);
+        check(anchor.has_value(),"A levelled hold derives its anchor in the frame that will be drawn");
+        check(std::abs(tip.position[1]-levelled_tip.position[1])>.01f,
+            "Banked regression separates old and levelled endpoint heights");
+        for(unsigned k=0;k<3;++k)
+            check(near(anchor->position[k],levelled_tip.position[k]),
+                "Contact anchor does not pull a levelled leg back to the banked endpoint");
+        auto anchored=pose;
+        check(skater_animation::level_body_contact(anchored,foot,anchor->position,anchor->rotation,1),
+            "Prepared anchor is reachable in the drawn body frame");
+        for(unsigned k=0;k<3;++k) {
+            check(near(anim_studio::world(anchored,foot).position[k],levelled_tip.position[k]),
+                "Drawn plant retains the levelled authored endpoint");
+            check(near(anim_studio::world(anchored,other).position[k],board.position[k]),
+                "Levelled anchoring retains the native board foot");
+        }
         check(skater_animation::level_body_contact(pose,foot,tip.position,tip.rotation,1),
             "A banked authored body levels only when both existing foot endpoints remain reachable");
         const auto kept=anim_studio::world(pose,other),planted=anim_studio::world(pose,foot);

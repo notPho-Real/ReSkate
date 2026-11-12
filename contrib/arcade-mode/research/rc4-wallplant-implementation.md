@@ -432,3 +432,30 @@ position edits were not introduced without that proof. The next exact-source
 trial must record both native velocity records, consumed and subsequent body
 motion, actual hold/release and orientation. All remaining visual, combo and
 follow-up acceptance gates remain open; the draft is not ready for user testing.
+# Contact frame consistency and release observation
+
+The exact `24afd4f1` hardware trial is not gameplay acceptance. It completed
+one 183 ms hold and one release, followed by a clean landing. The first consumed
+root velocity was `[-2.32308,12.43731,5.15535]`; a later native201 observation
+was `[-3.71507,15.88995,8.86619]`. The visible held pose remained tucked.
+The outgoing physical orientation and the additional native acceleration are
+still unresolved. No followup combo or negative-control success is attributed
+to this build.
+
+Contact selection and anchoring previously evaluated the authored pose under
+the banked native placement. Drawing then levelled the torso and forced the
+plant foot back to that earlier endpoint. The same preparation now supplies
+all three stages: level about the existing hips, preserve the board foot, then
+derive the planted endpoint. A failed levelled solve cannot fall back to a
+different frame while reporting the prepared contact as reached. Native
+placement, bone lengths, physical bodies and collision observations are not
+changed by this render correction.
+
+The original skeleton callback also records the physical body/reference and
+spring target positions through four callbacks after release, within 160 ms.
+This observation owns no actuator, query or state transition. A separate valid
+flag distinguishes the derived target velocity from independently read body
+velocity; nonfinite SIMD padding is not interpreted as geometry. The added
+read addresses and drive fingerprint are pinned in the supported build header.
+This is intended to identify the release discontinuity, not certify its cause
+or conceal it with another velocity write. Native acceptance remains pending.

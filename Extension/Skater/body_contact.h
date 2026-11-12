@@ -5,33 +5,11 @@
 #include <cmath>
 
 namespace dingosdk::skater_animation {
-// Fix the endpoint from the held authored pose, before the entry blend. Using
-// the first partially blended foot would lock a different anchor at each draw
-// cadence and force the fully blended leg back into the incoming crouch.
-inline std::optional<arm_reach::Placed> held_contact_target(
-        std::span<const anim_studio::Joint> native, const anim_studio::Clip& clip,
-        float time, std::uint16_t foot, const arm_reach::ContactFrame& frame,
-        const anim_studio::Vec3& point, const anim_studio::Vec3& normal) {
+// Prepare the same body frame for contact selection, anchoring and drawing.
+// Keep the board foot fixed while the hips lose inherited placement bank.
+inline bool level_contact_pose(std::span<anim_studio::Joint> pose, std::uint16_t foot) {
     using namespace anim_studio;
-    if(native.size()!=skeleton_joints || clip.joints!=skeleton_joints ||
-       clip.times.empty() || clip.frames.size()/clip.joints<clip.times.size() ||
-       !std::isfinite(time) || time<0 || time>clip.duration() ||
-       (foot!=bonecam::joint::left_foot && foot!=bonecam::joint::right_foot))return {};
-    std::array<Joint,skeleton_joints> pose,sample;
-    std::copy(native.begin(),native.end(),pose.begin());
-    sample=pose;
-    clip.sample(time,sample);
-    blend_body_pose(pose,sample,clip,1);
-    return arm_reach::contact_target(world(pose,foot),frame,point,normal);
-}
-// A held authored body can inherit the physical placement's bank and pitch.
-// Level its frame about the existing hips, then solve both feet: the observed
-// surface endpoint and the other foot's original board-relative endpoint.
-// This is render-pose math only. A failed reach publishes none of the changes.
-inline bool level_body_contact(std::span<anim_studio::Joint> pose, std::uint16_t foot,
-        const anim_studio::Vec3& point, const anim_studio::Quat& rotation, float weight) {
-    using namespace anim_studio;
-    if(pose.size()!=skeleton_joints || !std::isfinite(weight) || weight<0 || weight>1 ||
+    if(pose.size()!=skeleton_joints ||
        (foot!=bonecam::joint::left_foot && foot!=bonecam::joint::right_foot))return false;
     const auto other=foot==bonecam::joint::left_foot?bonecam::joint::right_foot:bonecam::joint::left_foot;
     const auto placement=world(pose,placement_joint),hips=world(pose,hips_joint);
@@ -55,6 +33,41 @@ inline bool level_body_contact(std::span<anim_studio::Joint> pose, std::uint16_t
     result[hips_joint].rotation=normalised(multiply(conjugate(parent_world.rotation),corrected));
     const auto board=arm_reach::reach_joint(result,other,held.position,1,held.rotation);
     if(!board.valid || !board.reached)return false;
+    std::copy(result.begin(),result.end(),pose.begin());
+    return true;
+}
+// Fix the endpoint from the held authored pose, before the entry blend. Using
+// the first partially blended foot would lock a different anchor at each draw
+// cadence and force the fully blended leg back into the incoming crouch.
+inline std::optional<arm_reach::Placed> held_contact_target(
+        std::span<const anim_studio::Joint> native, const anim_studio::Clip& clip,
+        float time, std::uint16_t foot, const arm_reach::ContactFrame& frame,
+        const anim_studio::Vec3& point, const anim_studio::Vec3& normal, bool level_body=false) {
+    using namespace anim_studio;
+    if(native.size()!=skeleton_joints || clip.joints!=skeleton_joints ||
+       clip.times.empty() || clip.frames.size()/clip.joints<clip.times.size() ||
+       !std::isfinite(time) || time<0 || time>clip.duration() ||
+       (foot!=bonecam::joint::left_foot && foot!=bonecam::joint::right_foot))return {};
+    std::array<Joint,skeleton_joints> pose,sample;
+    std::copy(native.begin(),native.end(),pose.begin());
+    sample=pose;
+    clip.sample(time,sample);
+    blend_body_pose(pose,sample,clip,1);
+    if(level_body && !level_contact_pose(pose,foot))return {};
+    return arm_reach::contact_target(world(pose,foot),frame,point,normal);
+}
+// A held authored body can inherit the physical placement's bank and pitch.
+// Level its frame about the existing hips, then solve both feet: the observed
+// surface endpoint and the other foot's original board-relative endpoint.
+// This is render-pose math only. A failed reach publishes none of the changes.
+inline bool level_body_contact(std::span<anim_studio::Joint> pose, std::uint16_t foot,
+        const anim_studio::Vec3& point, const anim_studio::Quat& rotation, float weight) {
+    using namespace anim_studio;
+    if(pose.size()!=skeleton_joints || !std::isfinite(weight) || weight<0 || weight>1 ||
+       (foot!=bonecam::joint::left_foot && foot!=bonecam::joint::right_foot))return false;
+    std::array<Joint,skeleton_joints> result;
+    std::copy(pose.begin(),pose.end(),result.begin());
+    if(!level_contact_pose(result,foot))return false;
     const auto planted=arm_reach::reach_joint(result,foot,point,1,rotation);
     if(!planted.valid || !planted.reached)return false;
     const auto& body=body_joints();

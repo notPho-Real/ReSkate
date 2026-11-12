@@ -1,7 +1,7 @@
 #pragma once
 #include "arcade_wallplant_animation_measurement.h"
 #include "Extension/Skater/arm_reach.h"
-#include "Extension/Skater/body_pose.h"
+#include "Extension/Skater/body_contact.h"
 #include "Extension/Skater/skater_skeleton.h"
 
 namespace dingosdk::arcade_mode::wallplant_animation {
@@ -23,7 +23,7 @@ inline bool valid_contact_pose(std::span<const anim_studio::Joint> pose) noexcep
 // its wall reach on the same observed native body geometry used by playback;
 // a raised foot cannot win merely because it happens to face the wall.
 inline std::optional<PlantContact> plant_contact(const anim_studio::Clip& clip,std::uint16_t ground,
-        const anim_studio::Vec3& wall_direction,std::span<const anim_studio::Joint> native) {
+        const anim_studio::Vec3& wall_direction,std::span<const anim_studio::Joint> native,bool level_body=false) {
     if(native.size()!=anim_studio::skeleton_joints || clip.joints!=native.size() ||
        ground>=clip.joints || clip.times.empty() || clip.frames.size()/clip.joints<clip.times.size() ||
        !valid_contact_pose(native))return {};
@@ -47,6 +47,7 @@ inline std::optional<PlantContact> plant_contact(const anim_studio::Clip& clip,s
         }
         std::copy(native.begin(),native.end(),pose.begin());
         skater_animation::blend_body_pose(pose,authored,clip,1.f);
+        if(level_body && !skater_animation::level_contact_pose(pose,selected))continue;
         const auto placement=anim_studio::world(pose,anim_studio::placement_joint);
         const auto scale=(placement.scale[0]+placement.scale[1]+placement.scale[2])/3;
         const auto foot=anim_studio::world(pose,selected);

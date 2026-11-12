@@ -1179,7 +1179,7 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                         play.contact->point,play.contact->normal):std::nullopt;
                     if(play.contact->frame) {
                         const auto target=held_contact_target(rendered,*play.clip,play.at,
-                            play.contact->joint,*play.contact->frame,play.contact->point,play.contact->normal);
+                            play.contact->joint,*play.contact->frame,play.contact->point,play.contact->normal,play.contact->level_body);
                         p.contact_anchor=target?std::optional(target->position):std::nullopt;
                         if(target)p.contact_rotation=target->rotation;
                     }
@@ -1190,7 +1190,9 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                 if(p.contact_anchor) {
                     p.contact_body_frame_applied=play.contact->level_body && p.contact_rotation &&
                         level_body_contact(rendered,play.contact->joint,*p.contact_anchor,*p.contact_rotation,weight);
-                    const auto reached=p.contact_body_frame_applied?arm_reach::Reached{}:
+                    // A levelled contact cannot fall back to a different body
+                    // frame while reporting the prepared endpoint as reached.
+                    const auto reached=play.contact->level_body?arm_reach::Reached{}:
                         arm_reach::reach_joint(rendered,play.contact->joint,*p.contact_anchor,weight,p.contact_rotation);
                     p.contact_reachable=p.contact_body_frame_applied || (reached.valid && reached.reached);
                     if(p.contact_reachable)

@@ -67,6 +67,14 @@ inline constexpr std::uintptr_t rig_local_motion_target = 0x46e0;
 inline constexpr std::uintptr_t rig_world_motion_target = 0x4720;
 inline constexpr std::uintptr_t rig_inverse_motion_target = 0x4760;
 inline constexpr std::uintptr_t rig_motion_origin = 0x5780;
+// The normal rig drive derives target velocity from consecutive world target
+// positions and the cached physics step, then advances its position history.
+// Read-only measurements; neither field is a body velocity or a launch receipt.
+inline constexpr Fingerprint rig_drive_contract{0x476a610, {
+    0x48,0x8b,0xc4,0x48,0x81,0xec,0xa8,0x00,0x00,0x00,0xc5,0xf8,0x10,0x81,0x50,0x47,
+    0x00,0x00,0xc5,0xf8,0x5c,0x91,0x70,0x58,0x00,0x00,0xc5,0xf8,0x29,0x70,0xe8,0xc5}};
+inline constexpr std::uintptr_t rig_target_velocity = 0x5860;
+inline constexpr std::uintptr_t rig_previous_target_position = 0x5870;
 // Ground reference publication at 4774fb2 composes this local root with
 // rig_local_motion_target, then adds rig_motion_origin. The native orientation
 // predicates compare that reference with board physics body 8, not body 0 or
