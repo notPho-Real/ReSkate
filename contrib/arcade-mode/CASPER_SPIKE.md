@@ -770,3 +770,18 @@ sanitizer and related integration suites pass. Captured native-rig checks stay
 private. These geometric proxies do not describe the exact rendered shoe mesh:
 new game-rendered contact and transition review remains mandatory before any
 readiness claim. Native collision, balance, friction and inputs are unchanged.
+
+### Display-turn recovery after the contact correction
+
+The first native contact gate on `2926a21b` showed the front ankle beside the
+rail and the forefoot beneath it in the inspected views. The following flip
+capture exposed a separate exit defect: the full held display turn survived
+until the final pose fade, causing an abrupt return to the native facing.
+That candidate remains unaccepted; the wider gameplay matrix was not run.
+
+The existing phase controller now eases its display heading back during direct
+and flip exits, reserving the last tenth for pose handoff. It uses the existing
+native-step clock and authored easing function. Hold rotation, trigger ownership,
+physical heading, balance and surface drag are unchanged. A regression covers
+both turn directions and both exits at 30 and 60 Hz, and fails on the previous
+implementation. Fresh exact-source rendering is still required for acceptance.

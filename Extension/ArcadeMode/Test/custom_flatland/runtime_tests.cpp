@@ -177,10 +177,10 @@ void held_rotation(){
 }
 
 void held_rotation_exits(){
-    for(bool flip:{false,true})for(bool left:{false,true}){
-        Rig r;r.enter();r.hold();
+    for(float dt:{1.f/30,1.f/60})for(bool flip:{false,true})for(bool left:{false,true}){
+        Rig r;r.dt=dt;r.enter();r.hold();
         if(left)r.physical_left_trigger=255;else r.physical_right_trigger=255;
-        r.poll(0);r.step();r.tick();
+        for(unsigned i=0;i<(dt>.02f?8u:16u);++i){r.poll(0);r.step();r.tick();}
         const auto turned=player.display_radians;
         r.poll(0x4000);r.step();r.tick();r.poll(0);r.step();r.tick();
         const auto out=r.poll(flip?0x4000:0x8000);
@@ -188,12 +188,21 @@ void held_rotation_exits(){
         r.tick();
         check(r.binding().branch==(flip?42u:0u),"held trigger does not block flip or direct return");
         if(flip)check((player.display_radians-turned)*(left?1.f:-1.f)>=0,"flip preserves the display turn already reached");
+        float previous_turn=std::abs(player.display_radians);
+        bool returning=false;
         for(unsigned i=0;i<48;++i){
             const auto held=r.poll(!flip && i<4?0x8000u:0u);
             check(held.manual.owns,"holding the exit Y and rotation trigger cannot release the continuing Manual");
             check(held.flatland_triggers_owned && !held.action.owned,"the already-held rotation trigger stays consumed through exit");
             r.step();r.tick();
+            if(player.ticket) {
+                const float turn=std::abs(player.display_radians);
+                check(turn<=previous_turn+.0001f,"exit returns display heading without restarting the held trigger");
+                returning|=turn<previous_turn-.0001f;
+                previous_turn=turn;
+            }
         }
+        check(returning && previous_turn<.02f,"display heading reaches native before the exit releases its pose");
         check(!player.ticket && r.binding().branch==0 && !r.binding().ready,
             "exit completes while the held trigger cannot reenter Casper");
         r.physical_left_trigger=r.physical_right_trigger=0;

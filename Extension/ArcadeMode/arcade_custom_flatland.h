@@ -71,7 +71,13 @@ public:
     bool active() const noexcept {return phase_!=Phase::manual;}
     unsigned branch() const noexcept {return phase_==Phase::flip_exit?42u:phase_==Phase::direct_exit?0u:active()?2u:0u;}
     std::uint64_t episode() const noexcept {return episode_;}
-    float display_radians() const noexcept {return display_radians_;}
+    float display_radians() const noexcept {
+        // Recover the native heading during the exit, before its final pose
+        // fade. Keeping the full display turn until cancellation snaps the body.
+        if((phase_==Phase::flip_exit || phase_==Phase::direct_exit) && duration_>0)
+            return display_radians_*(1-anim_studio::motion_authoring::smooth(elapsed_/(duration_*.9f)));
+        return display_radians_;
+    }
     bool branch_ready() const noexcept {return phase_==Phase::manual || phase_==Phase::hold;}
     void cancel() noexcept {
         if(ticket_ && playback_.cancel)playback_.cancel(playback_.context,ticket_);
