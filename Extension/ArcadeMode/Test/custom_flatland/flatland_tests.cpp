@@ -260,7 +260,7 @@ void animation(){
             total+=2*std::acos(std::clamp(std::abs(dot),0.f,1.f));}
         first=false;previous=board.rotation;
     }
-    check(total>3*3.14159265f && total<10.5f,"shortest arc interpolation preserves the authored roll with coordinated pitch");
+    check(total>3*3.14159265f && total<5*3.14159265f,"shortest arc interpolation retains the combined spin and roll path");
     const auto roundtrip=clip_from_bytes(clip_bytes(*c.entry_hold));check(roundtrip.times==c.entry_hold->times,"authored clip uses existing portable serialization");
 }
 }

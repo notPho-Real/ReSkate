@@ -226,6 +226,36 @@ void range_motion(){
         "quiet range motion moves the rendered hand rather than disappearing in a center easing plateau");
     check(moving.sample(std::numeric_limits<float>::quiet_NaN(),0)==0,"invalid range input fails closed");
 }
+void visible_motion(){
+    for(bool goofy:{false,true}) {
+        const auto clips=make_casper_clips(flatland_pose_fixture(goofy),{});
+        float yaw=0,previous=0,roll=0,previous_roll=0;
+        for(unsigned i=0;i<=144;++i) {
+            Joint board;clips.flip_exit->sample_board(static_cast<float>(i)/240,board);
+            const auto nose=rotate(board.rotation,{0,0,1});
+            const float angle=std::atan2(nose[0],nose[2]);
+            const float pitch=std::atan2(-nose[1],std::hypot(nose[0],nose[2]));
+            const auto upright=rotate(multiply(conjugate(axis_angle({1,0,0},pitch)),
+                conjugate(axis_angle({0,1,0},angle))),rotate(board.rotation,{0,1,0}));
+            const float bank=std::atan2(-upright[0],upright[1]);
+            if(i){yaw+=std::remainder(angle-previous,6.28318530718f);
+                roll+=std::remainder(bank-previous_roll,6.28318530718f);}
+            previous=angle;previous_roll=bank;
+        }
+        check(std::abs(std::abs(yaw)-6.28318530718f)<.05f,
+            "flip completes a full horizontal board revolution as well as its roll");
+        check(std::abs(std::abs(roll)-9.42477796f)<.05f,
+            "horizontal spin retains the inverted-to-upright roll path");
+        std::vector<Joint> a(skeleton_joints),b(skeleton_joints);
+        clips.entry_hold->sample(2+clips.range_motion.sample(0,1.f/3),a);
+        clips.entry_hold->sample(2+clips.range_motion.sample(0,1),b);
+        check(length(sub(world(a,hips_joint).position,world(b,hips_joint).position))>.035f,
+            "quiet hold visibly transfers the hips while native balance stays centered");
+        for(auto joint:{49u,278u})check(length(sub(world(a,static_cast<std::uint16_t>(joint)).position,
+                world(b,static_cast<std::uint16_t>(joint)).position))>.06f,
+            "quiet hold moves both hands by a readable amount");
+    }
+}
 void validation(){
     auto seed=flatland_pose_fixture();const auto c=make_casper_clips(seed,{});
     auto clip=*c.direct_exit;
@@ -243,4 +273,4 @@ void validation(){
     rejected([&]{(void)bake(invalid);});
 }
 }
-int main(){contact_anchor();shoe_clearance();front_ankle_clearance();low_stance();clips();raised_shoulders();tall_manual_support();range_motion();validation();std::cout<<checks<<" authored motion checks passed (synthetic rig; not native contact acceptance)\n";}
+int main(){visible_motion();contact_anchor();shoe_clearance();front_ankle_clearance();low_stance();clips();raised_shoulders();tall_manual_support();range_motion();validation();std::cout<<checks<<" authored motion checks passed (synthetic rig; not native contact acceptance)\n";}

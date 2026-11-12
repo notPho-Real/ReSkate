@@ -785,3 +785,23 @@ native-step clock and authored easing function. Hold rotation, trigger ownership
 physical heading, balance and surface drag are unchanged. A regression covers
 both turn directions and both exits at 30 and 60 Hz, and fails on the previous
 implementation. Fresh exact-source rendering is still required for acceptance.
+
+
+### Full board spin and visible held movement
+
+Owner review rejected the roll-only flip and the near-static held body. The
+motion table now includes a yaw channel, with a full horizontal board turn
+between foot release and upright recovery. The long-axis roll remains authored
+separately; regular and goofy reverse both axes together. Existing timing,
+withdrawal/lift keys, animation ownership and Manual return remain intact.
+
+The existing native-clock range motion now traverses a wider authored range.
+Lateral hip transfer, torso lean and both arm corrections make a centered hold
+move visibly; faster corrections still increase toward either native balance
+limit. Foot targets stay anchored and the existing pelvis-height bound remains.
+No controller, material policy, balance dynamics or physical contacts change.
+
+Focused regressions independently unwrap the sampled board heading and roll,
+and require readable hip and hand displacement from the actual baked hold.
+Existing limb/deck clearance and ownership checks remain mandatory. Native
+rendered review is required before claiming that the revised motion is ready.

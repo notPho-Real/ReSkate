@@ -46,13 +46,15 @@ inline CustomTrickClips make_casper_clips(std::span<const anim_studio::Joint> se
     const auto pose=[&](const Key& k,float balance=0.f) {
         author::PoseKey out;out.time=k.time;out.pose=base;out.board=board;out.weight=k.weight;
         const auto basis=slerp(board.rotation,level,k.upper);
-        out.board.rotation=normalised(multiply(basis,from_euler({k.pitch,0,side*k.roll})));
+        // Keep the shove around the support normal, independent of the long-axis roll.
+        out.board.rotation=normalised(multiply(basis,multiply(
+            axis_angle({0,1,0},side*k.yaw*.01745329252f),from_euler({k.pitch,0,side*k.roll}))));
         out.board.position=add(board.position,axis({0,k.lift+(author::unpoint(board,back_foot.position)[1]-.08f)*k.contact,0}));
         out.board.position[1]+=(support-board_geometry::lowest_point(out.board,shape))*k.contact;
-        out.pose[hips_joint].position=add(out.pose[hips_joint].position,axis({0,-k.hip_drop,k.hip_back+.05f*balance}));
-        author::turn(out.pose,hips_joint,axis_angle(axis({1,0,0}),(-4*k.upper+6*balance)*.01745329252f));
-        author::turn(out.pose,42,axis_angle(axis({1,0,0}),(7*k.upper-12*balance)*.01745329252f));
-        author::turn(out.pose,44,axis_angle(axis({0,0,1}),side*(5*k.upper+10*balance)*.01745329252f));
+        out.pose[hips_joint].position=add(out.pose[hips_joint].position,axis({side*.035f*balance,-k.hip_drop,k.hip_back+.09f*balance}));
+        author::turn(out.pose,hips_joint,axis_angle(axis({1,0,0}),(-4*k.upper+8*balance)*.01745329252f));
+        author::turn(out.pose,42,axis_angle(axis({1,0,0}),(7*k.upper-16*balance)*.01745329252f));
+        author::turn(out.pose,44,axis_angle(axis({0,0,1}),side*(5*k.upper+18*balance)*.01745329252f));
         author::turn(out.pose,103,axis_angle(axis({1,0,0}),-5*k.upper*.01745329252f));
         const auto foot_rotation=[&](const Joint& native,float ankle) {
             const auto level_foot=normalised(multiply(multiply(level,conjugate(board.rotation)),native.rotation));
@@ -99,8 +101,8 @@ inline CustomTrickClips make_casper_clips(std::span<const anim_studio::Joint> se
             across[1]=0; // A raised native clavicle must not lift the hand target.
             const auto outward=unit(across,axis({1,0,0}));
             const float response=(chain[0]==47?1.f:-1.f)*balance;
-            const auto balanced=add(shoulder.position,add(scaled(outward,.35f+.05f*std::abs(balance)),
-                add(Vec3{0,-.18f+.075f*response,0},axis({0,0,-.04f+.10f*response}))));
+            const auto balanced=add(shoulder.position,add(scaled(outward,.35f+.07f*std::abs(balance)),
+                add(Vec3{0,-.24f+.12f*response,0},axis({0,0,-.04f+.18f*response}))));
             const auto target=add(native.position,scaled(sub(balanced,native.position),k.upper));
             (void)author::reach(out.pose,chain,target,add(Vec3{0,-1,0},axis({0,0,-.3f})),native.rotation);
             // Let the wrist follow the solved forearm instead of holding its
@@ -140,6 +142,6 @@ inline CustomTrickClips make_casper_clips(std::span<const anim_studio::Joint> se
     auto flip=phase("Casper Flip");
     for(const auto& k:casper_motion::flip)flip.keys.push_back(pose(k));
     return {std::make_shared<Clip>(std::move(init)),std::make_shared<Clip>(author::bake(flip)),
-        std::make_shared<Clip>(std::move(out)),1,3,{.08f,.16f}};
+        std::make_shared<Clip>(std::move(out)),1,3,{.30f,.45f}};
 }
 }

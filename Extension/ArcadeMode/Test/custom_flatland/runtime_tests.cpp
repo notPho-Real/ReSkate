@@ -128,7 +128,7 @@ struct Rig {
     }
     void hold(unsigned count=24){
         for(unsigned i=0;i<count;++i){next();auto d=step();tick();check(d.admitted,"active native writer consumes custom drag");}
-        check(binding().ready && std::abs(player.time-2.f)<=.081f,"entry settles into a subtly moving native-clock hold");
+        check(binding().ready && std::abs(player.time-2.f)<=.301f,"entry settles into a visibly moving native-clock hold");
     }
 };
 void runtime_admission(){
@@ -248,7 +248,7 @@ void balance_range(){
     const auto ticket=player.ticket;
     for(float balance:{-1.f,-.5f,0.f,.5f,1.f}) {
         r.balance=balance;r.poll(0);r.step();r.tick();
-        check(std::abs(player.time-(2+balance))<=.161f && player.time>=1 && player.time<=3 && player.ticket==ticket,
+        check(std::abs(player.time-(2+balance))<=.451f && player.time>=1 && player.time<=3 && player.ticket==ticket,
             "native balance remains the center of bounded presentation motion on the same ticket");
     }
     r.balance=std::numeric_limits<float>::quiet_NaN();r.poll(0);r.tick();
