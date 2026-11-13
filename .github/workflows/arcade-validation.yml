@@ -54,7 +54,7 @@ jobs:
       - name: Fetch native dependencies required at configure time
         run: cargo fetch --locked --manifest-path SpotifyHelper/Cargo.toml --target x86_64-pc-windows-msvc
       - name: Configure
-        run: cmake --preset vs2022-x64 -DDINGOSDK_DEV_TOOLS=ON -DDINGOSDK_BUILD_TESTS=ON -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON -DDINGOSDK_BUILD_LAUNCHER_TESTS=ON -DDINGOSDK_BUILD_ARCADE_SCORE_ASSET_TOOLS=ON -DDINGOSDK_BUILD_PARK_EDITOR_TESTS=ON
+        run: cmake --preset vs2022-x64 -DDINGOSDK_DEV_TOOLS=ON -DDINGOSDK_BUILD_TESTS=ON -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON -DDINGOSDK_BUILD_LAUNCHER_TESTS=ON -DDINGOSDK_BUILD_ARCADE_SCORE_ASSET_TOOLS=ON -DDINGOSDK_BUILD_PARK_EDITOR_TESTS=ON -DDINGOSDK_BUILD_ANIMATION_STUDIO_TESTS=ON -DDINGOSDK_BUILD_MULTIPLAYER_TESTS=ON -DDINGOSDK_BUILD_PLUGIN_TESTS=ON
       # Independent runner/build tree: never race MSBuild on the runtime tree.
       # This complete test gate remains required by packaging and publishing.
       - name: Compile Windows test preflight

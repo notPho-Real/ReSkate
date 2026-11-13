@@ -95,6 +95,22 @@ class SchedulingTests(unittest.TestCase):
         self.assertIn("pull_request", INTEGRATION["on"])
         self.assertIn("workflow_dispatch", INTEGRATION["on"])
 
+    def test_upstream_preflight_targets_are_configured(self):
+        steps = DEV["jobs"]["windows-tests"]["steps"]
+        configure = next(s["run"] for s in steps if s.get("name") == "Configure")
+        compile_step = next(s["run"] for s in steps if s.get("name") == "Compile Windows test preflight")
+        groups = {
+            "dingosdk_pose_place_tests": "DINGOSDK_BUILD_ANIMATION_STUDIO_TESTS",
+            "dingosdk_playstation_report_tests": "DINGOSDK_BUILD_MULTIPLAYER_TESTS",
+            "dingosdk_native_menu_view_tests": "DINGOSDK_BUILD_MULTIPLAYER_TESTS",
+            "dingosdk_score_line_tests": "DINGOSDK_BUILD_PLUGIN_TESTS",
+            "dingosdk_news_tests": "DINGOSDK_BUILD_PARK_EDITOR_TESTS",
+        }
+        for target, option in groups.items():
+            with self.subTest(target=target):
+                self.assertIn(target, compile_step.split())
+                self.assertIn("-D" + option + "=ON", configure.split())
+
     def test_failure_or_skipped_gate_blocks_release(self):
         gate = DEV["jobs"]["release-eligibility"]
         expected = {"policy", "targeted", "build", "windows-tests", "linux-tests", "macos-lab", "deck", "linux-integration"}
