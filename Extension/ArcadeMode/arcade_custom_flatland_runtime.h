@@ -4,7 +4,8 @@
 namespace dingosdk::arcade_mode {
 struct CustomFlatlandBinding { bool enabled{}; unsigned branch{}; bool ready{}; bool owns_triggers{}; };
 namespace custom_flatland_runtime {
-// Unsaved opt-in for the dev candidate; release builds always remain disabled.
+// Enabled by default; the incoming Arcade context gates all gameplay.
+// The unsaved override is retained for development diagnostics.
 // Bounded scalar diagnostics, reset by OFF -> ON. These are controller requests,
 // not proof that the writer or the renderer applied them.
 struct Observation {

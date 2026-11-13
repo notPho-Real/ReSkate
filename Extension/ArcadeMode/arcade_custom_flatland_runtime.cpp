@@ -1,5 +1,4 @@
 #include "arcade_custom_flatland_runtime.h"
-#if defined(DINGOSDK_DEV_TOOLS)
 #include "arcade_custom_flatland_clips.h"
 #include "arcade_native_wall_contact.h"
 #include "Extension/Skater/skater_animation.h"
@@ -22,7 +21,7 @@ struct State {
     std::uint64_t serial{},logical{},submitted{},ticket{},client_at{};
     std::shared_ptr<const anim_studio::Clip> clip;
     float time{};
-    bool enabled{},ready{};
+    bool enabled{true},ready{};
     std::unique_ptr<CustomFlatland> trick;
     bool client_current() const noexcept {
         return client_at && context.now>=client_at && context.now-client_at<150;
@@ -160,9 +159,9 @@ void cancel() noexcept {
 void tick(CustomFlatlandContext context) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
     try {
-        // Install the shared animation hooks while the opt-in is idle, before
-        // the first Manual acquires its short controller/physics leases.
-        if(s.enabled)skater_animation::prepare_playback();
+        // Prepare only while Arcade gameplay is admitted, before a Manual
+        // acquires its short controller/physics leases. OFF stays inert.
+        if(s.enabled && context.enabled)skater_animation::prepare_playback();
         observe_locked(s,context); // Expire a missed heartbeat before renewing it.
         native_wall_contact::enable_materials(s.enabled && context.valid() &&
             native_wall_contact::start_materials(context.frame.owner.base));
@@ -237,15 +236,3 @@ void tick(CustomFlatlandContext context) noexcept {
     }
 }
 }
-#else
-namespace dingosdk::arcade_mode::custom_flatland_runtime {
-void set_enabled(bool) noexcept {}
-Status status() noexcept {return {};}
-void tick(CustomFlatlandContext) noexcept {}
-CustomFlatlandBinding observe(CustomFlatlandContext) noexcept {return {};}
-CustomFlatlandBinding observe_input(CustomFlatlandContext,unsigned,unsigned) noexcept {return {};}
-InputDisposition request(const InputRequest&) noexcept {return InputDisposition::unsupported;}
-CustomFlatland::Motion consume(const NativeInputFrame&,std::uint64_t,const std::array<float,3>&,bool,const FlatlandSurfaceEvidence&) noexcept {return {};}
-void cancel() noexcept {}
-}
-#endif

@@ -3,6 +3,10 @@ inline constexpr TrickEvidence rc3_evidence{
     "9906af3b5d4816c15d4506430d51afb7d860b970", "Pinned 20260929; RC3 candidate; see individual captures",
     "contrib/arcade-mode/research/rc3-gameplay-status.md",
     "Only attributable native trials below count toward this trick's applicable checklist. Unlisted criteria have not been established."};
+inline constexpr TrickEvidence casper_evidence{
+    "ab41aab56f67f5c546a084a5d41cb34c2a43675b", "Pinned 20260929; custom flatland on native Manual",
+    "contrib/arcade-mode/UNIFIED_RC5.md",
+    "Experimental animation on native Manual balance. Full foot contact and all outfits remain unverified; no custom native scoring or trick ID."};
 inline constexpr TrickEvidence planned_evidence{
     "9906af3b5d4816c15d4506430d51afb7d860b970", "Pinned 20260929; design only",
     "contrib/arcade-mode/research/trickpedia-implementation.md",

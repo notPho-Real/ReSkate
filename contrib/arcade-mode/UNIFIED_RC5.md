@@ -186,3 +186,25 @@ build and native Back/reopen/ON/OFF verification; the prior build is not accepte
 for owner testing. Full foot-contact clearance remains visually unverified.
 
 The Back action now restores only the input reference, navigation command and active flag temporarily held for search, following the native Hub lifecycle. Native action state outside those fields remains owned by the game. A focused regression changes that state while search is open and checks both search close and Arcade OFF. Native validation of this follow-up is pending.
+
+
+## Default flatland and grouped guide
+
+The owner requested flatland as ordinary Arcade behavior. The existing runtime
+now starts enabled in both developer and non-developer builds; its incoming
+Arcade gameplay context still gates hook preparation, material capture, input,
+animation and movement. Arcade OFF cancels the episode. The developer command
+remains an unsaved diagnostic override. This supersedes the opt-in requirement
+at the earlier Casper checkpoint without changing its clips or physics.
+
+Casper and Casper Flip are canonical experimental Flatland entries. Their guide
+uses the same button and timing descriptors as the existing balance recognizer.
+The guide includes Manual entry, return, held rotation and Ollie exit controls.
+All tricks are grouped by type and alphabetized within each section; search,
+type/status filters and the existing native Back owner are retained.
+
+Portable production tests cover command-free entry, OFF/ON lifetime and the
+same behavior without developer tools, plus guide controls and grouped browsing.
+Exact Windows compilation and native visual/default-entry checks remain separate.
+The Deck is reserved for owner testing of the separate wallplant candidate.
+No wallplant merge, installation or hardware action is part of this change.

@@ -39,11 +39,11 @@
       "repository": "notPho-Real/ReSkate",
       "ref": "arcade-stage-casper-spike",
       "sha": "2b566b8789665c2c878f66eda3b979bfaafbd965",
-      "enabled_by_default": false,
-      "activation": "DINGOSDK_DEV_TOOLS and the unsaved arcadeflatland on command"
+      "enabled_by_default": true,
+      "activation": "Arcade Mode ON; normal Manual admission and existing animation ownership"
     }
   },
   "fork_main_reference": "355bf71e284ad1c29e32ea81cafdef901d74c513",
-  "checkpoint": "Owner-authorized refresh from official upstream main into preserved RC5 6de06957. Casper source and experimental opt-in retained; no later RC4 merge. New exact-source regression required.",
+  "checkpoint": "Existing RC5 upstream checkpoint retained. Flatland defaults ON with Arcade Mode, with Casper guide entries and trick-type grouping. No later RC4 merge; native testing of this change remains pending.",
   "candidate_identity": "candidate.json in the same-run runtime and installer artifacts binds this manifest to the source commit, DLL SHA-256, gameplay fingerprint and compiled feature gate"
 }

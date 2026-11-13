@@ -23,21 +23,22 @@ ManualPhysics, ComboSession, GroundMotionStep, GroundResistance and anim_core.
 The runtime target also compiles and executes the existing client/native mailbox.
 It checks pending submission, continuous ticket replacement, replacement refusal,
 competing playback, native-time hold/exit, duplicate steps and lifecycle loss.
-The release target links without any animation endpoint and checks that even a
-valid admitted Manual cannot enable the bridge without DINGOSDK_DEV_TOOLS.
+The release target runs the same production mailbox checks with simulated
+animation endpoints and without DINGOSDK_DEV_TOOLS. Both targets cover default
+entry without a console command, Arcade OFF cancellation and ON recovery.
 
 The native skater_animation.cpp implementation and the outer arcade_mode.cpp /
 client_noclip.cpp call sites are not compiled by these portable tests. Their
 Windows build and real hook/render/native-physics validation remain required.
 Synthetic poses are fixtures, not production animation assets.
 
-The WIP dev bridge obtains a fresh owned native seed after Manual admission,
+The flatland bridge obtains a fresh owned native seed after Manual admission,
 then sends animation work to the client thread. Physics remains inside the
 existing owner-checked body transaction, selecting one resistance budget.
 The bridge never changes native trick identity, balance identity or score.
-Release builds keep the bridge disabled. Dev builds also start disabled;
-use the unsaved `arcadeflatland on` command to opt in for a test session,
-and `arcadeflatland off` to return to the ordinary Manual control.
+Flatland is enabled by default with Arcade Mode in both build configurations.
+Arcade OFF still cancels all custom ownership. The unsaved arcadeflatland
+command remains a developer diagnostic override, not an activation requirement.
 
 X→Y enters; X→X after entry plays the 0.6-second flip and returns to Manual;
 another X→Y returns directly. The controlled player holds at 0.3 seconds using

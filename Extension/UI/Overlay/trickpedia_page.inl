@@ -23,7 +23,7 @@ void trickpedia_page(Ui& ui,ImVec2 a,ImVec2 z) {
     const auto category=query.category<0?"All categories":guide::category_names[static_cast<unsigned>(query.category)];
     const auto status=query.status<0?"All statuses":guide::status_names[static_cast<unsigned>(query.status)];
     if(button(ui,hash("trick-category"),ImVec2(split,a.y),ImVec2(split+(z.x-split)*.6f-12*u,a.y+82*u),category))
-        query.category=query.category==7?-1:query.category+1;
+        query.category=query.category+1==static_cast<int>(guide::category_names.size())?-1:query.category+1;
     if(button(ui,hash("trick-status"),ImVec2(split+(z.x-split)*.6f,a.y),ImVec2(z.x,a.y+82*u),status))
         query.status=query.status==2?-1:query.status+1;
     if(query.search!=old_query || query.category!=old_category || query.status!=old_status) {
@@ -46,7 +46,15 @@ void trickpedia_page(Ui& ui,ImVec2 a,ImVec2 z) {
     const auto selected=std::find_if(entries.begin(),entries.end(),[&](const auto* t){return t->id==h.selected_trick;});
     if(selected==entries.end())h.selected_trick=entries.empty()?ArcadeTrick::none:entries.front()->id;
     Scroller list(ui,hash("trick-list"),ImVec2(a.x,a.y+110*u),ImVec2(split-24*u,z.y));
+    int previous_category=-1;
     for(const auto* t:entries) {
+        const auto group=static_cast<int>(t->category);
+        if(group!=previous_category) {
+            bool drawn{};const float top=list.next(58*u,10*u,drawn);
+            if(drawn)label(ui.draw,ui.body,32*u,ImVec2(a.x+16*u,top+12*u),split-36*u,
+                theme::muted,guide::category_names[static_cast<unsigned>(group)]);
+            previous_category=group;
+        }
         bool drawn{};const float top=list.next(88*u,10*u,drawn);
         const auto id=hash(t->key,47);
         if(button(ui,id,ImVec2(a.x,top),ImVec2(split-36*u,top+88*u),std::string(t->name),
@@ -86,6 +94,11 @@ void trickpedia_page(Ui& ui,ImVec2 a,ImVec2 z) {
                 arcade_mode::set_selected_grab(b.variant);
             detail.reveal(id,top,84*u);
         }
+    }
+    if(t->executor==TrickExecutor::custom_flatland) {
+        line("While held: "+controller_combo_label(TrickControls::trigger_mask(0),ui.pad.style)+" or "+
+            controller_combo_label(TrickControls::trigger_mask(1),ui.pad.style)+" rotates; hold both to stop turning.",theme::muted);
+        line("Press "+controller_combo_label(TrickControls::mask(TrickControls::ollie),ui.pad.style)+" to Ollie out.",theme::muted);
     }
     line("Direction: left stick / D-pad. Release between repeated presses.",theme::muted);
     if(t->nollie_flip)line("Native regular and nollie variants; live stance admission applies.",theme::muted);

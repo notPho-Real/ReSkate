@@ -9,7 +9,7 @@
 
 namespace dingosdk::arcade_mode::trickpedia {
 inline constexpr std::array category_names{"Flip Tricks", "Grab Tricks", "Grinds and Slides",
-    "Manuals and Reverts", "Footplants", "Wall Tricks", "Flatground Tricks", "Special Tricks"};
+    "Manuals and Reverts", "Footplants", "Wall Tricks", "Flatland", "Special Tricks"};
 inline constexpr std::array status_names{"Verified", "Experimental", "Planned"};
 inline constexpr std::array maturity_names{"Implemented", "Observed", "Repeatable", "Acceptance Pending"};
 inline constexpr std::array criterion_state_names{"Not tested", "Observed once", "Satisfied repeatedly", "Failed", "Pass and failure recorded", "Tested; inconclusive"};
@@ -118,6 +118,8 @@ inline std::string context_name(BindingContext context) {
     case BindingContext::ground:return "Grounded, on board";
     case BindingContext::ground_or_air:return "Grounded, or prepare in air before landing";
     case BindingContext::rail_approach:return "Approaching a compatible rail; geometry selects the result";
+    case BindingContext::established_manual:return "Established Manual; keep balancing";
+    case BindingContext::held_flatland:return "Held Casper; wait for entry to settle";
     case BindingContext::established_rail:return "Established grind; compatible source contact required";
     }
     return {};
@@ -141,6 +143,14 @@ inline InputDiagram diagram(const TrickDefinition& trick,const TrickBinding& b,
     const auto then=[&]{step(StepKind::then);};
     const auto together=[&]{step(StepKind::together);};
     switch(b.pattern) {
+    case BindingPattern::flatland_pair:
+        step(StepKind::press,TrickControls::mask(b.first_button));then();
+        step(StepKind::release,TrickControls::mask(b.first_button));then();
+        step(StepKind::press,TrickControls::mask(b.second_button));
+        out.window_ms=b.parameter;
+        if(b.context==BindingContext::held_flatland)out.condition+="; completes back in Manual";
+        else out.condition+="; use Up/Down to balance; repeat this pair to return to Manual";
+        break;
     case BindingPattern::ground_turn:
         direction(b.direction);then();step(StepKind::release_direction);then();direction(b.direction);
         then();step(StepKind::press,TrickControls::mask(b.first_button));out.window_ms=b.parameter;
@@ -262,7 +272,9 @@ inline std::vector<const TrickDefinition*> browse(const Query& query,unsigned ga
         if(!search.empty() && fold(std::string(t.name)+" "+std::string(t.key)+" "+category_names[static_cast<unsigned>(t.category)]).find(search)==std::string::npos)continue;
         out.push_back(&t);
     }
-    std::sort(out.begin(),out.end(),[](const auto* a,const auto* b){return a->name<b->name;});return out;
+    std::sort(out.begin(),out.end(),[](const auto* a,const auto* b){
+        return a->category==b->category?a->name<b->name:a->category<b->category;
+    });return out;
 }
 // No state or text-store mutation: the native page remains authoritative while Arcade is off.
 constexpr bool show_arcade(bool enabled,bool native_page_focused,bool loading=false) noexcept {

@@ -56,7 +56,7 @@ run(common + strict + ["-DDINGOSDK_DEV_TOOLS", str(Path(__file__).with_name("run
 run([str(runtime)])
 release = out / "casper_release_tests"
 run(common + strict + [str(Path(__file__).with_name("release_tests.cpp")),
-    str(root / "Extension/ArcadeMode/arcade_custom_flatland_runtime.cpp"), "-o", str(release)])
+    str(root / "Extension/ArcadeMode/arcade_custom_flatland_runtime.cpp"), str(core), "-o", str(release)])
 run([str(release)])
 if args.integration:
     # Relevant boundaries only, not the exhaustive Arcade campaign.

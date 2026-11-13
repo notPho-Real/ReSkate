@@ -35,11 +35,12 @@ target_compile_definitions(casper_runtime_tests PRIVATE DINGOSDK_DEV_TOOLS)
 dingosdk_arcade_manual_test_warnings(casper_runtime_tests)
 add_test(NAME casper_runtime COMMAND casper_runtime_tests)
 add_executable(casper_release_tests release_tests.cpp "${REPOSITORY_ROOT}/Extension/ArcadeMode/arcade_custom_flatland_runtime.cpp")
-target_include_directories(casper_release_tests PRIVATE "${REPOSITORY_ROOT}")
+target_link_libraries(casper_release_tests PRIVATE casper_animation_core)
+target_include_directories(casper_release_tests PRIVATE "${REPOSITORY_ROOT}" "${CMAKE_CURRENT_BINARY_DIR}")
 target_compile_features(casper_release_tests PRIVATE cxx_std_20)
 dingosdk_arcade_manual_test_warnings(casper_release_tests)
 # The full dev build defines this directory-wide. This target deliberately
-# compiles the same runtime source as a release, without animation endpoints.
+# exercises the same runtime source and simulated endpoints without dev tools.
 if(MSVC)
     target_compile_options(casper_release_tests PRIVATE /UDINGOSDK_DEV_TOOLS)
 else()

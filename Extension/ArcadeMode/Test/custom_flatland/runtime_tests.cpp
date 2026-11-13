@@ -72,12 +72,12 @@ struct Rig {
     bool enabled{true},balanced{true},catalog_loaded{true},controls_owned{true};
     bool offboard{},releasing_manual{},grind_owned{};
     unsigned physical_left_trigger{},physical_right_trigger{};
-    explicit Rig(float seed_pitch=0){
-        custom_flatland_runtime::set_enabled(true);
+    explicit Rig(float seed_pitch=0,bool reset_override=true){
+        if(reset_override)custom_flatland_runtime::set_enabled(true);
         custom_flatland_runtime::cancel();player.occupied=false;player.seed_available=true;player.seed_wrong_owner=false;player.reject_replace=false;
         player.seed_pitch=seed_pitch;player.seed_age=.001;
         next();tick();next();tick();
-        check(binding().enabled,"a fresh matching native seed enables the dev bridge");
+        check(binding().enabled,"a fresh matching native seed enables the flatland bridge");
         InputAdmission a=admission();session.poll(now,{},0,0,a);
         ManualInputDiagnostic d{};d.owns=d.safe=true;d.request=-1;d.request_at=now-100;d.recognized_at=d.request_at;d.recognition_id=7;
         session.resume_manual_episode(d,a.native_context);
@@ -387,11 +387,22 @@ void seed_and_pending(){
 }
 }
 int main(){
-    check(!custom_flatland_runtime::status().enabled,"dev experiment defaults OFF");
+    check(custom_flatland_runtime::status().enabled,"flatland defaults ON without a console command");
     custom_flatland_runtime::tick({});
-    check(preparations==0,"disabled experiment does not prepare animation hooks");
-    custom_flatland_runtime::set_enabled(true);
-    custom_flatland_runtime::tick({});
-    check(preparations==1 && player.starts==0,"opt-in prepares shared hooks before a Manual without acquiring a player");
+    check(preparations==0 && player.starts==0 && !material_capture,"Arcade OFF leaves hooks, player and materials idle");
+    CustomFlatlandContext gameplay;gameplay.enabled=true;
+    custom_flatland_runtime::tick(gameplay);
+    check(preparations==1 && player.starts==0,"Arcade gameplay prepares hooks before a Manual without acquiring a player");
+    {
+        Rig r(0,false);r.enter();r.hold();
+        check(player.ticket && r.binding().branch==2,"fresh Arcade session enters Casper without an opt-in");
+        r.enabled=false;r.next();r.tick();
+        check(!player.ticket && !material_capture && !r.binding().enabled && !r.step().admitted,"Arcade OFF releases default-enabled flatland");
+        r.enabled=true;r.next();r.tick();r.next();r.tick();
+        check(r.binding().enabled,"Arcade ON restores flatland availability without a console command");
+    }
     custom_flatland_runtime::set_enabled(false);
+    const auto prepared=preparations;
+    custom_flatland_runtime::tick(gameplay);
+    check(preparations==prepared,"diagnostic OFF keeps flatland hooks idle");
     fresh_entry_seed();rejected_entry_seed();balance_range();moving_hold();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

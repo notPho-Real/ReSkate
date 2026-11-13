@@ -44,7 +44,7 @@ void register_console_commands(Commands &registry) {
     };
     registry.add(std::move(arcade));
 #if defined(DINGOSDK_DEV_TOOLS)
-    auto flatland = action("arcadeflatland", "Unsaved Casper test; OFF by default. Reports presentation, not native trick acceptance",
+    auto flatland = action("arcadeflatland", "Unsaved flatland diagnostic override; ON by default with Arcade Mode",
         Group::gameplay, {argument("on|off", Type::boolean, true)});
     flatland.run = [](const Model&, const Values& values, const Output& out) {
         namespace flatland_runtime = arcade_mode::custom_flatland_runtime;

@@ -20,6 +20,15 @@ inline bool registry_handler_present(const TrickDefinition& t) {
         for(unsigned i=0;i<t.binding_count;++i)if(t.bindings[i].pattern==BindingPattern::rail_change)return true;
         return false;
     case TrickExecutor::native_fingerflip:return t.fingerflip.identity && t.fingerflip.family && t.fingerflip.gestures && t.fingerflip.destination;
+    case TrickExecutor::custom_flatland:
+        if(t.binding_count!=1 || t.bindings[0].pattern!=BindingPattern::flatland_pair)return false;
+        if(const auto& b=t.bindings[0]; b.first_button==FlatlandControls::first && b.variant==t.id) {
+            return (t.id==ArcadeTrick::casper && b.context==BindingContext::established_manual &&
+                b.second_button==FlatlandControls::second && b.parameter==FlatlandControls::entry_ms) ||
+                (t.id==ArcadeTrick::casper_flip && b.context==BindingContext::held_flatland &&
+                b.second_button==FlatlandControls::first && b.parameter==FlatlandControls::flip_ms);
+        }
+        return false;
     case TrickExecutor::ground_turn:return t.id==ArcadeTrick::ground_half_turn && t.binding_count==1 && t.bindings[0].pattern==BindingPattern::ground_turn;
     }
     return false;

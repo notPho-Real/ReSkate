@@ -7,7 +7,7 @@
 using namespace dingosdk::arcade_mode;
 namespace {
 void require(bool good,const char* message){if(!good){std::cerr<<message<<'\n';std::exit(1);}}
-std::string label(std::uint32_t button){return button==0x1000?"A":button==0x4000?"X":button==0x2000?"B":"other";}
+std::string label(std::uint32_t button){return button==0x1000?"A":button==0x4000?"X":button==0x2000?"B":button==0x8000?"Y":"other";}
 }
 #include "arcade_evidence_tests.inl"
 int main() {
@@ -55,6 +55,39 @@ int main() {
     evidence_tests();
     for(bool enabled:{false,true,false,true,false})require(trickpedia::show_arcade(enabled,true)==enabled,"same-session OFF restoration policy");
     require(!trickpedia::show_arcade(true,false) && !trickpedia::show_arcade(true,true,true),"focus/load leak");
+    const auto all=trickpedia::browse({});
+    require(all.size()==trick_registry.size(),"grouping lost a registry entry");
+    std::array<bool,trickpedia::category_names.size()> groups{};
+    for(std::size_t i=0;i<all.size();++i) {
+        groups[static_cast<unsigned>(all[i]->category)]=true;
+        if(i)require(all[i-1]->category<all[i]->category ||
+            (all[i-1]->category==all[i]->category && all[i-1]->name<all[i]->name),
+            "browse must group by type and alphabetize within each type");
+    }
+    for(bool group:groups)require(group,"a trick type disappeared");
+    const auto flatland=trickpedia::browse({"",static_cast<int>(TrickCategory::flatground),-1});
+    for(const auto* entry:flatland)require(entry->category==TrickCategory::flatground,"type filter leaked another group");
+    const auto caspers=trickpedia::browse({"CASPER",-1,-1});
+    require(caspers.size()==2 && caspers[0]->id==ArcadeTrick::casper && caspers[1]->id==ArcadeTrick::casper_flip,
+        "Casper and its flip must be searchable");
+    for(const auto* entry:caspers) {
+        require(entry->category==TrickCategory::flatground && entry->executor==TrickExecutor::custom_flatland,
+            "Casper must be executable flatland");
+        require(trick_status(*entry)==TrickStatus::experimental && !entry->native_flip && !entry->nollie_flip,
+            "custom animation must not claim native trick acceptance");
+        auto broken=*entry;++broken.bindings[0].parameter;
+        require(!registry_handler_present(broken),"guide timing drift accepted");
+        broken=*entry;broken.bindings[0].second_button=TrickControls::grab;
+        require(!registry_handler_present(broken),"guide button drift accepted");
+    }
+    const auto entry_diagram=trickpedia::diagram(*caspers[0],caspers[0]->bindings[0]);
+    const auto flip_diagram=trickpedia::diagram(*caspers[1],caspers[1]->bindings[0]);
+    require(trickpedia::diagram_text(entry_diagram,label)=="X -> release X -> Y" &&
+        entry_diagram.window_ms==300 && entry_diagram.condition.find("Established Manual")!=std::string::npos,
+        "Casper entry guide differs from established Manual input");
+    require(trickpedia::diagram_text(flip_diagram,label)=="X -> release X -> X" &&
+        flip_diagram.window_ms==200 && flip_diagram.condition.find("Held Casper")!=std::string::npos,
+        "Casper Flip guide differs from held input");
     require(trickpedia::browse({"kickflip",-1,-1}).size()>=3,"search");
     trickpedia::Query controller_query;
     for(unsigned key:{10u,8u,2u,10u,5u,11u,8u,15u})trickpedia::search_key(controller_query,key);

@@ -49,6 +49,13 @@ constexpr AcceptancePolicy acceptance_policy(const TrickDefinition& t) noexcept 
         return {execution,core,core|complete,"contrib/arcade-mode/research/native-ground-grab-entry.md",
             "Ground pose/contact and clean release; no airborne landing requirement for this grounded execution."};
     }
+    case TrickExecutor::custom_flatland: {
+        const auto execution=m({C::input,C::actor_pose,C::balance});
+        const auto core=execution|m({C::hold,C::release,C::transition});
+        return {execution,core,core|m({C::contact,C::stance,C::timing,C::combo}),
+            "Extension/ArcadeMode/arcade_custom_flatland.h; contrib/arcade-mode/CASPER_SPIKE.md",
+            "Authored body/board motion, native Manual balance and clean exits; custom native trick identity and scoring are not claimed."};
+    }
     case TrickExecutor::ground_turn: {
         const auto execution=base|m({C::contact,C::rotation});
         return {execution,execution|m({C::transition}),execution|complete|m({C::transition,C::timing}),

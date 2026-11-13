@@ -13,6 +13,11 @@ struct TrickControls {
     static constexpr std::uint32_t mask(std::int16_t code) noexcept {return 1u<<code;}
     static constexpr std::uint32_t trigger_mask(std::int16_t code) noexcept {return 1u<<(16+code);}
 };
+struct FlatlandControls {
+    static constexpr std::int16_t first=TrickControls::flip, second=TrickControls::grind;
+    static constexpr unsigned entry_ms=300, flip_ms=200;
+    static constexpr std::uint8_t manual_branch=0, casper_branch=2, flip_branch=42;
+};
 struct InputTiming {
     static constexpr std::uint64_t manual_throw_pair_ms=450;
     static constexpr std::uint64_t ground_pair_ms=220, ground_sample_slack_ms=55;
@@ -54,7 +59,7 @@ enum class ArcadeTrick : std::uint8_t {
     fs_one_foot, frigid_air, no_foot, bs_one_foot, tailwalk, dog_piss, nose_judo, superdude,
     seatbelt_bs_shifty, ollie, manual, nose_manual, revert, no_comply, boneless, coffin,
     spin_900, wallplant, special_grab, special_grind, flatground_special,
-    finger_1, finger_2, finger_3, finger_4, finger_5, finger_6, finger_7, finger_8, finger_9, finger_10, finger_11, finger_12, finger_13, finger_14, finger_19, finger_20, finger_21, finger_22, finger_23, finger_24, finger_25, finger_26, finger_27, finger_28, finger_29, finger_30, boardslide, lipslide, noseslide, tailslide, crooked, overcrook, smith, feeble, ground_half_turn
+    finger_1, finger_2, finger_3, finger_4, finger_5, finger_6, finger_7, finger_8, finger_9, finger_10, finger_11, finger_12, finger_13, finger_14, finger_19, finger_20, finger_21, finger_22, finger_23, finger_24, finger_25, finger_26, finger_27, finger_28, finger_29, finger_30, boardslide, lipslide, noseslide, tailslide, crooked, overcrook, smith, feeble, ground_half_turn, casper, casper_flip
 };
 
 }
@@ -91,9 +96,9 @@ struct Pilot {
 namespace dingosdk::arcade_mode {
 enum class TrickCategory : std::uint8_t { flips, grabs, grinds, manuals, footplants, walls, flatground, specials };
 enum class TrickStatus : std::uint8_t { verified, experimental, planned };
-enum class TrickExecutor : std::uint8_t { none, native_flip, native_grab, held_flip, native_ollie, native_manual, native_revert, native_footplant, native_ground_grab, native_rail, native_fingerflip, ground_turn };
-enum class BindingPattern : std::uint8_t { named, extended_grab, selected_grab, neutral_flip, held_repeat, ollie_release, manual_pair, footplant, ground_grab, revert, rail_entry, fingerflip, rail_change, sequence, ground_turn };
-enum class BindingContext : std::uint8_t { air, ground, ground_or_air, rail_approach, established_rail };
+enum class TrickExecutor : std::uint8_t { none, native_flip, native_grab, held_flip, native_ollie, native_manual, native_revert, native_footplant, native_ground_grab, native_rail, native_fingerflip, ground_turn, custom_flatland };
+enum class BindingPattern : std::uint8_t { named, extended_grab, selected_grab, neutral_flip, held_repeat, ollie_release, manual_pair, footplant, ground_grab, revert, rail_entry, fingerflip, rail_change, sequence, ground_turn, flatland_pair };
+enum class BindingContext : std::uint8_t { air, ground, ground_or_air, rail_approach, established_rail, established_manual, held_flatland };
 inline constexpr unsigned footplant_single_ms=300, footplant_repeat_ms=500;
 inline constexpr unsigned grab_repeat_ms=250, flip_repeat_ms=233;
 enum class StepKind : std::uint8_t { press, hold, release, direction, release_direction, then, together };
@@ -448,7 +453,13 @@ std::array entries{
     TrickDefinition{ArcadeTrick::finger_30,"finger_30","Nose To Seatbelt",TrickCategory::grabs,TrickExecutor::native_fingerflip,
         {{{BindingPattern::fingerflip,TrickDirection::down,1,ArcadeTrick::finger_30,BindingContext::air,4},{BindingPattern::fingerflip,TrickDirection::up,1,ArcadeTrick::finger_30,BindingContext::air,7}}},2,0,0,0,{},0,rc3_evidence,{30,6,56,4,25}},
     TrickDefinition{ArcadeTrick::ground_half_turn,"ground_half_turn","Ground Half-Turn",TrickCategory::flatground,TrickExecutor::ground_turn,
-        {{{BindingPattern::ground_turn,TrickDirection::down,2,ArcadeTrick::ground_half_turn,BindingContext::ground,333,9}}},1,0,0,0,{},0,rc3_evidence}
+        {{{BindingPattern::ground_turn,TrickDirection::down,2,ArcadeTrick::ground_half_turn,BindingContext::ground,333,9}}},1,0,0,0,{},0,rc3_evidence},
+    TrickDefinition{ArcadeTrick::casper,"casper","Casper",TrickCategory::flatground,TrickExecutor::custom_flatland,
+        {{{BindingPattern::flatland_pair,TrickDirection::none,1,ArcadeTrick::casper,BindingContext::established_manual,
+            FlatlandControls::entry_ms,FlatlandControls::first,FlatlandControls::second}}},1,0,0,0,{},0,casper_evidence},
+    TrickDefinition{ArcadeTrick::casper_flip,"casper_flip","Casper Flip",TrickCategory::flatground,TrickExecutor::custom_flatland,
+        {{{BindingPattern::flatland_pair,TrickDirection::none,1,ArcadeTrick::casper_flip,BindingContext::held_flatland,
+            FlatlandControls::flip_ms,FlatlandControls::first,FlatlandControls::first}}},1,0,0,0,{},0,casper_evidence}
 };
 for(auto& t:entries)t.evidence=apply_trick_evidence(t.id,t.evidence);
 return entries;
