@@ -573,3 +573,28 @@ numeric values does not identify the same draw or hold. Contact-state poses
 support the target correction but do not replace a new exact-source native
 trial. Planted-foot alignment, outgoing orientation, release motion, the
 full trick chain and native combo/scoring remain unverified.
+# Convert the outgoing reference into the native motion frame
+
+The board-drive trial recorded a 168 ms hold, one release, first consumed root
+upward velocity of 12.403459 m/s and a clean landing. Its physical heading still
+missed the outgoing direction by 84.57 degrees. The four board-drive targets
+were consumed, but that routing alone did not establish correct orientation.
+
+The held orientation is specified as the desired published board reference.
+Ground motion publishes the articulated local root composed with the local
+target. Previously the desired reference was assigned as the world motion
+target, preserving an additional articulated rotation in the result. The
+correction now bounds the actual board against the desired reference, then
+converts that bounded reference back through the original composed reference
+into the native motion target. Recomposition verifies the native angular
+constraint, including float rounding. The existing motion reserve and native
+limit are unchanged; no physical pose, angular velocity or hold duration is
+overwritten.
+
+An independent quarter-turn fixture with distinct articulated, local and world
+frames fails on the previous implementation. It checks both already-safe and
+bounded outgoing headings. Mixed-axis regressions additionally verify the
+published reference follows the intended shortest arc. These establish the
+coordinate correction, not hardware fidelity or the exclusive cause of the
+recorded failure. Physical orientation, foot alignment, the full trick chain
+and native combo/scoring still require exact-source native verification.

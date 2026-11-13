@@ -363,6 +363,36 @@ void run(){
    check(!orientation::bound(actual,wanted,limit,output,report)&&output==actual&&report.fraction==9,
          "invalid rotations and constraints leave outputs untouched");
   }
+  // Independent native frames: root and local pitch cancel at publication,
+  // while the motion target has a separate quarter-turn bank. An outgoing
+  // reference is a world-space board frame, not that motion target's frame.
+  {
+   const orientation::Matrix root{1,0,0,0, 0,0,1,0, 0,-1,0,0, 0,0,0,1};
+   const orientation::Matrix local_frame{1,0,0,0, 0,0,-1,0, 0,1,0,0, 0,0,0,1};
+   const orientation::Matrix world{0,1,0,0, -1,0,0,0, 0,0,1,0, 0,0,0,1};
+   const orientation::Matrix inverse{0,-1,0,0, 1,0,0,0, 0,0,1,0, 0,0,0,1};
+   std::array<float,48> supplied{};
+   std::copy(local_frame.begin(),local_frame.end(),supplied.begin());
+   std::copy(world.begin(),world.end(),supplied.begin()+16);
+   std::copy(inverse.begin(),inverse.end(),supplied.begin()+32);
+   for(double angle:{0.,.2,2.8}) {
+    auto outgoing=axis_rotation(1,angle);outgoing[12]=7;outgoing[13]=8;outgoing[14]=9;
+    orientation::Result report;std::array<float,48> adjusted{};
+    check(wallplant_ground_orientation(supplied,{0,0,0},root,actual,.6f,outgoing,report)&&
+          wallplant_ground_target_matrices(supplied,{0,0,0},outgoing,adjusted),
+          "outgoing reference converts through distinct native motion and articulated frames");
+    // Multiplying by this literal root selects local rows 0, 2, -1.
+    const double turn=std::min(angle,.6);
+    const std::array<double,9> expected{std::cos(turn),0,-std::sin(turn),
+        0,1,0,std::sin(turn),0,std::cos(turn)};
+    const std::array<unsigned,3> rows{0,2,1};
+    for(unsigned row=0;row<3;++row)for(unsigned column=0;column<3;++column)
+     check(std::abs((row==2?-1:1)*adjusted[rows[row]*4+column]-expected[row*3+column])<.00001,
+           "published reference is the requested upright heading with only the native angular bound");
+    check(adjusted[28]==7&&adjusted[29]==8&&adjusted[30]==9,
+          "reference-frame conversion preserves the checked motion anchor");
+   }
+  }
   // The articulated local root is not generally aligned with the world target.
   std::array<float,48> triplet{};
   for(unsigned t=0;t<3;++t)for(unsigned a=0;a<4;++a)triplet[16*t+5*a]=1;
@@ -387,12 +417,19 @@ void run(){
    const auto root=axis_rotation((axis+1)%3,.25);
    const auto body=orientation::compose_basis(root,old_world);
    auto outgoing=axis_rotation(1,2.8);outgoing[12]=7;outgoing[13]=8;outgoing[14]=9;
+   orientation::Matrix expected{};orientation::Result expected_report;
+   check(orientation::bound(body,outgoing,.6f,expected,expected_report),
+         "outgoing board frame has a safe shortest-arc target before conversion");
    check(wallplant_ground_orientation(supplied,{0,0,0},root,body,.6f,outgoing,report),
          "nonidentity world and local root support a constrained outgoing turn");
    check(wallplant_ground_target_matrices(supplied,{0,0,0},outgoing,adjusted),"mixed-axis constrained triplet remains coherent");
    std::copy_n(adjusted.begin(),16,local.begin());
    check(orientation::error(body,orientation::compose_basis(root,local))<=.6f,
          "recomposed native float reference stays inside the bound");
+   const auto published=orientation::compose_basis(root,local);
+   for(unsigned row=0;row<3;++row)for(unsigned column=0;column<3;++column)
+    check(std::abs(published[row*4+column]-expected[row*4+column])<.00001f,
+          "native frame conversion retains the bounded outgoing direction and upright objective");
   }
  }
  std::cout<<checks<<" production wrapper ordering checks passed\n";

@@ -817,15 +817,17 @@ bool wallplant_ground_target_matrices(const std::array<float,48>& supplied,
     std::copy(new_inverse.begin(),new_inverse.end(),result.begin()+32);
     return true;
 }
-// Ground publication includes the articulated local root. Limiting the world
-// target alone would miss that rotation and still trip the native predicate.
+// The requested basis is the published outgoing reference. Convert it back
+// through the articulated root and local target to obtain the motion target;
+// assigning it directly to the motion target would apply those rotations again.
 bool wallplant_ground_orientation(const std::array<float,48>& supplied,
         const std::array<float,3>& origin,const std::array<float,16>& local_root,
         const std::array<float,16>& actual,float limit,std::array<float,16>& target,
         game::orientation_target::Result& report,float target_limit=0) noexcept {
     namespace orientation=game::orientation_target;
-    std::array<float,16> local{};
+    std::array<float,16> local{},world{};
     std::copy_n(supplied.begin(),16,local.begin());
+    std::copy_n(supplied.begin()+16,16,world.begin());
     if(!orientation::basis_valid(local_root) || !orientation::basis_valid(local) ||
        !orientation::basis_valid(actual) || !std::isfinite(limit) || !(limit>0) ||
        limit>3.14159265358979323846f)return false;
@@ -835,10 +837,8 @@ bool wallplant_ground_orientation(const std::array<float,48>& supplied,
     if(orientation::error(actual,original_reference)>limit)return false;
     if(target_limit==0)target_limit=limit;
     if(!std::isfinite(target_limit) || target_limit<=0 || target_limit>limit)return false;
-    std::array<float,48> requested{};
-    if(!wallplant_ground_target_matrices(supplied,origin,target,requested))return false;
-    std::copy_n(requested.begin(),16,local.begin());
-    const auto reference=orientation::compose_basis(local_root,local);
+    if(!valid_flight_transform(target))return false;
+    const auto reference=target;
     // Converting back through the native float matrices can round the result
     // past the boundary. Tighten only by that measured numerical overshoot;
     // this is not another gameplay angle or turn-rate setting.
@@ -847,14 +847,13 @@ bool wallplant_ground_orientation(const std::array<float,48>& supplied,
         std::array<float,16> bounded{};
         orientation::Result result;
         if(!orientation::bound(actual,reference,numerical_limit,bounded,result))return false;
-        auto candidate=target;
-        if(result.fraction<1) {
-            const auto correction=orientation::compose_basis(orientation::inverse_basis(reference),bounded);
-            candidate=orientation::compose_basis(target,correction);
-            if(!wallplant_ground_target_matrices(supplied,origin,candidate,requested))return false;
-            std::copy_n(requested.begin(),16,local.begin());
-            result.applied_error=orientation::error(actual,orientation::compose_basis(local_root,local));
-        }
+        const auto correction=orientation::compose_basis(orientation::inverse_basis(original_reference),bounded);
+        auto candidate=orientation::compose_basis(world,correction);
+        for(unsigned axis=0;axis<3;++axis)candidate[12+axis]=target[12+axis];
+        std::array<float,48> requested{};
+        if(!wallplant_ground_target_matrices(supplied,origin,candidate,requested))return false;
+        std::copy_n(requested.begin(),16,local.begin());
+        result.applied_error=orientation::error(actual,orientation::compose_basis(local_root,local));
         if(result.applied_error<=target_limit) {target=candidate;report=result;return true;}
         numerical_limit=std::nextafter(numerical_limit-(result.applied_error-target_limit),0.f);
     }
