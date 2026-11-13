@@ -148,3 +148,19 @@ menu, score-line and news tests join the Windows preflight for this checkpoint.
 The previous exact-source native results remain historical. In particular,
 the prior Trickpedia failure is not declared fixed by a successful merge or
 test build: the new menu requires an exclusive native walkthrough.
+
+### Live native page discovery
+
+The upstream refresh passed the full Windows compile and 128 integration tests.
+Native regression testing then exposed an existing Trickpedia discovery defect:
+the live screen registers a PageViewModel root directly, without the resource
+wrapper the interception previously expected. The replacement now selects the
+focused page whose original Back command is SP_Back. It retains the existing
+typed copies, Back action and restoration path. A focused map page is an explicit
+negative control; the production-body regression fails with the former lookup.
+
+The revised page lookup still requires an exact-source Windows build and native
+ON/OFF, search, Back and page-reload checks before candidate acceptance. Initial
+merged-build Casper checks cover goofy entry, flip, direct return, Ollie and a
+legitimate high-balance bail; they do not establish the remaining regression
+matrix or complete foot-contact clearance.

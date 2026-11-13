@@ -1,6 +1,6 @@
-// Pinned 20260929 assets: SkatepediaPageViewModel (36627), MainPage ->
-// PageViewModel (35947). Replace the typed page value, retaining a native copy
-// of every original field. Never alter the localized string store or trick assets.
+// The live 20260929 screen registers PageViewModel directly. Its authored
+// Back command identifies Skatepedia; its resource wrapper is not a live root.
+// Retain every original field without changing localized strings or trick assets.
 struct TrickpediaPageLease {
     Address manager{};
     Value root{}, target{}, saved{}, replacement{};
@@ -50,11 +50,13 @@ void update_trickpedia(const Context& c,std::uint64_t now) {
     lease.next_scan=now+250;
     const auto& source=page_state(menu_view::tools_page);
     if(source.manager!=c.manager || !source.page.handle || c.type_of(source.page.handle)!=source.page.type)return;
-    for(const auto& root:c.roots({4004900296U})) {
-        const auto target=c.field(root.model,1244125067U);
+    for(const auto& root:c.roots({page.hash})) {
+        const auto target=root.model;
         if(target.type!=c.type(page))continue;
         const auto focus=c.path(target,{0xfafda1a6,0x20a39d92,0x6b01fd01});
         if(!game_in_menu.load(std::memory_order_relaxed) || read<int>(c.address(focus))<0)continue;
+        const auto back=c.path(target,{0x10810f0b,button_field,0xa704272a,0xc52416ef,0xa704272a,0xa2b71c93});
+        if(c.text(c.field(back,0xb1e14cd6))!="SP_Back")continue;
         // Two engine-owned copies retain nested arrays, strings and asset references.
         // Nothing is exposed before both copies and the original Back action exist.
         Value saved{},replacement{};
