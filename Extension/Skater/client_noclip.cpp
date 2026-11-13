@@ -663,6 +663,8 @@ struct WallplantReleasedDeparture {
     arcade_mode::NativeInputFrame frame{};
     std::uintptr_t object{};
     std::uint64_t at{};
+    std::array<float,16> orientation_reference{};
+    std::uint64_t orientation_targets{};
 };
 WallplantReleasedDeparture& wallplant_released_departure() {static WallplantReleasedDeparture value;return value;}
 std::atomic<std::uintptr_t> wallplant_released_core{};
@@ -950,7 +952,8 @@ bool wallplant_ground_target_matrices(const std::array<float,48>& supplied,
 bool wallplant_ground_orientation(const std::array<float,48>& supplied,
         const std::array<float,3>& origin,const std::array<float,16>& local_root,
         const std::array<float,16>& actual,float limit,std::array<float,16>& target,
-        game::orientation_target::Result& report,float target_limit=0) noexcept {
+        game::orientation_target::Result& report,float target_limit=0,
+        const std::array<float,16>* owned_reference=nullptr) noexcept {
     namespace orientation=game::orientation_target;
     std::array<float,16> local{},world{};
     std::copy_n(supplied.begin(),16,local.begin());
@@ -959,9 +962,11 @@ bool wallplant_ground_orientation(const std::array<float,48>& supplied,
        !orientation::basis_valid(actual) || !std::isfinite(limit) || !(limit>0) ||
        limit>3.14159265358979323846f)return false;
     const auto original_reference=orientation::compose_basis(local_root,local);
-    // An already invalid native pose remains a genuine cancellation. Never
-    // move the reference to hide a bail which predates this target request.
-    if(orientation::error(actual,original_reference)>limit)return false;
+    // An already invalid native pose remains a genuine cancellation. During
+    // release the caller proves the preceding reference is still ours: native
+    // ground preparation can otherwise restore its pre-plant contact basis.
+    const auto& preceding=owned_reference?*owned_reference:original_reference;
+    if(!orientation::basis_valid(preceding) || orientation::error(actual,preceding)>limit)return false;
     if(target_limit==0)target_limit=limit;
     if(!std::isfinite(target_limit) || target_limit<=0 || target_limit>limit)return false;
     if(!valid_flight_transform(target))return false;
@@ -1361,6 +1366,15 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         source_require(arcade_mode::AirMotion::apply_bodies(release,velocities,spins,bodies.up),"hold_release_velocity");
         source_require(!hold.departure_attempted || (hold.departure_submitted && hold.native_departure),
             "release_native_departure_failed");
+        std::array<float,16> release_reference{};
+        for(unsigned row=0;row<4;++row) {
+            const auto lanes=reader.value<std::array<float,4>>(owner.context,spawn::context_motion_reference+row*16);
+            std::copy(lanes.begin(),lanes.end(),release_reference.begin()+row*4);
+        }
+        const auto release_orientation=wallplant_orientation_snapshot(held.native.owner,reader);
+        source_require(game::orientation_target::basis_valid(release_reference) &&
+            game::orientation_target::error(release_orientation.actual,release_reference)<=release_orientation.limit,
+            "release_orientation_invalid");
         auto trajectory=wallplant_release_trajectory(state.trial.base,owner,held.after,reader,hold.native_departure);
         reader.verify();NoBailSkater after{};
         source_require(no_bail_skater(after) && after==owner,"hold_release_owner");
@@ -1408,10 +1422,10 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         arcade_mode::wallplant_runtime::finish_hold(releasing.command,true,now);
         wallplant_release_observation()={releasing,now,4};
         wallplant_observed_release_core.store(core,std::memory_order_release);
-        // The impulse is already spent. Retain only enough provenance for the
-        // first native100->200 query to use consumed motion, not a new kick.
+        // The impulse is already spent. Retain orientation during this contact
+        // and consumed motion for its first native100->200 query, not a new kick.
         if(selected==100 && frame.state==100 && !frame.airborne) {
-            wallplant_released_departure()={releasing,frame,trajectory.object,now};
+            wallplant_released_departure()={releasing,frame,trajectory.object,now,release_reference};
             wallplant_released_core.store(core,std::memory_order_release);
         }
         wallplant_hold_log(releasing,"release","committed",now,selected);
@@ -1425,6 +1439,33 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         try{throw;}catch(const SourceGuard& issue){wallplant_hold_cancel(issue.message,now);}
         catch(...){wallplant_hold_cancel("hold_exception",now);}
     }
+}
+void wallplant_release_ground_authority(const WallplantReleasedDeparture& ticket,
+        const arcade_mode::NativeInputFrame& frame,std::uint64_t& now,SourceReader& reader) {
+    const auto& release=ticket.release;
+    const auto receipt=arcade_mode::wallplant_runtime::latest_completed();
+    source_require(receipt && receipt.input_sequence==release.command.input_sequence &&
+        receipt.contact==release.command.contact,"release_orientation_receipt");
+    arcade_mode::AirMotionIntent intent{};
+    wallplant_read_current_intent(intent,now,release.intent_generation);
+    const auto& state=source_state();
+    source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor,"release_orientation_control");
+    NoBailSkater owner{};
+    source_require(no_bail_skater(owner) && owner==release.owner,"release_orientation_owner");
+    const auto bodies=debug_noclip_bodies(state.trial.base,release.client,release.entity);
+    source_require(bodies.core==owner.core && bodies.context==owner.context && bodies.rig_wrapper==owner.rig &&
+        !bodies.offboard && !bodies.wipeout,"release_orientation_bodies");
+    const auto selected=reader.value<std::uint32_t>(owner.context,game::build::v20260929::arcade_native_probe::selected_state);
+    source_require(reader.pointer(owner.rig)==owner.context &&
+        reader.pointer(owner.core,addr::trajectory::core_object)==ticket.object &&
+        reader.pointer(ticket.object,addr::trajectory::object_context)==owner.context &&
+        reader.value<std::uint8_t>(release.entity,addr::rigid_bodies::entity_teleport)==0 &&
+        arcade_mode::wallplant_release_ground_current(release.command,ticket.frame,frame,ticket.at,now,selected),
+        "release_orientation_continuity");
+    const auto observation=wallplant_body_observation(bodies,reader);
+    source_require(arcade_mode::wallplant_release_velocity_current(release.command,observation.velocity0),
+        "release_orientation_motion");
+    reader.verify();
 }
 bool wallplant_released_native_departure(std::uintptr_t object,
         trainer::NativeWorldTrajectoryOverride& request,bool completed) noexcept {
@@ -2794,8 +2835,9 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
     if(!original)return;
     original(rig,seconds);
     SourceLastError error;
-    if(!wallplant_hold_core.load(std::memory_order_acquire) || competition_stock_physics())return;
-    const auto held=arcade_mode::wallplant_runtime::held_command();
+    const bool released=!wallplant_hold_core.load(std::memory_order_acquire);
+    if((released && !wallplant_released_core.load(std::memory_order_acquire)) || competition_stock_physics())return;
+    const auto held=released?arcade_mode::wallplant_runtime::latest_completed():arcade_mode::wallplant_runtime::held_command();
     if(!held || held.native.owner.rig!=rig)return;
     std::uint64_t now=GetTickCount64();
     const auto frame=arcade_mode::native_wallplant_hold_context(held.native.owner,now);
@@ -2810,6 +2852,20 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
         const auto selected=reader.value<std::uint32_t>(held.native.owner.context,
             game::build::v20260929::arcade_native_probe::selected_state);
         if(selected!=100)return;
+        auto& departure=wallplant_released_departure();
+        std::array<float,16> preceding{};
+        if(released) {
+            source_require(departure.release.command.input_sequence==held.input_sequence &&
+                departure.release.command.contact==held.contact,"release_orientation_ticket");
+            wallplant_release_ground_authority(departure,frame,now,reader);
+            for(unsigned row=0;row<4;++row) {
+                const auto lanes=reader.value<std::array<float,4>>(held.native.owner.context,
+                    spawn::context_motion_reference+row*16);
+                std::copy(lanes.begin(),lanes.end(),preceding.begin()+row*4);
+            }
+            source_require(game::orientation_target::same_basis(preceding,departure.orientation_reference),
+                "release_orientation_reference_changed");
+        }
         constexpr auto offset=spawn::rig_local_motion_target;
         static_assert(spawn::rig_world_motion_target==offset+64 &&
             spawn::rig_inverse_motion_target==offset+128);
@@ -2818,14 +2874,19 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
         const auto origin=reader.value<std::array<float,3>>(rig,spawn::rig_motion_origin);
         std::array<float,16> world{},target{};
         std::copy_n(supplied.begin()+16,16,world.begin());
-        if(!arcade_wallplant_hold_target(rig,held.native.owner.context,&world,target,frame,now))return;
+        if(released) {
+            // Only carry the already established outgoing basis. The native
+            // ground callback advances position; the joint and plant are over.
+            source_require(wallplant_hold_target_matrix(held,world,target),"release_orientation_target");
+            for(unsigned axis=0;axis<3;++axis)target[12+axis]=world[12+axis];
+        } else if(!arcade_wallplant_hold_target(rig,held.native.owner.context,&world,target,frame,now))return;
         const auto orientation=wallplant_orientation_snapshot(held.native.owner,reader);
         float target_limit{},angular_travel{};
         source_require(game::orientation_target::motion_budget(orientation.limit,seconds,
             orientation.root_spin,orientation.reference_spin,target_limit,angular_travel),"ground_target_motion_budget");
         game::orientation_target::Result turn;
         source_require(wallplant_ground_orientation(supplied,origin,orientation.local_root,
-            orientation.actual,orientation.limit,target,turn,target_limit),"ground_target_orientation");
+            orientation.actual,orientation.limit,target,turn,target_limit,released?&preceding:nullptr),"ground_target_orientation");
         source_require(wallplant_ground_target_matrices(supplied,origin,target,replacement),"ground_target_pair");
         source_require(source_writable(rig+offset,sizeof(replacement)),"ground_target_writable");
         reader.verify();
@@ -2833,11 +2894,14 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
             "ground_target_changed");
         now=GetTickCount64();
         auto& hold=wallplant_physical_hold();
-        bool stale_query{};
-        const bool current=arcade_mode::wallplant_runtime::hold_current(held,now,frame,&stale_query);
-        if(stale_query)return;
-        source_require(hold.command.input_sequence==held.input_sequence && now>=hold.started &&
-            current,"ground_target_expired");
+        if(released)wallplant_release_ground_authority(departure,frame,now,reader);
+        else {
+            bool stale_query{};
+            const bool current=arcade_mode::wallplant_runtime::hold_current(held,now,frame,&stale_query);
+            if(stale_query)return;
+            source_require(hold.command.input_sequence==held.input_sequence && now>=hold.started &&
+                current,"ground_target_expired");
+        }
         // Authority lookup can yield to the physics publisher. Revalidate the
         // physical basis, native limit and target origin at the write boundary.
         reader.verify();
@@ -2851,6 +2915,20 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
                 "ground_target_restore_failed");
             source_require(false,"ground_target_write");
         }
+        if(released) {
+            std::array<float,16> local{},prepared_local{};
+            std::copy_n(replacement.begin(),16,local.begin());
+            std::copy_n(supplied.begin(),16,prepared_local.begin());
+            departure.orientation_reference=game::orientation_target::compose_basis(orientation.local_root,local);
+            ++departure.orientation_targets;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE WALLPLANT RELEASE ORIENTATION: occurrence={} ms={} released={} targets={} native_limit={} prepared_error={} preceding_error={} applied_error={} world_position={},{},{} physical_forward={},{},{} body_write=false joint_active=false.",
+                held.input_sequence,now,departure.at,departure.orientation_targets,orientation.limit,
+                game::orientation_target::error(orientation.actual,game::orientation_target::compose_basis(orientation.local_root,prepared_local)),
+                game::orientation_target::error(orientation.actual,preceding),turn.applied_error,
+                target[12],target[13],target[14],orientation.actual[8],orientation.actual[9],orientation.actual[10]);
+            return;
+        }
         hold.orientation=turn;hold.orientation_limit=orientation.limit;
         logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE WALLPLANT ORIENTATION: occurrence={} ms={} native_limit={} requested_error={} applied_error={} fraction={} target_forward={},{},{} physical_forward={},{},{} target_limit={} angular_travel={} physics_seconds={} root_spin={},{},{} reference_spin={},{},{}.",
@@ -2858,8 +2936,17 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
             target[8],target[9],target[10],orientation.actual[8],orientation.actual[9],orientation.actual[10],
             target_limit,angular_travel,seconds,orientation.root_spin[0],orientation.root_spin[1],orientation.root_spin[2],
             orientation.reference_spin[0],orientation.reference_spin[1],orientation.reference_spin[2]);
-    } catch(const SourceGuard& issue) {wallplant_hold_cancel(issue.message,now);}
-      catch(...) {wallplant_hold_cancel("ground_target_exception",now);}
+    } catch(...) {
+        const auto cancel=[&](const char* reason) {
+            if(released) {
+                wallplant_released_departure()={};wallplant_released_core.store(0,std::memory_order_release);
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE WALLPLANT RELEASE ORIENTATION END: occurrence={} ms={} reason={}.",held.input_sequence,now,reason);
+            } else wallplant_hold_cancel(reason,now);
+        };
+        try{throw;}catch(const SourceGuard& issue){cancel(issue.message);}
+        catch(...){cancel("ground_target_exception");}
+    }
 }
 void wallplant_prepare_board_drive(std::uintptr_t rig,std::uintptr_t caller) noexcept {
     SourceLastError error;

@@ -573,6 +573,10 @@ struct WallplantOrientationSnapshot {std::array<float,16> actual{},local_root{};
 bool orientation_available=true;
 Hold& wallplant_physical_hold(){return physical_hold;}
 std::atomic<std::uintptr_t> wallplant_hold_core{};
+struct Released {Hold release;dingosdk::arcade_mode::NativeInputFrame frame;
+ std::uint64_t at{100};std::array<float,16> orientation_reference{};std::uint64_t orientation_targets{};} released_value;
+Released& wallplant_released_departure(){return released_value;}
+std::atomic<std::uintptr_t> wallplant_released_core{};
 std::array<float,48> prepared{},stored{};
 std::array<float,16> board_target{},published_reference{},consumed_target{};
 unsigned drives{};
@@ -595,6 +599,7 @@ using AirMotionIntent=dingosdk::arcade_mode::AirMotionIntent;
 NativeInputFrame native_wallplant_hold_context(const dingosdk::arcade_mode::NativeInputOwner&,std::uint64_t){return {};}
 namespace wallplant_runtime {
 Command held_command(){return held_value;}
+Command latest_completed(){return released_value.release.command;}
 bool hold_current(const Command&,std::uint64_t now,const NativeInputFrame&,bool* stale=nullptr){
  if(change_orientation_at_permission==1)orientation_snapshot.actual[0]=.5f;
  if(change_orientation_at_permission==2)orientation_snapshot.local_root[0]=.5f;
@@ -647,6 +652,11 @@ WallplantOrientationSnapshot wallplant_orientation_snapshot(const dingosdk::arca
  source_require(orientation_available,"orientation_contract");
  reader.orientation_watched=true;reader.watched_orientation=orientation_snapshot;return orientation_snapshot;
 }
+void wallplant_release_ground_authority(const Released&,const arcade_mode::NativeInputFrame&,
+ std::uint64_t& now,SourceReader& reader){
+ source_require(fixture_current && now>=released_value.at && now-released_value.at<=150,"release_authority");
+ reader.verify();
+}
 bool source_writable(std::uintptr_t address,std::size_t bytes){
  if(address==2+spawn::rig_board_drive_target){check(bytes==sizeof(board_target),"drive writable range is one target");return writable;}
  check(address==2+spawn::rig_local_motion_target&&bytes==sizeof(stored),"ground writable range is bounded");return writable;
@@ -687,6 +697,7 @@ void wallplant_update_physical_drive(WallplantDriveFrame frame,const std::array<
 }
 @wallplant_wrapper_ground@
 void reset(){
+ released_value={};wallplant_released_core=0;
  physical_drive_updates=0;fail_physical_drive=false;
  ground_state.initialized=true;ground_state.velocity_guard_active=true;ground_state.busy.clear();ground_state.ground_target_original=original;
  ground_state.rig_drive_original=original_drive;drives=0;board_target={};published_reference={};consumed_target={};
@@ -707,6 +718,39 @@ void run(){
  check(stored[28]==7&&stored[29]==8&&stored[30]==9,"ground uses bounded hold anchor");
  check(std::abs(stored[16+8]-1)<.00001f&&std::abs(stored[16+10])<.00001f,"ground target faces outgoing direction");
  check(!ground_state.busy.test_and_set(),"successful callback releases busy ownership");ground_state.busy.clear();
+ {
+  reset();wallplant_hold_core=0;wallplant_released_core=1;released_value.release=physical_hold;
+  released_value.orientation_reference=orientation_snapshot.actual;published_reference=orientation_snapshot.actual;
+  orientation_snapshot.limit=1.1f;
+  const auto rolled=game::orientation_target::rotation({std::sin(.7),0,0,std::cos(.7)});
+  auto inverse=game::orientation_target::inverse_basis(rolled);
+  std::copy(rolled.begin(),rolled.end(),prepared.begin());
+  std::copy(rolled.begin(),rolled.end(),prepared.begin()+16);
+  std::copy(inverse.begin(),inverse.end(),prepared.begin()+32);
+  for(unsigned a=0;a<3;++a)prepared[12+a]=-world_origin[a];
+  noclip_ground_target(2,.03333333f);
+  check(originals==1&&copies==1&&released_value.orientation_targets==1,
+        "release carries owned orientation through native ground preparation");
+  check(stored[28]==0&&stored[29]==0&&stored[30]==0&&target_calls==0&&physical_drive_updates==0,
+        "release preserves native world position without anchoring or updating the physical drive");
+  check(released_value.at==100&&!wallplant_hold_core&&wallplant_released_core,
+        "release orientation does not renew its lease or recreate a hold");
+  published_reference=released_value.orientation_reference;clock_ms=251;
+  noclip_ground_target(2,.03333333f);
+  check(copies==1&&!wallplant_released_core&&stored==prepared,
+        "expired release forwards native target and permanently withdraws orientation ownership");
+ }
+ for(unsigned fault=0;fault<4;++fault){
+  reset();wallplant_hold_core=0;wallplant_released_core=1;released_value.release=physical_hold;
+  released_value.orientation_reference=orientation_snapshot.actual;published_reference=orientation_snapshot.actual;
+  if(fault==0)published_reference=game::orientation_target::rotation({0,std::sin(.1),0,std::cos(.1)});
+  if(fault==1)fixture_current=false;
+  if(fault==2){orientation_snapshot.limit=.1f;orientation_snapshot.actual=game::orientation_target::rotation({0,std::sin(.2),0,std::cos(.2)});}
+  if(fault==3)released_value.orientation_reference[0]=std::numeric_limits<float>::quiet_NaN();
+  noclip_ground_target(2,.03333333f);
+  check(copies==0&&stored==prepared&&!wallplant_released_core,
+        "changed prior reference, authority or physically invalid pose cannot be hidden by release orientation");
+ }
  reset();orientation_snapshot.limit=.785398163f;noclip_ground_target(2,.03333333f);
  check(copies==1&&cancelled.empty(),"native constrained orientation commits through the existing ground route");
  check(physical_hold.orientation.fraction>.49f&&physical_hold.orientation.fraction<.51f&&
@@ -1203,6 +1247,7 @@ struct Hold {Command command;NoBailSkater owner;std::uint64_t started{100},targe
 Hold& wallplant_physical_hold(){return fixture_hold;}
 std::atomic<std::uintptr_t> wallplant_hold_core{1};
 struct Released {Hold release;dingosdk::arcade_mode::NativeInputFrame frame;std::uintptr_t object{5};std::uint64_t at{260};} fixture_release;
+using WallplantReleasedDeparture=Released;
 Released& wallplant_released_departure(){return fixture_release;}
 std::atomic<std::uintptr_t> wallplant_released_core{};
 dingosdk::arcade_mode::NativeInputFrame fixture_frame;
@@ -1225,6 +1270,7 @@ using NativeInputFrame=dingosdk::arcade_mode::NativeInputFrame;
 using NativeInputOwner=dingosdk::arcade_mode::NativeInputOwner;
 using WallplantHoldContinuity=dingosdk::arcade_mode::WallplantHoldContinuity;
 using dingosdk::arcade_mode::wallplant_release_departure_current;
+using dingosdk::arcade_mode::wallplant_release_ground_current;
 using dingosdk::arcade_mode::wallplant_release_velocity_current;
 struct AirMotionIntent{bool enabled{};std::uint64_t generation{},sampled_at{};};
 NativeInputFrame native_wallplant_hold_context(const NativeInputOwner&,std::uint64_t){return fixture_frame;}
@@ -1298,6 +1344,36 @@ void reset_release(){
  physical={{-2.080236f,12.261449f,3.956027f},{-2.273323f,11.984737f,3.962077f},0,0};
 }
 void run(){
+ for(unsigned fault=0;fault<23;++fault){
+  reset_release();fixture_frame=fixture_release.frame;fixture_selected=100;
+  if(fault==1)enabled=false;
+  if(fault==2)intent_generation=8;
+  if(fault==3)current_owner=false;
+  if(fault==4)bad_body=true;
+  if(fault==5)fixture_selected=200;
+  if(fault==6)fixture_selected=504;
+  if(fault==7)teleport=true;
+  if(fault==8)session=true;
+  if(fault==9)verified=false;
+  if(fault==10)fixture_frame.owner_generation++;
+  if(fault==11)fixture_frame.airborne_episode++;
+  if(fault==12)fixture_frame.action_generation++;
+  if(fault==13)fixture_frame.selection_object++;
+  if(fault==14)fixture_frame.rail_family=true;
+  if(fault==15)fixture_now=411;
+  if(fault==16)fixture_now=259;
+  if(fault==17)physical.velocity0[1]=0;
+  if(fault==18)physical.velocity0[2]=-1;
+  if(fault==19)physical.velocity0[1]=13;
+  if(fault==20)fixture_frame.physics_step--;
+  if(fault==21)fixture_state.trial.debug.noclip=true;
+  if(fault==22)fixture_release.frame.air_departure++;
+  SourceReader reader;auto now=fixture_now;bool accepted=true;
+  try{wallplant_release_ground_authority(fixture_release,fixture_frame,now,reader);}
+  catch(const SourceGuard&){accepted=false;}
+  check(accepted==(fault==0),"release orientation requires exact local contact lineage, current mode and bounded outward/upward motion");
+  check(fixture_release.at==260,"authority lookup never renews the release timestamp");
+ }
  {
   reset();auto earlier=fixture_now;publication_delay=5;
   arcade_mode::AirMotionIntent intent;

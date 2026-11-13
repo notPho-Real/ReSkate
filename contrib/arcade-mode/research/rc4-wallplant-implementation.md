@@ -696,3 +696,38 @@ invalid observations and mixed rotation frames. Substituting the old immediate
 turn or an idle admission makes the regressions fail. Host runtime syntax checks
 pass with warnings treated as errors. Windows and native validation remain
 required; the branch is experimental.
+
+# Carry the established orientation through release
+
+The next trial completed a 166 ms plant and one release. The first consumed
+root velocity was (-2.4053, 12.0824, 4.4859) m/s, but the native contact state
+persisted and cause 3 preceded a bail. The board was nearly upright and within
+17.85 degrees of the outgoing horizontal heading. The native reference had
+returned to a rolled, wall-facing orientation. This trial is rejected; the
+launch and pause alone do not establish gameplay acceptance.
+
+Ground preparation rebuilds the motion target from the contact frame. Its
+caller then publishes that reference before driving the articulated bodies.
+Ending all target ownership at the release allowed this preparation to discard
+the turn already established during the plant. The release now retains only
+orientation ownership for the original contact episode, bounded by the existing
+150 ms observation lease. Native preparation still runs once and supplies the
+world target position. There is no remaining anchor, temporary joint, body
+velocity write, additional query, or requested native state in this handoff.
+
+Each target requires the successful release receipt, unchanged local owner,
+controller generation, selected action and contact lineage, plus bounded
+outward/upward root velocity. The preceding published orientation must still
+match the owned reference within float composition rounding. Physical error
+against that preceding reference and the new target must remain within the
+original native limit, including the observed angular motion reserve. A new
+reference, invalid physical pose, reversed motion, expired lease or authority
+failure withdraws the handoff. The first native departure consumes the same
+receipt; ordinary landing or another trick cannot reuse it.
+
+Focused source-composed tests reject dropping the reference at release,
+renewing its deadline, retaining the wall anchor, or accepting an invalid
+physical pose. This is a bounded adaptation to the native contact-to-air
+transition, not an extension of the planted phase. Exact-source Windows and
+native validation remain required. Foot alignment, clean landing, the complete
+trick chain, negative controls and native combo/scoring remain unverified.

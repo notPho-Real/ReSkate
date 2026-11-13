@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 
 namespace dingosdk::game::orientation_target {
 using Matrix = std::array<float,16>;
@@ -52,6 +53,14 @@ inline Matrix inverse_basis(Matrix m) noexcept {
     for(unsigned row=0;row<3;++row)for(unsigned axis=0;axis<row;++axis)
         std::swap(m[4*row+axis],m[4*axis+row]);
     return m;
+}
+// A published reference is recomposed by native float matrix operations.
+// Permit only rounding, not a different animation/contact orientation.
+inline bool same_basis(const Matrix& a,const Matrix& b) noexcept {
+    if(!basis_valid(a) || !basis_valid(b))return false;
+    for(unsigned row=0;row<3;++row)for(unsigned axis=0;axis<3;++axis)
+        if(std::abs(a[row*4+axis]-b[row*4+axis])>32*std::numeric_limits<float>::epsilon())return false;
+    return true;
 }
 // Matches the native predicate: the largest angle between corresponding axes.
 inline float error(const Matrix& actual,const Matrix& target) noexcept {

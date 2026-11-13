@@ -5,10 +5,10 @@ namespace dingosdk::arcade_mode {
 // A release from the observed wall-contact state may be followed by the
 // game's own pop query. This proof covers that first transition, not another
 // launch. Its lifetime is the existing observation lease, never renewed.
-inline bool wallplant_release_departure_current(const WallplantCommand& command,
+inline bool wallplant_release_continuity_current(const WallplantCommand& command,
         const NativeInputFrame& released,const NativeInputFrame& live,
         std::uint64_t released_at,std::uint64_t now,
-        std::uint32_t selected,std::uint32_t previous) noexcept {
+        std::uint32_t selected,std::uint32_t previous,bool contact_target) noexcept {
     const auto& origin=command.native;
     if(!command || !command.input_sequence || !command.contact || !origin.valid || !origin.owner.valid() ||
        !origin.airborne || origin.state!=201 || !origin.owner_generation || !origin.airborne_episode ||
@@ -21,7 +21,8 @@ inline bool wallplant_release_departure_current(const WallplantCommand& command,
        released.flip_id!=origin.flip_id || released.selection_object!=origin.selection_object ||
        !released.physics_step || now<released_at || now-released_at>InputTiming::native_sample_lease_ms ||
        released_at<released.sampled_at || released_at-released.sampled_at>InputTiming::native_sample_lease_ms ||
-       selected!=200 || previous!=100 || !live.valid || live.owner!=released.owner ||
+       (contact_target ? selected!=100 : (selected!=200 || previous!=100)) ||
+       !live.valid || live.owner!=released.owner ||
        live.owner_generation!=released.owner_generation || live.rail_family ||
        now<live.sampled_at || now-live.sampled_at>InputTiming::native_sample_lease_ms ||
        live.physics_step<released.physics_step || live.sampled_at<released.sampled_at ||
@@ -33,9 +34,23 @@ inline bool wallplant_release_departure_current(const WallplantCommand& command,
     // Accept the retained100 or that exact next episode, never a later air/landing.
     if(live.state==100)return !live.airborne && live.airborne_episode==released.airborne_episode &&
         live.air_departure==released.air_departure && live.action_generation==released.action_generation;
-    return live.state==200 && live.airborne && released.action_generation!=UINT64_MAX &&
+    return !contact_target && live.state==200 && live.airborne && released.action_generation!=UINT64_MAX &&
         live.action_generation==released.action_generation+1 &&
         live.airborne_episode==released.airborne_episode+1 && live.air_departure==released.air_departure;
+}
+inline bool wallplant_release_departure_current(const WallplantCommand& command,
+        const NativeInputFrame& released,const NativeInputFrame& live,
+        std::uint64_t released_at,std::uint64_t now,
+        std::uint32_t selected,std::uint32_t previous) noexcept {
+    return wallplant_release_continuity_current(command,released,live,released_at,now,selected,previous,false);
+}
+// The same release may still be in its original contact state while native
+// movement leaves the wall. This permits orientation handoff only; it cannot
+// extend the plant, request a state, move a body or renew the release lease.
+inline bool wallplant_release_ground_current(const WallplantCommand& command,
+        const NativeInputFrame& released,const NativeInputFrame& live,
+        std::uint64_t released_at,std::uint64_t now,std::uint32_t selected) noexcept {
+    return wallplant_release_continuity_current(command,released,live,released_at,now,selected,0,true);
 }
 inline bool wallplant_release_velocity_current(const WallplantCommand& command,
         const std::array<float,3>& velocity) noexcept {
