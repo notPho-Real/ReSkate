@@ -598,3 +598,41 @@ published reference follows the intended shortest arc. These establish the
 coordinate correction, not hardware fidelity or the exclusive cause of the
 recorded failure. Physical orientation, foot alignment, the full trick chain
 and native combo/scoring still require exact-source native verification.
+
+# Attach the hold to the physical board through a temporary native joint
+
+The reference-frame trial still missed the outgoing physical heading by
+75.08 degrees. The published reference moved to the wall anchor while the
+physical board remained roughly 0.8 metres away. Approach observations confirm
+that the board's local Z axis is its forward axis. Routing a legacy target did
+not establish a working physical hold.
+
+The existing hold now uses an internal, general temporary-drive adapter. It
+borrows the generated native handle corresponding to physical board body 8,
+creates a shape-free keyframed helper body, and connects them with the native
+joint factory. The helper starts at the measured board transform. Subsequent
+targets carry the measured entity-to-board offset through the bounded outgoing
+reference. The adapter uses the existing articulated controller's seven solver
+profile values, verified against the pinned image; it introduces no launch,
+duration or orientation-limit tuning.
+
+Only the helper receives native pose updates. The borrowed board retains its
+motion type, collision shapes and filters, and its articulated connections.
+The joint is removed before the existing single release impulse, then its
+helper is released. Cancellation uses the same ordered removal. Calls require
+the originating thread, qualified client phase and active native TLS context,
+current world and generation-checked handles. Uncertain native calls are not
+retried. An observed world change quarantines the lease until process restart;
+this does not claim an unimplemented world-teardown callback or cleanup of
+unknown native allocations.
+
+Focused tests cover resource ownership, ordered cancellation, failed and
+uncertain acquisition/removal, stale worlds, recycled handles, measured-offset
+conversion and snapshot validation before either target changes. Local runtime
+syntax checks treat warnings as errors. These checks do not prove native joint
+convergence, a motionless hold, planted-foot alignment, or safe integration of
+the new adapter. Exact-source Windows CI and a controlled hardware batch remain
+required. Measure the physical board and rig throughout the hold, removal,
+release and landing; also test cancellation and Arcade Mode OFF restoration.
+The full trick chain, genuine no-A contact, repeated-A rejection, and native
+combo/scoring evidence remain outstanding. The branch remains experimental.

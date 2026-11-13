@@ -13,6 +13,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -55,6 +56,7 @@ struct NativeState { std::atomic<void(*)(std::uintptr_t)> velocity_update_origin
 NativeState& source_state(){return native_state;}
 std::atomic<void(*)()> physics_step_callback{};
 void noclip_physics_update(std::uintptr_t);
+void wallplant_cleanup_physical_drive(){event("drive_cleanup");}
 void native_update(std::uintptr_t core){
  ++native_calls;event("native",core);
  if(reenter){reenter=false;noclip_physics_update(core);}
@@ -166,6 +168,7 @@ void run(){
   check(wallplant_handoff().ticket.selected==(result!=504),"only accepted original result arms handoff");
   noclip_physics_update(1);
   check(native_calls==1,"native reconstruction called once");
+  check(find("drive_cleanup")<find("native"),"cancelled drive cleanup precedes ordinary native reconstruction");
   check(writes==(result!=504?1u:0u),"cancelled selection cannot write");
   if(result!=504){
    const auto final=find("final_write");
@@ -435,6 +438,63 @@ void run(){
  std::cout<<checks<<" production wrapper ordering checks passed\n";
 }
 }
+namespace physical_cleanup_route {
+namespace arcade_mode {
+using WallplantHoldContinuity=dingosdk::arcade_mode::WallplantHoldContinuity;
+using Command=dingosdk::arcade_mode::WallplantCommand;
+namespace wallplant_runtime {
+Command held;
+Command held_command(){return held;}
+}
+}
+using NoBailSkater=dingosdk::arcade_mode::NativeInputOwner;
+struct Hold { arcade_mode::Command command{};NoBailSkater owner{};std::uint64_t started{}; } fixture_hold;
+struct State { std::atomic_flag busy=ATOMIC_FLAG_INIT; } fixture_state;
+struct SourceBusyScope { std::atomic_flag& flag;~SourceBusyScope(){flag.clear();} };
+struct Drive { bool live=true;unsigned stops{};bool occupied()const{return live;}bool stop(){++stops;live=false;return true;} } drive;
+std::uint64_t clock_ms=100;
+bool owner_present=true;
+NoBailSkater fixture_owner{};
+std::string cancelled;
+auto& source_state(){return fixture_state;}
+auto& wallplant_native_drive(){return drive;}
+auto& wallplant_physical_hold(){return fixture_hold;}
+std::uint64_t GetTickCount64(){return clock_ms;}
+bool no_bail_skater(NoBailSkater& out){out=fixture_owner;return owner_present;}
+void wallplant_hold_cancel(const char* reason,std::uint64_t){cancelled=reason;drive.stop();fixture_hold={};}
+@wallplant_wrapper_physical_cleanup@
+void reset(){
+ fixture_state.busy.clear();drive={};fixture_hold={};cancelled.clear();clock_ms=100;owner_present=true;
+ fixture_owner={1,2,3,4,5};fixture_hold.owner=fixture_owner;fixture_hold.started=100;
+ fixture_hold.command.motion.ready=true;fixture_hold.command.input_sequence=7;fixture_hold.command.contact=8;
+ fixture_hold.command.native.physics_seconds=1.f/30.f;
+ arcade_mode::wallplant_runtime::held=fixture_hold.command;
+}
+void run(){
+ reset();clock_ms=294;wallplant_cleanup_physical_drive();
+ check(drive.stops==0&&fixture_hold.command,"qualified command retains joint through the existing one-step release grace");
+ for(unsigned fault=0;fault<8;++fault){
+  reset();
+  switch(fault){
+   case 0:clock_ms=295;break;case 1:clock_ms=99;break;
+   case 2:arcade_mode::wallplant_runtime::held={};break;
+   case 3:++arcade_mode::wallplant_runtime::held.contact;break;
+   case 4:owner_present=false;break;case 5:++fixture_owner.core;break;
+   case 6:fixture_hold.command.native.physics_seconds=std::numeric_limits<float>::quiet_NaN();break;
+   case 7:++arcade_mode::wallplant_runtime::held.input_sequence;break;
+  }
+  wallplant_cleanup_physical_drive();
+  check(drive.stops==1&&!fixture_hold.command&&!cancelled.empty(),
+        "withdrawn, expired, stale-owner or invalid-clock hold removes its physical joint");
+  wallplant_cleanup_physical_drive();check(drive.stops==1,"completed cleanup is not replayed");
+ }
+ reset();fixture_hold={};wallplant_cleanup_physical_drive();
+ check(drive.stops==1,"entry failure without a fixture_hold still services owned-resource cleanup");
+ reset();fixture_state.busy.test_and_set();clock_ms=400;wallplant_cleanup_physical_drive();
+ check(drive.stops==0&&fixture_hold.command,"reentrant cleanup cannot mutate an active native transaction");
+ fixture_state.busy.clear();wallplant_cleanup_physical_drive();check(drive.stops==1,"next available producer removes expired joint");
+}
+}
 namespace ground_route {
 // Only native I/O is substituted here. The ground callback below is extracted
 // from production so its order, authority checks and rollback are exercised.
@@ -560,8 +620,18 @@ bool original_drive(std::uintptr_t rig){check(rig==2,"drive forwards same rig");
 void wallplant_read_current_intent(arcade_mode::AirMotionIntent&,std::uint64_t&,std::uint64_t generation){
  source_require(generation==1,"drive_intent");
 }
+unsigned physical_drive_updates{};
+bool fail_physical_drive{};
+void wallplant_update_physical_drive(const std::array<float,16>& reference,SourceReader& reader){
+ reader.verify();
+ check(copies==0,"physical drive validates watched native target before legacy target mutation");
+ check(reference==published_reference,"physical drive uses the same published bounded reference");
+ source_require(!fail_physical_drive,"drive_target_failed");
+ ++physical_drive_updates;
+}
 @wallplant_wrapper_ground@
 void reset(){
+ physical_drive_updates=0;fail_physical_drive=false;
  ground_state.initialized=true;ground_state.velocity_guard_active=true;ground_state.busy.clear();ground_state.ground_target_original=original;
  ground_state.rig_drive_original=original_drive;drives=0;board_target={};published_reference={};consumed_target={};
  held_value={};held_value.motion.ready=true;held_value.input_sequence=7;held_value.native.owner.rig=2;held_value.native.owner.context=3;
@@ -636,6 +706,22 @@ void run(){
  }
  reset();ground_state.ground_target_original=nullptr;noclip_ground_target(2,.02f);
  check(originals==0&&copies==0,"missing original cannot create a target write");
+ {
+  const std::array<float,16> entity{0,0,-1,0, 0,1,0,0, 1,0,0,0, 10,20,30,1};
+  auto board=entity;board[12]=13;board[13]=18;board[14]=29;
+  const std::array<float,16> reference{-1,0,0,0, 0,1,0,0, 0,0,-1,0, 100,200,300,1};
+  auto expected=reference;expected[12]=99;expected[13]=198;expected[14]=297;
+  std::array<float,16> target{};
+  check(wallplant_physical_target(entity,board,reference,target)&&target==expected,
+        "physical anchor carries measured board offset across distinct entry and outgoing frames");
+  for(unsigned source=0;source<3;++source){
+   auto a=entity,b=board,c=reference;
+   (source==0?a:source==1?b:c)[12]=std::numeric_limits<float>::quiet_NaN();
+   const auto before=target;
+   check(!wallplant_physical_target(a,b,c,target)&&target==before,
+         "invalid physical reference is rejected without publishing a partial target");
+  }
+ }
  // Independent quarter-turn composition with a translated local root.
  const std::array<float,16> local_root{0,0,-1,0, 0,1,0,0, 1,0,0,0, 1,2,3,1};
  const std::array<float,16> local_target{0,0,-1,0, 0,1,0,0, 1,0,0,0, 4,5,6,1};
@@ -661,6 +747,7 @@ void run(){
  wallplant_prepare_board_drive(2,spawn::ground_drive_return);
  check(copies==1&&cancelled.empty()&&board_target==published_reference,
        "ground tail consumes the bounded reference instead of overwriting it with the old physical pose");
+ check(physical_drive_updates==1,"validated preparation reaches the physical drive once");
  check(orientation_snapshot.actual==physical_before,"routing a drive target never rotates the physical body directly");
  check(noclip_rig_drive(2)&&drives==1&&consumed_target==published_reference,
        "native drive still runs exactly once and preserves its return value");
@@ -677,9 +764,14 @@ void run(){
   }
   const auto untouched=board_target;
   wallplant_prepare_board_drive(2,caller);
-  check(copies==0&&board_target==untouched,"foreign, inactive, stale, torn or unsafe drive preparation cannot mutate the target");
+  check(copies==0&&board_target==untouched&&physical_drive_updates==0,"foreign, inactive, stale, torn or unsafe drive preparation cannot mutate either target");
   check(noclip_rig_drive(2)&&drives==1,"refused drive requests still call the original once");
  }
+ prepare_drive();fail_physical_drive=true;
+ const auto failed_drive_original=board_target;
+ wallplant_prepare_board_drive(2,spawn::ground_drive_return);
+ check(copies==0&&board_target==failed_drive_original&&cancelled=="drive_target_failed",
+       "physical drive refusal cancels before changing legacy targets");
  for(unsigned fault=0;fault<2;++fault){
   prepare_drive();const auto untouched=board_target;
   if(fault==0)fail_copy=1;else fail_read=1;
@@ -1269,7 +1361,7 @@ void run(){
  std::cout<<checks<<" combined production departure authority checks passed\n";
 }
 }
-void run_wallplant_wrapper_tests(){run();ground_route::run();body_observation_route::run();release_trajectory_route::run();native_query_route::run();world_trajectory_route::run();departure_authority_route::run();}
+void run_wallplant_wrapper_tests(){run();physical_cleanup_route::run();ground_route::run();body_observation_route::run();release_trajectory_route::run();native_query_route::run();world_trajectory_route::run();departure_authority_route::run();}
 #ifdef ARCADE_WALLPLANT_WRAPPER_STANDALONE
 int main(){run_wallplant_wrapper_tests();}
 #endif

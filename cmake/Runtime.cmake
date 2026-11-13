@@ -109,6 +109,7 @@ add_library(dingosdk_runtime SHARED
     Extension/World/console_commands.cpp
     Extension/World/world_entities.cpp
     Extension/World/owned_bodies.cpp
+    Extension/World/native_body_drive.cpp
     Extension/World/character_room.cpp
     Extension/World/guid_table_guard.cpp
     Extension/Skater/bone_cam.cpp

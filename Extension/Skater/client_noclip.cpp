@@ -14,6 +14,8 @@
 #include "Engine/Game/Build/20260929/skater_body.h"
 #include "Engine/Game/Build/20260929/rigid_bodies.h"
 #include "Engine/Game/Abi/orientation_target.h"
+#include "Engine/Game/Build/20260929/body_drive.h"
+#include "Extension/World/native_body_drive.h"
 #include "Engine/Game/Multiplayer/session_tools.h"
 #include "Extension/ArcadeMode/arcade_movement.h"
 #include "Extension/ArcadeMode/arcade_mode.h"
@@ -644,6 +646,9 @@ struct WallplantPhysicalHold {
     WallplantBodyObservation physical{},entry_physical{};
     game::orientation_target::Result orientation{};
     float orientation_limit{};
+    body_hit_identity::NativeHandle driven_body{};
+    std::array<float,16> entry_entity_matrix{},entry_board_matrix{};
+    std::uint64_t physical_targets{};
     std::uintptr_t native_departure{};
     bool departure_attempted{},departure_submitted{};
 };
@@ -651,6 +656,8 @@ struct WallplantPhysicalHold {
 // read the atomic hint. Runtime cancellation never needs the source lock.
 WallplantPhysicalHold& wallplant_physical_hold() {static WallplantPhysicalHold value;return value;}
 std::atomic<std::uintptr_t> wallplant_hold_core{};
+body_drive::NativeDrive& wallplant_native_drive() {static body_drive::NativeDrive value;return value;}
+
 struct WallplantReleasedDeparture {
     WallplantPhysicalHold release{};
     arcade_mode::NativeInputFrame frame{};
@@ -672,7 +679,7 @@ void wallplant_hold_log(const WallplantPhysicalHold& hold,const char* phase,cons
         std::uint64_t now,std::uint32_t selected) noexcept {
     try {
         logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE WALLPLANT HOLD: occurrence={} contact={} phase={} reason={} ms={} started={} elapsed={} state={} targets={} first_target={} last_target={} entity_root={},{},{} anchor={},{},{} maximum_entity_target_error={} velocity={},{},{} exit={},{},{} pending_readback0={},{},{} pending_readback8={},{},{} entry_entity_root={},{},{} incoming={},{},{} reflected={},{},{} hold_forward={},{},{} target_normal={},{},{} entity_forward={},{},{} native_orientation_limit={} requested_orientation_error={} applied_orientation_error={} orientation_fraction={} native_drive=spring hard_anchor_verified=false.",
+            "ARCADE WALLPLANT HOLD: occurrence={} contact={} phase={} reason={} ms={} started={} elapsed={} state={} targets={} first_target={} last_target={} entity_root={},{},{} anchor={},{},{} maximum_entity_target_error={} velocity={},{},{} exit={},{},{} pending_readback0={},{},{} pending_readback8={},{},{} entry_entity_root={},{},{} incoming={},{},{} reflected={},{},{} hold_forward={},{},{} target_normal={},{},{} entity_forward={},{},{} native_orientation_limit={} requested_orientation_error={} applied_orientation_error={} orientation_fraction={} native_drive=temporary_joint physical_targets={} hard_anchor_verified=false.",
             hold.command.input_sequence,hold.command.contact,phase,reason,now,hold.started,
             now>=hold.started?now-hold.started:0,selected,hold.targets,hold.first_target,hold.last_target,
             hold.last_root[0],hold.last_root[1],hold.last_root[2],hold.command.anchor[0],
@@ -686,7 +693,7 @@ void wallplant_hold_log(const WallplantPhysicalHold& hold,const char* phase,cons
             hold.command.hold_forward[0],hold.command.hold_forward[1],hold.command.hold_forward[2],
             hold.command.contact_normal[0],hold.command.contact_normal[1],hold.command.contact_normal[2],
             hold.actual_forward[0],hold.actual_forward[1],hold.actual_forward[2],
-            hold.orientation_limit,hold.orientation.requested_error,hold.orientation.applied_error,hold.orientation.fraction);
+            hold.orientation_limit,hold.orientation.requested_error,hold.orientation.applied_error,hold.orientation.fraction,hold.physical_targets);
         const auto& p=hold.physical;
         logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE WALLPLANT BODY: occurrence={} contact={} phase={} ms={} state={} root={},{},{} board={},{},{} forward={},{},{} velocity0={},{},{} velocity8={},{},{} pending0={} pending8={} entry_root={},{},{} entry_board={},{},{} physical_integration_verified=false.",
@@ -700,7 +707,13 @@ void wallplant_hold_log(const WallplantPhysicalHold& hold,const char* phase,cons
 void wallplant_hold_cancel(const char* reason,std::uint64_t now,std::uint32_t selected=0) noexcept {
     auto& hold=wallplant_physical_hold();
     if(!hold.command)return;
+    // A target callback may run on a different native producer. If removal
+    // cannot run here, the velocity wrapper services it before ordinary motion.
+    const bool detached=wallplant_native_drive().stop();
     const auto cancelled=hold;hold={};wallplant_hold_core.store(0,std::memory_order_release);
+    if(!detached)logging::log(logging::Level::error,logging::Channel::skater,
+        "ARCADE WALLPLANT DRIVE: occurrence={} cleanup_pending=true uncertain={}.",
+        cancelled.command.input_sequence,wallplant_native_drive().uncertain());
     arcade_mode::wallplant_runtime::finish_hold(cancelled.command,false,now);
     wallplant_hold_log(cancelled,"cancel",reason,now,selected);
 }
@@ -747,6 +760,86 @@ WallplantOrientationSnapshot wallplant_orientation_snapshot(const arcade_mode::N
     // snapshot can expire while the target is composed, before it is written.
     return result;
 }
+struct WallplantDriveWitness {
+    body_hit_identity::NativeHandle body{};
+    std::array<float,16> matrix{};
+};
+WallplantDriveWitness wallplant_drive_witness(const NoBailSkater& owner,SourceReader& reader) {
+    namespace native=addr::skater_state;
+    const auto& pin=addr::body_drive::board_handle_consumer;
+    std::array<unsigned char,32> code{};
+    source_require(reader.raw(owner.base+pin.rva,code.data(),code.size()) && code==pin.bytes,
+        "drive_body_contract");
+    const auto holder=reader.pointer(owner.core,native::board_holder_offset);
+    const auto board=reader.pointer(holder,native::board_physics_offset);
+    source_require(reader.pointer(board)==owner.base+native::board_physics_vtable,"drive_board_owner");
+    const auto parts=reader.pointer(board,native::physics_bodies_offset);
+    source_require(reader.value<std::uint32_t>(parts,0)==native::board_body_count,"drive_board_count");
+    const auto part=parts+addr::body_drive::board_reference_index*native::physics_body_size;
+    source_require(reader.pointer(part,native::body_owner_offset)==board,"drive_part_owner");
+    const auto handles=reader.pointer(holder,addr::body_drive::board_handles);
+    WallplantDriveWitness out;
+    out.body=reader.value<body_hit_identity::NativeHandle>(handles,
+        addr::body_drive::board_reference_index*sizeof(body_hit_identity::NativeHandle));
+    for(unsigned row=0;row<4;++row) {
+        const auto lanes=reader.value<std::array<float,4>>(part,addr::skater_body::body_transform_offset+row*16);
+        std::copy(lanes.begin(),lanes.end(),out.matrix.begin()+row*4);
+    }
+    source_require(valid_flight_transform(out.matrix),"drive_body_transform");
+    return out;
+}
+body_drive::Pose wallplant_drive_pose(const std::array<float,16>& matrix) {
+    source_require(valid_flight_transform(matrix),"drive_pose");
+    const auto q=game::orientation_target::quaternion(matrix);
+    return {float(q[0]),float(q[1]),float(q[2]),float(q[3]),matrix[12],matrix[13],matrix[14],1};
+}
+bool wallplant_physical_target(const std::array<float,16>& entry_entity,
+    const std::array<float,16>& entry_board,const std::array<float,16>& reference,
+    std::array<float,16>& target) noexcept;
+void wallplant_update_physical_drive(const std::array<float,16>& reference,SourceReader& reader) {
+    auto& hold=wallplant_physical_hold();
+    source_require(hold.command && wallplant_native_drive().active(),"drive_hold_inactive");
+    const auto witness=wallplant_drive_witness(hold.owner,reader);
+    source_require(witness.body==hold.driven_body,"drive_body_changed");
+    std::array<float,16> target{};
+    source_require(wallplant_physical_target(hold.entry_entity_matrix,hold.entry_board_matrix,reference,target),
+        "drive_reference_frame");
+    reader.verify();
+    source_require(wallplant_native_drive().update(witness.body,wallplant_drive_pose(target)),"drive_target_failed");
+    if(hold.physical_targets!=UINT64_MAX)++hold.physical_targets;
+    logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE WALLPLANT JOINT TARGET: occurrence={} contact={} ms={} body_index={} body_generation={} target={},{},{} forward={},{},{} target_count={} physical_integration_verified=false.",
+        hold.command.input_sequence,hold.command.contact,GetTickCount64(),witness.body.index,witness.body.generation,
+        target[12],target[13],target[14],target[8],target[9],target[10],hold.physical_targets);
+}
+void wallplant_cleanup_physical_drive() noexcept {
+    // A stale native query cannot extend a physical constraint indefinitely.
+    // Read runtime permission before acquiring the native transaction lock.
+    const auto held=arcade_mode::wallplant_runtime::held_command();
+    const auto now=GetTickCount64();
+    auto& state=source_state();
+    if(state.busy.test_and_set(std::memory_order_acquire))return;
+    SourceBusyScope scope{state.busy};
+    if(!wallplant_native_drive().occupied())return;
+    auto& hold=wallplant_physical_hold();
+    if(hold.command) {
+        const auto seconds=hold.command.native.physics_seconds;
+        const bool step_valid=std::isfinite(seconds) && seconds>0 && seconds<=.1f;
+        const auto grace=step_valid?static_cast<std::uint64_t>(std::ceil(seconds*1000.0)):0;
+        if(!held || held.input_sequence!=hold.command.input_sequence || held.contact!=hold.command.contact ||
+           !step_valid || now<hold.started ||
+           now-hold.started>arcade_mode::WallplantHoldContinuity::duration_ms+grace) {
+            wallplant_hold_cancel("drive_expired_or_withdrawn",now);return;
+        }
+        NoBailSkater owner{};
+        if(no_bail_skater(owner) && owner==hold.owner)return;
+        wallplant_hold_cancel("drive_owner_changed",now);
+    } else {
+        // Failed native calls are quarantined by the lease; stop never repeats
+        // an uncertain removal. A wrong producer has made no removal attempt.
+        wallplant_native_drive().stop();
+    }
+}
 bool wallplant_hold_target_matrix(const arcade_mode::WallplantCommand& command,
         const std::array<float,16>& supplied,std::array<float,16>& target) noexcept {
     if(!command.anchor_verified || !valid_flight_transform(supplied))return false;
@@ -765,6 +858,24 @@ bool wallplant_hold_target_matrix(const arcade_mode::WallplantCommand& command,
     target[8]=x;target[9]=0;target[10]=z;
     for(unsigned axis=0;axis<3;++axis)target[12+axis]=command.anchor[axis];
     return valid_flight_transform(target);
+}
+// The published reference belongs to the entity, not the physical deck.
+// Carry the measured board-origin offset through that reference so a joint
+// does not drag the deck origin into the entity's origin during the plant.
+bool wallplant_physical_target(const std::array<float,16>& entry_entity,
+        const std::array<float,16>& entry_board,const std::array<float,16>& reference,
+        std::array<float,16>& target) noexcept {
+    for(const auto& matrix:{entry_entity,entry_board,reference})
+        if(!valid_flight_transform(matrix))return false;
+    std::array<float,3> local{};
+    for(unsigned row=0;row<3;++row)for(unsigned axis=0;axis<3;++axis)
+        local[row]+=(entry_board[12+axis]-entry_entity[12+axis])*entry_entity[row*4+axis];
+    auto out=reference;
+    for(unsigned axis=0;axis<3;++axis)for(unsigned row=0;row<3;++row)
+        out[12+axis]+=local[row]*reference[row*4+axis];
+    if(!valid_flight_transform(out))return false;
+    target=out;
+    return true;
 }
 // Move the native target pair together, preserving the relative articulated
 // pose and world-origin translation. These are drive targets, not body poses.
@@ -1067,6 +1178,7 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         source_require(!wallplant_physical_hold().command,"Wallplant physical phase already owns motion.");
         arcade_mode::WallplantHoldContinuity admission;
         source_require(admission.begin(command,now),"Wallplant hold origin is invalid.");
+        const auto drive_witness=wallplant_drive_witness(owner,reader);
         arcade_mode::AirMotionOutput brake{};brake.ready=brake.vertical=brake.horizontal=true;
         brake.delta_x=-velocities[0][0];brake.delta_z=-velocities[0][2];
         source_require(arcade_mode::AirMotion::apply_bodies(brake,velocities,spins,bodies.up),
@@ -1075,6 +1187,8 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         source_require(no_bail_skater(after) && after==owner,"Wallplant reconstruction ownership changed before writing.");
         source_require(arcade_mode::wallplant_runtime::current(command,now,handoff.execution.native,command.before),
             "Wall contact changed before hold entry.");
+        source_require(wallplant_native_drive().start(owner.base,client,drive_witness.body,
+            wallplant_drive_pose(drive_witness.matrix)),"Wallplant physical drive unavailable.");
         write_arcade_bodies(bodies.parts,velocities,spins,flags,true,false,[]{});
         auto started=GetTickCount64();
         SourceReader written;
@@ -1095,12 +1209,17 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         hold.actual_forward={bodies.matrix[8],bodies.matrix[9],bodies.matrix[10]};
         hold.readback0=readback0;hold.readback8=readback8;
         hold.physical=hold.entry_physical=entry_physical;
+        hold.driven_body=drive_witness.body;hold.entry_entity_matrix=bodies.matrix;
+        hold.entry_board_matrix=drive_witness.matrix;
         hold.maximum_drift=std::hypot(bodies.root[0]-command.anchor[0],bodies.root[1]-command.anchor[1],bodies.root[2]-command.anchor[2]);
         wallplant_hold_core.store(core,std::memory_order_release);
         wallplant_hold_log(hold,"entry","braked",started,live.state);
         note(18,"hold_entry_committed",live.state);
     } catch(...) {
-        if(command)arcade_mode::wallplant_runtime::completed(command,false);
+        if(command) {
+            wallplant_native_drive().stop();
+            arcade_mode::wallplant_runtime::completed(command,false);
+        }
         try{throw;}catch(const SourceGuard& issue){note(19,issue.message);}
         catch(...){note(19,"reconstruction_exception");}
     }
@@ -1187,7 +1306,7 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         source_require(std::isfinite(drift),"hold_root_invalid");hold.maximum_drift=std::max(hold.maximum_drift,drift);
         source_require(now>=hold.started,"hold_clock");
         if(now-hold.started<arcade_mode::WallplantHoldContinuity::duration_ms)return;
-        source_require(hold.targets>0,"hold_target_never_applied");
+        source_require(hold.targets>0 && hold.physical_targets>0,"hold_target_never_applied");
         std::array<std::array<float,3>,32> velocities{},spins{};
         std::array<std::uint32_t,32> flags{};
         for(std::size_t i=0;i<bodies.parts.size();++i) {
@@ -1209,6 +1328,9 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         const bool current=arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame,&stale_query);
         if(stale_query)return;
         source_require(current,"hold_release_revalidation");
+        // Remove the owned solver joint before the exit impulse. The borrowed
+        // board keeps its native motion type, collisions and articulated joints.
+        source_require(wallplant_native_drive().stop(),"hold_drive_release_failed");
         // Take the physical ticket before touching bodies: recursive callbacks
         // and future ticks cannot turn a single release into repeated writes.
         auto releasing=hold;attempted_release=releasing;
@@ -1417,6 +1539,18 @@ bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
         // The due release still owns this callback's target until its single
         // body write consumes the receipt after original motion returns.
         if(now<hold.started)return false;
+        if(frame.state!=100) {
+            const auto orientation=wallplant_orientation_snapshot(frame.owner,reader);
+            float available{},travel{};
+            source_require(game::orientation_target::motion_budget(orientation.limit,frame.physics_seconds,
+                orientation.root_spin,orientation.reference_spin,available,travel),"air_drive_motion_budget");
+            std::array<float,16> bounded{};
+            game::orientation_target::Result report;
+            source_require(game::orientation_target::bound(orientation.actual,target,available,bounded,report),
+                "air_drive_orientation");
+            target=bounded;
+            wallplant_update_physical_drive(target,reader);
+        }
         hold.last_root=bodies.root;
         hold.physical=physical;
         hold.maximum_drift=std::max(hold.maximum_drift,std::hypot(bodies.root[0]-hold.command.anchor[0],
@@ -2494,6 +2628,7 @@ void noclip_physics_update(std::uintptr_t core) {
     };
     retained_phase(2,"before_original");
     observe_phase(0,"before_original");
+    wallplant_cleanup_physical_drive();
     const auto original = source_state().velocity_update_original.load(std::memory_order_acquire);
     if (original) original(core);
     observe_phase(1,"after_original");
@@ -2734,6 +2869,7 @@ void wallplant_prepare_board_drive(std::uintptr_t rig,std::uintptr_t caller) noe
         }
         source_require(source_writable(rig+spawn::rig_board_drive_target,sizeof(replacement)),"board_drive_writable");
         reader.verify();
+        wallplant_update_physical_drive(reference,reader);
         if(!copy_to(rig+spawn::rig_board_drive_target,replacement.data(),sizeof(replacement)) ||
            !reader.raw(rig+spawn::rig_board_drive_target,check.data(),sizeof(check)) || check!=replacement) {
             source_require(copy_to(rig+spawn::rig_board_drive_target,supplied.data(),sizeof(supplied)) &&
