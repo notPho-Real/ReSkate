@@ -567,7 +567,8 @@ struct State {
 State& source_state(){return ground_state;}
 struct SourceBusyScope {std::atomic_flag& busy;~SourceBusyScope(){busy.clear();}};
 struct Hold {Command command;std::uint64_t started{100};game::orientation_target::Result orientation{};float orientation_limit{};
- std::uint64_t targets{1},intent_generation{1};} physical_hold;
+ std::uint64_t targets{1},intent_generation{1};std::array<float,16> orientation_reference{};
+ bool orientation_reference_owned{};} physical_hold;
 struct WallplantOrientationSnapshot {std::array<float,16> actual{},local_root{};
  std::array<float,3> root_spin{},reference_spin{};float limit{};} orientation_snapshot;
 bool orientation_available=true;
@@ -608,6 +609,7 @@ bool hold_current(const Command&,std::uint64_t now,const NativeInputFrame&,bool*
  if(change_orientation_at_permission==3)orientation_snapshot.limit=.1f;
  if(change_orientation_at_permission==4)orientation_snapshot.root_spin[0]=1;
  if(change_orientation_at_permission==5)orientation_snapshot.reference_spin[0]=1;
+ if(change_orientation_at_permission==6)last_drive_reference[0]=.5f;
  if(stale)*stale=fixture_stale_query;return fixture_current && !fixture_stale_query && now<=physical_hold.started+194;
 }
 }
@@ -791,6 +793,32 @@ void run(){
  reset();clock_ms=285;noclip_ground_target(2,.03333333f);
  check(originals==1&&copies==1&&cancelled.empty()&&stored[29]==8,
        "due185ms release retains the anchored ground target before its body callback");
+ for(unsigned fault=0;fault<6;++fault){
+  reset();clock_ms=282;orientation_snapshot.limit=1.1f;
+  physical_hold.orientation_reference_owned=true;
+  physical_hold.orientation_reference=orientation_snapshot.actual;
+  last_drive_reference=orientation_snapshot.actual;
+  const auto rolled=game::orientation_target::rotation({std::sin(.7),0,0,std::cos(.7)});
+  published_reference=rolled;
+  auto inverse=game::orientation_target::inverse_basis(rolled);
+  std::copy(rolled.begin(),rolled.end(),prepared.begin());
+  std::copy(rolled.begin(),rolled.end(),prepared.begin()+16);
+  std::copy(inverse.begin(),inverse.end(),prepared.begin()+32);
+  for(unsigned a=0;a<3;++a)prepared[12+a]=-world_origin[a];
+  if(fault==1)last_drive_reference=rolled;
+  if(fault==2)change_orientation_at_permission=6;
+  if(fault==3)physical_hold.command.input_sequence=8;
+  if(fault==4)orientation_snapshot.actual=rolled;
+  if(fault==5)physical_hold.orientation_reference_owned=false;
+  noclip_ground_target(2,.03333333f);
+  if(fault==0){
+   check(copies==1&&cancelled.empty()&&stored[28]==7&&stored[29]==8&&stored[30]==9,
+         "held turn validates its retained publication when ground preparation precedes a due release");
+   check(physical_hold.started==100&&wallplant_hold_core&&physical_drive_updates==0,
+         "retained hold reference does not renew duration, move bodies or apply a release");
+  }else check(copies==0&&stored==prepared&&!cancelled.empty(),
+       "held reference cannot conceal replacement, boundary changes, foreign ownership or a genuinely invalid pose");
+ }
  for(unsigned mode=0;mode<10;++mode){
   reset();
   switch(mode){
@@ -859,6 +887,7 @@ void run(){
   // separate board target with body 8. Reproduce that overwrite after the hook.
   std::copy_n(stored.begin(),16,published_reference.begin());
   for(unsigned axis=0;axis<3;++axis)published_reference[12+axis]+=world_origin[axis];
+  last_drive_reference=published_reference;
   board_target=orientation_snapshot.actual;
   copies=reads=0;
  };
@@ -867,10 +896,12 @@ void run(){
  check(copies==1&&cancelled.empty()&&board_target==published_reference,
        "ground tail consumes the bounded reference instead of overwriting it with the old physical pose");
  check(physical_drive_updates==1,"validated preparation reaches the physical drive once");
+ check(physical_hold.orientation_reference_owned&&physical_hold.orientation_reference==last_drive_reference,
+       "only a completed board drive preparation retains its checked native publication");
  check(orientation_snapshot.actual==physical_before,"routing a drive target never rotates the physical body directly");
  check(noclip_rig_drive(2)&&drives==1&&consumed_target==published_reference,
        "native drive still runs exactly once and preserves its return value");
- for(unsigned fault=0;fault<13;++fault){
+ for(unsigned fault=0;fault<14;++fault){
   prepare_drive();
   auto caller=spawn::ground_drive_return;
   switch(fault){
@@ -880,6 +911,7 @@ void run(){
    case 8:stored[28]+=1;break;case 9:physical_hold.targets=0;break;
    case 10:physical_hold.intent_generation=2;break;case 11:orientation_snapshot.limit=.1f;break;
    case 12:change_orientation_at_permission=1;break;
+   case 13:last_drive_reference[0]=.5f;break;
   }
   const auto untouched=board_target;
   wallplant_prepare_board_drive(2,caller);

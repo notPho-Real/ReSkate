@@ -648,6 +648,8 @@ struct WallplantPhysicalHold {
     float orientation_limit{};
     body_hit_identity::NativeHandle driven_body{};
     std::array<float,16> entry_entity_matrix{},entry_board_matrix{};
+    std::array<float,16> orientation_reference{};
+    bool orientation_reference_owned{};
     std::uint64_t physical_targets{};
     std::uintptr_t native_departure{};
     bool departure_attempted{},departure_submitted{};
@@ -963,7 +965,7 @@ bool wallplant_ground_orientation(const std::array<float,48>& supplied,
        limit>3.14159265358979323846f)return false;
     const auto original_reference=orientation::compose_basis(local_root,local);
     // An already invalid native pose remains a genuine cancellation. During
-    // release the caller proves the preceding reference is still ours: native
+    // a continuing plant the caller proves the preceding reference is ours: native
     // ground preparation can otherwise restore its pre-plant contact basis.
     const auto& preceding=owned_reference?*owned_reference:original_reference;
     if(!orientation::basis_valid(preceding) || orientation::error(actual,preceding)>limit)return false;
@@ -2856,7 +2858,19 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
             game::build::v20260929::arcade_native_probe::selected_state);
         if(selected!=100)return;
         auto& departure=wallplant_released_departure();
+        auto& hold=wallplant_physical_hold();
         std::array<float,16> preceding{};
+        if(!released && hold.orientation_reference_owned) {
+            source_require(hold.command.input_sequence==held.input_sequence &&
+                hold.command.contact==held.contact,"hold_orientation_ticket");
+            for(unsigned row=0;row<4;++row) {
+                const auto lanes=reader.value<std::array<float,4>>(rig,
+                    spawn::rig_published_motion_reference+row*16);
+                std::copy(lanes.begin(),lanes.end(),preceding.begin()+row*4);
+            }
+            source_require(game::orientation_target::same_basis(preceding,hold.orientation_reference),
+                "hold_orientation_reference_changed");
+        }
         if(released) {
             source_require(departure.release.command.input_sequence==held.input_sequence &&
                 departure.release.command.contact==held.contact,"release_orientation_ticket");
@@ -2901,16 +2915,26 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
         float target_limit{},angular_travel{};
         source_require(game::orientation_target::motion_budget(orientation.limit,seconds,
             orientation.root_spin,orientation.reference_spin,target_limit,angular_travel),"ground_target_motion_budget");
+        if(!released && hold.orientation_reference_owned) {
+            std::array<float,16> prepared_local{};
+            std::copy_n(supplied.begin(),16,prepared_local.begin());
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE WALLPLANT HOLD REFERENCE: occurrence={} ms={} elapsed={} native_limit={} prepared_error={} preceding_error={} published_matches=true read_only=true.",
+                held.input_sequence,now,now-hold.started,orientation.limit,
+                game::orientation_target::error(orientation.actual,
+                    game::orientation_target::compose_basis(orientation.local_root,prepared_local)),
+                game::orientation_target::error(orientation.actual,preceding));
+        }
         game::orientation_target::Result turn;
         source_require(wallplant_ground_orientation(supplied,origin,orientation.local_root,
-            orientation.actual,orientation.limit,target,turn,target_limit,released?&preceding:nullptr),"ground_target_orientation");
+            orientation.actual,orientation.limit,target,turn,target_limit,
+            (released || hold.orientation_reference_owned)?&preceding:nullptr),"ground_target_orientation");
         source_require(wallplant_ground_target_matrices(supplied,origin,target,replacement),"ground_target_pair");
         source_require(source_writable(rig+offset,sizeof(replacement)),"ground_target_writable");
         reader.verify();
         source_require(reader.raw(rig+offset,check.data(),sizeof(check)) && check==supplied,
             "ground_target_changed");
         now=GetTickCount64();
-        auto& hold=wallplant_physical_hold();
         if(released)wallplant_release_ground_authority(departure,frame,now,reader);
         else {
             bool stale_query{};
@@ -2979,7 +3003,7 @@ void wallplant_prepare_board_drive(std::uintptr_t rig,std::uintptr_t caller) noe
        state.busy.test_and_set(std::memory_order_acquire))return;
     SourceBusyScope scope{state.busy};
     try {
-        const auto& hold=wallplant_physical_hold();
+        auto& hold=wallplant_physical_hold();
         source_require(hold.command.input_sequence==held.input_sequence && hold.targets &&
             held.anchor_verified,"board_drive_hold");
         SourceReader reader;
@@ -2999,6 +3023,8 @@ void wallplant_prepare_board_drive(std::uintptr_t rig,std::uintptr_t caller) noe
         const auto origin=reader.value<std::array<float,3>>(rig,spawn::rig_motion_origin);
         const auto world=matrix(rig,spawn::rig_world_motion_target);
         const auto reference=matrix(held.native.owner.context,spawn::context_motion_reference);
+        const auto published=matrix(rig,spawn::rig_published_motion_reference);
+        source_require(game::orientation_target::same_basis(reference,published),"board_drive_publication");
         const auto supplied=matrix(rig,spawn::rig_board_drive_target);
         for(unsigned axis=0;axis<3;++axis)
             source_require(std::abs(world[12+axis]-held.anchor[axis])<=.001f,"board_drive_anchor");
@@ -3022,6 +3048,10 @@ void wallplant_prepare_board_drive(std::uintptr_t rig,std::uintptr_t caller) noe
                 "board_drive_restore_failed");
             source_require(false,"board_drive_write");
         }
+        // Only a successfully validated native publication can own the next
+        // hold step. Fresh ground preparation is not the preceding drive pose.
+        hold.orientation_reference=published;
+        hold.orientation_reference_owned=true;
         logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE WALLPLANT BOARD TARGET: occurrence={} contact={} ms={} state=100 from={},{},{} target={},{},{} forward={},{},{} physical_pose_write=false.",
             held.input_sequence,held.contact,now,supplied[12],supplied[13],supplied[14],

@@ -804,3 +804,31 @@ must still confirm that the retained copy survives the original update and that
 the corrected handoff permits an ordinary airborne departure and clean landing.
 The spring-held plant is not a verified freeze; sole contact, subsequent tricks,
 negative controls and native combo/scoring remain acceptance requirements.
+
+# Carry publication ownership through the planted phase
+
+The next exact-source hardware trial entered a plant but cancelled at 182 ms on
+`ground_target_orientation`, before any release. Six physical targets were
+submitted and the final native state was 504. The release-reference correction
+was not exercised. This remains rejected evidence, not a successful wallplant.
+
+Ground preparation also runs before a due release's body callback. The held
+route previously compared the current physical pose against that newly prepared
+reference, even after our preceding bounded target had been published and
+driven. It now retains ownership only after the board-drive preparation verifies
+the context and retained rig publication agree and its target write succeeds.
+The next held target requires that exact retained basis and checks the actual
+pose against it. Changed publication, changed ownership, stale authority or a
+physically invalid pose still refuses the target. The first target has no such
+ownership and keeps the original native-reference check.
+
+This reuses the existing publication fields and guards; it changes no hold
+duration, native orientation limit, angular-motion reserve, launch velocity,
+contact requirement or body pose. Extracted-production regressions cover a
+ground callback preceding release at 182 ms and reject reference replacement,
+write-boundary changes and genuine physical misalignment. Restoring the old
+held-reference route makes the positive regression fail. Same-call prepared
+and preceding orientation errors are now recorded for the next native trial.
+The prior capture did not contain those exact operands, so it does not establish
+that this mismatch was the sole failing predicate. Native validation remains
+required before user testing.
