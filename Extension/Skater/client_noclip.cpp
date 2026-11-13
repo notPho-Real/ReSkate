@@ -28,6 +28,9 @@
 #include "Extension/Trainer/trainer_jump.h"
 #include "Engine/Game/Multiplayer/session_competition.h"
 #include <cmath>
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
 
 namespace dingosdk::client_source::detail {
 namespace {
@@ -856,6 +859,36 @@ bool wallplant_ground_orientation(const std::array<float,48>& supplied,
         numerical_limit=std::nextafter(numerical_limit-(result.applied_error-target_limit),0.f);
     }
     return false;
+}
+// Ground motion publishes a reference and then prepares a separate board
+// target from the old physical pose. Route the same bounded reference to that
+// target, only when both still belong to this exact preparation. The native
+// constraint drive, rather than a physical-pose write, performs the movement.
+bool wallplant_ground_drive_target(const std::array<float,16>& local_root,
+        const std::array<float,16>& local_target,const std::array<float,3>& origin,
+        const std::array<float,16>& actual,const std::array<float,16>& reference,
+        const std::array<float,16>& supplied,float limit,std::array<float,16>& result) noexcept {
+    for(const auto& matrix:{local_root,local_target,actual,reference,supplied})
+        if(!valid_flight_transform(matrix))return false;
+    for(float value:origin)if(!std::isfinite(value) || std::abs(value)>1000000)return false;
+    if(!std::isfinite(limit) || limit<=0 || limit>3.14159265358979323846f ||
+       game::orientation_target::error(actual,reference)>limit)return false;
+    auto expected=game::orientation_target::compose_basis(local_root,local_target);
+    for(unsigned axis=0;axis<3;++axis) {
+        expected[12+axis]=local_target[12+axis]+origin[axis];
+        for(unsigned row=0;row<3;++row)
+            expected[12+axis]+=local_root[12+row]*local_target[row*4+axis];
+    }
+    auto candidate=supplied;
+    for(unsigned row=0;row<4;++row)for(unsigned axis=0;axis<3;++axis) {
+        const auto lane=row*4+axis;
+        // Float matrix publication tolerance, not a movement allowance.
+        if(std::abs(reference[lane]-expected[lane])>.001f ||
+           supplied[lane]!=actual[lane])return false;
+        candidate[lane]=reference[lane];
+    }
+    result=candidate;
+    return true;
 }
 struct WallplantHandoff {
     arcade_mode::WallplantExecutionProof execution{};
@@ -2653,6 +2686,79 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
     } catch(const SourceGuard& issue) {wallplant_hold_cancel(issue.message,now);}
       catch(...) {wallplant_hold_cancel("ground_target_exception",now);}
 }
+void wallplant_prepare_board_drive(std::uintptr_t rig,std::uintptr_t caller) noexcept {
+    SourceLastError error;
+    if(!wallplant_hold_core.load(std::memory_order_acquire) || competition_stock_physics())return;
+    const auto held=arcade_mode::wallplant_runtime::held_command();
+    if(!held || held.native.owner.rig!=rig ||
+       caller!=held.native.owner.base+spawn::ground_drive_return)return;
+    auto now=GetTickCount64();
+    const auto frame=arcade_mode::native_wallplant_hold_context(held.native.owner,now);
+    auto& state=source_state();
+    if(!state.initialized.load(std::memory_order_acquire) ||
+       !state.velocity_guard_active.load(std::memory_order_acquire) ||
+       state.busy.test_and_set(std::memory_order_acquire))return;
+    SourceBusyScope scope{state.busy};
+    try {
+        const auto& hold=wallplant_physical_hold();
+        source_require(hold.command.input_sequence==held.input_sequence && hold.targets &&
+            held.anchor_verified,"board_drive_hold");
+        SourceReader reader;
+        source_require(reader.pointer(rig)==held.native.owner.context,"board_drive_context");
+        source_require(reader.value<std::uint32_t>(held.native.owner.context,
+            game::build::v20260929::arcade_native_probe::selected_state)==100,"board_drive_state");
+        const auto orientation=wallplant_orientation_snapshot(held.native.owner,reader);
+        const auto matrix=[&](std::uintptr_t base,std::uintptr_t offset) {
+            std::array<float,16> value{};
+            for(unsigned row=0;row<4;++row) {
+                const auto lanes=reader.value<std::array<float,4>>(base,offset+row*16);
+                std::copy(lanes.begin(),lanes.end(),value.begin()+row*4);
+            }
+            return value;
+        };
+        const auto local=matrix(rig,spawn::rig_local_motion_target);
+        const auto origin=reader.value<std::array<float,3>>(rig,spawn::rig_motion_origin);
+        const auto world=matrix(rig,spawn::rig_world_motion_target);
+        const auto reference=matrix(held.native.owner.context,spawn::context_motion_reference);
+        const auto supplied=matrix(rig,spawn::rig_board_drive_target);
+        for(unsigned axis=0;axis<3;++axis)
+            source_require(std::abs(world[12+axis]-held.anchor[axis])<=.001f,"board_drive_anchor");
+        std::array<float,16> replacement{},check{};
+        source_require(wallplant_ground_drive_target(orientation.local_root,local,origin,
+            orientation.actual,reference,supplied,orientation.limit,replacement),"board_drive_preparation");
+        arcade_mode::AirMotionIntent intent{};
+        wallplant_read_current_intent(intent,now,hold.intent_generation);
+        bool stale_query{};
+        if(!arcade_mode::wallplant_runtime::hold_current(held,now,frame,&stale_query)) {
+            if(stale_query)return;
+            source_require(false,"board_drive_expired");
+        }
+        source_require(source_writable(rig+spawn::rig_board_drive_target,sizeof(replacement)),"board_drive_writable");
+        reader.verify();
+        if(!copy_to(rig+spawn::rig_board_drive_target,replacement.data(),sizeof(replacement)) ||
+           !reader.raw(rig+spawn::rig_board_drive_target,check.data(),sizeof(check)) || check!=replacement) {
+            source_require(copy_to(rig+spawn::rig_board_drive_target,supplied.data(),sizeof(supplied)) &&
+                reader.raw(rig+spawn::rig_board_drive_target,check.data(),sizeof(check)) && check==supplied,
+                "board_drive_restore_failed");
+            source_require(false,"board_drive_write");
+        }
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT BOARD TARGET: occurrence={} contact={} ms={} state=100 from={},{},{} target={},{},{} forward={},{},{} physical_pose_write=false.",
+            held.input_sequence,held.contact,now,supplied[12],supplied[13],supplied[14],
+            replacement[12],replacement[13],replacement[14],replacement[8],replacement[9],replacement[10]);
+    } catch(const SourceGuard& issue) {wallplant_hold_cancel(issue.message,now);}
+      catch(...) {wallplant_hold_cancel("board_drive_exception",now);}
+}
+bool noclip_rig_drive(std::uintptr_t rig) {
+    const auto original=source_state().rig_drive_original.load(std::memory_order_acquire);
+#if defined(_MSC_VER)
+    const auto caller=reinterpret_cast<std::uintptr_t>(_ReturnAddress());
+#else
+    const auto caller=reinterpret_cast<std::uintptr_t>(__builtin_return_address(0));
+#endif
+    wallplant_prepare_board_drive(rig,caller);
+    return original?original(rig):false;
+}
 void noclip_skater_motion(std::uintptr_t rig, std::uintptr_t context,
     const std::array<float,16>* supplied, std::uint8_t flags) {
     const auto original = source_state().motion_original.load(std::memory_order_acquire);
@@ -2718,9 +2824,9 @@ void observe_arcade_wallplant_native_response(std::uintptr_t rig,bool wipeout,
         const auto board_position=reader.value<std::array<float,3>>(orientation.reference_body,addr::skater_body::body_transform_offset+48);
         const auto target_position=reader.value<std::array<float,3>>(owner.rig,spawn::rig_world_motion_target+48);
         const auto reference_position=reader.value<std::array<float,3>>(owner.context,spawn::context_motion_reference+48);
-        std::array<unsigned char,32> drive_code{};
-        source_require(reader.raw(owner.base+spawn::rig_drive_contract.rva,drive_code.data(),drive_code.size()) &&
-            drive_code==spawn::rig_drive_contract.bytes,"hold_observer_drive_contract");
+        // The prefix was checked before installing the drive trampoline.
+        source_require(state.rig_drive_original.load(std::memory_order_acquire)!=nullptr,
+            "hold_observer_drive_contract");
         // Read XYZ separately. SIMD padding and an uninitialised drive record
         // must not discard the independently valid body/reference observation.
         const auto drive_velocity=reader.value<std::array<float,3>>(owner.rig,spawn::rig_target_velocity);
@@ -2973,11 +3079,15 @@ bool start_client_noclip_velocity(std::uintptr_t base) noexcept {
             reader.pointer(base + addr::no_bail::bail_core_vtable, 0x58) != base + spawn::physics_update ||
             !reader.raw(base + spawn::skater_motion, bytes.data(), bytes.size()) || bytes != spawn::skater_motion_prefix ||
             !reader.raw(base + spawn::ground_motion_target, bytes.data(), bytes.size()) || bytes != spawn::ground_motion_target_prefix ||
+            !reader.raw(base + spawn::rig_drive_contract.rva, bytes.data(), bytes.size()) || bytes != spawn::rig_drive_contract.bytes ||
             !offboard_flight_compatible(base)) return false;
+        for(const auto& contract:spawn::board_drive_contracts)
+            if(!reader.raw(base+contract.rva,bytes.data(),bytes.size()) || bytes!=contract.bytes)return false;
         reader.verify();
         auto* target = reinterpret_cast<void*>(base + spawn::physics_update);
         auto* motion_target = reinterpret_cast<void*>(base + spawn::skater_motion);
         auto* ground_target = reinterpret_cast<void*>(base + spawn::ground_motion_target);
+        auto* drive_target = reinterpret_cast<void*>(base + spawn::rig_drive_contract.rva);
         HookBatch batch;
         void* original{};
         if (hook_prepare(target, reinterpret_cast<void*>(&noclip_physics_update), &original) != HookOk) return false;
@@ -2998,9 +3108,18 @@ bool start_client_noclip_velocity(std::uintptr_t base) noexcept {
             state.motion_original.store(nullptr);state.velocity_update_original.store(nullptr);return false;
         }
         state.ground_target_original.store(reinterpret_cast<SourceGroundTarget>(original),std::memory_order_release);
+        original=nullptr;
+        if(hook_prepare(drive_target,reinterpret_cast<void*>(&noclip_rig_drive),&original)!=HookOk || !original) {
+            (void)hook_remove(drive_target);(void)hook_remove(ground_target);
+            (void)hook_remove(motion_target);(void)hook_remove(target);
+            state.ground_target_original.store(nullptr);state.motion_original.store(nullptr);
+            state.velocity_update_original.store(nullptr);return false;
+        }
+        state.rig_drive_original.store(reinterpret_cast<SourceRigDrive>(original),std::memory_order_release);
         // Keep trampolines on uncertain enable results; handlers still forward.
         if (hook_queue_enable(target) != HookOk || hook_queue_enable(motion_target) != HookOk ||
-            hook_queue_enable(ground_target)!=HookOk || hook_apply_queued()!=HookOk) return false;
+            hook_queue_enable(ground_target)!=HookOk || hook_queue_enable(drive_target)!=HookOk ||
+            hook_apply_queued()!=HookOk) return false;
         state.velocity_guard_active.store(true, std::memory_order_release);
         trainer::set_native_world_trajectory_bridge(&wallplant_native_departure);
         return true;

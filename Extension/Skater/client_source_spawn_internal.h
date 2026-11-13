@@ -27,6 +27,7 @@ using SourceCameraTransform = void (*)(std::uintptr_t, const std::array<float, 1
 using SourcePhysicsUpdate = void (*)(std::uintptr_t);
 using SourceSkaterMotion = void (*)(std::uintptr_t, std::uintptr_t, const std::array<float,16>*, std::uint8_t);
 using SourceGroundTarget = void (*)(std::uintptr_t, float);
+using SourceRigDrive = bool (*)(std::uintptr_t);
 struct SourceGuard { const char* message; };
 inline void source_require(bool value, const char* message) { if (!value) throw SourceGuard{message}; }
 inline bool source_range(std::uintptr_t value, std::size_t size) {
@@ -211,6 +212,7 @@ struct SourceState {
     std::atomic<SourcePhysicsUpdate> velocity_update_original{};
     std::atomic<SourceSkaterMotion> motion_original{};
     std::atomic<SourceGroundTarget> ground_target_original{};
+    std::atomic<SourceRigDrive> rig_drive_original{};
     SourceTrial trial;
 };
 struct SourceCameraSnapshot {

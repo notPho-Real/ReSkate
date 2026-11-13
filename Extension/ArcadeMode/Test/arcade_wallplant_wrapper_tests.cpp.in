@@ -18,6 +18,9 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
 namespace dingosdk::arcade_mode::wallplant_runtime {
 struct WriterProbe { std::uint64_t input{},contact{},raw{}; NativeInputFrame native{}; };
 inline WriterProbe writer_probe(){return {};}
@@ -405,18 +408,22 @@ void source_require(bool ok,const char* message){if(!ok)throw SourceGuard{messag
 struct SourceLastError {SourceLastError(){}};
 struct State {
  std::atomic<void(*)(std::uintptr_t,float)> ground_target_original{};
+ std::atomic<bool(*)(std::uintptr_t)> rig_drive_original{};
  std::atomic<bool> initialized{true},velocity_guard_active{true};
  std::atomic_flag busy{};
 } ground_state;
 State& source_state(){return ground_state;}
 struct SourceBusyScope {std::atomic_flag& busy;~SourceBusyScope(){busy.clear();}};
-struct Hold {Command command;std::uint64_t started{100};game::orientation_target::Result orientation{};float orientation_limit{};} physical_hold;
+struct Hold {Command command;std::uint64_t started{100};game::orientation_target::Result orientation{};float orientation_limit{};
+ std::uint64_t targets{1},intent_generation{1};} physical_hold;
 struct WallplantOrientationSnapshot {std::array<float,16> actual{},local_root{};
  std::array<float,3> root_spin{},reference_spin{};float limit{};} orientation_snapshot;
 bool orientation_available=true;
 Hold& wallplant_physical_hold(){return physical_hold;}
 std::atomic<std::uintptr_t> wallplant_hold_core{};
 std::array<float,48> prepared{},stored{};
+std::array<float,16> board_target{},published_reference{},consumed_target{};
+unsigned drives{};
 std::array<float,3> world_origin{100,200,300};
 Command held_value;
 std::string cancelled;
@@ -432,6 +439,7 @@ std::uint64_t GetTickCount64(){return clock_ms;}
 namespace arcade_mode {
 using NativeInputFrame=dingosdk::arcade_mode::NativeInputFrame;
 using WallplantHoldContinuity=dingosdk::arcade_mode::WallplantHoldContinuity;
+using AirMotionIntent=dingosdk::arcade_mode::AirMotionIntent;
 NativeInputFrame native_wallplant_hold_context(const dingosdk::arcade_mode::NativeInputOwner&,std::uint64_t){return {};}
 namespace wallplant_runtime {
 Command held_command(){return held_value;}
@@ -451,9 +459,24 @@ struct SourceReader {
  std::uintptr_t pointer(std::uintptr_t rig){check(rig==2,"ground reads only held rig");return native_context;}
  template<class T>T value(std::uintptr_t base,std::uintptr_t offset){
   if constexpr(std::is_same_v<T,std::uint32_t>){check(base==3,"ground reads held context state");return state_id;}
+  else if constexpr(std::is_same_v<T,std::array<float,4>>){
+   T out{};
+   if(base==3&&offset<64){std::copy_n(published_reference.begin()+offset/4,4,out.begin());return out;}
+   check(base==2,"drive reads held rig only");
+   if(offset>=spawn::rig_board_drive_target&&offset<spawn::rig_board_drive_target+64){
+    std::copy_n(board_target.begin()+(offset-spawn::rig_board_drive_target)/4,4,out.begin());return out;
+   }
+   check(offset>=spawn::rig_local_motion_target&&offset<spawn::rig_world_motion_target+64,"drive reads native target pair");
+   std::copy_n(stored.begin()+(offset-spawn::rig_local_motion_target)/4,4,out.begin());return out;
+  }
   else {check(base==2&&offset==spawn::rig_motion_origin,"ground reads native world origin");return world_origin;}
  }
  bool raw(std::uintptr_t address,void* out,std::size_t bytes){
+  if(address==2+spawn::rig_board_drive_target){
+   check(bytes==sizeof(board_target),"drive readback is target only");
+   if(++reads==fail_read)return false;
+   std::memcpy(out,board_target.data(),bytes);return true;
+  }
   check(address==2+spawn::rig_local_motion_target&&bytes==sizeof(stored),"ground transaction owns target triplet only");
   if(++reads==fail_read)return false;
   std::memcpy(out,stored.data(),bytes);return true;
@@ -473,9 +496,15 @@ WallplantOrientationSnapshot wallplant_orientation_snapshot(const dingosdk::arca
  reader.orientation_watched=true;reader.watched_orientation=orientation_snapshot;return orientation_snapshot;
 }
 bool source_writable(std::uintptr_t address,std::size_t bytes){
+ if(address==2+spawn::rig_board_drive_target){check(bytes==sizeof(board_target),"drive writable range is one target");return writable;}
  check(address==2+spawn::rig_local_motion_target&&bytes==sizeof(stored),"ground writable range is bounded");return writable;
 }
 bool copy_to(std::uintptr_t address,const void* data,std::size_t bytes){
+ if(address==2+spawn::rig_board_drive_target){
+  check(bytes==sizeof(board_target),"drive never copies dynamic bodies");++copies;
+  if(copies==fail_copy){std::memcpy(board_target.data(),data,16);return false;}
+  std::memcpy(board_target.data(),data,bytes);return true;
+ }
  check(address==2+spawn::rig_local_motion_target&&bytes==sizeof(stored),"ground copies no body/contact/state memory");
  ++copies;
  if(copies==fail_copy){std::memcpy(stored.data(),data,16);return false;}
@@ -490,9 +519,14 @@ bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,cons
  return allow_target&&wallplant_hold_target_matrix(held_value,*supplied,target);
 }
 void original(std::uintptr_t,float seconds){++originals;passed_seconds=seconds;stored=prepared;}
+bool original_drive(std::uintptr_t rig){check(rig==2,"drive forwards same rig");++drives;consumed_target=board_target;return true;}
+void wallplant_read_current_intent(arcade_mode::AirMotionIntent&,std::uint64_t&,std::uint64_t generation){
+ source_require(generation==1,"drive_intent");
+}
 @wallplant_wrapper_ground@
 void reset(){
  ground_state.initialized=true;ground_state.velocity_guard_active=true;ground_state.busy.clear();ground_state.ground_target_original=original;
+ ground_state.rig_drive_original=original_drive;drives=0;board_target={};published_reference={};consumed_target={};
  held_value={};held_value.motion.ready=true;held_value.input_sequence=7;held_value.native.owner.rig=2;held_value.native.owner.context=3;
  held_value.anchor_verified=true;held_value.anchor={7,8,9};held_value.hold_forward={1,0,0};physical_hold={held_value,100};
  wallplant_hold_core=1;cancelled.clear();clock_ms=110;originals=target_calls=copies=reads=0;state_id=100;
@@ -565,6 +599,57 @@ void run(){
  }
  reset();ground_state.ground_target_original=nullptr;noclip_ground_target(2,.02f);
  check(originals==0&&copies==0,"missing original cannot create a target write");
+ // Independent quarter-turn composition with a translated local root.
+ const std::array<float,16> local_root{0,0,-1,0, 0,1,0,0, 1,0,0,0, 1,2,3,1};
+ const std::array<float,16> local_target{0,0,-1,0, 0,1,0,0, 1,0,0,0, 4,5,6,1};
+ const std::array<float,16> reference{-1,0,0,0, 0,1,0,0, 0,0,-1,0, 107,207,305,1};
+ auto supplied=reference;supplied[3]=17;supplied[7]=18;supplied[11]=19;supplied[15]=20;
+ auto routed=supplied;
+ check(wallplant_ground_drive_target(local_root,local_target,{100,200,300},reference,
+       reference,supplied,1.1f,routed)&&routed==supplied,
+       "board route composes translated nonidentity local frames and preserves SIMD padding");
+ auto wrong_reference=reference;wrong_reference[12]=105;
+ check(!wallplant_ground_drive_target(local_root,local_target,{100,200,300},reference,
+       wrong_reference,supplied,1.1f,routed),"board route rejects a world/local translation mixup");
+ const auto prepare_drive=[] {
+  reset();noclip_ground_target(2,.03333333f);
+  // The actual native ground tail publishes this reference, then replaces its
+  // separate board target with body 8. Reproduce that overwrite after the hook.
+  std::copy_n(stored.begin(),16,published_reference.begin());
+  for(unsigned axis=0;axis<3;++axis)published_reference[12+axis]+=world_origin[axis];
+  board_target=orientation_snapshot.actual;
+  copies=reads=0;
+ };
+ prepare_drive();const auto physical_before=orientation_snapshot.actual;
+ wallplant_prepare_board_drive(2,spawn::ground_drive_return);
+ check(copies==1&&cancelled.empty()&&board_target==published_reference,
+       "ground tail consumes the bounded reference instead of overwriting it with the old physical pose");
+ check(orientation_snapshot.actual==physical_before,"routing a drive target never rotates the physical body directly");
+ check(noclip_rig_drive(2)&&drives==1&&consumed_target==published_reference,
+       "native drive still runs exactly once and preserves its return value");
+ for(unsigned fault=0;fault<13;++fault){
+  prepare_drive();
+  auto caller=spawn::ground_drive_return;
+  switch(fault){
+   case 0:caller=0;break;case 1:wallplant_hold_core=0;break;case 2:stock=true;break;
+   case 3:state_id=200;break;case 4:fixture_current=false;break;case 5:fixture_stale_query=true;break;
+   case 6:published_reference[12]+=1;break;case 7:board_target[12]+=1;break;
+   case 8:stored[28]+=1;break;case 9:physical_hold.targets=0;break;
+   case 10:physical_hold.intent_generation=2;break;case 11:orientation_snapshot.limit=.1f;break;
+   case 12:change_orientation_at_permission=1;break;
+  }
+  const auto untouched=board_target;
+  wallplant_prepare_board_drive(2,caller);
+  check(copies==0&&board_target==untouched,"foreign, inactive, stale, torn or unsafe drive preparation cannot mutate the target");
+  check(noclip_rig_drive(2)&&drives==1,"refused drive requests still call the original once");
+ }
+ for(unsigned fault=0;fault<2;++fault){
+  prepare_drive();const auto untouched=board_target;
+  if(fault==0)fail_copy=1;else fail_read=1;
+  wallplant_prepare_board_drive(2,spawn::ground_drive_return);
+  check(copies==2&&board_target==untouched&&cancelled=="board_drive_write",
+       "partial drive write or failed readback restores the original target and cancels");
+ }
  std::cout<<checks<<" combined production wrapper checks passed\n";
 }
 }

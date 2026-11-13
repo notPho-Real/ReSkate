@@ -1,5 +1,35 @@
 # RC4 wallplant prototype
 
+## Route the held board reference to the native drive
+
+The `93399cb1` trial passed the release-boundary timing check: the last held
+target was published at 166 ms and the single release followed at 167 ms.
+The first consumed root velocity was `(-2.44748,12.31599,4.40557)` m/s. The
+physical board still had a substantial outgoing heading error, and later
+horizontal speed reached 8.018 m/s against the 5.377 m/s exit request. The
+2.563-second airborne interval ended cleanly, but this is not gameplay-fidelity
+acceptance. The full trick chain and negative controls remain pending.
+
+The ground motion path publishes the composed context reference, then copies
+the current physical board pose into a separate board drive target. Updating
+the motion triplet alone leaves that second target following the incoming
+pose. The original drive consumes it separately from the skater/foot targets.
+
+During the existing owned ground-contact hold, the drive now receives the
+same bounded reference already published by native ground motion. Admission
+requires the exact ground caller, current hold/intent/owner, checked anchor,
+unchanged physical pose, matching local-root composition and the live native
+orientation limit. Failed writes restore the prior target. The original drive
+runs once with its return value preserved. Dynamic body transforms, collision
+observations, native states, constraint parameters and the release impulse are
+unchanged. This fixes target routing; it does not establish a hard freeze or
+guarantee that the physical turn finishes within the hold.
+
+Production-composed regressions reproduce the native overwrite and reject a
+mutation that leaves the drive following the old pose. Actual board motion,
+outgoing orientation, planted-foot appearance and release speed still require
+exact-build hardware validation. PR #1 remains experimental.
+
 ## Contact motion ownership and anchor sampling
 
 The `cd4b7e41` trial did not pass gameplay acceptance. It held for 188 ms,
