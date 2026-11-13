@@ -1,4 +1,4 @@
-# Unified RC5 — experimental pre-wallplant candidate
+# Unified RC5 — experimental Casper integration
 
 The authoritative source checkpoint is `unified-sources.json`. Each runtime and
 Deck artifact carries `candidate.json`, generated from that checkpoint and the
@@ -25,10 +25,13 @@ This branch does not publish to the accepted Arcade update channel.
   retain independent Windows preflight, native-menu lifetime, full upstream,
   installer/updater, provenance, security and release-eligibility gates.
 - Stage RC4 at its exact pin with `DINGOSDK_ARCADE_WALLPLANTS=OFF`. The native
-  contact and animation files are excluded from the runtime target. Its disabled
-  runtime has no native dependencies, produces no input permissions or receipts,
-  and cannot issue a body transaction. RC4 policy tests still exercise the staged
-  implementation. The gate is part of the gameplay fingerprint.
+  animation file remains excluded from the runtime target. The shared board-contact
+  reader is compiled for Casper's independently fingerprinted, opt-in surface
+  material observation; this does not enable the wallplant rig hook or rebound.
+  The disabled wallplant runtime has no native dependencies, produces no input
+  permissions or receipts, and cannot issue a body transaction. RC4 policy tests
+  still exercise the staged implementation. The gate is part of the gameplay
+  fingerprint.
 - Enable upstream development tools in this experimental CI build so existing
   observation and regression tooling is retained. Release acceptance is unchanged.
 
@@ -47,7 +50,7 @@ The source fingerprint changes on integration; historical evidence is retained
 without certifying changed code. A passing build is not gameplay acceptance.
 
 RC4 has native contact evidence but no accepted rebound. Its owner retains the
-mechanic. No Deck access, installation or controller input is part of this build.
+mechanic. The combined candidate requires a separately coordinated exclusive Deck session.
 
 ## Install and rollback
 
@@ -76,3 +79,50 @@ Every checkpoint must record new commits, conflicts, affected features, tests an
 superseded artifacts. CI supplies exact run evidence; native acceptance requires
 an explicitly coordinated exclusive slot on Mega Park with loaded-DLL identity,
 native cadence, independent motion/actor evidence and OFF/negative controls.
+
+
+## Casper integration checkpoint
+
+The owner authorized this integration on November 12, 2026. The existing RC5
+worktree was clean at `b12327c3`, and the Casper worktree was clean at `2b566b87`;
+both matched their refreshed remote heads. RC5 is an ancestor of Casper, so the
+integration fast-forwards all 20 existing commits without conflict resolution or
+reimplementation. No later RC4, Trickpedia or upstream changes are included.
+
+This checkpoint retains the authored entry, held balance corrections, horizontal
+flip rotation, direct and Ollie exits, contact pose, shoulder rotation and
+surface-dependent resistance. It also retains the Animation Studio authoring,
+interpolation, stance, native-clock playback and cancellation changes. Casper
+remains a development-only, unsaved opt-in (`arcadeflatland on`); ordinary Manual
+and Arcade OFF behavior remain the defaults. Wallplants stay compiled OFF.
+
+The prior exact Casper DLL and the prior RC5 package remain rollback artifacts.
+A new candidate must carry this source manifest and its own CI run, source SHA,
+DLL hash and installer identity. It supersedes neither historical evidence nor
+the accepted update channel. The published candidate remains unaccepted.
+
+### Regression scope
+
+- Run the focused authoring/export, animation core, material selection, input,
+  Manual lifetime, combo ownership and release-disabled tests with sanitizers.
+- Run the existing targeted suite, including Trickpedia lifetime and the disabled
+  wallplant link test, then all required Windows and cross-platform CI gates.
+- On the exact combined DLL, verify Mega Park, source identity and native cadence
+  before inputs. Exercise both stances through entry, moving hold, flip, direct
+  and Ollie exits; include rotation held across exits and surface selection.
+- Check ordinary flips, grabs, Manual/Nose Manual, revert and combo continuation,
+  plus Trickpedia controller search/Back and same-session Arcade OFF restoration.
+  Use native actors, state and ownership evidence alongside actual rendering.
+- Exercise cancellation by focus/controller withdrawal, bail and menu transition,
+  and confirm disabled wallplants issue no ownership or rebound.
+
+The 19 native cases on the prior `2b566b87` DLL are historical supporting
+evidence, not automatic certification of a newly built DLL. New CI and native
+results belong in the exact-source artifact receipts. No combined native pass
+is claimed by this document.
+
+Owner visual approval is still pending. Slopes/edges and another body/footwear
+configuration remain unverified. The displayed inverted board and hooked foot
+use native Manual rigid-body support; this is not physical inverted-tail support
+or a guarantee of mesh clearance for every outfit and frame. No custom native
+scoring or trick-ID acceptance is claimed.
