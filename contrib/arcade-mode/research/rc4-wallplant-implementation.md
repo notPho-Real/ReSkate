@@ -755,3 +755,25 @@ worker affinity or removing TLS/serialization checks fail these regressions.
 This correction changes no hold duration, target pose, native spring profile,
 collision rule, launch velocity or release lease. Exact Windows compilation and
 a new controlled native trial remain required before acceptance.
+
+# Retained contact query validation
+
+The next controlled trial reached a real airborne wall contact with fresh A,
+but never entered the hold. The initial geometry frame read succeeded; a later
+current-context check then failed with `frame_lock_busy` before any surface
+query or request publication. The retained-contact route only selected its
+synchronized validator when the initial frame read had already contended.
+
+A current retained contact now selects that existing validator for the entire
+query, including when the first read succeeds. The original frame is reused
+without changing its timestamp or step, and the retained contact is revalidated
+before admitting the route. Queries without a retained contact remain
+nonblocking. Contact queries do not publish ordinary cached surface geometry.
+The existing owner, TLS, world, generation, episode and freshness checks still
+apply at every native query boundary; no lock order or gameplay values change.
+
+Focused regressions cover a successful first read followed by contention,
+changed retained contact, ordinary nonblocking behavior, and the existing
+expired, future, mode-off, authority and native-transition boundaries. This
+fix addresses admission only. It does not establish planted-foot alignment,
+release motion, landing, combo continuity or scoring acceptance.

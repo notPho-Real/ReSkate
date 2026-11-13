@@ -270,9 +270,16 @@ void run(){
         NativeInputFrame ordinary{};ordinary.valid=true;ordinary.sampled_at=17;
         const auto sync=[&]{++synchronizations;return NativeInputFrame{};};
         const auto validate=[&](const NativeInputFrame&){++revalidations;return true;};
-        const auto unchanged=wallplant_surface_frame(ordinary,true,sync,validate);
+        const auto unchanged=wallplant_surface_frame(ordinary,false,sync,validate);
         require(unchanged.frame.valid&&unchanged.frame.sampled_at==17&&!unchanged.wallplant_only&&
             !synchronizations&&!revalidations,"ordinary successful query is never replaced or synchronized");++checks;
+        const auto retained=wallplant_surface_frame(ordinary,true,sync,validate);
+        require(retained.frame.valid&&retained.frame.sampled_at==17&&retained.wallplant_only&&
+            !synchronizations&&revalidations==1,
+            "retained contact selects synchronized query validation even after a successful first read");++checks;
+        const auto lost=wallplant_surface_frame(ordinary,true,sync,[](const NativeInputFrame&){return false;});
+        require(!lost.frame.valid&&!lost.wallplant_only&&!synchronizations,
+            "successful first read cannot preserve a changed retained contact");++checks;
         require(!wallplant_surface_frame({},false,sync,validate).frame.valid&&!synchronizations,
             "absent retained contact never turns ordinary contention into blocking admission");++checks;
     }
@@ -444,6 +451,33 @@ void run(){
     // Use the actual geometry accessors with a contended producer mutex.
     // Ordinary callers still yield; retained wall queries wait for the owner
     // then inspect the original frame at the real acquisition time.
+    {
+        clock_ms=1000;mode_enabled=true;native_input_state={};
+        arcade_input.enable(false);arcade_input.enable(true);
+        NativeRequestSample air_sample{};air_sample.valid=true;air_sample.state=201;air_sample.crouch_mode=2;
+        const auto original=native_input_state.observe(1000,owner,air_sample,{});
+        arcade_input.publish_native_context(original);arcade_input.publish_authority(1000,original.owner_generation,1,true);
+        const auto ordinary=surface_geometry_native_frame(clock_ms,nullptr);
+        const auto admission=wallplant_surface_frame(ordinary,true,[] {
+            return wallplant_surface_geometry_native_frame(nullptr);
+        },[&](const NativeInputFrame& candidate_frame) {
+            return wallplant_same_observation(original,candidate_frame);
+        });
+        require(admission.frame.valid&&admission.wallplant_only,
+            "retained geometry keeps its contact route after uncontended admission");++checks;
+        NativeInputFrame current{};const char* reason{};std::atomic<bool> waiting{};
+        std::unique_lock publisher(ollie_mutex);
+        std::thread query([&] {
+            waiting.store(true,std::memory_order_release);
+            current=admission.wallplant_only?wallplant_surface_geometry_native_frame(&reason):
+                surface_geometry_native_frame(clock_ms,&reason);
+        });
+        while(!waiting.load(std::memory_order_acquire))std::this_thread::yield();
+        clock_ms=1001;publisher.unlock();query.join();
+        require(current.valid&&current.sampled_at==original.sampled_at&&
+            current.physics_step==original.physics_step&&std::string_view(reason)=="frame_valid",
+            "contention after the first read does not discard a retained query or refresh its evidence");++checks;
+    }
     for(unsigned boundary=0;boundary<8;++boundary) {
         clock_ms=1000;mode_enabled=true;native_input_state={};
         arcade_input.enable(false);arcade_input.enable(true);

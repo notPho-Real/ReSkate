@@ -6,15 +6,14 @@ struct WallplantSurfaceFrame {
     NativeInputFrame frame{};
     bool wallplant_only{};
 };
-// Ordinary geometry retains its original nonblocking result. Only an actual
-// retained contact may acquire a separate synchronized frame; its caller must
-// revalidate the same contact after acquisition. No timestamp is rewritten.
+// A retained contact uses synchronized validation for the entire query, even
+// when the first frame read succeeded before a publisher acquired the lock.
+// Ordinary geometry remains nonblocking. No timestamp is rewritten.
 template<class Synchronize,class Revalidate>
 WallplantSurfaceFrame wallplant_surface_frame(const NativeInputFrame& ordinary,bool retained,
         Synchronize&& synchronize,Revalidate&& revalidate) {
-    if(ordinary.valid)return {ordinary,false};
-    if(!retained)return {};
-    const auto frame=synchronize();
+    if(!retained)return {ordinary,false};
+    const auto frame=ordinary.valid?ordinary:synchronize();
     return frame.valid && revalidate(frame) ? WallplantSurfaceFrame{frame,true} : WallplantSurfaceFrame{};
 }
 }
