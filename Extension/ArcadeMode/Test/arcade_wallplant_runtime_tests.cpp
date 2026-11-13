@@ -7,6 +7,7 @@ std::uint64_t now=1000;
 bool hit_current=true,race_cancel{};
 unsigned begins{},releases{},cancels{},checks{};
 std::uint64_t released_identity{};
+std::uint64_t visual_expiry{};
 dingosdk::arcade_mode::WallplantCommand active{};
 std::array<float,3> visual_normal{};
 void check(bool value,const char* why){++checks;if(!value){std::cerr<<why<<'\n';std::exit(1);}}
@@ -32,9 +33,9 @@ void tick(bool) noexcept{}
 bool available(const NoBailSkater&) noexcept{return true;}
 void cancel() noexcept{++fixture::cancels;}
 void release(const NoBailSkater&,std::uint64_t identity) noexcept{++fixture::releases;fixture::released_identity=identity;}
-bool begin_hold(const NoBailSkater&,std::uint64_t,std::uint64_t,const std::array<float,3>&,
+bool begin_hold(const NoBailSkater&,std::uint64_t,std::uint64_t,std::uint64_t expires,const std::array<float,3>&,
         const std::array<float,3>& normal,const std::array<float,3>&) noexcept {
-    ++fixture::begins;fixture::visual_normal=normal;
+    ++fixture::begins;fixture::visual_normal=normal;fixture::visual_expiry=expires;
     if(fixture::race_cancel)wallplant_runtime::finish_hold(fixture::active,false,fixture::now);
     return true;
 }
@@ -93,6 +94,7 @@ int main(){
         check(!enter(c,1001),"entry cannot duplicate active phase");
         const auto f=ground(c,1033);observe_at(f);fixture::now=1035;tick(1,true);
         check(fixture::begins==1 && fixture::visual_normal==c.contact_normal,"visual begins during contact100 using actual wall plane");
+        check(fixture::visual_expiry==1194,"visual shares the original physical dispatch expiry without renewing its clock");
         fixture::now=1040;tick(1,true);check(fixture::begins==1,"same hold does not queue another pose");
         finish_at(c,false,1040);fixture::now=1041;tick(1,true);
         check(fixture::releases==1 && fixture::released_identity==c.input_sequence,"cancellation retains stop identity for client");

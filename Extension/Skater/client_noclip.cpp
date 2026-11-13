@@ -1364,7 +1364,7 @@ bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
         const bool authority=frame.valid && arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame,&stale_query);
         if(stale_query)return false;
         source_require(authority,"target_authority");
-        if(now<hold.started || now-hold.started>=arcade_mode::WallplantHoldContinuity::duration_ms)return false;
+        if(now<hold.started)return false;
         auto& state=source_state();
         source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor && !multiplayer_session_active(),"target_control_owner");
         const auto bodies=debug_noclip_bodies(state.trial.base,hold.client,hold.entity);
@@ -1381,7 +1381,10 @@ bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
         const bool current=arcade_mode::wallplant_runtime::hold_current(hold.command,now,frame,&stale_query);
         if(stale_query)return false;
         source_require(current,"target_revalidation");
-        if(now<hold.started || now-hold.started>=arcade_mode::WallplantHoldContinuity::duration_ms)return false;
+        // hold_current enforces the original deadline plus one native step.
+        // The due release still owns this callback's target until its single
+        // body write consumes the receipt after original motion returns.
+        if(now<hold.started)return false;
         hold.last_root=bodies.root;
         hold.physical=physical;
         hold.maximum_drift=std::max(hold.maximum_drift,std::hypot(bodies.root[0]-hold.command.anchor[0],
@@ -2626,7 +2629,6 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
         const bool current=arcade_mode::wallplant_runtime::hold_current(held,now,frame,&stale_query);
         if(stale_query)return;
         source_require(hold.command.input_sequence==held.input_sequence && now>=hold.started &&
-            now-hold.started<arcade_mode::WallplantHoldContinuity::duration_ms &&
             current,"ground_target_expired");
         // Authority lookup can yield to the physics publisher. Revalidate the
         // physical basis, native limit and target origin at the write boundary.

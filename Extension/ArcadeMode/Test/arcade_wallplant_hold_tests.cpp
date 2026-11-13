@@ -31,7 +31,9 @@ int main() {
     check(hold.target_active(1159)&&!hold.release_due(1159),"release cannot precede160ms");
     auto later=next(c,1159,100);
     check(hold.observe(later,1159),"fresh native ground observation maintains contact hold");
-    check(hold.release_due(1160)&&!hold.target_active(1160),"target hold ends at160ms");
+    check(hold.release_due(1160)&&hold.target_active(1160),"due release retains target until the body callback consumes it");
+    check(hold.target_expiry()==1194 && hold.target_active(1185),"185ms release keeps the final original motion callback anchored");
+    check(hold.target_active(1194)&&!hold.target_active(1195),"target uses only the existing native dispatch grace");
     check(hold.release_due(1194)&&!hold.release_due(1195),"only one original30Hz step of dispatch grace");
     check(!hold.observe(next(c,1195,100),1195)&&!hold.active(),"late callback cancels instead of late release");
     check(hold.begin(c,1000),"new phase independent of previous cancellation");

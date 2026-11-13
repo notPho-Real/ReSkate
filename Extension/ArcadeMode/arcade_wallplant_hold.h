@@ -63,6 +63,7 @@ public:
     const WallplantCommand& command() const noexcept { return command_; }
     std::uint64_t started_at() const noexcept { return started_; }
     std::uint64_t deadline() const noexcept { return deadline_; }
+    std::uint64_t target_expiry() const noexcept { return active() && !bridge_until_ ? deadline_+grace_ : 0; }
     const char* reason() const noexcept { return reason_; }
     // A reader may lose a race with the original physics publisher. This is
     // not permission to write: leave the newer hold untouched and defer.
@@ -147,7 +148,11 @@ public:
         return active() && !bridge_until_ && now>=last_now_ && now>=deadline_ && now<=deadline_+grace_;
     }
     bool target_active(std::uint64_t now) const noexcept {
-        return active() && !bridge_until_ && now>=last_now_ && now<deadline_;
+        // The release runs after the original motion callback. Keep its target
+        // through that callback, including the existing one-step dispatch
+        // grace, until the release consumes this receipt. Dropping it at the
+        // deadline lets ground motion return before the body launch.
+        return active() && !bridge_until_ && now>=last_now_ && now<=deadline_+grace_;
     }
     // Apply only to a copy after the actual release write. It grants one
     // original physics interval for an already observed wall-contact100 to

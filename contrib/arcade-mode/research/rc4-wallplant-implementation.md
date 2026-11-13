@@ -167,7 +167,7 @@ exclusion measured from entry. No reference code or assets are copied here.
 
 The admitted chooser/reconstruction call performs one uniform entry brake. An
 immutable owner/epoch/contact receipt then owns the existing physical-rig target
-for 160 ms. The requested target is upright and faces outgoing travel. The ground
+until the first release callback due at 160 ms. The requested target is upright and faces outgoing travel. The ground
 adapter bounds the composed articulated reference against the actual board body
 and the stricter live native orientation limit. It reserves one native step of
 angular travel from the measured root and reference-body angular velocities;
@@ -215,9 +215,11 @@ the request. Requested and selected curve values are logged separately; sustaine
 post-release body motion must establish acceptance.
 
 Late, interrupted or invalid phases cancel rather than retrying an impulse.
-The target stops at 160 ms; release may wait at most one observed native physics
-interval for its callback (about 33.3 ms at the pinned 30 Hz cadence). This is a
-measured scheduling difference, not a longer requested hold.
+Release may wait at most one observed native physics interval for its callback
+(about 33.3 ms at the pinned 30 Hz cadence). The anchored target remains owned
+through that callback, then the single release consumes it. The pose uses the
+same fixed dispatch expiry and matching release notification. This is a measured
+scheduling difference, not a longer requested hold or a renewable lease.
 
 A target exactly at the native limit is insufficient: a recorded hold set an
 error of 1.0999995 radians against a 1.1-radian limit, then the next native

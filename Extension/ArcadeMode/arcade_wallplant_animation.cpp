@@ -26,7 +26,7 @@ namespace {
 // plant hold. Read the shared held clip from the installed game and mirror
 // it for the observed stance; no animation data is shipped by RC4.
 constexpr float duration = .16f; // The admitted physical hold; visual quality still needs native measurements.
-constexpr std::uint64_t lifetime_ms = 200; // 160 ms hold plus its 40 ms native-pose blend out.
+constexpr std::uint64_t blend_out_ms = 40;
 struct Loader {
     std::once_flag started;
     std::atomic<std::shared_ptr<const Clips>> clips;
@@ -36,7 +36,7 @@ struct Loader {
 Loader& loader() { static auto* value = new Loader; return *value; }
 bool permitted{};
 NoBailSkater held_owner{};
-std::uint64_t ticket{}, began{}, occurrence{};
+std::uint64_t ticket{}, began{}, occurrence{}, hold_expires{};
 bool pose_reported{};
 bool holding{};
 bool hold_pose{};
@@ -134,7 +134,7 @@ void report_alignment() noexcept {
         const auto now=GetTickCount64();
         NoBailSkater owner{};
         if(!evidence || !evidence->feet_valid || !evidence->draws || evidence->draws==measured_draw ||
-           evidence->feet_drawn_at<began || evidence->feet_drawn_at-began>=hold_duration_ms ||
+           !hold_remaining_ms(began,evidence->feet_drawn_at,hold_expires) ||
            now<evidence->feet_drawn_at || now-evidence->feet_drawn_at>100 ||
            !no_bail_skater(owner) || owner!=held_owner)return;
         const auto left=measure_foot_wall(evidence->left_foot,wall_point,wall_normal);
@@ -169,7 +169,7 @@ void cancel() noexcept {
     report_alignment();
     report_pose(true);
     try { skater_animation::cancel_play(ticket); } catch (...) { }
-    ticket = began = occurrence = 0;
+    ticket = began = occurrence = hold_expires = 0;
     held_owner = {};
     pose_reported = false;
     holding=hold_pose=false;wall_point={};wall_normal={};outgoing={};alignment_reports=0;measured_draw=0;
@@ -186,10 +186,12 @@ void tick(bool gameplay) noexcept {
         unsigned pose{};
         const auto now = GetTickCount64();
         if (!context(held_owner, pose,hold_pose) || now < began ||
-            now-began >= lifetime_ms || !skater_animation::owns_play(ticket)) {
+            now>=hold_expires+blend_out_ms || !skater_animation::owns_play(ticket)) {
             cancel(); return;
         }
-        if(holding && now-began>=hold_duration_ms)release(held_owner,occurrence);
+        // The physical receipt releases this pose. This fixed expiry only
+        // bounds a missed client notification; it never renews a hold.
+        if(holding && now>=hold_expires)release(held_owner,occurrence);
         // Original local callbacks report sampling, successful render writes,
         // and the renderer's copied-pose callback for this owned ticket only.
         report_pose(false);
@@ -209,13 +211,13 @@ bool available(const NoBailSkater& owner) noexcept {
     report_availability(owner, reason);
     return reason == Availability::ready;
 }
-bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t started_at,
+bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t started_at,std::uint64_t expires_at,
         const std::array<float,3>& point,const std::array<float,3>& normal,const std::array<float,3>& forward) noexcept {
     try {
         unsigned pose{};
         // A repeated client observation cannot renew the original physical clock.
         if(ticket)return holding && held_owner==owner && occurrence==identity && began==started_at &&
-            point==wall_point && normal==wall_normal && forward==outgoing && hold_remaining_ms(began,GetTickCount64()).has_value() &&
+            expires_at==hold_expires && point==wall_point && normal==wall_normal && forward==outgoing && hold_remaining_ms(began,GetTickCount64(),hold_expires).has_value() &&
             context(owner,pose,true) && skater_animation::owns_play(ticket);
         if(previous_hold_owner==owner && previous_hold_occurrence==identity && previous_hold_start==started_at)return false;
         if(!identity || !measure_foot_wall(point,point,normal) || !context(owner,pose,true) ||
@@ -223,7 +225,7 @@ bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t s
         const auto clips=loader().clips.load(std::memory_order_acquire);
         if(!clips)return false;
         const auto& clip=clips->poses[pose];
-        if(!hold_remaining_ms(started_at,GetTickCount64()) || started_at>UINT64_MAX-hold_duration_ms)return false;
+        if(!hold_remaining_ms(started_at,GetTickCount64(),expires_at) || !expires_at || expires_at>UINT64_MAX-blend_out_ms)return false;
         const auto native_pose=skater_animation::pose_observation();
         unsigned checked_pose{};
         // Match the existing render-publication freshness bound. A missing or
@@ -245,12 +247,12 @@ bool begin_hold(const NoBailSkater& owner,std::uint64_t identity,std::uint64_t s
         // using current native placement, without changing physical bodies.
         play.contact=skater_animation::Play::Contact{planted->joint,point,normal,contact->frame};
         play.contact->level_body=true;
-        const auto accepted=skater_animation::try_hold(std::move(play),started_at+hold_duration_ms);
+        const auto accepted=skater_animation::try_hold(std::move(play),expires_at);
         if(!accepted)return false;
-        ticket=accepted;held_owner=owner;occurrence=identity;began=started_at;holding=hold_pose=true;
+        ticket=accepted;held_owner=owner;occurrence=identity;began=started_at;hold_expires=expires_at;holding=hold_pose=true;
         previous_hold_owner=owner;previous_hold_occurrence=identity;previous_hold_start=started_at;
         wall_point=point;wall_normal=normal;outgoing=forward;pose_reported=false;alignment_reports=0;measured_draw=0;
-        if(!hold_remaining_ms(started_at,GetTickCount64()) || !context(owner,checked_pose,true) || checked_pose!=pose){cancel();return false;}
+        if(!hold_remaining_ms(started_at,GetTickCount64(),hold_expires) || !context(owner,checked_pose,true) || checked_pose!=pose){cancel();return false;}
         logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE WALLPLANT POSE HOLD: ms={} occurrence={} ticket={} started={} clip_at={} joint={} reach={} clip={} mirrored={} duration={} held=true selection_basis=observed_native_body_pose component={} pose_sequence={} pose_age={} placement_rotation={},{},{},{} native_body_pose_observed=true approximation=true actor_initialized=false foot_wall_alignment_verified=false.",
             GetTickCount64(),identity,ticket,started_at,planted->time,planted->joint,planted->reach,held_clip_name,pose!=0,duration,

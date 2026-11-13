@@ -8,9 +8,12 @@ namespace dingosdk::arcade_mode::wallplant_animation {
 inline constexpr std::uint64_t hold_duration_ms=160;
 // The physical entry owns this clock. A late client tick has less time to show
 // the held native sample; it cannot restart or extend the physical phase.
-inline std::optional<std::uint64_t> hold_remaining_ms(std::uint64_t start,std::uint64_t now) noexcept {
-    if(!start || now<start || now-start>=hold_duration_ms)return {};
-    return hold_duration_ms-(now-start);
+inline std::optional<std::uint64_t> hold_remaining_ms(std::uint64_t start,std::uint64_t now,
+        std::uint64_t expires=0) noexcept {
+    if(!start || start>UINT64_MAX-hold_duration_ms)return {};
+    if(!expires)expires=start+hold_duration_ms;
+    if(expires<start+hold_duration_ms || now<start || now>=expires)return {};
+    return expires-now;
 }
 struct FootWallMeasurement { float signed_plane_distance{},tangent_distance{}; };
 struct PlantFrame {float time{},reach{};std::uint16_t joint{};};

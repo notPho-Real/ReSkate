@@ -299,6 +299,9 @@ int main() {
     check(hold_remaining_ms(1000,1080)==80,"delayed client gets only remaining hold time");
     check(hold_remaining_ms(1000,1159)==1,"last millisecond remains eligible");
     check(!hold_remaining_ms(1000,1160),"deadline cannot be renewed by client");
+    check(hold_remaining_ms(1000,1185,1194)==9,"physical dispatch expiry keeps pose held through185ms callback");
+    check(!hold_remaining_ms(1000,1194,1194),"fixed dispatch expiry bounds missing release notification");
+    check(!hold_remaining_ms(1000,1000,1159),"visual expiry cannot precede physical release deadline");
     check(!hold_remaining_ms(1000,999),"future start refused");
     check(!hold_remaining_ms(0,10),"missing physical start refused");
     check(hold_remaining_ms(UINT64_MAX-160,UINT64_MAX-1)==1,"clock comparison cannot overflow");

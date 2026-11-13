@@ -435,13 +435,13 @@ using WallplantHoldContinuity=dingosdk::arcade_mode::WallplantHoldContinuity;
 NativeInputFrame native_wallplant_hold_context(const dingosdk::arcade_mode::NativeInputOwner&,std::uint64_t){return {};}
 namespace wallplant_runtime {
 Command held_command(){return held_value;}
-bool hold_current(const Command&,std::uint64_t,const NativeInputFrame&,bool* stale=nullptr){
+bool hold_current(const Command&,std::uint64_t now,const NativeInputFrame&,bool* stale=nullptr){
  if(change_orientation_at_permission==1)orientation_snapshot.actual[0]=.5f;
  if(change_orientation_at_permission==2)orientation_snapshot.local_root[0]=.5f;
  if(change_orientation_at_permission==3)orientation_snapshot.limit=.1f;
  if(change_orientation_at_permission==4)orientation_snapshot.root_spin[0]=1;
  if(change_orientation_at_permission==5)orientation_snapshot.reference_spin[0]=1;
- if(stale)*stale=fixture_stale_query;return fixture_current && !fixture_stale_query;
+ if(stale)*stale=fixture_stale_query;return fixture_current && !fixture_stale_query && now<=physical_hold.started+194;
 }
 }
 }
@@ -486,7 +486,7 @@ bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,cons
  std::array<float,16>& target,const arcade_mode::NativeInputFrame&,std::uint64_t){
  ++target_calls;
  check(originals==1&&rig==2&&context==3,"original ground preparation precedes hold target");
- if(expire)clock_ms=260;
+ if(expire)clock_ms=295;
  return allow_target&&wallplant_hold_target_matrix(held_value,*supplied,target);
 }
 void original(std::uintptr_t,float seconds){++originals;passed_seconds=seconds;stored=prepared;}
@@ -533,6 +533,9 @@ void run(){
  check(originals==1 && copies==0 && stored==prepared && cancelled.empty() && wallplant_hold_core.load()==1,
        "overtaken final target reader forwards native preparation without writing or canceling newer hold");
  check(physical_hold.started==100,"deferred target cannot restart planted duration");
+ reset();clock_ms=285;noclip_ground_target(2,.03333333f);
+ check(originals==1&&copies==1&&cancelled.empty()&&stored[29]==8,
+       "due185ms release retains the anchored ground target before its body callback");
  for(unsigned mode=0;mode<10;++mode){
   reset();
   switch(mode){

@@ -214,19 +214,20 @@ void tick(std::uintptr_t base,bool gameplay) noexcept {
     }
     if(stop_pose.exchange(false,std::memory_order_acq_rel))wallplant_animation::cancel();
     wallplant_animation::tick(active);
-    NativeInputFrame f{};WallplantCommand play{},stop{};std::uint64_t started{};
+    NativeInputFrame f{};WallplantCommand play{},stop{};std::uint64_t started{},expires{};
     {
         std::lock_guard lock(mutex);permitted=active;
         if(!active){withdraw("inactive");observed={};return;}
         f=observed;
         stop=hold_stop;hold_stop={};
         play=hold_play;hold_play={};started=hold_play_started;
+        expires=hold.target_expiry();
         if(!hold.active() || hold.command().input_sequence!=play.input_sequence)play={};
     }
     if(stop)wallplant_animation::release(skater(stop.native.owner),stop.input_sequence);
     if(play) {
         bool accepted=!interrupt.load(std::memory_order_acquire) && !stop_pose.load(std::memory_order_acquire) &&
-            wallplant_animation::begin_hold(skater(play.native.owner),play.input_sequence,started,play.point,play.contact_normal,play.hold_forward);
+            wallplant_animation::begin_hold(skater(play.native.owner),play.input_sequence,started,expires,play.point,play.contact_normal,play.hold_forward);
         bool still_held{};
         {std::lock_guard lock(mutex);still_held=hold.active() && same_command(hold.command(),play,true) &&
             hold.started_at()==started && hold.target_active(GetTickCount64());}
