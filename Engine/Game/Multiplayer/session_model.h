@@ -53,6 +53,12 @@ inline std::string lobby_friends_text(const MultiplayerLobby &lobby, std::size_t
     if (lobby.friends.size() > named) text += " and " + std::to_string(lobby.friends.size() - named) + " more";
     return text;
 }
+// A Steam friend in the game now (steam_social.h), for the pause menu's FRIENDS tab: who, and the
+// public server or lobby their game says they are in (its browser row's id; 0: none or private).
+struct MultiplayerFriend {
+    std::uint64_t id{}, session{};
+    std::string name;
+};
 struct MultiplayerPlayer {
     std::uint64_t id{};
     std::string name;
@@ -75,6 +81,13 @@ struct MultiplayerPlayer {
     bool party_leader{}, party_member{};
     // The local player made this player's placed objects solid; they are ghosts otherwise.
     bool objects_solid{};
+    // The local player ignores them (/ignore): nothing of theirs shows or is heard here.
+    bool ignored{};
+};
+// A player the local player ignores (/ignore), here or not: their SteamID64 and the name they last had.
+struct MultiplayerIgnored {
+    std::uint64_t id{};
+    std::string name;
 };
 // A party invite waiting for an answer (dedicated servers).
 struct MultiplayerPartyInvite {
@@ -223,11 +236,21 @@ struct MultiplayerModel {
     std::string identity_tag;
     std::uint32_t identity_tag_colour{};
     bool identity_tag_shown{true}, identity_items_shown{true};
-    // Local: how each of this player's marked cosmetics is coloured, for the Special page: what
-    // they wear in each slot ("Top", "Shoes", ...), then the parts of their board. mode: 0 what
-    // their list gives (`identity_animation`: "RAINBOW", "GREEN", "RED", "BLUE" or "GOLD"), 1 off, 2 a gradient
-    // between the two colours they picked, 3 the first of them alone, 4 the rainbow (offered
-    // when `identity_rainbow`: to the staff). speed: 0 normal, 1 slow, 2 fast.
+    // Local: the lists whose tags this player may show (more than one: they pick on the Skater
+    // page's STYLE tab), by their name for the mark-tag-list command ("dev", "homie", ...), and
+    // the one whose tag shows (`identity_tag_list`).
+    struct IdentityTagList {
+        std::string list, tag;
+        std::uint32_t colour{};
+    };
+    std::vector<IdentityTagList> identity_tag_lists;
+    std::string identity_tag_list;
+    // Local: how each of this player's marked cosmetics is coloured, for the STYLE tab: what
+    // they wear in each slot ("Top", "Shoes", ...), then, for a player on one of the backend's
+    // lists, the parts of their board. mode: 0 what their list gives (`identity_animation`:
+    // "RAINBOW", "GREEN", "RED", "BLUE" or "GOLD"; empty for a player on none, who has only 1 and
+    // 3), 1 off, 2 a gradient between the two colours they picked, 3 the first of them alone, 4
+    // the rainbow (offered when `identity_rainbow`: to the staff). speed: 0 normal, 1 slow, 2 fast.
     struct IdentityStyle {
         std::string name;
         int mode{}, speed{};
@@ -266,6 +289,7 @@ struct MultiplayerModel {
     bool password_required{};
     int players = 1, capacity = multiplayer_player_limit;
     std::vector<MultiplayerPlayer> roster;
+    std::vector<MultiplayerIgnored> ignored; // everyone the local player ignores, in or out of this session
     // The local player's party. Players form their own, in a lobby as on a dedicated server
     // (`parties`: invite, leave, kick... are available in any session).
     std::uint32_t party{};
@@ -293,6 +317,7 @@ struct MultiplayerModel {
     // When the lists may be searched again, on the steady clock in microseconds (browse_wait).
     std::uint64_t browse_ready_us{};
     std::vector<MultiplayerLobby> lobbies;
+    std::vector<MultiplayerFriend> friends_skating; // Steam friends playing ReSkate now
     bool network_telemetry{};
     unsigned prioritized_connections{};
     std::uint64_t cosmetic_queue_us{};

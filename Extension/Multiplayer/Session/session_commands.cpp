@@ -10,6 +10,7 @@
 #include "Engine/Core/Platform/launcher_support.h"
 #include "Engine/Core/Text/word_filter.h"
 #include "Engine/Game/Multiplayer/session_tools.h"
+#include "Engine/Core/Text/ascii.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -98,11 +99,6 @@ std::optional<bool> parse_switch(std::string_view argument, bool current) {
     return {};
 }
 // ---- teleports ----
-std::string lowered(std::string_view text) {
-    std::string result(text);
-    for (auto &c : result) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    return result;
-}
 std::string peer_name(Session &s, const Peer &p) {
     return p.member.name.empty() ? s.transport.name(p.member.id) : p.member.name;
 }
@@ -114,7 +110,7 @@ Peer *find_player(Session &s, std::string_view who, std::string &error) {
     Peer *match{};
     for (auto &p : active_peers(s)) {
         if (!p.handshaken || !p.member.id || (dedicated_host(s) && p.member.id == s.host_id)) continue;
-        if (numeric ? p.member.id == id : lowered(peer_name(s, p)).starts_with(lowered(who))) {
+        if (numeric ? p.member.id == id : ascii_lower(peer_name(s, p)).starts_with(ascii_lower(who))) {
             if (match) { error = "More than one player matches \"" + std::string(who) + "\"."; return nullptr; }
             match = &p;
         }
@@ -122,12 +118,49 @@ Peer *find_player(Session &s, std::string_view who, std::string &error) {
     if (!match) error = "No player matches \"" + std::string(who) + "\".";
     return match;
 }
+} // namespace
+std::string session_detail::ignore_command(Session &s, std::string_view verb, std::string_view who) {
+    while (!who.empty() && who.front() == ' ') who.remove_prefix(1);
+    while (!who.empty() && who.back() == ' ') who.remove_suffix(1);
+    if (verb == "ignored") {
+        if (s.ignored_players.empty()) return "You ignore nobody.";
+        std::string names;
+        for (const auto &[id, name] : s.ignored_players) names += (names.empty() ? "" : ", ") + (name.empty() ? std::to_string(id) : name);
+        return "You ignore " + names + ". /unignore <player> stops it.";
+    }
+    if (who.empty()) return verb == "ignore" ? "/ignore <player>" : "/unignore <player>";
+    if (verb == "ignore") {
+        std::string error;
+        auto *p = find_player(s, who, error);
+        if (!p) return error;
+        const auto name = peer_name(s, *p);
+        if (ignored(s, p->member.id)) return "You ignore " + name + " already.";
+        set_ignored(s, p->member.id, name, true);
+        return "You ignore " + name + ": nothing of theirs shows or is heard here, in any session. /unignore " + name + " stops it.";
+    }
+    // Unignore: anyone on the list, here or not, by the start of their name or their SteamID64.
+    std::uint64_t id{};
+    const auto parsed = std::from_chars(who.data(), who.data() + who.size(), id);
+    const bool numeric = parsed.ec == std::errc{} && parsed.ptr == who.data() + who.size();
+    std::uint64_t match{};
+    for (const auto &[listed, name] : s.ignored_players) {
+        if (numeric ? listed == id : ascii_lower(name).starts_with(ascii_lower(who))) {
+            if (match) return "More than one ignored player matches \"" + std::string(who) + "\".";
+            match = listed;
+        }
+    }
+    if (!match) return "You don't ignore anyone matching \"" + std::string(who) + "\".";
+    const auto name = s.ignored_players[match];
+    set_ignored(s, match, name, false);
+    return "You no longer ignore " + (name.empty() ? std::to_string(match) : name) + ".";
+}
+namespace {
 // party: "invite|join|kick|promote <player>", "accept|decline [player]", "leave", "open",
 // "close" or "status". Menus pass SteamID64s; people type the start of a name.
 std::string party_command(Session &s, std::string_view argument) {
     while (!argument.empty() && argument.front() == ' ') argument.remove_prefix(1);
     const auto space = argument.find(' ');
-    const auto verb = lowered(argument.substr(0, space));
+    const auto verb = ascii_lower(argument.substr(0, space));
     auto who = space == std::string_view::npos ? std::string_view{} : argument.substr(space + 1);
     while (!who.empty() && who.front() == ' ') who.remove_prefix(1);
     if (s.mode != Mode::host && s.mode != Mode::join) return "Parties need a multiplayer session.";
@@ -355,9 +388,9 @@ std::string edit_nametags(Session &s, std::string_view argument) {
     profile_runtime::set_local_preference("Nametags", s.nametags);
     return s.nametags ? "Peer nametags shown." : "Peer nametags hidden.";
 }
-// The Special page: a player on one of the backend's lists going without their tag, or
-// without the animation on their items. Their next appearance packet tells everyone
-// (session_send.cpp).
+// The Skater page's STYLE tab: a player on one of the backend's lists going without their
+// tag, or anyone going without the colours of their items. Their next appearance packet tells
+// everyone (session_send.cpp).
 std::string edit_own_tag(Session &, std::string_view argument) {
     const auto shown = parse_switch(argument, own_tag_shown());
     if (!shown) return "Use on, off, or toggle for your tag.";
@@ -370,11 +403,27 @@ std::string edit_own_items(Session &, std::string_view argument) {
     if (!shown) return "Use on, off, or toggle for your items.";
     show_own_items(*shown);
     profile_runtime::set_local_preference("IdentityItems", *shown);
-    return *shown ? "Your items animate." : "Your items are plain, for you and everyone you skate with.";
+    return *shown ? "Your items are colored." : "Your items are plain, for you and everyone you skate with.";
 }
-// The Special page: how one of the player's marked cosmetics is coloured, as
+// Which list's tag shows, for a player on more than one: "dev", "staff", "centrix",
+// "content_creator" or "homie" (tag_list_names), or "usual" for the first by identity_mark's
+// order. It goes out with their next appearance packet and is kept in their profile. Their
+// items keep what their first list gives them, whichever tag shows.
+std::string edit_own_tag_list(Session &, std::string_view argument) {
+    const auto usual = argument == "usual" || argument.empty();
+    const auto list = tag_list_named(argument);
+    if (!usual && !list) return "Use dev, staff, centrix, content_creator, homie or usual for your tag.";
+    const auto social = steam_social_snapshot();
+    if (list && !(social && identity_listed(social->local.id, *list))) return "You are not on that list.";
+    choose_own_tag(list ? static_cast<std::uint8_t>(*list) : usual_tag);
+    profile_runtime::set_local_values({{"IdentityTagList", Json(std::string(list ? tag_list_name(*list) : ""))}});
+    if (!list) return "Your usual tag shows.";
+    return "Your " + mark_role(*list).second + " tag shows.";
+}
+// The STYLE tab: how one of the player's marked cosmetics is coloured, as
 // "<cosmetic> <mode> <rrggbb> <rrggbb> <speed>" (MarkStyle). It goes out with their next
-// appearance packet and is kept in their profile.
+// appearance packet and is kept in their profile. Anyone may give what they wear a solid
+// colour or none; the rest is for a player on one of the backend's lists (style_offered).
 std::string edit_mark_style(Session &, std::string_view argument) {
     std::istringstream in{std::string(argument)};
     unsigned item{}, mode{}, from{}, to{}, speed{};
@@ -386,6 +435,9 @@ std::string edit_mark_style(Session &, std::string_view argument) {
     const auto social = steam_social_snapshot();
     const auto mark = social ? identity_mark(social->local.id) : std::nullopt;
     if (mode == 4 && mark != IdentityList::staff) return "The rainbow is not one of your styles.";
+    if (!developer_hoodie_detail::style_offered(mark, item, mode))
+        return item >= skater_mark_items ? "Coloring the board comes with a ReSkate tag."
+                                         : "Gradients and a list's own colors come with a ReSkate tag; solid colors are everyone's.";
     const auto colour = [](unsigned value) {
         return std::array<std::uint8_t, 3>{static_cast<std::uint8_t>(value >> 16), static_cast<std::uint8_t>(value >> 8),
                                            static_cast<std::uint8_t>(value)};
@@ -431,10 +483,6 @@ std::string edit_player_distance(Session &s, std::string_view argument) {
                                               : "Players within " + std::to_string(static_cast<int>(value)) + " m are shown as skaters.";
 }
 std::string start_pose_dump(Session &s, std::string_view argument) {
-#if defined(DINGOSDK_LEAN_PLAYTEST)
-    (void)s; (void)argument;
-    return "Pose recording is not included in this playtest build.";
-#else
     int seconds{};
     const auto parsed = std::from_chars(argument.data(), argument.data() + argument.size(), seconds);
     if (parsed.ec != std::errc{} || parsed.ptr != argument.data() + argument.size() || seconds < 1 || seconds > 600)
@@ -451,7 +499,6 @@ std::string start_pose_dump(Session &s, std::string_view argument) {
     s.pose_dump_until = now_us() + static_cast<std::uint64_t>(seconds) * 1000000;
     s.pose_dump_count = 0;
     return "Recording your poses for " + std::to_string(seconds) + " s to " + path_utf8(file) + ". Skate as you normally would.";
-#endif
 }
 std::string edit_direct_connections(Session &s, std::string_view argument) {
     const auto enabled = parse_switch(argument, s.prefer_direct);
@@ -626,10 +673,10 @@ std::string send_admin(Session &s, std::string text) {
     if (!send_packet(s, s.host_id, request, true, false)) return "Could not reach the server.";
     return "Sent to the server.";
 }
-// The Special page's commands. They are a player's own offline as well, where their hoodie and
-// board still animate.
+// The STYLE tab's commands. They are a player's own offline as well, where their items are
+// still coloured.
 bool own_mark_command(std::string_view action) {
-    return action == "mark-tag" || action == "mark-items" || action == "mark-style";
+    return action == "mark-tag" || action == "mark-tag-list" || action == "mark-items" || action == "mark-style";
 }
 } // namespace
 bool queue_command(std::string_view action, std::string_view argument, std::string_view password) {
@@ -641,7 +688,7 @@ bool queue_command(std::string_view action, std::string_view argument, std::stri
          action != "chat-bubbles" && action != "chat-bubbles-own" && action != "chat-bubbles-distance" &&
          action != "chat-bubbles-duration" && action != "chat-bubbles-history" &&
          !own_mark_command(action) &&
-         action != "voice" && action != "voice-mute" && action != "objects-solid" &&
+         action != "voice" && action != "voice-mute" && action != "ignore" && action != "objects-solid" &&
          action != "voice-volume" && action != "voice-allow" && action != "voice-range" && action != "chat" && action != "typing" && action != "ban" && action != "unban" &&
          action != "world-layer-sync" && action != "noclip-allow" && action != "nobail-allow" && action != "boosts-allow" &&
          action != "tuning-enforce" && action != "tp" &&
@@ -707,7 +754,7 @@ std::string command(std::string_view action, std::string_view argument, std::str
             // dedicated server, which answers in chat.
             const auto line = argument.substr(1);
             const auto space = line.find(' ');
-            const auto verb = lowered(line.substr(0, space));
+            const auto verb = ascii_lower(line.substr(0, space));
             const auto rest = space == std::string_view::npos ? std::string_view{} : line.substr(space + 1);
             std::string result;
             if (verb.empty() || verb == "help" || verb == "?") {
@@ -723,6 +770,11 @@ std::string command(std::string_view action, std::string_view argument, std::str
                 return refused.empty() ? "Message sent." : refused;
             } else if (!dedicated_host(s) && verb == "party") {
                 result = party_command(s, rest);
+            } else if (verb == "ignore" || verb == "unignore" || verb == "ignored") {
+                result = ignore_command(s, verb, rest);
+            } else if (queue_plugin_chat_command(s, verb, rest)) {
+                // A plugin's: it runs on this PC at the plugins' next tick, and answers itself.
+                return "Command sent.";
             } else {
                 result = send_chat_command(s, argument);
             }
@@ -829,6 +881,23 @@ std::string command(std::string_view action, std::string_view argument, std::str
             publish(s);
             return "Player voice volume updated.";
         }
+        // ignore <SteamID64> on|off: the menus' Ignore button.
+        if (action == "ignore") {
+            const auto split = argument.find(' ');
+            std::uint64_t id{};
+            const auto result = std::from_chars(argument.data(), argument.data() + (split == std::string_view::npos ? argument.size() : split), id);
+            const auto enabled = split == std::string_view::npos ? std::string_view{} : argument.substr(split + 1);
+            if (result.ec != std::errc{} || (enabled != "on" && enabled != "off")) return "ignore <SteamID64> on|off";
+            if (enabled == "off") {
+                if (!ignored(s, id)) return "You don't ignore that player.";
+                set_ignored(s, id, s.ignored_players[id], false);
+                return "Player no longer ignored.";
+            }
+            const auto *p = find_peer(s, id);
+            if (!p || id == s.transport.status().local_id || (dedicated_host(s) && id == s.host_id)) return "Choose a connected player to ignore.";
+            set_ignored(s, id, peer_name(s, *p), true);
+            return "Player ignored.";
+        }
         if (action == "voice-mute") {
             const auto split = argument.find(' ');
             if (split == std::string_view::npos) return "Choose a player to mute.";
@@ -872,7 +941,8 @@ std::string command(std::string_view action, std::string_view argument, std::str
             {"nametags", edit_nametags},
             {"nametag-distance", edit_nametag_distance}, {"nametag-dots", edit_nametag_dots},
             {"nametags-friends", edit_nametags_friends}, {"player-distance", edit_player_distance}, {"direct-connections", edit_direct_connections}, {"pose-dump", start_pose_dump},
-            {"mark-tag", edit_own_tag}, {"mark-items", edit_own_items}, {"mark-style", edit_mark_style},
+            {"mark-tag", edit_own_tag}, {"mark-tag-list", edit_own_tag_list}, {"mark-items", edit_own_items},
+            {"mark-style", edit_mark_style},
             {"chat-visible", edit_chat_visible}, {"chat-filter", edit_chat_filter},
             {"chat-bubbles", edit_chat_bubbles}, {"chat-bubbles-own", edit_chat_bubbles_own},
             {"chat-bubbles-distance", edit_chat_bubbles_distance},

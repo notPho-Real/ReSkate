@@ -34,6 +34,7 @@ constexpr Capability capabilities[] = {
     {"chat.send", "CHAT", Risk::red, "Send chat lines as you"},
     {"chat.read", "CHAT", Risk::grey, "Read the session's chat"},
     {"chat.local", "CHAT", Risk::grey, "Show chat notices on your screen"},
+    {"chat.commands", "CHAT", Risk::grey, "Add / commands to your chat"},
     {"server", "SERVER", Risk::red, "Moderate, chat and run polls on a server you host"},
     {"server.parks", "SERVER", Risk::red, "Add or remove a server's park mods"},
     {"skater.teleport", "SKATER", Risk::red, "Teleport your skater"},
@@ -52,6 +53,9 @@ constexpr Capability capabilities[] = {
     // Red: real bodies in your game's physics world, pushed with forces, which the game cannot free until it restarts.
     {"world.physics", "WORLD", Risk::red, "Create physical bodies in your world and push them around"},
     {"world.physics.observe", "WORLD", Risk::red, "See what its rays hit, other skaters' shapes included"},
+    // Amber: only its own parked bodies, but each comes back at any place it asks, every few ticks,
+    // where world.physics alone sets a body's place once, at one of eight creations.
+    {"world.physics.reuse", "WORLD", Risk::amber, "Bring its own physical bodies back, anywhere in your world"},
     {"objects.physics", "WORLD", Risk::red, "Make your own park's objects fall, roll and get knocked over (offline)"},
     {"travel", "WORLD", Risk::red, "Travel to locations and levels"},
     {"world.environment", "WORLD", Risk::red, "Change the time of day, world controls and parks"},
@@ -59,6 +63,7 @@ constexpr Capability capabilities[] = {
     {"world.ai", "WORLD", Risk::amber, "Spawn and clear AI skaters"},
     {"effects", "WORLD", Risk::amber, "Draw particle effects and decals in the world"},
     {"world.raycast", "WORLD", Risk::grey, "Cast rays and pick objects in the world"},
+    {"world.vehicles", "WORLD", Risk::red, "Take over nearby traffic vehicles and move them"},
     {"camera", "CAMERA", Risk::amber, "Control the camera"},
     {"input", "INPUT", Risk::amber, "Bind your keys, pads and mouse, and read text input"},
     {"input.write", "INPUT", Risk::amber, "Replace your controller input while you play"},
@@ -67,8 +72,10 @@ constexpr Capability capabilities[] = {
     {"capture", "SCREEN", Risk::amber, "Record your screen"},
     {"viewmodel", "SCREEN", Risk::grey, "Draw a model of its own in front of your camera, such as something held"},
     {"hud", "SCREEN", Risk::amber, "Hide your HUD and change the trick ticker"},
+    {"hud.score", "SCREEN", Risk::amber, "Show its own tricks and points in skate.'s score HUD"},
     {"overlay", "SCREEN", Risk::amber, "Draw on your screen, with screen effects, toasts and x-ray view"},
     {"ui.screen", "SCREEN", Risk::grey, "Open its own screens and dialogs"},
+    {"ui.models", "SCREEN", Risk::grey, "Send numbers to its own mod's menus and HUD"},
     {"menu", "SCREEN", Risk::grey, "Edit the game's menu and add its own menu page"},
     {"music", "SOUND", Risk::amber, "Read and control your music playback"},
     {"audio", "SOUND", Risk::grey, "Play, stop and adjust sounds"},
@@ -257,6 +264,7 @@ std::string approval_prompt(const std::vector<PermissionGroup>& groups) {
             if (has("chat.read")) actions.push_back("read chat");
             if (has("chat.send")) actions.push_back("send chat lines as you");
             if (has("chat.local")) actions.push_back("show chat notices on your screen");
+            if (has("chat.commands")) actions.push_back("add / commands to your chat");
         } else if (group.category == "SERVER") {
             if (has("server")) actions.push_back("moderate servers you host");
             if (has("server.parks")) actions.push_back("add or remove park mods on servers you host");
@@ -277,6 +285,7 @@ std::string approval_prompt(const std::vector<PermissionGroup>& groups) {
             if (has("world.objects")) actions.push_back("list and edit park objects");
             if (has("world.physics")) actions.push_back("create physical bodies in your world and push them around");
             if (has("world.physics.observe")) actions.push_back("see what its rays hit, other skaters' shapes included");
+            if (has("world.physics.reuse")) actions.push_back("reuse its own parked bodies");
             if (has("objects.physics")) actions.push_back("make your own park's objects fall, roll, and get knocked over (offline)");
             if (has("travel")) actions.push_back("travel to locations and levels");
             if (has("world.environment")) actions.push_back("change parks, world controls, and time of day");
@@ -284,6 +293,7 @@ std::string approval_prompt(const std::vector<PermissionGroup>& groups) {
             if (has("world.ai")) actions.push_back("spawn or clear AI skaters");
             if (has("effects")) actions.push_back("draw particle effects and decals");
             if (has("world.raycast")) actions.push_back("probe the world and pick objects");
+            if (has("world.vehicles")) actions.push_back("take over nearby traffic vehicles and move them");
         } else if (group.category == "CAMERA") {
             actions.push_back("control the camera");
         } else if (group.category == "INPUT") {
@@ -294,8 +304,10 @@ std::string approval_prompt(const std::vector<PermissionGroup>& groups) {
             if (has("capture")) actions.push_back("record your screen");
             if (has("viewmodel")) actions.push_back("draw a model in front of your camera");
             if (has("hud")) actions.push_back("hide your HUD or change the trick ticker");
+            if (has("hud.score")) actions.push_back("show its own tricks and points in skate.'s score HUD (they never count)");
             if (has("overlay")) actions.push_back("draw on screen, including screen effects");
             if (has("ui.screen")) actions.push_back("open plugin screens and dialogs");
+            if (has("ui.models")) actions.push_back("send numbers to its own mod's menus and HUD");
             if (has("menu")) actions.push_back("edit the game's menu and add menu pages");
         } else if (group.category == "SOUND") {
             if (has("music")) actions.push_back("read and control music playback");

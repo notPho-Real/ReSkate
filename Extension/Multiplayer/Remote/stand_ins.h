@@ -1,4 +1,5 @@
 #pragma once
+#include "Engine/Core/Text/ascii.h"
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -6,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
 
 // What stands in for a peer's cosmetic this PC does not have (a player's cosmetics mod).
@@ -17,8 +19,10 @@ namespace dingosdk::multiplayer::stand_ins {
 enum class Pick : std::uint8_t { first, random };
 enum class Parts : std::uint8_t { both, skater, board };
 inline constexpr std::size_t max_items = 4096;
-// Every candidate is matched against every rule, so the rules are few.
+// Every candidate is matched against every rule with a "*", so those are few. A plain name is one
+// lookup in a set however many there are, so a plugin can leave out as many as it lists.
 inline constexpr std::size_t max_exclude = 64;
+inline constexpr std::size_t max_exclude_names = max_items;
 struct Policy {
     std::string owner; // the plugin holding it
     Pick pick{Pick::first};
@@ -27,8 +31,10 @@ struct Policy {
     std::vector<std::string> items;
     // Items never to stand in: names, in which "*" is any run of characters ("Own_Costume*",
     // "*GhostSkater*"). Any case (set() keeps them lower case). Only the candidates: an item a player
-    // really wears still shows.
+    // really wears still shows. set() keeps the rules with a "*" here and moves plain names to
+    // `exclude_names`.
     std::vector<std::string> exclude;
+    std::unordered_set<std::string> exclude_names;
     std::uint32_t seed{};
     // Whether each of `items` is left after `exclude`. set() works it out on the plugin's thread, so
     // the engine thread matches none of them when it dresses a player.
@@ -44,12 +50,6 @@ std::string set(Policy policy);
 // Puts the defaults back, if `owner` holds the policy.
 void clear(std::string_view owner);
 
-inline std::string lower(std::string_view text) {
-    std::string out(text);
-    for (auto &c : out)
-        if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + ('a' - 'A'));
-    return out;
-}
 // Where `piece` (not empty) first starts in `text`, or npos. Knuth-Morris-Pratt, so the work is
 // linear in both whatever a plugin writes; a piece longer than a rule can be is plainly searched.
 inline std::size_t find_piece(std::string_view text, std::string_view piece) {
@@ -94,8 +94,9 @@ inline bool fits(std::string_view name, std::string_view rule) {
 }
 // Whether `asset` is in the policy's exclude list (which set() keeps lower case).
 inline bool excluded(const Policy &policy, std::string_view asset) {
-    if (policy.exclude.empty() || asset.empty()) return false;
-    const auto name = lower(asset);
+    if ((policy.exclude.empty() && policy.exclude_names.empty()) || asset.empty()) return false;
+    const auto name = ascii_lower(asset);
+    if (policy.exclude_names.contains(name)) return true;
     for (const auto &rule : policy.exclude)
         if (fits(name, rule)) return true;
     return false;
@@ -116,10 +117,16 @@ inline std::uint64_t text_hash(std::string_view text, std::uint64_t h = 14695981
     for (unsigned char c : text) h = (h ^ c) * 1099511628211ULL;
     return h;
 }
+// Who is being dressed, for order(): the player (their id, from the session), or without one the
+// outfit (a hash of everything they wear). A player's stand-in for one item then stays while they
+// change another: the outfit alone would give every slot a new one at each change.
+inline std::uint64_t who(std::uint64_t player, std::uint64_t outfit) {
+    return player ? mix(player ^ 0x7374616e642d696eULL) : outfit;
+}
 // The candidates for one missing item in the order they are tried. "first": as given. "random":
-// shuffled by a seed made of the outfit (`outfit`, a hash of everything the peer wears), the slot,
-// the missing item and the policy's seed, so a player keeps the same stand-ins for as long as they
-// wear the same outfit (no flicker each time it is put on again), different players and slots get
+// shuffled by a seed made of who is dressed (`who`, above), the slot, the missing item and the
+// policy's seed, so a player keeps a stand-in for as long as they wear that item, whatever else
+// they change (no flicker each time it is put on again), different players and slots get
 // different ones, and a new seed gives everybody new ones.
 // The same order for any list of that length: the engine thread orders positions in its lists.
 template <class T>

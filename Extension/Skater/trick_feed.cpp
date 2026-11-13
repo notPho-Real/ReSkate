@@ -1,6 +1,10 @@
 #include "trick_feed.h"
+#include "trick_feed_songs.h"
 #include "Extension/UI/own_ui_writes.h"
+#include "Engine/Core/Log/logging.h"
 #include "Engine/Core/Platform/memory.h"
+#include "Engine/Game/Build/addresses.h"
+#include "Engine/Game/Build/20260929/engine.h"
 #include <Windows.h>
 #include <array>
 #include <atomic>
@@ -15,17 +19,19 @@ namespace {
 constexpr std::uint32_t trick_name_member = 0x0002, trick_side_member = 0x009c, trick_landing_member = 0x0034;
 constexpr std::uint32_t trick_body_spin_member = 0x00bc, trick_board_spin_member = 0x00ac, trick_stance_member = 0x004e;
 constexpr std::uint32_t trick_late_member = 0x007c, trick_darkflip_member = 0x010d, trick_darkcatch_member = 0x00fd;
-constexpr std::uintptr_t ui_string_type_rva = 0x765dcc0; // Skate.exe: the UI model's string type
 struct Feed {
     std::atomic<bool> on{};
     std::mutex mutex;
     std::vector<Note> notes;
     std::set<std::string> owners;
+    SongTitles songs; // the songs begun, whose titles the music writes to the name's field (trick_feed_songs.h)
+    unsigned left_out_logged{};
 };
 Feed& feed() {
     static auto* value = new Feed;
     return *value;
 }
+ui::OwnUiEntries<most_owned> owned_entries;
 // Readable text at `address`: ASCII, or UTF-16 with every other byte zero; empty when not.
 std::string text_at(std::uintptr_t address) noexcept {
     std::array<unsigned char, 96> raw{};
@@ -66,10 +72,36 @@ void ask(const std::string& owner, bool on) {
     if (f.owners.empty()) f.notes.clear();
 }
 bool wanted() noexcept { return feed().on.load(std::memory_order_acquire); }
+void own(const std::vector<std::uint64_t>& entries) noexcept { owned_entries.set(entries); }
 std::vector<Note> take() {
     auto& f = feed();
-    std::lock_guard lock(f.mutex);
-    return std::exchange(f.notes, {});
+    std::vector<Note> notes;
+    std::vector<std::string> left_out;
+    {
+        std::lock_guard lock(f.mutex);
+        notes = std::exchange(f.notes, {});
+        // A name that reads as a song begun is the music's write, not a trick's. (Done here rather
+        // than in tap, a tick or so after the write, so a song begun on another thread at the same
+        // moment is known by then.)
+        std::erase_if(notes, [&](const Note& note) {
+            if (note.kind != 'n' || !f.songs.is_song(note.text)) return false;
+            if (f.left_out_logged < 8) {
+                ++f.left_out_logged;
+                left_out.push_back(note.text);
+            }
+            return true;
+        });
+    }
+    for (const auto& text : left_out)
+        logging::log(logging::Level::info, logging::Channel::plugins, "Trick feed: left out \"{}\": it is a song's title.", text);
+    return notes;
+}
+void song_playing(std::string_view artist, std::string_view title) noexcept {
+    try {
+        auto& f = feed();
+        std::lock_guard lock(f.mutex);
+        f.songs.add(artist, title);
+    } catch (...) {}
 }
 
 void tap(std::uint64_t handle, std::uintptr_t type, const void* value) noexcept {
@@ -80,7 +112,8 @@ void tap(std::uint64_t handle, std::uintptr_t type, const void* value) noexcept 
         member != trick_board_spin_member && member != trick_stance_member && member != trick_late_member && member != trick_darkflip_member &&
         member != trick_darkcatch_member)
         return;
-    static const auto string_type = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr)) + ui_string_type_rva;
+    if (owned_entries.contains(handle >> 16)) return;
+    static const auto string_type = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr)) + addr::engine::string_type; // the UI model's string type
     if (member == trick_name_member && type != string_type) return;
     try {
         std::uint64_t first{};

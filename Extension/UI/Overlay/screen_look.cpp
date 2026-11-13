@@ -1,6 +1,7 @@
 #include "screen_look.h"
 #include "screen_look_hlsl.h" // generated from screen_look.hlsl (cmake/UI.cmake)
 #include "Engine/Core/Log/logging.h"
+#include "Engine/Core/Platform/clock.h"
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 #include <algorithm>
@@ -32,7 +33,6 @@ constexpr double slap_contact = 0.13;
 // height from its centre (q), so the lens maths reads the same at any resolution.
 constexpr const char *shader_source = screen_look_hlsl;
 
-double now() { return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
 
 // What a plugin asked for (client thread), read by the render thread.
 struct Asked {
@@ -371,7 +371,7 @@ void set(const Settings &settings) noexcept {
     try {
         auto &a = asked();
         std::lock_guard lock(a.mutex);
-        const double at = now();
+        const double at = steady_seconds();
         // The tape's roll is kept counting between ticks; a jump of more than a moment is a new roll.
         const double origin = settings.rolling >= 0 ? at - settings.rolling : -1;
         if (origin < 0 || a.rolling_origin < 0 || std::abs(origin - a.rolling_origin) > 0.25) a.rolling_origin = origin;
@@ -387,7 +387,7 @@ void clear() noexcept {
 void slap() noexcept {
     auto &a = asked();
     std::lock_guard lock(a.mutex);
-    const double at = now();
+    const double at = steady_seconds();
     if (at - a.slap_at < slap_keys.back().time) return; // one at a time
     a.slap_at = at;
     ++a.slap_serial;
@@ -396,7 +396,7 @@ void slap() noexcept {
 bool pending() noexcept {
     auto &a = asked();
     std::lock_guard lock(a.mutex);
-    return now() < a.until && !graphics().failed;
+    return steady_seconds() < a.until && !graphics().failed;
 }
 
 bool record(const Target &t) noexcept {
@@ -408,7 +408,7 @@ bool record(const Target &t) noexcept {
         {
             auto &a = asked();
             std::lock_guard lock(a.mutex);
-            if (now() >= a.until) return false;
+            if (steady_seconds() >= a.until) return false;
             look = a.settings;
             rolling_origin = a.rolling_origin;
             slap_at = a.slap_at;
@@ -426,7 +426,7 @@ bool record(const Target &t) noexcept {
         transition(t.commands, g.copy.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         g.copy_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
         transition(t.commands, t.buffer, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        const double seconds = now();
+        const double seconds = steady_seconds();
         const float frame_seconds = static_cast<float>(std::clamp(seconds - g.last_seconds, 0.0, 0.25));
         g.last_seconds = seconds;
         const double since = seconds - slap_at;
@@ -439,15 +439,19 @@ bool record(const Target &t) noexcept {
         for (const std::size_t right : {std::size_t{1}, std::size_t{3}, std::size_t{4}})
             if (!lines[right].empty()) lines[right] = right_aligned(lines[right]);
         const bool any_text = std::ranges::any_of(lines, [](const std::string &line) { return !line.empty(); });
+        // An effect's strength as the shader takes it: 0 off, up to 1 in full.
+        const auto on = [](bool enabled, float strength) { return enabled && std::isfinite(strength) ? std::clamp(strength, 0.0f, 1.0f) : 0.0f; };
         std::array<std::uint32_t, constant_count> constants{
             bits(std::clamp(look.bend, 0.0f, 1.0f)), bits(fov * 0.5f), bits(std::tan(fov * 0.5f)), bits(look.bars ? 4.0f / 3.0f : screen_aspect),
-            bits(screen_aspect), bits(look.bars ? 1.0f : 0.0f), bits(look.hood ? 1.0f : 0.0f), bits(static_cast<float>(std::fmod(seconds, 1000.0))),
-            bits(look.grade ? 1.0f : 0.0f), bits(look.scanlines ? 1.0f : 0.0f), bits(look.grain ? 1.0f : 0.0f), bits(look.soft ? 1.0f : 0.0f),
+            bits(screen_aspect), bits(on(look.bars, look.strength.bars)), bits(on(look.hood, look.strength.hood)), bits(static_cast<float>(std::fmod(seconds, 1000.0))),
+            bits(on(look.grade, look.strength.grade)), bits(on(look.scanlines, look.strength.scanlines)), bits(on(look.grain, look.strength.grain)),
+            bits(on(look.soft, look.strength.soft)),
             bits(static_cast<float>(t.transfer)), bits(exposure_at(since)), bits(width), bits(height),
             bits(hand.x), bits(hand.y), bits(hand.angle), bits(hand.size),
             bits(hand.mirrored ? 1.0f : 0.0f), bits(hand.blur), bits(0.0f), bits(0.0f),
             bits(2.0f / 150.0f), bits(white), bits(any_text ? 1.0f : 0.0f), bits(0.0f),
-            bits(std::clamp(look.age, 0.0f, 1.0f)), bits(look.dropouts ? 1.0f : 0.0f), bits(look.head_switching ? 1.0f : 0.0f), bits(look.smear ? 1.0f : 0.0f),
+            bits(std::clamp(look.age, 0.0f, 1.0f)), bits(on(look.dropouts, look.strength.dropouts)),
+            bits(on(look.head_switching, look.strength.head_switching)), bits(on(look.smear, look.strength.smear)),
             bits(rolling_origin >= 0 ? static_cast<float>(seconds - rolling_origin) : -1.0f), bits(look.tracking ? 1.0f : 0.0f),
             bits(look.iris ? 1.0f : 0.0f), bits(frame_seconds)};
         for (std::size_t line = 0; line < text_lines; ++line)

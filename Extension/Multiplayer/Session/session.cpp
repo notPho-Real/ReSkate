@@ -21,6 +21,7 @@
 #include "Extension/Progression/script_natives.h"
 #include "Extension/Multiplayer/Steam/steam_social.h"
 #include "Extension/Profile/local_profile_runtime.h"
+#include "Extension/Customization/local_customization_runtime.h"
 #include "Extension/Objects/network_object_runtime.h"
 #include "Extension/Objects/ParkEditor/park_editor_runtime.h"
 #include "Extension/Multiplayer/Remote/native_audio.h"
@@ -342,8 +343,13 @@ void publish_party(Session &s) {
             s.chat_bubbles_duration = std::clamp(saved->get<float>(), 1.f, 30.f);
         if (const auto saved = profile_runtime::local_value("ChatBubblesHistory"); saved && saved->is_number())
             s.chat_bubbles_history = std::clamp(static_cast<int>(saved->get<double>()), 1, 8);
+        load_ignored(s);
         show_own_tag(profile_runtime::local_preference("IdentityTag").value_or(true));
         show_own_items(profile_runtime::local_preference("IdentityItems").value_or(true));
+        // Which list's tag shows: one of tag_list_names, or nothing for the usual.
+        const auto saved_tag = profile_runtime::local_value("IdentityTagList");
+        const auto tag_list = saved_tag && saved_tag->is_string() ? tag_list_named(saved_tag->string()) : std::nullopt;
+        choose_own_tag(tag_list ? static_cast<std::uint8_t>(*tag_list) : usual_tag);
         if (const auto saved = profile_runtime::local_value("IdentityStyles"); saved && saved->is_string())
             if (const auto styles = developer_hoodie_detail::parse_mark_styles(saved->string()))
                 developer_hoodie_detail::own_styles.store(*styles);
@@ -432,7 +438,8 @@ void relay_throwdowns(Session &s, bool in_world, const NativeFrame* /*offline_sk
             // The authority's words (a plugin's server copy) come from the lobby's host or the
             // server only; a host hears none from its guests.
             if (plugins::wire::from_authority(message) && (s.mode == Mode::host || sender != s.host_id)) continue;
-            plugins::receive_message(sender, message);
+            // An ignored player's reach this PC's plugins no more (a lobby host's server copies still hear them).
+            plugins::receive_message(sender, message, !ignored(s, sender));
         }
         else receive_throwdown_relay(sender, message);
     }
@@ -572,11 +579,14 @@ void render(Session &s, std::uintptr_t client, const NativeFrame &local, std::ui
     bool native_pass{};
     const auto apply_cosmetics = [&](Peer &p, bool spawned) {
         if (now - p.last_cosmetic_apply < 500000) return;
-        if (p.applied_cosmetics != p.cosmetic_revision && !spawned) {
+        // Plugins hiding other items puts every outfit on again, one player per frame too.
+        const auto hidden = plugin_feed::hidden_items_revision();
+        if ((p.applied_cosmetics != p.cosmetic_revision || p.applied_hidden != hidden) && !spawned) {
             if (native_pass) return;
             native_pass = true;
         }
-        update_remote_cosmetics(s.base, local, *p.appearance.value(), p.cosmetic_status);
+        update_remote_cosmetics(s.base, local, *p.appearance.value(), p.member.id, p.cosmetic_status);
+        p.applied_hidden = hidden;
         // The effects their costume and board items come with follow the outfit.
         if (p.applied_cosmetics != p.cosmetic_revision && s.sync_effects) note_remote_outfit(now);
         p.last_cosmetic_apply = now;
@@ -614,10 +624,9 @@ void render(Session &s, std::uintptr_t client, const NativeFrame &local, std::ui
             p.next_audio_update = 0;
         }
     };
-    // The developer hoodie and board mark an identity: only one Steam vouches for (steam_vouched).
-    const auto developer_id = [&](const Peer &p) {
-        return steam_vouched(s, p) && shows_items(p) ? p.member.id : std::uint64_t{};
-    };
+    // Whose items are coloured: nobody's while their appearance hides them. What rests on who
+    // they are waits for Steam to vouch for them (item_styles).
+    const auto developer_id = [&](const Peer &p) { return shows_items(p) ? p.member.id : std::uint64_t{}; };
     // Only players within `player_distance` get a skater: each one costs memory and frame time
     // whether or not it is in view, and on a full server most are far across the map, too small
     // to see. Checked twice a second; a player already shown stays until a little further
@@ -632,8 +641,9 @@ void render(Session &s, std::uintptr_t client, const NativeFrame &local, std::ui
                              nearest_distance(p, local, view) <= s.player_distance * (p.visible ? 1.15f : 1.f);
         }
     }
-    // Hidden on this screen: by the running throwdown's match, or by a plugin (reskate.session.hide).
-    const auto hidden_here = [](std::uint64_t id) { return throwdowns::kit::hidden(id) || plugin_feed::hidden(id); };
+    // Hidden on this screen: by the running throwdown's match, by a plugin (reskate.session.hide), or
+    // because the local player ignores them.
+    const auto hidden_here = [&s](std::uint64_t id) { return throwdowns::kit::hidden(id) || plugin_feed::hidden(id) || ignored(s, id); };
     each_active_peer(s, [&](Peer &p) {
         // A dedicated server has no skater to show.
         if (!p.member.id || (dedicated_host(s) && p.member.id == s.host_id))
@@ -643,9 +653,9 @@ void render(Session &s, std::uintptr_t client, const NativeFrame &local, std::ui
         // the spectate position are still refreshed (sound events are released one per frame).
         if (was_visible && local.ready && !p.render_failed && p.far_interval && now < p.next_far_sample) {
             update_developer_hoodie(s.base, remote_skater_entity(), developer_id(p), remote_skater_generation(), p.developer_hoodie,
-                                    mark_styles(p));
+                                    item_styles(s, p));
             update_developer_board(s.base, remote_board_entity(), developer_id(p), remote_skater_generation(), p.developer_board,
-                                   mark_styles(p));
+                                   item_styles(s, p));
             present_audio(p);
             update_party_position(hidden_here(p.member.id)?nullptr:&p.render_pose);
             if(hidden_here(p.member.id)) {update_player_ui(s.base,nullptr,{});p.ui_visible=false;}
@@ -741,9 +751,9 @@ void render(Session &s, std::uintptr_t client, const NativeFrame &local, std::ui
             }
         }
         update_developer_hoodie(s.base, p.visible ? remote_skater_entity() : 0, developer_id(p),
-                                 remote_skater_generation(), p.developer_hoodie, mark_styles(p));
+                                 remote_skater_generation(), p.developer_hoodie, item_styles(s, p));
         update_developer_board(s.base, p.visible ? remote_board_entity() : 0, developer_id(p),
-                               remote_skater_generation(), p.developer_board, mark_styles(p));
+                               remote_skater_generation(), p.developer_board, item_styles(s, p));
         if (!p.visible) {
             stop_remote_audio();
             p.presented_audio.reset();
@@ -778,6 +788,24 @@ void render(Session &s, std::uintptr_t client, const NativeFrame &local, std::ui
                 peers.push_back({p.member.id, p.latest_root->position, p.latest_root->rotation,
                                  now > p.pose_arrival ? static_cast<double>(now - p.pose_arrival) / 1000.0 : 0.0});
         plugin_feed::publish_peers(std::move(peers));
+        // And what they wear (reskate.session.outfit), each time it changes.
+        std::set<std::uint64_t> present;
+        for (auto &p : active_peers(s)) {
+            if (!p.member.id) continue;
+            present.insert(p.member.id);
+            const auto &look = p.appearance.value();
+            if (!look || p.published_outfit == p.cosmetic_revision) continue;
+            // Paid store items are left out: this PC never shows them on another player (their stand-ins
+            // do), and the party HUD blanks their card parts the same way.
+            plugin_feed::Outfit outfit;
+            for (const auto &item : look->skater.items)
+                if (!item.asset.empty() && !profile_runtime::reserved_cosmetic(item.asset)) outfit.skater.push_back(item.asset);
+            for (const auto &item : look->board.items)
+                if (!item.asset.empty() && !profile_runtime::reserved_cosmetic(item.asset)) outfit.board.push_back(item.asset);
+            plugin_feed::publish_outfit(p.member.id, std::move(outfit));
+            p.published_outfit = p.cosmetic_revision;
+        }
+        plugin_feed::keep_outfits(present);
         // And the joints of theirs that plugins asked for (reskate.entities.set's attach).
         std::map<std::pair<std::uint64_t, std::uint16_t>, plugin_feed::JointPlace> joints;
         if (const auto wanted = plugin_feed::joints_wanted(); !wanted.empty()) {

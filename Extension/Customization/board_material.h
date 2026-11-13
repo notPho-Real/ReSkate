@@ -1,5 +1,6 @@
 #pragma once
 #include "developer_board_material.h"
+#include "Engine/Game/Build/supported_build.h"
 #include "Engine/Vfs/mod_materials.h"
 #include "Engine/Vfs/mod_item_sources.h"
 #include <cstring>
@@ -43,13 +44,15 @@ inline constexpr std::uint64_t base_colour = developer_board_detail::base_color;
 inline constexpr float most_number = 100.0f;
 inline constexpr std::size_t most_held = 32;
 
+// Preview targets the fresh observed room board, using its own cosmetic recipe.
 // Client thread. The part's parameters as its material holds them now; none without a board.
-std::optional<std::vector<Parameter>> read(Part part);
+std::optional<std::vector<Parameter>> read(Part part, bool preview = false);
 // Held by `owner` and written every tick until cleared: a colour (all three), or a number
 // (`value[0]`, `colour` false). Empty when held, else why not.
-std::string set(std::string_view owner, Part part, std::uint64_t key, const Colour& value, bool colour);
+std::string set(std::string_view owner, Part part, std::uint64_t key, const Colour& value, bool colour, bool preview = false);
 // What `owner` holds of that part and key (all its parts, all its keys) put back.
-void clear(std::string_view owner, std::optional<Part> part = std::nullopt, std::optional<std::uint64_t> key = std::nullopt);
+// No scope releases both contexts for plugin teardown; Lua always supplies a scope.
+void clear(std::string_view owner, std::optional<Part> part = std::nullopt, std::optional<std::uint64_t> key = std::nullopt, std::optional<bool> preview = std::nullopt);
 // Each client tick while the skater is in play: what is held written, what is let go put back.
 void tick(std::uintptr_t base, std::uintptr_t client) noexcept;
 
@@ -78,7 +81,24 @@ struct Found {
     bool pending{}; // a recipe on its way: nothing is written
     std::vector<Declared> declared; // what the equipped items' mods declare (declarations below)
     std::array<bool,4> declarations_pending{};
+    std::array<bool,4> write_blocked{}; // preview item is restricted or still changing
 };
+inline constexpr std::array<std::uint32_t, 4> recipe_slots{0x66071628, 0x755d5ee0, 0x0add98be, 0xc83bb94e};
+// Read names from the observed actor, never from a grid label or equipped outfit.
+template <class Recipe> std::optional<std::array<std::string, 4>> preview_items(const Recipe& recipe) {
+    if (recipe.key != 0x5e61aaef) return std::nullopt;
+    std::array<std::string, 4> items;
+    std::array<bool, 4> seen{};
+    for (const auto& item : recipe.items)
+        for (std::size_t part = 0; part < recipe_slots.size(); ++part)
+            if (item.slot == recipe_slots[part]) {
+                if (seen[part]) return std::nullopt;
+                seen[part] = true;
+                items[part] = item.asset;
+            }
+    if (items[0].empty()) return std::nullopt;
+    return items;
+}
 // Each part's named material on the board's slot controllers; the deck slot holds two.
 struct Target {
     std::string_view material;
@@ -124,7 +144,7 @@ template <class Memory> std::vector<Node> parameters(Memory& m, std::uintptr_t m
             if (type) {
                 const auto info = m.ptr(type);
                 // A type's information is in the game's image, as the board's colour descriptor is.
-                if (info >= m.base && info < m.base + 0x09144000)
+                if (info >= m.base && info < m.base + supported_build::game_image_size)
                     p.kind = kind_of(m.template get<std::uint32_t>(info), m.template get<std::uint16_t>(info, 6), key,
                                      (m.template get<std::uint32_t>(node, n::parameter_flags) & 1) != 0);
             }
@@ -208,6 +228,7 @@ inline const Declared* declared(const Found& found, Part part, std::uint64_t key
 // A key the part's material holds live is checked as it is held; one it does not hold may be a colour
 // the equipped item's mod declares. Integers and switches are never set, whatever a mod declares.
 inline std::string refusal(const Found& found, Part part, std::uint64_t key, const Colour& value, bool colour, Kind& kind) {
+    if (found.write_blocked[static_cast<std::size_t>(part)]) return "the preview part is restricted or still changing";
     const auto name = part_names[static_cast<std::size_t>(part)];
     std::optional<Kind> has;
     std::optional<std::uint16_t> identity;
@@ -273,6 +294,7 @@ void apply(std::vector<Saved>& saved, const std::vector<Hold>& holds, const Foun
     std::vector<Saved> next;
     std::vector<std::uintptr_t> shown;
     for (const auto& material : live.materials) {
+        if (live.write_blocked[static_cast<std::size_t>(material.part)]) continue;
         bool show{};
         for (const auto& node : material.nodes) {
             const auto& p = node.parameter;
