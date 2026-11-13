@@ -4,11 +4,13 @@
 #include "plugin_wave.h"
 #include "plugin_object_physics.h"
 #include "plugin_skater_movement.h"
+#include "Extension/World/traffic_vehicles.h"
 #include "Engine/Core/Json/json.h"
 #include "Engine/Game/World/body_query.h"
 #include "Extension/AnimationStudio/anim_core.h"
 #include "Extension/Skater/pose_place.h"
 #include "Extension/Throwdowns/throwdown_kit.h"
+#include "Extension/UI/score_line.h"
 #include <array>
 #include <cstdint>
 #include <filesystem>
@@ -29,6 +31,8 @@
 namespace dingosdk::plugins {
 using Vec3 = std::array<float, 3>;
 inline constexpr char unavailable[] = "unavailable here";
+// A plugin's own line in skate.'s score HUD (reskate.hud.score_line; Extension/UI/score_line.h).
+using ScoreLine = score_line::Line;
 
 // The game's camera as it is now: where it is, the way it looks, and its vertical field of view.
 struct CameraView {
@@ -394,8 +398,15 @@ public:
         bool object{};
         std::optional<std::array<float, 16>> matrix;
         std::string blueprint;
+        std::uint64_t vehicle_owner{};
+        std::uint64_t vehicle_root{};
     };
     virtual std::optional<WorldPick> world_pick(const Vec3& /*from*/, const Vec3& /*to*/) { return std::nullopt; }
+    virtual std::string vehicle_take(std::uint64_t, std::uint64_t, std::uint64_t, std::uint64_t&) { return unavailable; }
+    virtual traffic_vehicles::Sample vehicle_read(std::uint64_t, std::uint64_t) { return {}; }
+    virtual std::string vehicle_set_pose(std::uint64_t, std::uint64_t, const traffic_vehicles::Pose&) { return unavailable; }
+    virtual bool vehicle_release(std::uint64_t, std::uint64_t) { return false; }
+    virtual void vehicle_release_all(std::uint64_t) {}
     // kind "tod" (key: morning, noon, afternoon, evening, night, weatherday, weathernight, default),
     // "control" (key: fog, fog_distance, sky_brightness, clouds, wind_strength, wind_direction,
     // traffic, pedestrians; value a number, -1 the default) or "park" (key: a lot, value a layout).
@@ -875,6 +886,9 @@ public:
     struct Carry {
         bool left{}, both{};
         Vec3 front{};
+        Vec3 support{}; // with both: the other hand moved from where it takes the item, in the item's frame
+        bool exact{};   // the front held at `front` itself, not on the aim's own sweep
+        std::optional<Vec3> look_at; // the face turned to look at this point
         std::array<float, 4> aim{0, 0, 0, 1};
         Vec3 front_from_grip{};
         // Worn on the hand: the item's rotation in the hand joint's frame, and its grip from the hand joint.
@@ -1012,13 +1026,13 @@ public:
         // yet: `value` is the default its shader has; set_parameter adds it.
         bool inherited{};
     };
-    virtual std::optional<std::vector<BoardParameter>> board_parameters(int /*part*/) { return std::nullopt; }
+    virtual std::optional<std::vector<BoardParameter>> board_parameters(int /*part*/, bool /*preview*/ = false) { return std::nullopt; }
     // A colour (`colour`, all three) or a number (value[0]) held there until cleared; empty when held.
-    virtual std::string board_set_parameter(std::string_view /*plugin*/, int /*part*/, std::uint64_t, std::array<float, 3>, bool /*colour*/) {
+    virtual std::string board_set_parameter(std::string_view /*plugin*/, int /*part*/, std::uint64_t, std::array<float, 3>, bool /*colour*/, bool /*preview*/ = false) {
         return unavailable;
     }
     // Part -1: every part; no key: every key.
-    virtual void board_clear_parameter(std::string_view /*plugin*/, int /*part*/, std::optional<std::uint64_t>) {}
+    virtual void board_clear_parameter(std::string_view /*plugin*/, int /*part*/, std::optional<std::uint64_t>, bool /*preview*/ = false) {}
     // ---- variants: of the plugin's own mod (Engine/Vfs/mod_list.h Variants) -----------------------------
     struct VariantState {
         std::vector<std::string> installed; // its "order" first
@@ -1045,6 +1059,11 @@ public:
     virtual std::string hide_skater(std::string_view /*plugin*/, bool) { return unavailable; }
     // skate.'s bottom left HUD hidden while any plugin asks; false keeps the plugin ready to hide it.
     virtual std::string hud_corner(std::string_view /*plugin*/, bool) { return unavailable; }
+    // A plugin's own line shown in skate.'s score HUD at the bottom left while it sets it again within
+    // 500 ms, display only (it never counts); nullopt clears it. One plugin's line at a time; never in
+    // a multiplayer session, a throwdown or match, a challenge or activity, the replay editor or a
+    // menu, and it yields to skate.'s own line and to a hidden corner (Extension/UI/score_line_hud.h).
+    virtual std::string score_line(std::string_view /*plugin*/, const std::optional<ScoreLine>&) { return unavailable; }
     // The game run at `speed` (0.05 to 1; 1 drops the ask) while it is the slowest asked; never in a
     // multiplayer session. And the speed it runs at for plugins now.
     virtual std::string game_speed(std::string_view /*plugin*/, float) { return unavailable; }
@@ -1072,6 +1091,9 @@ public:
     struct ScreenLook {
         float bend{}, fov{60}, age{};
         bool bars{}, hood{}, grade{}, soft{}, scanlines{}, grain{}, dropouts{}, head_switching{}, tracking{}, smear{}, iris{};
+        // How strongly each of these is drawn while on, 0..1 (strengths = {grade = 0.6, ...}; 1 when not given).
+        float bars_strength{1}, hood_strength{1}, grade_strength{1}, soft_strength{1}, scanlines_strength{1}, grain_strength{1},
+            dropouts_strength{1}, head_switching_strength{1}, smear_strength{1};
         double rolling{-1};
         std::array<std::string, 5> text;
     };
@@ -1097,6 +1119,12 @@ public:
     virtual std::string select_rail_target(std::string_view, std::optional<int>, bool) { return unavailable; }
     struct SkaterFrame { Vec3 position{}, forward{}; bool backwards{}, mirrored{}, fakie{}, basis{}; std::uint64_t serial{}; };
     virtual std::optional<SkaterFrame> skater_frame() { return std::nullopt; }
+    // A read-only snapshot. Missing flags are unknown, not false; the trick remains the base flip.
+    struct FlipState {
+        std::uint32_t trick{};
+        std::optional<bool> underflip_anim, underflip_state, underflip_window;
+    };
+    virtual std::optional<FlipState> flip_state() { return std::nullopt; }
     struct AnimationValue { std::string name; double value{}; bool boolean{}, output{}; };
     virtual std::vector<AnimationValue> animation_values() { return {}; }
     virtual std::string set_animation_value(std::string_view, double) { return unavailable; }

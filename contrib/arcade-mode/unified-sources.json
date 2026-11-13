@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "branch": "arcade-stage-unified-rc5",
-  "milestone": "Casper integration; RC4 remains disabled",
+  "milestone": "Official upstream refresh with Casper; RC4 remains disabled",
   "game_build": 20260929,
   "accepted": false,
   "sources": {
@@ -32,7 +32,7 @@
     "upstream": {
       "repository": "Dingo-Shenanigans/ReSkate",
       "ref": "main",
-      "sha": "95b0a4366a35391d90956ef4e014337f8ae8e7ef",
+      "sha": "355bf71e284ad1c29e32ea81cafdef901d74c513",
       "newer_than_requested": false
     },
     "casper": {
@@ -43,7 +43,7 @@
       "activation": "DINGOSDK_DEV_TOOLS and the unsaved arcadeflatland on command"
     }
   },
-  "fork_main_reference": "919b04e9a5aa708974b8ea7298c61333104d3905",
-  "checkpoint": "RC5 b12327c3 and Casper 2b566b87 remote heads verified before the deliberate fast-forward; preserve all 20 Casper commits without conflicts. No later RC4 or upstream updates.",
+  "fork_main_reference": "355bf71e284ad1c29e32ea81cafdef901d74c513",
+  "checkpoint": "Owner-authorized refresh from official upstream main into preserved RC5 6de06957. Casper source and experimental opt-in retained; no later RC4 merge. New exact-source regression required.",
   "candidate_identity": "candidate.json in the same-run runtime and installer artifacts binds this manifest to the source commit, DLL SHA-256, gameplay fingerprint and compiled feature gate"
 }

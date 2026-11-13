@@ -32,6 +32,7 @@ bool queue_local_park_surface(const EditorSurfaceRequest &);
 // Client-thread read-only picking; never services editor transactions, queued
 // cursor requests, placement restores or native writes. Requires an idle editor.
 std::optional<EditorSurfaceHit> read_local_park_surface(const EditorSurfaceRequest &, std::uint64_t revision);
+bool queue_local_park_ground(const EditorGroundRequest &);
 bool queue_local_park_preview(const EditorPreviewRequest &);
 bool queue_local_park_selection(const EditorSelectionRequest &);
 bool queue_local_park_paste(const EditorPasteRequest &);
@@ -46,6 +47,7 @@ struct WorldPick {
     std::uint64_t entity{};
     std::optional<std::array<float, 12>> pose;
     std::string blueprint;
+    std::uint64_t ecs_owner{}; // Only the native vehicle adapter sees the shape owner's id.
 };
 std::optional<WorldPick> local_world_pick(const std::array<float, 3> &from, const std::array<float, 3> &to);
 // The park editor's picking reader (park_editor_selection.cpp), for a native surface ray cast

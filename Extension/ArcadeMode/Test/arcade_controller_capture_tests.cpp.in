@@ -144,7 +144,19 @@ void reset(){
 void begin(unsigned scope=64,unsigned duration=1000){
     check(activate(scope,duration),"finite diagnostic capture begins");
 }
+void hidden_buttons_at_front(){
+    reset();begin();mode=false;
+    hook::mode_hidden_buttons=0x0008;
+    hook::raw.Gamepad.wButtons=0x0009;
+    hook::XINPUT_STATE out{};
+    check(hook::captured_front<0>(1,&out)==0,"front masking preserves native status");
+    check(out.Gamepad.wButtons==0x0001,"Steam front keeps hidden plugin buttons from the game");
+    const auto rows=drain();
+    check(rows.back().controller.raw.buttons==0x0009 && rows.back().controller.returned.buttons==0x0001,
+          "capture records physical input before masking and the actual returned buttons");
+}
 void hooks_and_off(){
+    hidden_buttons_at_front();
     for(unsigned kind=0;kind<3;++kind){
         reset();begin();hook::XINPUT_STATE out{};
         const auto status=kind==0?hook::captured_front<0>(1,&out):kind==1?hook::captured_xinput<0>(1,&out):hook::captured_xinput<0,true>(1,&out);

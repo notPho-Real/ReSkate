@@ -126,3 +126,25 @@ configuration remain unverified. The displayed inverted board and hooked foot
 use native Manual rigid-body support; this is not physical inverted-tail support
 or a guarantee of mesh clearance for every outfit and frame. No custom native
 scoring or trick-ID acceptance is claimed.
+
+## Official upstream refresh
+
+The owner requested the current official main on November 12, 2026. The source
+pin advances from 95b0a436 to 355bf71e. The existing RC5 checkpoint 6de06957 and
+all Casper authoring, playback, surface resistance and rotation changes remain
+in history. RC4 stays disabled at its previous integration pin.
+
+Resolve the new HUB front page and Trickpedia section collision with distinct
+shared constants. Carry the Arcade switch and Trickpedia link into upstream's
+new SKATER options, retaining native Back and level cleanup. Preserve the
+bounded HID completion ownership while applying upstream plugin button masking
+inside the admitted report handler; keep Steam-front masking before recording
+the returned controller packet. Retain both park surface observation and the
+new editor ground-grid request.
+
+Upstream render-time pose replay is retained alongside the existing custom
+clip and board publication path. Pose placement, PlayStation report, native
+menu, score-line and news tests join the Windows preflight for this checkpoint.
+The previous exact-source native results remain historical. In particular,
+the prior Trickpedia failure is not declared fixed by a successful merge or
+test build: the new menu requires an exclusive native walkthrough.
