@@ -731,3 +731,27 @@ physical pose. This is a bounded adaptation to the native contact-to-air
 transition, not an extension of the planted phase. Exact-source Windows and
 native validation remain required. Foot alignment, clean landing, the complete
 trick chain, negative controls and native combo/scoring remain unverified.
+# Native drive worker ownership correction
+
+The next controlled trial entered the plant but cancelled at 53 ms, before
+release. The entry callback ran on worker 772 and the next ground target ran
+on worker 784. The native drive adapter required every operation to use the
+thread that originally acquired the joint, so it refused that update before
+calling the native target setter. No release or rebound occurred. The video
+shows wall contact followed by descent; this is not gameplay acceptance.
+
+The adapter now binds worker identity to each synchronous operation. An atomic
+guard rejects overlapping or reentrant operations. Each operation still checks
+the active native TLS context, supported client phase, exact client/world/store,
+body and joint generations, and the existing lease. A changed world remains
+quarantined; a partially failed target cannot be retried. Cleanup can run on a
+different qualified physics worker. The caller's existing source transaction
+lock continues to serialize gameplay ownership and target composition.
+
+Production-extracted regressions reproduce the observed worker change and
+exercise invalid TLS, client phase, context, world replacement, reentrancy,
+failed-target quarantine and ordered cleanup. Mutations restoring lifetime
+worker affinity or removing TLS/serialization checks fail these regressions.
+This correction changes no hold duration, target pose, native spring profile,
+collision rule, launch velocity or release lease. Exact Windows compilation and
+a new controlled native trial remain required before acceptance.

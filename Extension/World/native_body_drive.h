@@ -1,5 +1,6 @@
 #pragma once
 #include "Engine/Game/World/body_drive_lease.h"
+#include <atomic>
 #include <cstdint>
 
 namespace dingosdk::body_drive {
@@ -32,6 +33,7 @@ private:
     bool cleanup_known() const noexcept { return !unknown_acquisition_; }
     Lease lease_;
     std::uintptr_t base_{}, client_{};
+    std::atomic_flag busy_=ATOMIC_FLAG_INIT;
     std::uint32_t thread_{};
     bool resolved_{}, unknown_acquisition_{};
     mutable bool world_lost_{};

@@ -49,6 +49,26 @@ bool allocate(Allocate function, std::uintptr_t world, NativeHandle& out) noexce
     __try { return function(world, &out) == &out; }
     __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
+// Physics jobs can move between workers. Bind the thread only while one
+// synchronous operation owns the adapter; capture still verifies that worker's
+// active native context and the lease's exact world on every native access.
+class DriveOperation {
+public:
+    DriveOperation(std::atomic_flag& busy, std::uint32_t& thread) noexcept
+        : busy_(busy), thread_(thread), acquired_(!busy.test_and_set(std::memory_order_acquire)) {
+        if (acquired_) thread_=GetCurrentThreadId();
+    }
+    ~DriveOperation() {
+        if (acquired_) { thread_=0; busy_.clear(std::memory_order_release); }
+    }
+    explicit operator bool() const noexcept { return acquired_; }
+    DriveOperation(const DriveOperation&)=delete;
+    DriveOperation& operator=(const DriveOperation&)=delete;
+private:
+    std::atomic_flag& busy_;
+    std::uint32_t& thread_;
+    bool acquired_;
+};
 }
 bool NativeDrive::resolve() noexcept {
     if (!supported_build::running_image_matches(base_)) return false;
@@ -183,17 +203,23 @@ bool NativeDrive::remove_anchor(World world, NativeHandle& anchor) noexcept {
     return true;
 }
 bool NativeDrive::start(std::uintptr_t base, std::uintptr_t client, NativeHandle body, const Pose& pose) noexcept {
+    DriveOperation operation(busy_,thread_);
+    if (!operation) return false;
     if (lease_.occupied()) return false;
-    base_=base; client_=client; thread_=GetCurrentThreadId(); unknown_acquisition_=false;
+    base_=base; client_=client; unknown_acquisition_=false;
     resolved_=resolve();
     World world;
     return capture(world) && body.world==world.world && lease_.begin(*this,world,body,pose);
 }
 bool NativeDrive::update(NativeHandle body, const Pose& pose) noexcept {
+    DriveOperation operation(busy_,thread_);
+    if (!operation) return false;
     World world;
     return capture(world) && lease_.target(*this,world,body,pose);
 }
 bool NativeDrive::stop() noexcept {
+    DriveOperation operation(busy_,thread_);
+    if (!operation) return false;
     if (!lease_.occupied()) return true;
     World world;
     return capture(world) && lease_.end(*this,world);
