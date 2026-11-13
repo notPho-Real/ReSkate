@@ -777,3 +777,30 @@ changed retained contact, ordinary nonblocking behavior, and the existing
 expired, future, mode-off, authority and native-transition boundaries. This
 fix addresses admission only. It does not establish planted-foot alignment,
 release motion, landing, combo continuity or scoring acceptance.
+
+# Retain the published drive reference across release
+
+The admission correction reached a 166 ms hold and a single release. The first
+observed consumed root velocity was (-2.9373, 12.1786, 3.4601) m/s, compared with
+the requested (-2.2898, 12.7, 4.9940). The next ground target withdrew orientation
+ownership on `release_orientation_reference_changed`; the following native
+observation reported an orientation error of 1.1734 radians against its original
+1.1-radian limit, then state 504. The video confirms a bail. This is rejected
+hardware evidence, not acceptance of the hold or launch.
+
+The pinned ground publisher copies the same composed reference both to the
+live context and to the rig's published motion reference before driving the
+bodies. The handoff now checks the retained rig copy. Admission requires both
+copies to agree; subsequent targets require that retained publication to match
+the release ticket, including revalidation at the write boundary. A different
+native publication still cancels ownership. The live context is measured
+separately so its reuse is not mistaken for replacement of the owned drive.
+This changes observation identity, not the reference tolerance, native pose
+limit, impulse, target position, contact authority or lease duration.
+
+Focused regressions distinguish a reused live context from a replaced drive
+publication and reject replacement during authority validation. Native evidence
+must still confirm that the retained copy survives the original update and that
+the corrected handoff permits an ordinary airborne departure and clean landing.
+The spring-held plant is not a verified freeze; sole contact, subsequent tricks,
+negative controls and native combo/scoring remain acceptance requirements.

@@ -1366,13 +1366,16 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
         source_require(arcade_mode::AirMotion::apply_bodies(release,velocities,spins,bodies.up),"hold_release_velocity");
         source_require(!hold.departure_attempted || (hold.departure_submitted && hold.native_departure),
             "release_native_departure_failed");
-        std::array<float,16> release_reference{};
+        std::array<float,16> release_reference{},published_reference{};
         for(unsigned row=0;row<4;++row) {
             const auto lanes=reader.value<std::array<float,4>>(owner.context,spawn::context_motion_reference+row*16);
             std::copy(lanes.begin(),lanes.end(),release_reference.begin()+row*4);
+            const auto published=reader.value<std::array<float,4>>(owner.rig,spawn::rig_published_motion_reference+row*16);
+            std::copy(published.begin(),published.end(),published_reference.begin()+row*4);
         }
         const auto release_orientation=wallplant_orientation_snapshot(held.native.owner,reader);
         source_require(game::orientation_target::basis_valid(release_reference) &&
+            game::orientation_target::same_basis(release_reference,published_reference) &&
             game::orientation_target::error(release_orientation.actual,release_reference)<=release_orientation.limit,
             "release_orientation_invalid");
         auto trajectory=wallplant_release_trajectory(state.trial.base,owner,held.after,reader,hold.native_departure);
@@ -2858,11 +2861,25 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
             source_require(departure.release.command.input_sequence==held.input_sequence &&
                 departure.release.command.contact==held.contact,"release_orientation_ticket");
             wallplant_release_ground_authority(departure,frame,now,reader);
+            std::array<float,16> live_reference{};
             for(unsigned row=0;row<4;++row) {
-                const auto lanes=reader.value<std::array<float,4>>(held.native.owner.context,
-                    spawn::context_motion_reference+row*16);
+                // The live context is reused between drives. Ownership is of
+                // the last published drive reference, which the native caller
+                // also retains on the rig. A different publisher still ends it.
+                const auto lanes=reader.value<std::array<float,4>>(rig,
+                    spawn::rig_published_motion_reference+row*16);
                 std::copy(lanes.begin(),lanes.end(),preceding.begin()+row*4);
+                const auto live=reader.value<std::array<float,4>>(held.native.owner.context,
+                    spawn::context_motion_reference+row*16);
+                std::copy(live.begin(),live.end(),live_reference.begin()+row*4);
             }
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE WALLPLANT RELEASE REFERENCE: occurrence={} ms={} targets={} published_matches={} live_matches={} expected_forward={},{},{} published_forward={},{},{} live_forward={},{},{} read_only=true.",
+                held.input_sequence,now,departure.orientation_targets,
+                game::orientation_target::same_basis(preceding,departure.orientation_reference),
+                game::orientation_target::same_basis(live_reference,departure.orientation_reference),
+                departure.orientation_reference[8],departure.orientation_reference[9],departure.orientation_reference[10],
+                preceding[8],preceding[9],preceding[10],live_reference[8],live_reference[9],live_reference[10]);
             source_require(game::orientation_target::same_basis(preceding,departure.orientation_reference),
                 "release_orientation_reference_changed");
         }
