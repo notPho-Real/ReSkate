@@ -184,3 +184,5 @@ stances, exits, shoulder rotation, surface slowdown at native 30/60 Hz, and
 cancellation controls. This presentation-only revision needs a new exact-source
 build and native Back/reopen/ON/OFF verification; the prior build is not accepted
 for owner testing. Full foot-contact clearance remains visually unverified.
+
+The Back action now restores only the input reference, navigation command and active flag temporarily held for search, following the native Hub lifecycle. Native action state outside those fields remains owned by the game. A focused regression changes that state while search is open and checks both search close and Arcade OFF. Native validation of this follow-up is pending.

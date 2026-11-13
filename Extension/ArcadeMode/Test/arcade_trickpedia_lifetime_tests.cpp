@@ -65,6 +65,8 @@ struct Context {
         const auto& model=models.at(value.handle);
         if(value.type==2)return reinterpret_cast<Address>(&model.focus);
         if(value.type==3)return reinterpret_cast<Address>(&model.back);
+        if(value.type==7)return reinterpret_cast<Address>(&model.back.input);
+        if(value.type==9)return reinterpret_cast<Address>(&model.back.active);
         if(value.type==4)return reinterpret_cast<Address>(&model.title);
         if(value.type==10)return reinterpret_cast<Address>(&model.content);
         return reinterpret_cast<Address>(&model);
@@ -137,6 +139,23 @@ int main(){
         require(context.models.at(2)==original,"same-session original page not restored");
         require(context.models.size()==2 && !trickpedia_seen.load(),"menu ownership leaked after OFF");
     }
+    // The native action can acquire new state after entry. Closing search or
+    // switching Arcade off may only restore the three fields we actually held.
+    reset();Context actions;
+    update_trickpedia(actions,1000);
+    actions.models.at(2).back.identity=99;
+    back_wanted=true;update_trickpedia(actions,1010);
+    actions.models.at(2).back.identity=100;
+    back_wanted=false;update_trickpedia(actions,1020);
+    require(actions.models.at(2).back.identity==100,
+        "closing search rewound native Back action state");
+    actions.models.at(2).back.identity=101;
+    arcade_mode::on=false;update_trickpedia(actions,1030);
+    require(actions.models.at(2).back.identity==101,
+        "Arcade OFF rewound native Back action state");
+    require(actions.models.at(2).back.navigation==original.back.navigation &&
+        actions.models.at(2).back.input==original.back.input,
+        "Back input or navigation was not restored");
     // Native Back changes the screen's live focus, even while the pause
     // menu remains open. A presentation replacement must never rewind it.
     reset();Context navigation;
