@@ -164,3 +164,23 @@ ON/OFF, search, Back and page-reload checks before candidate acceptance. Initial
 merged-build Casper checks cover goofy entry, flip, direct return, Ollie and a
 legitimate high-balance bail; they do not establish the remaining regression
 matrix or complete foot-contact clearance.
+
+### Preserve the native screen during Trickpedia presentation
+
+The direct page lookup renders in game, and controller search opens and closes.
+Native Back exposed a second ownership defect: publishing the entire donor Page
+overwrites the live screen record, so its focus and transition state can remain
+visible over the parent menu. The interception now publishes only its body and
+title, and restores those fields plus the temporarily held Back action. Native
+screen state is never replaced or rewound during restoration.
+
+The production-body test keeps a nonzero native focus through publication,
+changes it to hidden while the pause menu remains open, and verifies restoration
+does not reacquire that hidden page. Reopening and Arcade OFF retain the latest
+native focus. Allocation and partial-publication failures still unwind.
+
+The merged gameplay source completed 25 bounded Deck cases, including both
+stances, exits, shoulder rotation, surface slowdown at native 30/60 Hz, and
+cancellation controls. This presentation-only revision needs a new exact-source
+build and native Back/reopen/ON/OFF verification; the prior build is not accepted
+for owner testing. Full foot-contact clearance remains visually unverified.

@@ -50,6 +50,8 @@ struct Context {
     }
     Value field(Value value,std::uint32_t key)const {
         if(key==276893451U)return {value.handle,3};
+        if(key==0x716496c8U)return {value.handle,10};
+        if(key==0x3781b603U)return {value.handle,4};
         if(key==0xa2b71c93)return {value.handle,6};
         if(key==0x3d00de27)return {value.handle,7};
         if(key==0xb1e14cd6)return {value.handle,8};
@@ -63,6 +65,8 @@ struct Context {
         const auto& model=models.at(value.handle);
         if(value.type==2)return reinterpret_cast<Address>(&model.focus);
         if(value.type==3)return reinterpret_cast<Address>(&model.back);
+        if(value.type==4)return reinterpret_cast<Address>(&model.title);
+        if(value.type==10)return reinterpret_cast<Address>(&model.content);
         return reinterpret_cast<Address>(&model);
     }
     Value create(Schema,std::uint64_t)const {
@@ -73,6 +77,8 @@ struct Context {
         if(++copies==fail_copy)throw std::runtime_error("injected publication failure");
         auto& model=models.at(target.handle);
         if(target.type==3)model.back=*reinterpret_cast<const Back*>(from);
+        else if(target.type==4)model.title=*reinterpret_cast<const std::string*>(from);
+        else if(target.type==10)model.content=*reinterpret_cast<const std::string*>(from);
         else model=*reinterpret_cast<const Model*>(from);
     }
     void set(Value value,int focus)const{models.at(value.handle).focus=focus;}
@@ -131,7 +137,30 @@ int main(){
         require(context.models.at(2)==original,"same-session original page not restored");
         require(context.models.size()==2 && !trickpedia_seen.load(),"menu ownership leaked after OFF");
     }
-    for(unsigned failure=1;failure<=4;++failure){
+    // Native Back changes the screen's live focus, even while the pause
+    // menu remains open. A presentation replacement must never rewind it.
+    reset();Context navigation;
+    navigation.models.at(2).focus=7;
+    update_trickpedia(navigation,1000);
+    require(navigation.models.at(2).focus==7,"presentation overwrote native screen focus");
+    require(navigation.models.at(2).content=="Overlay shell","overlay body not published");
+    navigation.models.at(2).focus=-1;
+    update_trickpedia(navigation,1010);
+    auto hidden=original;hidden.focus=-1;
+    require(navigation.models.at(2)==hidden && !trickpedia_seen.load(),
+        "Back restored stale native screen state");
+    update_trickpedia(navigation,1300);
+    require(!trickpedia_page.manager && navigation.models.at(2)==hidden,
+        "hidden page was reacquired after Back");
+    navigation.models.at(2).focus=3;
+    update_trickpedia(navigation,1600);
+    require(trickpedia_page.manager && navigation.models.at(2).focus==3,
+        "reopened page lost native focus");
+    navigation.models.at(2).focus=4;arcade_mode::on=false;
+    update_trickpedia(navigation,1610);
+    auto changed=original;changed.focus=4;
+    require(navigation.models.at(2)==changed,"Arcade OFF rewound native screen state");
+    for(unsigned failure=1;failure<=5;++failure){
         reset();Context c;c.fail_copy=failure;
         try{update_trickpedia(c,1000);}catch(const std::runtime_error&){}
         require(c.models.at(2)==original && c.models.size()==2,"partial publication did not unwind");

@@ -16,7 +16,12 @@ bool restore_trickpedia(const Context& c) {
     if(lease.manager!=c.manager) {lease={};return true;}
     // Handles are revalidated before every access; a released screen needs no write.
     if(c.type_of(lease.root.handle)==lease.root.type && c.type_of(lease.target.handle)==lease.target.type)
-        c.copy(lease.target,c.address(lease.saved));
+    {
+        // The screen record belongs to the native navigation owner and can
+        // change while our body is shown. Restore only fields we replaced.
+        for(const auto field:{0x716496c8U,0x3781b603U,276893451U})
+            c.copy(c.field(lease.target,field),c.address(c.field(lease.saved,field)));
+    }
     c.destroy(lease.replacement);c.destroy(lease.saved);lease={};return true;
 }
 void update_trickpedia(const Context& c,std::uint64_t now) {
@@ -64,12 +69,14 @@ void update_trickpedia(const Context& c,std::uint64_t now) {
             saved=c.create(page,0x545249434b534156ULL);
             c.copy(saved,c.address(target));
             replacement=c.create(page,0x545249434b504544ULL);
-            c.copy(replacement,c.address(source.page));
-            c.copy(c.field(replacement,276893451U),c.address(c.field(saved,276893451U)));
+            c.copy(replacement,c.address(target));
+            c.copy(c.field(replacement,0x716496c8U),c.address(c.field(source.page,0x716496c8U)));
             c.text(c.path(replacement,{0x3781b603,text_field}),"ARCADE TRICKPEDIA");
-            c.set(c.path(replacement,{0xfafda1a6,0x20a39d92,0x6b01fd01}),0);
             lease={c.manager,root.model,target,saved,replacement,now,now+250};
-            c.copy(target,c.address(replacement));
+            // Replacing the whole Page overwrites its live screen state and
+            // leaves the overlay visible after native Back. Keep that owner.
+            for(const auto field:{0x716496c8U,0x3781b603U})
+                c.copy(c.field(target,field),c.address(c.field(replacement,field)));
             trickpedia_seen.store(now,std::memory_order_release);
             return;
         } catch(...) {
