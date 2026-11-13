@@ -663,3 +663,36 @@ retirement with a still-valid generation, missing queue acknowledgement, an
 active helper, changed generation and partial native-call failures. The prior
 trial is rejected; hardware hold, foot alignment, outgoing orientation, release,
 full trick chain, negatives and combo/scoring are still unverified.
+
+# Establish the physical turn throughout the owned plant
+
+The corrected-origin trial confirmed that the joint and published board targets
+now agree. It still canceled at 79 ms with an exhausted angular motion budget,
+zero releases and a later bail. Its first target requested a 1.066-radian turn
+after 48 ms without a preceding physical turn target. Later asynchronous body
+observations recorded approximately 43 and 32 radians/second of root and board
+spin. Those observations do not establish an exclusive cause of the failure.
+
+Admission now publishes the first observed native interval of the turn at the
+actual board origin. Later targets sample one fixed shortest arc from the entry
+board orientation to the outgoing orientation over the existing 160 ms plant.
+At the measured 30 Hz cadence and 1.8605-radian requested turn, the first target
+is about 0.3876 radians. Repeated callback times cannot accumulate additional
+turns. The ordinary route retains the collision-checked position adjustment;
+every target still passes the existing native angle limit and observed-motion
+reserve. Solver parameters, collision detection, launch velocity and the hold
+deadline are unchanged. Failure retains ordered joint removal without retries.
+
+This is an explicit articulated-body adaptation: the reference changes heading
+immediately, while this implementation requests that turn over the planted
+phase. The target reaches the exact outgoing basis at 160 ms; that is not proof
+that the physical body has reached it. Actual orientation, foot alignment,
+hold drift, release and clean landing must be measured on the new DLL before
+attempting the trick chain and negative controls. No prior trial is acceptance
+evidence for this change.
+
+Focused tests cover phase endpoints, native step scaling, duplicate callbacks,
+invalid observations and mixed rotation frames. Substituting the old immediate
+turn or an idle admission makes the regressions fail. Host runtime syntax checks
+pass with warnings treated as errors. Windows and native validation remain
+required; the branch is experimental.

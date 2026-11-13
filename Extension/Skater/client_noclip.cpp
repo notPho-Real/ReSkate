@@ -860,6 +860,20 @@ bool wallplant_hold_target_matrix(const arcade_mode::WallplantCommand& command,
     for(unsigned axis=0;axis<3;++axis)target[12+axis]=command.anchor[axis];
     return valid_flight_transform(target);
 }
+// Establish the outgoing reference over the already-owned planted phase.
+// Start with one native step at admission, then sample the same fixed arc by
+// elapsed time. This avoids an idle first step followed by a near-limit jump.
+// The independent native error and motion checks still bound every sample.
+bool wallplant_hold_orientation(const arcade_mode::WallplantCommand& command,
+        const std::array<float,16>& entry,double elapsed_seconds,
+        std::array<float,16>& target) noexcept {
+    const double step=command.native.physics_seconds;
+    const double duration=double(arcade_mode::WallplantHoldContinuity::duration_ms)/1000;
+    if(!std::isfinite(step) || step<=0 || step>.1 ||
+       !std::isfinite(elapsed_seconds) || elapsed_seconds<0)return false;
+    const auto fraction=std::min(1.,std::max(step,elapsed_seconds)/duration);
+    return game::orientation_target::interpolate(entry,target,fraction,target);
+}
 // Air supplies an entity anchor; the ground tail has already composed the
 // articulated board reference. Apply the measured origin offset only once.
 bool wallplant_physical_target(WallplantDriveFrame frame,const std::array<float,16>& entry_entity,
@@ -1181,6 +1195,21 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         arcade_mode::WallplantHoldContinuity admission;
         source_require(admission.begin(command,now),"Wallplant hold origin is invalid.");
         const auto drive_witness=wallplant_drive_witness(owner,reader);
+        const auto entry_orientation=wallplant_orientation_snapshot(input_owner,reader);
+        auto initial_drive=hold_target;
+        source_require(wallplant_hold_orientation(command,drive_witness.matrix,0,initial_drive),
+            "Wallplant initial turn is invalid.");
+        float initial_limit{},initial_travel{};
+        source_require(game::orientation_target::motion_budget(entry_orientation.limit,command.native.physics_seconds,
+            entry_orientation.root_spin,entry_orientation.reference_spin,initial_limit,initial_travel),
+            "Wallplant initial turn has no native motion budget.");
+        game::orientation_target::Result initial_turn;
+        std::array<float,16> initial_bounded{};
+        source_require(game::orientation_target::bound(entry_orientation.actual,initial_drive,initial_limit,
+            initial_bounded,initial_turn),"Wallplant initial turn exceeds the native constraint.");
+        // Establish orientation immediately, at the actual board origin. The
+        // collision-checked position remains owned by the normal target route.
+        for(unsigned axis=0;axis<3;++axis)initial_bounded[12+axis]=drive_witness.matrix[12+axis];
         arcade_mode::AirMotionOutput brake{};brake.ready=brake.vertical=brake.horizontal=true;
         brake.delta_x=-velocities[0][0];brake.delta_z=-velocities[0][2];
         source_require(arcade_mode::AirMotion::apply_bodies(brake,velocities,spins,bodies.up),
@@ -1191,6 +1220,8 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
             "Wall contact changed before hold entry.");
         source_require(wallplant_native_drive().start(owner.base,client,drive_witness.body,
             wallplant_drive_pose(drive_witness.matrix)),"Wallplant physical drive unavailable.");
+        source_require(wallplant_native_drive().update(drive_witness.body,wallplant_drive_pose(initial_bounded)),
+            "Wallplant initial drive target failed.");
         write_arcade_bodies(bodies.parts,velocities,spins,flags,true,false,[]{});
         auto started=GetTickCount64();
         SourceReader written;
@@ -1213,6 +1244,12 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         hold.physical=hold.entry_physical=entry_physical;
         hold.driven_body=drive_witness.body;hold.entry_entity_matrix=bodies.matrix;
         hold.entry_board_matrix=drive_witness.matrix;
+        hold.physical_targets=1;hold.orientation=initial_turn;hold.orientation_limit=entry_orientation.limit;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT INITIAL TURN: occurrence={} ms={} fraction={} applied_error={} native_limit={} physics_seconds={} target_forward={},{},{} physical_integration_verified=false.",
+            command.input_sequence,started,command.native.physics_seconds/(float(arcade_mode::WallplantHoldContinuity::duration_ms)/1000),
+            initial_turn.applied_error,entry_orientation.limit,command.native.physics_seconds,
+            initial_bounded[8],initial_bounded[9],initial_bounded[10]);
         hold.maximum_drift=std::hypot(bodies.root[0]-command.anchor[0],bodies.root[1]-command.anchor[1],bodies.root[2]-command.anchor[2]);
         wallplant_hold_core.store(core,std::memory_order_release);
         wallplant_hold_log(hold,"entry","braked",started,live.state);
@@ -1530,7 +1567,9 @@ bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
         SourceReader reader;std::array<float,16> original{};
         source_require(reader.value<std::uint8_t>(hold.entity,0x7e0)==0 &&
             reader.raw(reinterpret_cast<std::uintptr_t>(supplied),original.data(),sizeof(original)) &&
-            wallplant_hold_target_matrix(hold.command,original,target),"target_transform");
+            wallplant_hold_target_matrix(hold.command,original,target) &&
+            wallplant_hold_orientation(hold.command,hold.entry_board_matrix,double(now-hold.started)/1000,target),
+            "target_transform");
         const auto physical=wallplant_body_observation(bodies,reader);
         reader.verify();NoBailSkater after{};
         source_require(no_bail_skater(after) && after==owner,"target_owner");

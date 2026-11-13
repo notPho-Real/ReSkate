@@ -93,6 +93,25 @@ inline Matrix rotation(Quaternion q) noexcept {
     m[8]=float(2*(x*z+y*w));m[9]=float(2*(y*z-x*w));m[10]=float(1-2*(x*x+y*y));
     return m;
 }
+// Sample a fixed shortest rotation arc. The caller supplies its existing phase
+// duration; sampling never accumulates another turn from an earlier target.
+inline bool interpolate(const Matrix& from,const Matrix& to,double fraction,Matrix& out) noexcept {
+    if(!basis_valid(from) || !basis_valid(to) || !std::isfinite(fraction) || fraction<0 || fraction>1)return false;
+    if(fraction==1) {out=to;return true;}
+    const auto q=quaternion(compose_basis(inverse_basis(from),to));
+    const double half=std::acos(std::clamp(q[3],0.,1.));
+    const double sine=std::sin(half);
+    Matrix result=to;
+    auto basis=from;
+    if(sine>0) {
+        const double scale=std::sin(half*fraction)/sine;
+        basis=compose_basis(from,rotation({q[0]*scale,q[1]*scale,q[2]*scale,std::cos(half*fraction)}));
+    }
+    for(unsigned row=0;row<3;++row)for(unsigned axis=0;axis<3;++axis)
+        result[4*row+axis]=basis[4*row+axis];
+    if(!basis_valid(result))return false;
+    out=result;return true;
+}
 struct Result {float requested_error{},applied_error{},fraction{};};
 // Closest point on the shortest rotation arc satisfying the supplied native
 // per-axis constraint. This neither moves a body nor changes the constraint.

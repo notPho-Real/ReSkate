@@ -325,6 +325,60 @@ void run(){
    for(unsigned r=0;r<3;++r)for(unsigned k=0;k<3;++k)
     check(std::abs(roundtrip[4*r+k]-wanted[4*r+k])<.000001,"quaternion conversion preserves composed row rotations");
   }
+  {
+   arcade_mode::WallplantCommand phase{};phase.native.physics_seconds=1.f/30;
+   const auto tilted=orientation::compose_basis(axis_rotation(0,.7),axis_rotation(2,-.4));
+   for(unsigned axis=0;axis<3;++axis)for(double angle:{-.9,0.,3.141592653589793}) {
+    auto finish=orientation::compose_basis(tilted,axis_rotation(axis,angle));
+    finish[12]=17;finish[13]=-4;finish[14]=8;
+    auto midpoint=finish;
+    check(orientation::interpolate(tilted,finish,.5,midpoint),"tilted and half-turn arcs remain valid");
+    const auto expected=orientation::compose_basis(tilted,axis_rotation(axis,angle*.5));
+    // At exactly pi either direction is the same shortest arc; its midpoint
+    // must still be a quarter turn from both endpoints.
+    if(angle<3)for(unsigned r=0;r<3;++r)for(unsigned k=0;k<3;++k)
+     check(std::abs(midpoint[4*r+k]-expected[4*r+k])<.000001,"interpolation preserves noncommuting frame order");
+    else check(std::abs(orientation::error(tilted,midpoint)-orientation::error(midpoint,finish))<.000001,
+               "half-turn midpoint is equidistant from its endpoints");
+   }
+   const auto entry=axis_rotation(0,0);
+   auto desired=axis_rotation(1,1.8604757);desired[12]=128.85f;desired[13]=1.60f;desired[14]=-135.66f;
+   auto initial=desired;
+   check(wallplant_hold_orientation(phase,entry,0,initial),"entry publishes the first native step of the fixed plant turn");
+   check(orientation::error(entry,initial)>.38f&&orientation::error(entry,initial)<.39f,
+         "entry avoids the recorded 1.066-radian first-step target jump");
+   auto first_callback=desired;
+   check(wallplant_hold_orientation(phase,entry,.048,first_callback)&&
+         orientation::error(initial,first_callback)<.18f,"48 ms callback advances the entry turn instead of starting from rest");
+   for(double elapsed:{0.,.016,.033,.048,.080,.120,.160,.193}) {
+    auto sampled=desired;
+    check(wallplant_hold_orientation(phase,entry,elapsed,sampled),"owned phase samples a fixed outgoing arc");
+    const double fraction=std::min(1.,std::max(double(phase.native.physics_seconds),elapsed)/.160);
+    check(std::abs(std::atan2(sampled[8],sampled[10])-1.8604757*fraction)<.000001,
+          "independent heading formula matches elapsed phase without accumulated turns");
+    check(sampled[12]==desired[12]&&sampled[13]==desired[13]&&sampled[14]==desired[14],
+          "orientation sampling preserves the collision-checked anchor");
+   }
+   auto released=desired;
+   check(wallplant_hold_orientation(phase,entry,.160,released)&&released==desired,
+         "the existing 160 ms endpoint requests the exact outgoing basis");
+   auto duplicate=desired;
+   check(wallplant_hold_orientation(phase,entry,.048,duplicate)&&duplicate==first_callback,
+         "duplicate callback time cannot advance the turn twice");
+   phase.native.physics_seconds=1.f/60;
+   auto sixty=desired;
+   check(wallplant_hold_orientation(phase,entry,0,sixty)&&
+         std::abs(orientation::error(entry,sixty)*2-orientation::error(entry,initial))<.000001,
+         "initial turn uses the observed native interval rather than a frame-count constant");
+   for(unsigned fault=0;fault<6;++fault) {
+    auto bad_entry=entry;auto bad=phase;double elapsed=.048;auto output=desired;
+    switch(fault){case 0:bad.native.physics_seconds=0;break;case 1:bad.native.physics_seconds=NAN;break;
+     case 2:bad.native.physics_seconds=.2f;break;case 3:elapsed=-1;break;case 4:elapsed=INFINITY;break;
+     case 5:bad_entry[0]=-1;break;}
+    check(!wallplant_hold_orientation(bad,bad_entry,elapsed,output)&&output==desired,
+          "invalid phase or entry frame refuses the target without publication");
+   }
+  }
   const auto actual=axis_rotation(1,0);
   {
    float available{},travel{};
