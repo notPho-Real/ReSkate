@@ -13,10 +13,10 @@ namespace {
 namespace addr=game::build::v20260929;
 namespace r=addr::rigid_bodies;
 namespace c=addr::remote_collision;
-constexpr std::uintptr_t base=0x100000000,client=0x20000,tls_table=0x30000,tls=0x40000;
+constexpr std::uintptr_t fixture_base=0x100000000,fixture_client=0x20000,tls_table=0x30000,fixture_tls=0x40000;
 constexpr World live{0x50000,0x60000,0x70000};
 constexpr NativeHandle driven{live.world,8,31},anchor{live.world,9,41},joint{live.world,10,51};
-constexpr Pose pose{0,0,0,1,1,2,3,1};
+constexpr Pose fixture_pose{0,0,0,1,1,2,3,1};
 std::map<std::uintptr_t,std::vector<unsigned char>> bytes;
 std::uint32_t worker=772;
 unsigned targets{},removals{},allocations{};
@@ -40,7 +40,7 @@ std::uint32_t GetCurrentThreadId(){return worker;}
 std::uint64_t __readgsqword(unsigned offset){require(offset==0x58,"wrong TLS slot");return tls_table;}
 using GetWorld=std::uintptr_t (*)(std::uintptr_t);
 bool native_world(GetWorld fn,std::uintptr_t context,std::uintptr_t& world) {
-    require(reinterpret_cast<std::uintptr_t>(fn)==base+c::physics_world.rva&&context==live.context,"wrong world lookup");
+    require(reinterpret_cast<std::uintptr_t>(fn)==fixture_base+c::physics_world.rva&&context==live.context,"wrong world lookup");
     world=observed.world;return world_available;
 }
 @native_drive_operation@
@@ -49,7 +49,7 @@ bool native_world(GetWorld fn,std::uintptr_t context,std::uintptr_t& world) {
 @native_drive_execution@
 
 bool NativeDrive::resolve() noexcept{return true;}
-bool NativeDrive::valid_pose(const Pose& value)const noexcept{return value==pose;}
+bool NativeDrive::valid_pose(const Pose& value)const noexcept{return value==fixture_pose;}
 bool NativeDrive::body_valid(NativeHandle h)const noexcept{return current(live)&&(h==driven||h==anchor);}
 bool NativeDrive::joint_valid(NativeHandle h)const noexcept{return current(live)&&h==joint;}
 bool NativeDrive::create_anchor(World w,const Pose&,NativeHandle& out)noexcept {
@@ -60,8 +60,8 @@ bool NativeDrive::create_joint(World w,NativeHandle b,NativeHandle a,NativeHandl
 }
 bool NativeDrive::enable(NativeHandle h)noexcept{return h==joint;}
 bool NativeDrive::target(NativeHandle h,const Pose& value)noexcept {
-    require(h==anchor&&value==pose,"target must use exact owned helper");++targets;
-    if(recurse){recurse=false;nested_result=adapter->update(driven,pose);}
+    require(h==anchor&&value==fixture_pose,"target must use exact owned helper");++targets;
+    if(recurse){recurse=false;nested_result=adapter->update(driven,fixture_pose);}
     return !fail_target;
 }
 bool NativeDrive::remove_joint(World w,NativeHandle& h)noexcept {
@@ -73,47 +73,47 @@ bool NativeDrive::remove_anchor(World w,NativeHandle& h)noexcept {
 void reset() {
     bytes.clear();targets=removals=allocations=0;worker=772;observed=live;
     recurse=nested_result=fail_target=false;world_available=true;
-    put(client,base+addr::engine::client_vtable);put(client+r::client_context,live.context);
-    put(client+r::client_phase,std::uint32_t{13});put(base+addr::engine::tls_index,std::uint32_t{2});
-    put(tls_table+2*sizeof(std::uintptr_t),tls);put(tls+r::tls_active,std::uint8_t{1});
-    put(tls+r::tls_context,live.context);put(live.world+addr::physics_bodies::store_offset,live.state);
+    put(fixture_client,fixture_base+addr::engine::client_vtable);put(fixture_client+r::client_context,live.context);
+    put(fixture_client+r::client_phase,std::uint32_t{13});put(fixture_base+addr::engine::tls_index,std::uint32_t{2});
+    put(tls_table+2*sizeof(std::uintptr_t),fixture_tls);put(fixture_tls+r::tls_active,std::uint8_t{1});
+    put(fixture_tls+r::tls_context,live.context);put(live.world+addr::physics_bodies::store_offset,live.state);
 }
 void run() {
     reset();NativeDrive drive;adapter=&drive;
-    require(drive.start(base,client,driven,pose),"first worker must acquire lease");
+    require(drive.start(fixture_base,fixture_client,driven,fixture_pose),"first worker must acquire lease");
     worker=784;
-    require(drive.update(driven,pose)&&targets==1,"next qualified physics worker must update the existing lease");
+    require(drive.update(driven,fixture_pose)&&targets==1,"next qualified physics worker must update the existing lease");
     recurse=true;
-    require(drive.update(driven,pose)&&!nested_result&&targets==2,"overlapping operation must be refused before native target");
+    require(drive.update(driven,fixture_pose)&&!nested_result&&targets==2,"overlapping operation must be refused before native target");
     for(unsigned fault=0;fault<8;++fault){
         reset();adapter=&drive;worker=800+fault;
         switch(fault){
-            case 0:put(tls+r::tls_active,std::uint8_t{0});break;
-            case 1:put(tls+r::tls_context,std::uintptr_t{0x90000});break;
-            case 2:put(client+r::client_phase,std::uint32_t{12});break;
-            case 3:put(client,base+addr::engine::client_vtable+8);break;
-            case 4:put(base+addr::engine::tls_index,std::uint32_t{4096});break;
+            case 0:put(fixture_tls+r::tls_active,std::uint8_t{0});break;
+            case 1:put(fixture_tls+r::tls_context,std::uintptr_t{0x90000});break;
+            case 2:put(fixture_client+r::client_phase,std::uint32_t{12});break;
+            case 3:put(fixture_client,fixture_base+addr::engine::client_vtable+8);break;
+            case 4:put(fixture_base+addr::engine::tls_index,std::uint32_t{4096});break;
             case 5:bytes.erase(tls_table+2*sizeof(std::uintptr_t));break;
             case 6:world_available=false;break;
             case 7:put(live.world+addr::physics_bodies::store_offset,std::uintptr_t{0});break;
         }
-        require(!drive.update(driven,pose)&&targets==0,"unqualified worker must make no target call");
+        require(!drive.update(driven,fixture_pose)&&targets==0,"unqualified worker must make no target call");
         require(!drive.stop()&&removals==0,"unqualified worker must make no cleanup call");
     }
     reset();worker=900;
     require(drive.stop()&&removals==2&&!drive.occupied(),"qualified replacement worker must clean up in order");
     reset();NativeDrive migrated;adapter=&migrated;
-    require(migrated.start(base,client,driven,pose),"acquire before world replacement");
+    require(migrated.start(fixture_base,fixture_client,driven,fixture_pose),"acquire before world replacement");
     observed.world=0x80000;put(observed.world+addr::physics_bodies::store_offset,live.state);
-    require(!migrated.update(driven,pose)&&targets==0&&migrated.uncertain(),"world replacement must quarantine old lease");
+    require(!migrated.update(driven,fixture_pose)&&targets==0&&migrated.uncertain(),"world replacement must quarantine old lease");
     observed=live;
     require(!migrated.stop()&&removals==0,"recycled old world must not restore authority");
     reset();NativeDrive failed;adapter=&failed;
-    require(failed.start(base,client,driven,pose),"acquire before target failure");
+    require(failed.start(fixture_base,fixture_client,driven,fixture_pose),"acquire before target failure");
     worker=784;fail_target=true;
-    require(!failed.update(driven,pose)&&targets==1,"native target failure must propagate");
+    require(!failed.update(driven,fixture_pose)&&targets==1,"native target failure must propagate");
     fail_target=false;
-    require(!failed.update(driven,pose)&&targets==1,"uncertain target must not be retried");
+    require(!failed.update(driven,fixture_pose)&&targets==1,"uncertain target must not be retried");
     worker=900;
     require(failed.stop()&&removals==2,"uncertain lease must permit ordered cleanup by qualified worker");
     std::cout<<"native drive worker migration, serialization and TLS/world regressions passed\n";
