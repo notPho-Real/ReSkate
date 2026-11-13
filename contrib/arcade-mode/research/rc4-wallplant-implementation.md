@@ -636,3 +636,30 @@ required. Measure the physical board and rig throughout the hold, removal,
 release and landing; also test cancellation and Arcade Mode OFF restoration.
 The full trick chain, genuine no-A contact, repeated-A rejection, and native
 combo/scoring evidence remain outstanding. The branch remains experimental.
+
+# Preserve the composed board origin and acknowledge deferred retirement
+
+The first temporary-drive trial entered one real contact hold, sent one joint
+target, then canceled after 81 ms because the angular motion budget was
+exhausted. It never released, and the skater subsequently bailed. The recorded
+joint target was 0.4535 m below the native composed board reference: the ground
+route had already included the articulated offset, and the adapter added the
+entity-to-board offset a second time. Ground and air now identify their target
+frames explicitly. Ground uses the composed board reference unchanged; air
+converts its entity anchor once. The native angular limit and motion reserve
+remain unchanged. This corrects a demonstrated target error, without claiming
+it was the only cause of the observed angular motion.
+
+Cleanup also incorrectly demanded immediate body-generation invalidation after
+native release. That operation disables the body and queues its index for
+retirement; the generation remains valid until the queue drains. Cleanup now
+verifies the same generation, disabled bit and queued retirement before
+relinquishing the owned helper. The joint still detaches first. Failed calls,
+unreadable receipts and generation changes remain quarantined with no retry.
+
+Focused regressions compose the production ground wrapper and actual native
+cleanup methods. They cover the already-translated board reference, deferred
+retirement with a still-valid generation, missing queue acknowledgement, an
+active helper, changed generation and partial native-call failures. The prior
+trial is rejected; hardware hold, foot alignment, outgoing orientation, release,
+full trick chain, negatives and combo/scoring are still unverified.

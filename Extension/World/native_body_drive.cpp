@@ -153,18 +153,32 @@ bool NativeDrive::target(NativeHandle anchor, const Pose& pose) noexcept {
 }
 bool NativeDrive::remove_joint(World world, NativeHandle& joint) noexcept {
     if (!current(world) || joint.world != world.world) return false;
-    if (!joint_valid(joint)) { joint = {}; return true; }
+    if (!joint_valid(joint)) return false;
     // Native wrapper disables, releases, and clears this exact generated handle.
     return call(reinterpret_cast<Remove>(base_ + d::release_joint.rva), world.world, &joint) &&
         !joint.world && joint.index == 0xffffffffU && current(world);
 }
 bool NativeDrive::remove_anchor(World world, NativeHandle& anchor) noexcept {
-    if (!current(world) || anchor.world != world.world) return false;
-    if (!body_valid(anchor)) { anchor = {}; return true; }
+    if (!current(world) || anchor.world != world.world || !body_valid(anchor)) return false;
     const auto released = anchor;
     if (!call(reinterpret_cast<Touch>(base_ + d::disable_body.rva), &anchor) ||
         !call(reinterpret_cast<Remove>(base_ + d::release_body.rva), world.world, &anchor)) return false;
-    if (!current(world) || body_valid(released)) return false;
+    // Release is deferred: validity can remain true until the native retirement
+    // queue drains. Verify the exact disabled, queued generation instead of
+    // interpreting that expected validity as a failed release (or retrying it).
+    std::uintptr_t active{}, queued{}, generations{};
+    std::uint8_t active_bits{}, queued_bits{};
+    std::uint32_t generation{};
+    const auto byte = std::uintptr_t{released.index >> 3};
+    const auto bit = 1U << (released.index & 7U);
+    if (!current(world) || anchor != released ||
+        !memory::peek(world.state + d::body_active_bits, active) || !pointer(active) ||
+        !memory::peek(world.world + d::body_retirement_bits, queued) || !pointer(queued) ||
+        !memory::peek(world.world + r::world_body_generations, generations) || !pointer(generations) ||
+        !memory::peek(active + byte, active_bits) || (active_bits & bit) ||
+        !memory::peek(queued + byte, queued_bits) || !(queued_bits & bit) ||
+        !memory::peek(generations + std::uintptr_t{released.index} * sizeof(generation), generation) ||
+        generation != released.generation || !current(world)) return false;
     anchor = {};
     return true;
 }

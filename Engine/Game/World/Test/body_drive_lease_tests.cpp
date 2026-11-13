@@ -30,7 +30,9 @@ struct Backend {
     bool remove_anchor(World,NativeHandle& h) { require(h.index==20,"released borrowed body");calls.push_back("remove_anchor");h={};return true; }
 };
 }
+void run_native_drive_cleanup_tests();
 int main() {
+    run_native_drive_cleanup_tests();
     {
         Backend b;Lease lease;
         require(lease.begin(b,world,body,pose),"begin failed");

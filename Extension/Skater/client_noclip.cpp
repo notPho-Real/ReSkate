@@ -793,16 +793,17 @@ body_drive::Pose wallplant_drive_pose(const std::array<float,16>& matrix) {
     const auto q=game::orientation_target::quaternion(matrix);
     return {float(q[0]),float(q[1]),float(q[2]),float(q[3]),matrix[12],matrix[13],matrix[14],1};
 }
-bool wallplant_physical_target(const std::array<float,16>& entry_entity,
+enum class WallplantDriveFrame { entity, board };
+bool wallplant_physical_target(WallplantDriveFrame frame,const std::array<float,16>& entry_entity,
     const std::array<float,16>& entry_board,const std::array<float,16>& reference,
     std::array<float,16>& target) noexcept;
-void wallplant_update_physical_drive(const std::array<float,16>& reference,SourceReader& reader) {
+void wallplant_update_physical_drive(WallplantDriveFrame frame,const std::array<float,16>& reference,SourceReader& reader) {
     auto& hold=wallplant_physical_hold();
     source_require(hold.command && wallplant_native_drive().active(),"drive_hold_inactive");
     const auto witness=wallplant_drive_witness(hold.owner,reader);
     source_require(witness.body==hold.driven_body,"drive_body_changed");
     std::array<float,16> target{};
-    source_require(wallplant_physical_target(hold.entry_entity_matrix,hold.entry_board_matrix,reference,target),
+    source_require(wallplant_physical_target(frame,hold.entry_entity_matrix,hold.entry_board_matrix,reference,target),
         "drive_reference_frame");
     reader.verify();
     source_require(wallplant_native_drive().update(witness.body,wallplant_drive_pose(target)),"drive_target_failed");
@@ -859,14 +860,15 @@ bool wallplant_hold_target_matrix(const arcade_mode::WallplantCommand& command,
     for(unsigned axis=0;axis<3;++axis)target[12+axis]=command.anchor[axis];
     return valid_flight_transform(target);
 }
-// The published reference belongs to the entity, not the physical deck.
-// Carry the measured board-origin offset through that reference so a joint
-// does not drag the deck origin into the entity's origin during the plant.
-bool wallplant_physical_target(const std::array<float,16>& entry_entity,
+// Air supplies an entity anchor; the ground tail has already composed the
+// articulated board reference. Apply the measured origin offset only once.
+bool wallplant_physical_target(WallplantDriveFrame frame,const std::array<float,16>& entry_entity,
         const std::array<float,16>& entry_board,const std::array<float,16>& reference,
         std::array<float,16>& target) noexcept {
     for(const auto& matrix:{entry_entity,entry_board,reference})
         if(!valid_flight_transform(matrix))return false;
+    if(frame==WallplantDriveFrame::board) { target=reference;return true; }
+    if(frame!=WallplantDriveFrame::entity)return false;
     std::array<float,3> local{};
     for(unsigned row=0;row<3;++row)for(unsigned axis=0;axis<3;++axis)
         local[row]+=(entry_board[12+axis]-entry_entity[12+axis])*entry_entity[row*4+axis];
@@ -1549,7 +1551,7 @@ bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
             source_require(game::orientation_target::bound(orientation.actual,target,available,bounded,report),
                 "air_drive_orientation");
             target=bounded;
-            wallplant_update_physical_drive(target,reader);
+            wallplant_update_physical_drive(WallplantDriveFrame::entity,target,reader);
         }
         hold.last_root=bodies.root;
         hold.physical=physical;
@@ -2869,7 +2871,7 @@ void wallplant_prepare_board_drive(std::uintptr_t rig,std::uintptr_t caller) noe
         }
         source_require(source_writable(rig+spawn::rig_board_drive_target,sizeof(replacement)),"board_drive_writable");
         reader.verify();
-        wallplant_update_physical_drive(reference,reader);
+        wallplant_update_physical_drive(WallplantDriveFrame::board,reference,reader);
         if(!copy_to(rig+spawn::rig_board_drive_target,replacement.data(),sizeof(replacement)) ||
            !reader.raw(rig+spawn::rig_board_drive_target,check.data(),sizeof(check)) || check!=replacement) {
             source_require(copy_to(rig+spawn::rig_board_drive_target,supplied.data(),sizeof(supplied)) &&

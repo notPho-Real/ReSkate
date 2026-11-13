@@ -81,6 +81,7 @@ void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
  if(release_hold){wallplant_hold_core.store(0);++hold_releases;event("hold_release",core);}
 }
 @wallplant_wrapper_transform_validation@
+enum class WallplantDriveFrame { entity, board };
 @wallplant_wrapper_target@
 std::uint64_t apply_arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept {
  event("prepare",selector);
@@ -622,9 +623,10 @@ void wallplant_read_current_intent(arcade_mode::AirMotionIntent&,std::uint64_t&,
 }
 unsigned physical_drive_updates{};
 bool fail_physical_drive{};
-void wallplant_update_physical_drive(const std::array<float,16>& reference,SourceReader& reader){
+void wallplant_update_physical_drive(WallplantDriveFrame frame,const std::array<float,16>& reference,SourceReader& reader){
  reader.verify();
  check(copies==0,"physical drive validates watched native target before legacy target mutation");
+ check(frame==WallplantDriveFrame::board,"ground reference has already been composed into the board frame");
  check(reference==published_reference,"physical drive uses the same published bounded reference");
  source_require(!fail_physical_drive,"drive_target_failed");
  ++physical_drive_updates;
@@ -712,13 +714,18 @@ void run(){
   const std::array<float,16> reference{-1,0,0,0, 0,1,0,0, 0,0,-1,0, 100,200,300,1};
   auto expected=reference;expected[12]=99;expected[13]=198;expected[14]=297;
   std::array<float,16> target{};
-  check(wallplant_physical_target(entity,board,reference,target)&&target==expected,
+  check(wallplant_physical_target(WallplantDriveFrame::entity,entity,board,reference,target)&&target==expected,
         "physical anchor carries measured board offset across distinct entry and outgoing frames");
+  check(wallplant_physical_target(WallplantDriveFrame::board,entity,board,reference,target)&&target==reference,
+        "composed board reference is not shifted by the entity offset a second time");
+  const auto unchanged=target;
+  check(!wallplant_physical_target(static_cast<WallplantDriveFrame>(255),entity,board,reference,target)&&target==unchanged,
+        "unknown frame cannot publish a physical target");
   for(unsigned source=0;source<3;++source){
    auto a=entity,b=board,c=reference;
    (source==0?a:source==1?b:c)[12]=std::numeric_limits<float>::quiet_NaN();
    const auto before=target;
-   check(!wallplant_physical_target(a,b,c,target)&&target==before,
+   check(!wallplant_physical_target(WallplantDriveFrame::entity,a,b,c,target)&&target==before,
          "invalid physical reference is rejected without publishing a partial target");
   }
  }
