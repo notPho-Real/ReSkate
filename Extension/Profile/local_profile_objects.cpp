@@ -26,6 +26,8 @@
 #include "Engine/Game/Build/20260929/remote_collision.h"
 #include "Engine/Game/Build/20260929/world_layers.h"
 #include "Extension/World/local_world_layers.h"
+#include "Engine/Game/World/physics_query_context.h"
+#include <intrin.h>
 
 namespace dingosdk {
 using namespace profile_runtime;
@@ -298,9 +300,14 @@ bool surface_callback_current_impl(void* user,const SurfaceGeometryContext& cont
    const auto now=GetTickCount64();const auto gate=surface_client_gate;
    if(gate.client!=c.client||gate.base!=context.owner[0]||gate.context!=context.client_context||
       now<gate.sampled_at||now-gate.sampled_at>InputTiming::native_sample_lease_ms)return false;
+   c.failure="collision_worker_context";
+   if(!physics_query_context::current(context.owner[0],c.client,
+       static_cast<std::uintptr_t>(__readgsqword(0x58)),context.client_context,context.world,
+       []<class T>(std::uintptr_t address,T& value){return memory::read(address,value);}))return false;
   }
   if(!c.entered||!c.native_lock.owns_lock()||!c.world_lock.owns_lock()||c.thread!=GetCurrentThreadId()||
-     cosmetic_runtime().update_thread!=c.thread||!local.active||local.base!=context.owner[0]||context!=c.context||
+     (context.phase!=SurfaceGeometryPhase::collision_response&&cosmetic_runtime().update_thread!=c.thread)||
+     !local.active||local.base!=context.owner[0]||context!=c.context||
      world.root_generation!=context.world_generation||!world.model.ready||
      std::none_of(world.nodes.begin(),world.nodes.end(),[&](const auto& node){return node.second.generation==context.world_generation&&node.second.context==world.context;})||
      !editor.surface_api.ready||!editor.picking_api.ready||editor.surface_api.world!=c.surface.world||editor.surface_api.ray!=c.surface.ray||
@@ -357,10 +364,11 @@ static void update_arcade_surface_geometry(std::uintptr_t client,bool collision_
   auto& local=local_runtime();std::unique_lock native(local.native_mutex,std::defer_lock);
   auto& world=world_layers_runtime();std::unique_lock lifetime(world.lifetime_mutex,std::defer_lock);
   // The collision path never waits for another thread's lifetime locks.
-  // Queries remain on the verified client update thread and exact predicate scope.
+  // Its exact predicate scope and calling worker's TLS are checked before queries.
   if(collision_response){if(!native.try_lock()||!lifetime.try_lock()){note(15,"collision_query_busy");return;}}
   else {native.lock();lifetime.lock();}
-  if(!local.active||cosmetic_runtime().update_thread!=GetCurrentThreadId()||!world.model.ready||!world.root_generation){note(2,"local_world_guard");return;}
+  if(!local.active||(!collision_response&&cosmetic_runtime().update_thread!=GetCurrentThreadId())||
+     !world.model.ready||!world.root_generation){note(2,"local_world_guard");return;}
   if(collision_response){
    const auto now=GetTickCount64();const auto gate=surface_client_gate;
    if(!probe.contact||!gate.client||gate.base!=local.base||now<gate.sampled_at||
@@ -380,6 +388,7 @@ static void update_arcade_surface_geometry(std::uintptr_t client,bool collision_
   if(!frame.valid){note(probe.contact?14u:3u,frame_reason);return;}
   if(admission.wallplant_only)note(13,"retained_frame_acquired");
   if(!no_bail_skater(owner)||frame.owner!=NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig}||owner.base!=local.base){note(4,"native_owner");return;}
+  if(collision_response&&!native_wall_contact::collision_current(probe.raw,owner)){note(17,"collision_scope");return;}
   static std::uintptr_t validated_base{};static bool self_ready{};
   if(validated_base!=local.base){
    validated_base=local.base;self_ready=std::all_of(surface_self_contracts.begin(),surface_self_contracts.end(),[&](const auto& contract){
@@ -390,8 +399,11 @@ static void update_arcade_surface_geometry(std::uintptr_t client,bool collision_
   if(!self_ready||!placements.context||!editor.surface_api.ready||!editor.picking_api.ready){note(5,"contracts_api");return;}
   placements.context(context.data());
   if(!context[0]||!memory::read(client+8,actual)||actual!=context[0]){note(6,"client_context");return;}
-  SurfaceSelf self;if(!read_surface_self(context[0],owner,self)){note(7,"native_self");return;}
   const auto physics_world=editor.surface_api.world(context[0]);if(!physics_world){note(8,"physics_world");return;}
+  if(collision_response&&!physics_query_context::current(local.base,client,
+      static_cast<std::uintptr_t>(__readgsqword(0x58)),context[0],physics_world,
+      []<class T>(std::uintptr_t address,T& value){return memory::read(address,value);})){note(18,"collision_worker_context");return;}
+  SurfaceSelf self;if(!read_surface_self(context[0],owner,self)){note(7,"native_self");return;}
   SurfaceGeometryContext origin{{owner.base,owner.entity,owner.core,owner.context,owner.rig},InputNativeContext::from_frame(frame),
    context[0],physics_world,world.root_generation,self.entity,frame.owner_generation,
    collision_response?SurfaceGeometryPhase::collision_response:SurfaceGeometryPhase::client};

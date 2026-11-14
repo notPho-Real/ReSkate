@@ -1,5 +1,6 @@
 #include "Extension/ArcadeMode/arcade_surface_geometry_native.h"
 #include "Engine/Game/World/physics_component_owner.h"
+#include "Engine/Game/World/physics_query_context.h"
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -16,6 +17,65 @@ unsigned checks{};
 void check(bool value, const char* message) {
     ++checks;
     if (!value) { std::cerr << message << '\n'; std::exit(1); }
+}
+void physics_query_context_checks() {
+    namespace e=game::build::v20260929::engine;
+    namespace r=game::build::v20260929::rigid_bodies;
+    namespace q=game::build::v20260929::park_editor;
+    constexpr std::uintptr_t base=0x140000000,client=0x100000,context=0x200000,
+        world=0x300000,tls_table=0x400000,tls=0x500000;
+    std::map<std::uintptr_t,std::vector<unsigned char>> memory;
+    const auto put=[&]<class T>(std::uintptr_t address,T value) {
+        auto& bytes=memory[address];bytes.resize(sizeof(T));std::memcpy(bytes.data(),&value,sizeof(T));
+    };
+    put(client,base+e::client_vtable);put(client+r::client_context,context);
+    put(client+r::client_phase,std::uint32_t{13});put(base+e::tls_index,std::uint32_t{2});
+    put(tls_table+2*sizeof(std::uintptr_t),tls);put(tls+r::tls_active,std::uint8_t{1});
+    put(tls+r::tls_context,context);put(world+q::query_readers,q::query_reader_limit);
+    put(world+q::query_secondary_readers,q::query_reader_limit);
+    const auto baseline=memory;
+    unsigned reads{},change_at{};
+    const auto read=[&]<class T>(std::uintptr_t address,T& value) {
+        if(++reads==change_at)put(tls+r::tls_context,context+0x10000);
+        const auto it=memory.find(address);
+        if(it==memory.end()||it->second.size()!=sizeof(T))return false;
+        std::memcpy(&value,it->second.data(),sizeof(T));return true;
+    };
+    const auto valid=[&] {return physics_query_context::current(base,client,tls_table,context,world,read);};
+    check(valid(),"current physics worker qualifies without customization-thread affinity");
+    for(const auto& [address,bytes]:baseline) {
+        (void)bytes;memory=baseline;memory.erase(address);
+        check(!valid(),"every worker context and query lock observation must be readable");
+    }
+    memory=baseline;put(client+r::client_phase,std::uint32_t{21});
+    check(valid(),"both supported native physics phases qualify");
+    for(auto phase:{0u,12u,14u,20u,22u}) {
+        memory=baseline;put(client+r::client_phase,phase);
+        check(!valid(),"other native phases cannot query from collision callback");
+    }
+    for(auto offset:{q::query_readers,q::query_secondary_readers}) {
+        for(auto value:{0u,q::query_reader_limit+1,UINT32_MAX}) {
+            memory=baseline;put(world+offset,value);
+            check(!valid(),"writer-owned query world rejects before native call");
+        }
+        memory=baseline;put(world+offset,std::uint32_t{1});
+        check(valid(),"last native reader slot is valid");
+    }
+    memory=baseline;put(tls+r::tls_active,std::uint8_t{0});check(!valid(),"inactive worker rejected");
+    memory=baseline;put(tls+r::tls_context,context+1);check(!valid(),"foreign worker realm rejected");
+    memory=baseline;put(client+r::client_context,context+1);check(!valid(),"changed client context rejected");
+    memory=baseline;put(client,base+e::client_vtable+1);check(!valid(),"wrong client type rejected");
+    memory=baseline;put(base+e::tls_index,std::uint32_t{4096});check(!valid(),"invalid TLS index rejected");
+    memory=baseline;put(tls_table+2*sizeof(std::uintptr_t),std::uintptr_t{0});check(!valid(),"missing TLS block rejected");
+    for(unsigned at=1;at<=16;++at) {
+        memory=baseline;reads=0;change_at=at;
+        check(!valid(),"context changes during observation fail closed");
+    }
+    change_at=0;memory=baseline;
+    constexpr auto next_tls=tls+0x10000;
+    put(tls_table+2*sizeof(std::uintptr_t),next_tls);put(next_tls+r::tls_active,std::uint8_t{1});
+    put(next_tls+r::tls_context,context);
+    check(valid(),"new worker TLS can qualify the same current world on a later callback");
 }
 struct Fixture {
     static inline Fixture* running{};
@@ -216,6 +276,7 @@ bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) no
 }
 }
 int main() {
+    physics_query_context_checks();
     {
         namespace p=game::build::v20260929::physics_owner;
         using Handle=body_hit_identity::NativeHandle;

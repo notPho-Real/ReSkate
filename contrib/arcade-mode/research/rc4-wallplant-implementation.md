@@ -13,10 +13,20 @@ The existing path now has an earlier entry at that exact collision predicate
 call site. The original predicate runs first. A false result, foreign caller,
 missing local collision, independent pending bail, disabled mode, stale input
 or changed owner preserves the native result. Geometry uses the existing
-queries only on the verified client update thread, under the native/world
-lifetime locks and the active collision invocation. It still requires ground
-clearance, a broad static face and the checked support-ray anchor. A worker
-thread or unavailable query context cannot borrow client query authority.
+queries under the native/world lifetime locks and the active collision
+invocation. The collision callback validates its current worker's native TLS,
+client context, supported phase and query-world reader admission on entry and
+at every query boundary. The client update thread's cached identity alone
+never authorizes a worker. Ordinary client queries retain their thread gate.
+Ground clearance, a broad static face and the checked support-ray anchor are
+still required.
+
+The supported query's implementation acquires native reader counters at
+world +0x9d0/+0x9d4; its allocation scope uses the calling TLS block. This is
+why the collision query can use a qualified physics worker and must complete
+and pop its result on that same worker. A writer-owned world, inactive/foreign
+TLS, changed context or unavailable lifetime lock rejects before geometry.
+The admission reads do not replace the native query's synchronization.
 
 The callback consumes the original input-journal A without polling a held
 button again. It retains the original AIR observation and the collision's own
