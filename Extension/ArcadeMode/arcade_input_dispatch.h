@@ -275,16 +275,17 @@ private:
         // validated native Ollie proof, never from a raw button or caller clock.
         // It carries queued intent across that pop's forward AIR phases only;
         // owner/episode checks below and actuator readiness still apply.
-        return request.action == InputAction::flip &&
-            (request.form == InputForm::ordinary || request.form == InputForm::neutral_release || request.form == InputForm::neutral_press) && request.presses == 1 &&
-            request.selection.table == InputAirTableKind::none &&
-            (native.jump_selection_retired(request.generations,request.air_episode,request.waiting_flip) ||
-             native.ordinary_flip_wait_continues(request.generations,request.air_episode,request.waiting_flip) ||
+        const bool flip=request.action==InputAction::flip &&
+            (request.form==InputForm::ordinary || request.form==InputForm::neutral_release || request.form==InputForm::neutral_press);
+        const bool grab=request.action==InputAction::grab && request.form==InputForm::ordinary;
+        return (flip || grab) && request.presses==1 && request.selection.table==InputAirTableKind::none &&
+            ((flip && (native.jump_selection_retired(request.generations,request.air_episode,request.waiting_flip) ||
+             native.ordinary_flip_wait_continues(request.generations,request.air_episode,request.waiting_flip))) ||
              (released_jump && request.physical_pressed_at>=released_jump &&
-              request.waiting_flip.valid && request.waiting_flip.id==1 && native.flip.valid &&
+              request.waiting_flip.jump() && native.flip.valid &&
               request.waiting_flip.object && request.waiting_flip.object==native.flip.object &&
               request.waiting_flip.stance==native.flip.stance &&
-              (native.flip.id==1 || native.flip.id==-1) &&
+              (native.flip.id==request.waiting_flip.id || native.flip.id==-1) &&
               (native.airborne || request.pop_release_at==released_jump)));
     }
     static InputDisposition eligibility(const InputRequest& request, std::uint64_t now,
@@ -803,7 +804,8 @@ private:
             request.generation_mask = generation_dependencies(action,environment.context);
             if (action == InputAction::flip || action == InputAction::grab || (action==InputAction::wall_command && variant==1))
                 request.air_episode = environment.native_context.air_episode();
-            if (action == InputAction::flip) request.waiting_flip = environment.native_context.flip;
+            if (action==InputAction::flip || action==InputAction::grab)
+                request.waiting_flip=environment.native_context.flip;
             // The first flip legitimately changes the action generation.
             // The held adapter additionally proves its own first flip and exact
             // current base ID; owner and airborne episode remain mandatory here.
@@ -1055,7 +1057,7 @@ private:
                            bool native_grab = false) const noexcept {
         const auto after = ordinary_flip ? air_flip_after_ : native_grab ? native_grab_after_ : air_face_after_;
         for (const auto& event : events_.history().events())
-            if ((event.sequence > after || (ordinary_flip && takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
+            if ((event.sequence > after || ((ordinary_flip || native_grab) && takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
                 (!ordinary_flip || previous_context_==InputContext::air || (takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
                 event.token == InputToken{InputSource::buttons,code,InputEdge::press})
                 for (std::size_t i = 0; i < match.count; ++i) if (match.events[i] == event.sequence) return true;

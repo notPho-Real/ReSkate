@@ -2567,8 +2567,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // Controller route preparation publication end.
         // Controller route air publication begin.
         {
-            // X is a following flip request, not cancellation of the admitted A release.
-            const bool charge_valid = NativeCharge::input_permitted(rotation_enabled,action.owned,physical_buttons);
+            // A queued flip or grab preserves this continuously qualified pop.
+            const bool charge_valid = NativeCharge::input_permitted(rotation_enabled,action.owned,physical_buttons,
+                arcade_input.released_pop_active(now,rotation_native));
             if(result.jump.setup_started)native_charges[NativeControllerRoute::session].admit_setup(now,result.jump.pressed_at,result.jump.launch,charge_valid,result.jump.nollie);
             const auto release = native_charges[NativeControllerRoute::session].semantic_release(now, result.jump.released,
                 result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid,result.jump.launch,result.jump.nollie);

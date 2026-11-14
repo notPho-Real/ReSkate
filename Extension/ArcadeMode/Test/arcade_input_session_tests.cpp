@@ -1,4 +1,5 @@
 #include "arcade_input_jump_idle_tests.h"
+#include "arcade_takeoff_followup_tests.h"
 #include "Extension/ArcadeMode/arcade_gesture.h"
 #include "Extension/ArcadeMode/arcade_native_events.h"
 #include <cstdlib>
@@ -1175,6 +1176,7 @@ void revert_crouch_ownership() {
  }
 }
 int main() {
+    takeoff_followup_tests::run();
     completed_wallplant_air_followup();
     established_manual_revert_retains_pressure();
     revert_crouch_ownership(); native_manual_revert_links(); native_revert_stances(); jump_idle_tests::run();

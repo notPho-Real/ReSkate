@@ -20,6 +20,7 @@ struct InputFlipObservation {
     std::uint32_t state{}, mode{}, stance{};
     std::uint64_t step{}, mode_generation{}, wait_generation{};
     bool operator==(const InputFlipObservation&) const = default;
+    bool jump() const noexcept { return valid && (id==1 || id==16); }
 };
 // Correlation from an independently sampled native producer, never a trick
 // occurrence or animation clock. Polling cannot renew the producer's lease.
@@ -78,8 +79,8 @@ struct InputNativeContext {
     bool released_jump_continues(const InputNativeContext& before, std::uint64_t now) const noexcept {
         const auto phase=[](unsigned state){return state==100?0:state==103?1:state==200?2:state==201?3:-1;};
         const bool awaiting_jump=!before.airborne && before.flip.id==-1 &&
-            (flip.id==1 || (!airborne && flip.id==-1));
-        const bool observed_jump=before.flip.id==1 && (flip.id==1 || (airborne && flip.id==-1));
+            (flip.jump() || (!airborne && flip.id==-1));
+        const bool observed_jump=before.flip.jump() && (flip.id==before.flip.id || (airborne && flip.id==-1));
         // The native input selector retires before the Ollie animation. Keep
         // this released jump's already observed AIR continuity on later idle
         // samples; native ownership/animation admission remains independent.

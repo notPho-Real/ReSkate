@@ -208,3 +208,25 @@ same behavior without developer tools, plus guide controls and grouped browsing.
 Exact Windows compilation and native visual/default-entry checks remain separate.
 The Deck is reserved for owner testing of the separate wallplant candidate.
 No wallplant merge, installation or hardware action is part of this change.
+
+
+## Released-pop follow-ups
+
+A quick B tap after an admitted A release now survives native takeoff and can
+hand off the completed stick flick to the existing native grab adapter. B without
+a released-pop proof retains its cancellation behavior. The original launch
+ticket remains eligible while that grab is queued; no new impulse or rail launch
+ticket is created.
+
+Manual and Nose Manual jumps retain their distinct native selection identities
+through the same handoff. The native flip bridge already supports both families;
+the input lease now agrees with it and still rejects a change between them.
+Ordinary rail-to-flip routing is unchanged.
+
+The input-session regression includes an acknowledged native revert, established
+Manual/Nose context, A setup/release and early X/B taps, plus rail pop-out.
+It covers same-poll release, both stance flags, three polling cadences, repeated
+polls and owner/focus/competing-action/bail/landing/stale-proof withdrawal.
+The supplied native observations and callback receipts establish software routing,
+not visible execution in the game. This revision still needs native grind-to-flip
+and revert-to-Manual-to-jump-to-flip/grab acceptance on its exact DLL.

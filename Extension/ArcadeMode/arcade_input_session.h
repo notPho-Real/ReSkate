@@ -137,6 +137,11 @@ public:
         if (!rail_pop_followup_continues(frame,takeoff_native_,frame.sampled_at)) takeoff_release_at_=0;
         else { takeoff_native_=frame; takeoff_jump_observed_=takeoff_jump_observed_ || frame.flip.id==1; }
     }
+    bool released_pop_active(std::uint64_t now,const InputNativeContext& frame) const noexcept {
+        return takeoff_release_at_ && now>=takeoff_release_at_ && now-takeoff_release_at_<=2500 &&
+            (takeoff_from_rail_ ? rail_pop_followup_continues(frame,takeoff_native_,now) :
+             frame.released_jump_continues(takeoff_native_,now));
+    }
     bool rail_followup_active(std::uint64_t now,const InputNativeContext& frame) const noexcept {
         return takeoff_from_rail_ && frame.required && frame.fresh(now) &&
             frame.generations.owner==takeoff_native_.generations.owner &&
@@ -249,12 +254,13 @@ public:
             footplant_=false;current_=nullptr;return output;
         }
         if (takeoff_release_at_) {
-            if (admission.external_owner || (physical.buttons & (takeoff_from_rail_?0x2000u:0xa000u)) ||
+            if (admission.external_owner || (physical.buttons & (takeoff_from_rail_?0u:0x8000u)) ||
                 (takeoff_from_rail_ && (rail_ || now-takeoff_release_at_>2500)) ||
                 physical.lt>30 || physical.rt>30 || now<takeoff_release_at_ || (!native.airborne && now-takeoff_release_at_>=InputTiming::direction_ms) ||
+                (native.flip.jump() && native.flip.id!=(jump_nollie_?16:1)) ||
                 !(takeoff_from_rail_ ? rail_pop_followup_continues(native,takeoff_native_,now) :
                   native.released_jump_continues(takeoff_native_,now))) takeoff_release_at_=0;
-            else {takeoff_native_=native;takeoff_jump_observed_=takeoff_jump_observed_ || native.flip.id==1;}
+            else {takeoff_native_=native;takeoff_jump_observed_=takeoff_jump_observed_ || native.flip.jump();}
         }
         if (!admission.offboard) output.buttons &= static_cast<std::uint16_t>(~0xf00fu);
         output.right_x = output.right_y = 0; // Physical right stick belongs to the camera.
@@ -454,9 +460,9 @@ public:
         // A released owned setup with an independently selected native Ollie
         // may SELECT X in this poll; the actual release below still delivers
         // the pop and execution still requires genuine AIR and delivered arcs.
-        if (holding_ && !(physical.buttons&classic_a) && !jump_nollie_ &&
+        if (holding_ && !(physical.buttons&classic_a) &&
             launch_context_==GestureContext::ground && native.required && native.fresh(now) &&
-            !native.airborne && native.flip.valid && native.flip.id==1 && native.flip.object &&
+            !native.airborne && native.flip.valid && native.flip.id==(jump_nollie_?16:1) && native.flip.object &&
             (native.flip.state==100 || native.flip.state==103)) environment.takeoff_release_at=now;
         environment.takeoff_actor_busy=authored_.busy() || auxiliary_.busy();
         input_.poll(now, physical, environment, {this, &receive});
@@ -484,9 +490,9 @@ public:
             authored_.release(admission.tick); holding_ = false; input_.acknowledge_jump_release();
         }
         if (output.jump.released && output.jump.setup_admitted && !output.jump.from_rail &&
-            native.required && native.fresh(now) && native.flip.valid && (native.flip.id==1 || native.flip.id==-1) && native.flip.object &&
+            native.required && native.fresh(now) && native.flip.valid && (native.flip.id==(jump_nollie_?16:1) || native.flip.id==-1) && native.flip.object &&
             !native.airborne && (native.flip.state==100 || native.flip.state==103)) {
-            takeoff_release_at_=output.jump.released_at; takeoff_native_=native;takeoff_jump_observed_=native.flip.id==1;takeoff_from_rail_=false;
+            takeoff_release_at_=output.jump.released_at; takeoff_native_=native;takeoff_jump_observed_=native.flip.jump();takeoff_from_rail_=false;
         }
         if (output.jump.released && output.jump.setup_admitted && output.jump.from_rail && !output.jump.nollie &&
             output.jump.launch.rail_input() && admission.normal_flip.submit && rail_pop_input_continues(native,now) &&
@@ -764,11 +770,8 @@ private:
             // completed RS flick to another native gesture during ascent. The
             // selection ID describes the current trick, not a pad-input lock.
             // Keep generic/late requests on their existing idle readiness gate.
-            const bool own_ollie = takeoff_release_at_ && takeoff_jump_observed_ &&
-                admission.action_fresh && admission.native_context.fresh(now_) &&
-                admission.native_context.airborne && admission.native_context.flip.valid &&
-                (admission.native_context.flip.id == 1 || admission.native_context.flip.id == -1);
-            if (own_ollie && takeoff_from_rail_ && !admission.normal_flip.submit) {
+            const bool own_ollie = released_ollie_ready();
+            if (own_ollie && (takeoff_from_rail_ || jump_nollie_) && !admission.normal_flip.submit) {
                 out.unsupported=true; return InputDisposition::unsupported;
             }
             // Recognition already selected this request from the physical X
@@ -910,11 +913,22 @@ private:
         return n.fresh(now) && !n.airborne && !n.rail_family &&
             (n.flip.state==100 || n.flip.state==101 || n.flip.state==103) && n.flip.mode<=1;
     }
+    bool released_ollie_ready() const noexcept {
+        const auto& admission=admission_;
+        return takeoff_release_at_ && takeoff_jump_observed_ &&
+            admission.action_fresh && admission.native_context.fresh(now_) &&
+            admission.native_context.airborne && admission.native_context.flip.valid &&
+            (admission.native_context.flip.id==(jump_nollie_?16:1) || admission.native_context.flip.id==-1);
+    }
     InputDisposition request_auxiliary(const InputRequest& request) noexcept {
         auto& out = current_->action;
         const auto& admission = admission_;
         const bool grab = request.action == InputAction::grab;
         const bool classic = admission.action_mode == ActionExperiment::classic;
+        // A first grab can inherit the completed pop exactly as a flip does.
+        // The playback owner still requires every nonneutral arc to be delivered.
+        if (grab && released_ollie_ready() && !air_action_ && !auxiliary_.busy())
+            authored_.handoff_delivered_pop(admission.tick,now_);
         if (grab) out.grab_gate = 1u |
             ((!admission.action_fresh || admission.action_mode == ActionExperiment::off) ? 2u : 0u) |
             (authored_.busy() ? 4u : 0u) | (manual_.busy() ? 8u : 0u) |

@@ -214,6 +214,9 @@ public:
             return false;
         return sessions_[0].acknowledge_wallplant(now,source,input_sequence);
     }
+    bool released_pop_active(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
+        return enabled_ && admitted(0,now) && sessions_[0].released_pop_active(now,InputNativeContext::from_frame(frame));
+    }
     bool rail_followup_active(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) && sessions_[0].rail_followup_active(now,InputNativeContext::from_frame(frame));
     }

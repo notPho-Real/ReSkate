@@ -14,8 +14,11 @@ namespace dingosdk::arcade_mode {
 // latch, not native acceptance evidence: raw A alone cannot create a launch.
 class NativeCharge {
 public:
-    static constexpr bool input_permitted(bool enabled, bool other_owner, std::uint16_t buttons) noexcept {
-        return enabled && !other_owner && !(buttons & 0xa030u);
+    static constexpr bool input_permitted(bool enabled, bool other_owner, std::uint16_t buttons,
+                                          bool released_pop = false) noexcept {
+        // B may follow this already released pop, but cannot acquire setup or
+        // retain a launch after another actor takes the channels.
+        return enabled && !other_owner && !(buttons & (released_pop ? 0x8030u : 0xa030u));
     }
     struct Release { std::uint64_t sequence{}, ms{}; unsigned charge_ms{}; LaunchDescriptor launch{}; bool nollie{}; };
     void cancel() noexcept { charging_ = setup_bound_ = false; released_ = {}; }
