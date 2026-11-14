@@ -56,6 +56,76 @@ void client_phase_gap() {
             check(!physics.defer_client_phase(1010,owner,sample(excluded),original,true),"positive nonordinary/bail/rail/offboard exit cannot defer withdrawal");
     }
 }
+void rail_client_lag() {
+    // Reproduce a physical A edge after the native callback has entered a rail
+    // but before the client publishes that contact/action generation.
+    for(unsigned hz:{30u,60u,120u})for(unsigned stance:{0u,0x20u})
+    for(unsigned rail:{400u,401u,402u,403u,404u,405u,406u}) {
+        NativeInputState physics;NativeInputReadiness readiness;ArcadeInput input(true);
+        input.enable(true);NativeInputOwner owner{1,2,3,4,5};AuthoredTickClock clock;
+        const std::array catalog{PreparedGesture{1,false,GestureContext::from_grind,
+            std::vector<AuthoredStickStep>{{0,0,-28000},{18,0,28000},{21,0,0},{24,0,0}}}};
+        const NativeFlipRequest bridge{nullptr,[](void*,std::int32_t) noexcept {return false;}};
+        auto frame=physics.observe(1000,owner,sample(201,stance,2),{true,1,16});
+        readiness.publish(frame,{true,false,false,false,false,false,false,false,true,0});
+        const auto poll=[&](std::uint64_t now,std::uint16_t buttons) {
+            input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
+            const auto a=readiness.sample(now,frame);
+            return input.poll(0,now,buttons,0,0,0,0,a.gameplay,a.start,false,0,false,false,true,
+                clock.advance(hz),false,catalog,a.mirror_x,false,SkatePose::air,false,false,a.offboard,
+                false,a.flip_ready,false,0,0,ActionExperiment::classic,a.action,a.stance_known,false,bridge);
+        };
+        poll(1000,0);
+        const auto press=1000+1000/hz;
+        frame=physics.observe(press,owner,sample(rail,stance,2),{true,-1,16});
+        const auto pending=readiness.sample(press,frame);
+        check(!pending.matched,"rail contact leads the original client permission frame");
+        const auto began=poll(press,classic_a);
+        check(began.jump.setup_started && began.jump.from_rail && began.right_y==-28000,
+            "current native rail admits the existing rail recipe despite lagging client pose");
+        check(!began.jump.launch.ordinary_writer(),"rail admission never grants a ground launch");
+        readiness.publish(frame,{true,false,false,false,false,false,false,false,false,0});
+        const auto next=sample(rail==403?401:403,stance,1);
+        check(physics.defer_client_phase(press+1,owner,next,input.native_context(press+1),true),
+            "same-owner rail class change defers destructive client withdrawal");
+        check(readiness.observed_proof().sampled_at==press,
+            "client deferral never renews the original gameplay permission");
+        const auto release=1000+2*1000/hz;
+        frame=physics.observe(release,owner,next,{true,-1,16});
+        const auto released=poll(release,0);
+        check(released.jump.released && released.jump.setup_admitted && released.jump.from_rail,
+            "native rail class change preserves the admitted A release");
+        check(input.rail_followup_active(release,frame),"released rail retains its bounded follow-up lease");
+    }
+    NativeInputOwner owner{1,2,3,4,5};
+    for(unsigned fault=0;fault<10;++fault) {
+        NativeInputState physics;NativeInputReadiness readiness;
+        auto frame=physics.observe(1000,owner,sample(403,0,2),{true,-1,16});
+        readiness.publish(frame,{fault!=0,false,false,false,false,false,false,false,false,0});
+        auto current=frame;auto now=1010u;
+        if(fault==1)current.valid=false;
+        if(fault==2)++current.owner.rig;
+        if(fault==3)++current.owner_generation;
+        if(fault==4)now=1151;
+        if(fault==5)now=999;
+        if(fault==6)current.mode=3;
+        if(fault==7)current.state=407;
+        if(fault==8)current.state=701;
+        if(fault==9)current.airborne=true;
+        check(!readiness.sample(now,current).start,
+            "rail start rejects withdrawn, invalid, replaced, stale, future, unsafe or nonrail evidence");
+        for(unsigned excluded:{100u,200u,300u,407u,504u,701u})
+            check(!physics.defer_client_phase(1010,owner,sample(excluded),frame,true),
+                "rail class deferral cannot retain authority across an actual rail exit");
+        auto changed=owner;++changed.rig;
+        check(!physics.defer_client_phase(1010,changed,sample(401),frame,true),
+            "rail deferral rejects replacement owner");
+        check(!physics.defer_client_phase(1010,owner,sample(401),frame,false),
+            "OFF or focus loss still withdraws rail authority");
+        check(!physics.defer_client_phase(1151,owner,sample(401),frame,true),
+            "rail deferral expires the original observation");
+    }
+}
 void prepared_air_manual() {
     for(unsigned hz:{30u,60u,120u})for(int direction:{-1,1})for(bool pad:{false,true})for(unsigned fault=0;fault<7;++fault) {
         ArcadeInput input(true);input.enable(true);NativeInputState physics;NativeInputReadiness readiness;
@@ -98,7 +168,7 @@ void prepared_air_manual() {
 }
 }
 int main(){control_ownership();
-    client_phase_gap();prepared_air_manual();
+    client_phase_gap();rail_client_lag();prepared_air_manual();
     const NativeInputOwner owner{1,2,3,4,5};
     const NativeInputPermissions all{true,true,true,true,true,true,true,true,true,7};
     for(unsigned bit:{0u,0x20u}) {

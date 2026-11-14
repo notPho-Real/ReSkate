@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_native_probe.h"
 #include "arcade_native_trick.h"
+#include "arcade_rail_pop.h"
 #include "Engine/Game/Build/20260929/launches.h"
 #include "Engine/Game/Skater/native_orientation.h"
 #include <cmath>
@@ -130,8 +131,13 @@ public:
             return (state==101 && mode<=1) ||
                 (mode<=2 && (state==100 || state==103 || state==200 || state==201));
         };
+        // Rail class changes also lead the callback during an admitted grind.
+        // Keep only the original session proof until that callback observes
+        // the new class. Leaving rail contact still withdraws immediately.
+        const bool same_rail = rail_pop_physics_state(original.state) && original.mode<=2 &&
+            rail_pop_physics_state(sample.state) && sample.crouch_mode<=2;
         return permitted && original.valid && admitted.valid && admitted.owner == original.owner &&
-            ordinary(original.state,original.mode) && ordinary(sample.state,sample.crouch_mode) &&
+            ((ordinary(original.state,original.mode) && ordinary(sample.state,sample.crouch_mode)) || same_rail) &&
             admitted.owner_generation == original.owner_generation && now >= admitted.sampled_at &&
             now-admitted.sampled_at <= 150 && !correlate(now,owner,sample).valid;
     }

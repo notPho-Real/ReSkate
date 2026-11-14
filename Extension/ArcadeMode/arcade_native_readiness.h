@@ -64,6 +64,11 @@ public:
             out.prepare = permissions_.prepare;
             out.releasing = permissions_.releasing; out.speed = permissions_.speed;
         }
+        // A rail A edge uses current physics, not a delayed client pose or
+        // its previous contact generation. The session still requires the
+        // exact rail recipe and retains native geometry/pop admission.
+        out.start = out.start || (current.rail_family && !current.airborne &&
+            rail_pop_physics_state(current.state) && current.mode<=2);
         return out;
     }
 private:

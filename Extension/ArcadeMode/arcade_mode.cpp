@@ -2327,7 +2327,6 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool manual_prepare = game_input && admission.prepare && prepare_deadline >= now && prepare_deadline - now <= 150;
         const auto action_experiment = action_mode.load(std::memory_order_relaxed);
         const auto observed = manual_observed.load(std::memory_order_relaxed);
-        const bool may_exit_grind = game_input && admission.matched && observed == SkatePose::grind;
         input_capture_correlation.maintain(now,arcade_input.native_context(now),input_telemetry.client_dropped(),capture_row);
         arcade_input.set_recognition_capture(NativeControllerRoute::session,input_capture_correlation.captures(CaptureCorrelationSource::recognition));
         const auto flip_owner=arcade_input.native_context(now).owner;
@@ -2421,7 +2420,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 return native_ground_grab::controls(c.owner,c.step,held);
             }};
         result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,
-            game_input, may_start || may_exit_grind, may_push && auto_kick_enabled(), admission.speed,
+            game_input, may_start, may_push && auto_kick_enabled(), admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             admission.mirror_x, manual_safe,

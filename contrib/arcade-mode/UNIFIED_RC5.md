@@ -230,3 +230,37 @@ polls and owner/focus/competing-action/bail/landing/stale-proof withdrawal.
 The supplied native observations and callback receipts establish software routing,
 not visible execution in the game. This revision still needs native grind-to-flip
 and revert-to-Manual-to-jump-to-flip/grab acceptance on its exact DLL.
+
+### Native rail admission between client ticks
+
+Exact build 5ef44b1c was exercised on the Deck in Mega Park at verified native
+30 Hz. Ordinary Kickflip and Manual -> revert -> Ollie -> Kickflip/BS Grab
+passed native actor advancement plus rendered execution and landing checks.
+Grind exits did not pass. Two attempts reached a native rail; one lost contact
+before A release, and the earlier-release attempt exposed a readiness gap.
+Two other approaches failed their native rail prerequisite and are excluded
+from gameplay acceptance. Nose Manual variants and the final regression matrix
+remain pending. The exact prior installation and all 95 rollback sets were
+preserved after removing the temporary fixture and normally stopping the game.
+
+In the earlier-release trace, A reached native state 403 while the client
+permission still named the previous contact/action generation. The old
+may_exit_grind required that delayed match and discarded the edge. A later
+client read of the next rail class also withdrew the session before the
+original physics callback caught up.
+
+Readiness now admits the existing rail recipe from current owner-correlated
+400..406 physics with mode <= 2. Same-owner transitions within those rail
+classes defer destructive client publication without renewing the original
+proof. Rail departure, invalid observations, owner replacement, OFF/focus loss
+and stale proof still withdraw authority. The existing native pop and follow-up
+adapters remain responsible for execution; no geometry or launch force changes.
+
+Source review reused the existing rail-pop contract, the full tracked official
+source search, the pinned fork-method survey and the recorded native selector
+evidence. A composed regression reproduces the lost edge on the preceding
+headers and covers both stance flags and 30/60/120 Hz. The correction passes
+869 readiness checks under address/undefined sanitizers and all 33 focused
+suites, including Casper. Its exact Windows build and native grind-exit
+acceptance are still required; these local results do not establish a fix in
+the game.
