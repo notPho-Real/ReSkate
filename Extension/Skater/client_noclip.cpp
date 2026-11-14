@@ -1611,7 +1611,7 @@ bool wallplant_native_departure(std::uintptr_t object,
 }
 bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
         const std::array<float,16>* supplied,std::array<float,16>& target,
-        const arcade_mode::NativeInputFrame& frame,std::uint64_t now) {
+        const arcade_mode::NativeInputFrame& frame,std::uint64_t now,bool publish_drive=true) {
     auto& hold=wallplant_physical_hold();
     if(!hold.command)return false;
     if(rig!=hold.owner.rig || context!=hold.owner.context)return false;
@@ -1645,7 +1645,7 @@ bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
         // The due release still owns this callback's target until its single
         // body write consumes the receipt after original motion returns.
         if(now<hold.started)return false;
-        if(frame.state!=100) {
+        if(publish_drive && frame.state!=100) {
             const auto orientation=wallplant_orientation_snapshot(frame.owner,reader);
             float available{},travel{};
             source_require(game::orientation_target::motion_budget(orientation.limit,frame.physics_seconds,
@@ -2875,7 +2875,10 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
         source_require(reader.pointer(rig)==held.native.owner.context,"ground_target_context");
         const auto selected=reader.value<std::uint32_t>(held.native.owner.context,
             game::build::v20260929::arcade_native_probe::selected_state);
-        if(selected!=100)return;
+        // The same preparation feeds the airborne state's native drive. A
+        // held plant must replace that target before its inward motion resumes.
+        // Post-release orientation ownership remains ground-only.
+        if(selected!=100 && (released || selected!=201))return;
         auto& departure=wallplant_released_departure();
         auto& hold=wallplant_physical_hold();
         std::array<float,16> preceding{};
@@ -2929,7 +2932,7 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
             // ground callback advances position; the joint and plant are over.
             source_require(wallplant_hold_target_matrix(held,world,target),"release_orientation_target");
             for(unsigned axis=0;axis<3;++axis)target[12+axis]=world[12+axis];
-        } else if(!arcade_wallplant_hold_target(rig,held.native.owner.context,&world,target,frame,now))return;
+        } else if(!arcade_wallplant_hold_target(rig,held.native.owner.context,&world,target,frame,now,false))return;
         const auto orientation=wallplant_orientation_snapshot(held.native.owner,reader);
         float target_limit{},angular_travel{};
         source_require(game::orientation_target::motion_budget(orientation.limit,seconds,
@@ -3013,7 +3016,8 @@ void wallplant_prepare_board_drive(std::uintptr_t rig,std::uintptr_t caller) noe
     if(!wallplant_hold_core.load(std::memory_order_acquire) || competition_stock_physics())return;
     const auto held=arcade_mode::wallplant_runtime::held_command();
     if(!held || held.native.owner.rig!=rig ||
-       caller!=held.native.owner.base+spawn::ground_drive_return)return;
+       (caller!=held.native.owner.base+spawn::ground_drive_return &&
+        caller!=held.native.owner.base+spawn::air_drive_return))return;
     auto now=GetTickCount64();
     const auto frame=arcade_mode::native_wallplant_hold_context(held.native.owner,now);
     auto& state=source_state();
@@ -3027,8 +3031,9 @@ void wallplant_prepare_board_drive(std::uintptr_t rig,std::uintptr_t caller) noe
             held.anchor_verified,"board_drive_hold");
         SourceReader reader;
         source_require(reader.pointer(rig)==held.native.owner.context,"board_drive_context");
-        source_require(reader.value<std::uint32_t>(held.native.owner.context,
-            game::build::v20260929::arcade_native_probe::selected_state)==100,"board_drive_state");
+        const auto selected=reader.value<std::uint32_t>(held.native.owner.context,
+            game::build::v20260929::arcade_native_probe::selected_state);
+        source_require(selected==100 || selected==201,"board_drive_state");
         const auto orientation=wallplant_orientation_snapshot(held.native.owner,reader);
         const auto matrix=[&](std::uintptr_t base,std::uintptr_t offset) {
             std::array<float,16> value{};
@@ -3072,8 +3077,8 @@ void wallplant_prepare_board_drive(std::uintptr_t rig,std::uintptr_t caller) noe
         hold.orientation_reference=published;
         hold.orientation_reference_owned=true;
         logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE WALLPLANT BOARD TARGET: occurrence={} contact={} ms={} state=100 from={},{},{} target={},{},{} forward={},{},{} physical_pose_write=false.",
-            held.input_sequence,held.contact,now,supplied[12],supplied[13],supplied[14],
+            "ARCADE WALLPLANT BOARD TARGET: occurrence={} contact={} ms={} state={} from={},{},{} target={},{},{} forward={},{},{} physical_pose_write=false.",
+            held.input_sequence,held.contact,now,selected,supplied[12],supplied[13],supplied[14],
             replacement[12],replacement[13],replacement[14],replacement[8],replacement[9],replacement[10]);
     } catch(const SourceGuard& issue) {wallplant_hold_cancel(issue.message,now);}
       catch(...) {wallplant_hold_cancel("board_drive_exception",now);}

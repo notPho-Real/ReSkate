@@ -1047,3 +1047,30 @@ changed bodies, native offboard and native wipeout. Focused production-wrapper
 tests verify the original runs once, independent causes survive, and unrelated
 or idle collectors are not reported. This is diagnostic work, not gameplay
 acceptance; full hold, release and combo continuity remain unverified.
+# Airborne shared target routing
+
+The complete-collector hardware capture on `2c23691e` entered a real plant,
+then recorded native cause 1 before cancellation at 99 ms. No hold target
+update or release occurred. The ordinary drive still derived approximately
+10.68 m/s toward the wall after the entry brake. This is failed acceptance.
+
+The pinned image identifies AIR201 by getter `481c380` in vtable `65e8a18`.
+Its tick `4822230` calls `4774f50` or `4773e40`; both prepare the same
+local/world/inverse target triplet through `47784b0`. The existing target
+hook incorrectly returned for every state except 100, leaving this airborne
+route unmodified. The alternate publisher also copies its composed reference
+to the board target before calling the same drive at return `4774110`.
+
+The correction admits an already-owned plant in state 201 through that
+existing preparation and both fingerprinted drive tails. Physical drive
+publication waits for the composed native reference, avoiding a preliminary
+entity-frame update followed by another board-frame update. The original
+preparation and drive each still run once. Native root/pose/collision bail
+checks remain active; offboard and wipeout states cannot acquire the target.
+Post-release airborne movement remains native. This changes no launch
+constant, plant deadline, contact observation, body transform or native state.
+
+Focused extracted-wrapper regressions cover AIR anchoring, both drive tails,
+single physical publication, unchanged body transforms/deadline, and released
+AIR pass-through. Hardware hold/release acceptance remains pending for this
+correction.

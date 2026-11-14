@@ -687,8 +687,9 @@ bool copy_to(std::uintptr_t address,const void* data,std::size_t bytes){
 }
 void wallplant_hold_cancel(const char* reason,std::uint64_t){cancelled=reason;physical_hold={};wallplant_hold_core.store(0);}
 bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,const std::array<float,16>* supplied,
- std::array<float,16>& target,const arcade_mode::NativeInputFrame&,std::uint64_t){
+ std::array<float,16>& target,const arcade_mode::NativeInputFrame&,std::uint64_t,bool publish_drive){
  ++target_calls;
+ check(!publish_drive,"shared target preparation defers physical drive until native reference publication");
  check(originals==1&&rig==2&&context==3,"original ground preparation precedes hold target");
  if(expire)clock_ms=295;
  return allow_target&&wallplant_hold_target_matrix(held_value,*supplied,target);
@@ -732,6 +733,14 @@ void run(){
  check(stored[28]==7&&stored[29]==8&&stored[30]==9,"ground uses bounded hold anchor");
  check(std::abs(stored[16+8]-1)<.00001f&&std::abs(stored[16+10])<.00001f,"ground target faces outgoing direction");
  check(!ground_state.busy.test_and_set(),"successful callback releases busy ownership");ground_state.busy.clear();
+ reset();state_id=201;noclip_ground_target(2,.03333333f);
+ check(originals==1&&copies==1&&target_calls==1&&cancelled.empty()&&stored[28]==7&&stored[29]==8&&stored[30]==9,
+       "AIR201 shared preparation replaces the inward native target with the checked plant anchor");
+ check(physical_drive_updates==0&&physical_hold.started==100,
+       "AIR target preparation neither duplicates the physical drive nor restarts the hold");
+ reset();state_id=201;wallplant_hold_core=0;wallplant_released_core=1;released_value.release=physical_hold;
+ noclip_ground_target(2,.03333333f);
+ check(originals==1&&copies==0&&stored==prepared,"released AIR motion remains native and cannot reanchor the plant");
  {
   reset();wallplant_hold_core=0;wallplant_released_core=1;released_value.release=physical_hold;
   released_value.orientation_reference=orientation_snapshot.actual;last_drive_reference=orientation_snapshot.actual;
@@ -826,10 +835,10 @@ void run(){
    case 0:wallplant_hold_core=0;break;case 1:stock=true;break;case 2:held_value={};break;
    case 3:held_value.native.owner.rig=99;break;case 4:ground_state.initialized=false;break;
    case 5:ground_state.velocity_guard_active=false;break;case 6:ground_state.busy.test_and_set();break;
-   case 7:state_id=201;break;case 8:allow_target=false;break;case 9:state_id=504;break;
+   case 7:state_id=300;break;case 8:allow_target=false;break;case 9:state_id=504;break;
   }
   noclip_ground_target(2,.02f);
-  check(originals==1&&copies==0&&stored==prepared&&cancelled.empty(),"inactive, foreign, busy and non-ground paths forward unchanged");
+  check(originals==1&&copies==0&&stored==prepared&&cancelled.empty(),"inactive, foreign, busy and native bail paths forward unchanged");
   if(mode==6)check(ground_state.busy.test_and_set(),"foreign busy owner is not cleared");
  }
  for(unsigned mode=0;mode<8;++mode){
@@ -902,6 +911,14 @@ void run(){
  check(orientation_snapshot.actual==physical_before,"routing a drive target never rotates the physical body directly");
  check(noclip_rig_drive(2)&&drives==1&&consumed_target==published_reference,
        "native drive still runs exactly once and preserves its return value");
+ for(const auto caller:{spawn::ground_drive_return,spawn::air_drive_return}){
+  prepare_drive();state_id=201;const auto before=orientation_snapshot.actual;
+  wallplant_prepare_board_drive(2,caller);
+  check(copies==1&&physical_drive_updates==1&&cancelled.empty()&&board_target==published_reference,
+        "both native AIR drive tails consume one coherent checked hold reference");
+  check(orientation_snapshot.actual==before&&physical_hold.started==100,
+        "AIR drive routing preserves body physics and the original plant deadline");
+ }
  for(unsigned fault=0;fault<14;++fault){
   prepare_drive();
   auto caller=spawn::ground_drive_return;
