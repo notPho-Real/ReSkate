@@ -1020,3 +1020,13 @@ another physics observation cannot authorize this handoff.
 
 Focused production-wrapper regressions cover this ordering and the existing
 controller authority failures. Native hold/release acceptance remains pending.
+
+The native trial still rejected entry after the controller accepted the press:
+the input session's generic extension-started marker treated its own accepted
+wallplant as a competing action. The session now records that input identity
+for the current poll. Collision execution and the held phase may finish that
+exact request, while ordinary admission remains busy and all other actor,
+crouch, controller, contact and observation checks remain in force. Reset and
+the next poll clear the marker. A real input-session regression covers the
+accepted callback, wrong input and competing crouch; the old ownership logic
+fails that regression. Native acceptance is still required.

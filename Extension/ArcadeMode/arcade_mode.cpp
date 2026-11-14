@@ -1591,10 +1591,13 @@ WallplantExecutionProof native_wallplant_context(const NativeInputOwner& owner,s
 }
 static bool wallplant_execution_authorized_locked(const NativeInputFrame& original,std::uint64_t now) noexcept {
     const auto physical=controller_route.physical(now);
+    const auto pending=wallplant_runtime::writer_probe();
+    const auto accepted=pending.contact && pending.raw && wallplant_same_observation(pending.native,original)
+        ? pending.input : 0;
     return mode_enabled.load(std::memory_order_acquire) &&
         action_mode.load(std::memory_order_acquire)==ActionExperiment::classic && !grind_change.active() &&
         physical.valid && physical.lt<=30 && physical.rt<=30 && !(physical.buttons&0xe030u) &&
-        arcade_input.admitted(0,now) && arcade_input.wallplant_controls_unowned(0) &&
+        arcade_input.admitted(0,now) && arcade_input.wallplant_controls_unowned(0,accepted) &&
         original.owner_generation==arcade_input.owner_epoch() &&
         wallplant_same_observation(original,arcade_input.native_context(now));
 }
@@ -1624,10 +1627,12 @@ NativeInputFrame native_wallplant_hold_context(const NativeInputOwner& owner,std
     const auto physical=controller_route.physical(now);
     const auto live=arcade_input.native_context(now);
     const auto conflicts=wallplant_runtime::excludes_grind(live,now)?0x6030u:0xe030u;
+    const auto held=wallplant_runtime::held_command();
+    const auto accepted=held && held.native.owner==owner ? held.input_sequence : 0;
     if(!mode_enabled.load(std::memory_order_acquire) ||
        action_mode.load(std::memory_order_acquire)!=ActionExperiment::classic || grind_change.active() ||
        !physical.valid || physical.lt>30 || physical.rt>30 || (physical.buttons&conflicts) ||
-       !arcade_input.admitted(0,now) || !arcade_input.wallplant_controls_unowned(0) ||
+       !arcade_input.admitted(0,now) || !arcade_input.wallplant_controls_unowned(0,accepted) ||
        !live.valid || live.owner!=owner || live.owner_generation!=arcade_input.owner_epoch()) {
         const auto command=wallplant_runtime::held_command();
         static std::uint64_t reported_input{};
@@ -1638,7 +1643,7 @@ NativeInputFrame native_wallplant_hold_context(const NativeInputOwner& owner,std
                 command.input_sequence,now,mode_enabled.load(std::memory_order_acquire),
                 action_mode.load(std::memory_order_acquire)==ActionExperiment::classic,grind_change.active(),
                 physical.valid,physical.lt,physical.rt,physical.buttons,conflicts,
-                arcade_input.admitted(0,now),arcade_input.wallplant_controls_unowned(0),live.valid,
+                arcade_input.admitted(0,now),arcade_input.wallplant_controls_unowned(0,accepted),live.valid,
                 live.owner==owner,live.owner_generation==arcade_input.owner_epoch(),live.state,live.physics_step,live.sampled_at);
         }
         return {};

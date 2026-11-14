@@ -1255,7 +1255,26 @@ void revert_crouch_ownership() {
   check(!poll(2051,0,255).action.owned,"unqualified crouch cannot start a new revert");
  }
 }
+void accepted_wallplant_handoff_ownership() {
+    Harness h;std::uint64_t accepted{};
+    h.admission.pose=SkatePose::air;
+    h.admission.surface={7,9,true,true,false,false,0,{}};
+    h.admission.extensions={&accepted,[](void* state,const InputRequest& request) noexcept {
+        if(request.action!=InputAction::wall_command || request.variant!=1)return InputDisposition::unsupported;
+        *static_cast<std::uint64_t*>(state)=request.input_sequence;
+        return InputDisposition::started;
+    }};
+    h.poll(1000);h.poll(1017,{0x1000});
+    check(accepted && h.session.busy(),"real accepted wallplant retains ordinary session ownership");
+    check(!h.session.wallplant_controls_unowned(),"a second wallplant cannot steal the accepted extension");
+    check(!h.session.wallplant_controls_unowned(accepted+1),"another input cannot borrow the pending wallplant");
+    check(h.session.wallplant_controls_unowned(accepted),"collision can complete its exact accepted wallplant in the same poll");
+    h.session.reset();h.admission.surface={};h.admission.pose=SkatePose::riding;
+    h.poll(1100);h.poll(1117,{0x1000});
+    check(!h.session.wallplant_controls_unowned(accepted),"old wallplant input cannot bypass a real crouch owner");
+}
 int main() {
+    accepted_wallplant_handoff_ownership();
     entry_wallplant_air_followup();held_wallplant_entry_followup();delayed_wallplant_entry_receipt();
     established_manual_revert_retains_pressure();
     revert_crouch_ownership(); native_manual_revert_links(); native_revert_stances(); jump_idle_tests::run();

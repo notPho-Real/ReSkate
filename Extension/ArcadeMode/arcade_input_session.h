@@ -77,7 +77,7 @@ public:
         held_flip_.cancel();held_flip_used_=false;held_flip_lineage_={};
         footplant_=ground_grab_=false;
         push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false; air_followup_id_=0;
-        clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr; jump_launch_ = {};
+        clocked_ = false; extension_started_ = false; wallplant_started_input_=0; grab_hold_button_ = 0; current_ = nullptr; jump_launch_ = {};
         air_actor_episode_ = grab_actor_episode_ = manual_air_episode_ = {}; grab_actor_ = false; rail_request_ = {};
         ground_turn_ = {}; // Keep the serial watermark across resets.
         takeoff_release_at_=0; takeoff_native_={}; takeoff_jump_observed_=false; takeoff_from_rail_=false;
@@ -185,7 +185,13 @@ public:
     }
     void set_recognition_capture(bool enabled) noexcept {input_.set_recognition_capture(enabled);}
     bool busy() const noexcept { return footplant_ || ground_grab_ || auxiliary_.busy() || authored_.busy() || manual_.busy() || rail_ || board_active_ || extension_started_; }
-    bool wallplant_controls_unowned() const noexcept { return !busy() && !holding_; }
+    bool wallplant_controls_unowned(std::uint64_t accepted_input=0) const noexcept {
+        // A collision may finish the exact wallplant accepted by this poll.
+        // Its own extension marker is not a competing actor or another input.
+        return !footplant_ && !ground_grab_ && !auxiliary_.busy() && !authored_.busy() &&
+            !manual_.busy() && !rail_ && !board_active_ && !holding_ &&
+            (!extension_started_ || (accepted_input && accepted_input==wallplant_started_input_));
+    }
     InputRequest claim_wallplant_contact(std::uint64_t now,const InputNativeContext& native,
                                         InputSurfaceState surface) noexcept {
         if (!clocked_ || !wallplant_controls_unowned() || !native.follows(native_) ||
@@ -252,7 +258,7 @@ public:
             return output;
         }
         clocked_ = true; last_ = now; last_tick_ = admission.tick;
-        now_ = now; physical_ = physical; admission_ = admission; current_ = &output; extension_started_ = false;
+        now_ = now; physical_ = physical; admission_ = admission; current_ = &output; extension_started_ = false; wallplant_started_input_=0;
         if(ground_grab_) {
             output.right_x=output.right_y=0;
             input_.poll(now,physical,{InputContext::unknown,true,true},{});
@@ -868,7 +874,11 @@ private:
         if (result == InputDisposition::started && request.action == InputAction::rail_change) {
             rail_ = false; rail_request_ = {};
         }
-        extension_started_ = extension_started_ || result == InputDisposition::started;
+        if(result==InputDisposition::started) {
+            wallplant_started_input_=!extension_started_ && request.action==InputAction::wall_command &&
+                request.variant==1 ? request.input_sequence : 0;
+            extension_started_=true;
+        }
         current_->unsupported = result == InputDisposition::unsupported;
         return result;
     }
@@ -1028,6 +1038,7 @@ private:
     TrickDirection rail_direction_{};
     std::uint64_t now_{}, last_{}, last_tick_{}, jump_pressed_at_{};
     bool jump_nollie_{}, extension_started_{};
+    std::uint64_t wallplant_started_input_{};
     std::int32_t air_followup_id_{};
     bool rail_{}, holding_{}, air_action_{}, clocked_{};
     std::uint16_t grab_hold_button_{};

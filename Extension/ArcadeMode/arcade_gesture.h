@@ -240,8 +240,8 @@ public:
             sessions_[user].initial_ground_acquisition(now,InputNativeContext::from_frame(native));
     }
     bool busy(unsigned user) const noexcept { return user < sessions_.size() && sessions_[user].busy(); }
-    bool wallplant_controls_unowned(unsigned user) const noexcept {
-        return user<sessions_.size() && sessions_[user].wallplant_controls_unowned();
+    bool wallplant_controls_unowned(unsigned user,std::uint64_t accepted_input=0) const noexcept {
+        return user<sessions_.size() && sessions_[user].wallplant_controls_unowned(accepted_input);
     }
     InputRequest claim_wallplant_contact(std::uint64_t now,const NativeInputFrame& frame,
                                         InputSurfaceState surface) noexcept {
