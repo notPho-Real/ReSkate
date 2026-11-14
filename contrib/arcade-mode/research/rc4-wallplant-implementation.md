@@ -1074,3 +1074,14 @@ Focused extracted-wrapper regressions cover AIR anchoring, both drive tails,
 single physical publication, unchanged body transforms/deadline, and released
 AIR pass-through. Hardware hold/release acceptance remains pending for this
 correction.
+
+
+### Airborne position target routing correction
+
+The controlled 288c6528 capture entered the planted phase, but received no subsequent target updates and canceled after 108 ms. The native cause-1 bail preceded the owner-generation boundary; weakening continuity would not repair it. Native target motion still pointed inward at approximately 10.7 m/s.
+
+The earlier AIR201 call-path description was incorrect: update 4822230 ends before the separate callbacks that use 4774f50/4773e40. Its actual call at 4822620 invokes position placement 4775ce0, which prepares world/inverse targets through 4779330, publishes the articulated reference, and tail-calls the existing board drive. The return address at that drive remains 4822625.
+
+The existing bounded hold writer now also runs after that exact position preparation, before native reference publication. AIR publication composes the world target directly; ground publication retains its local target plus origin. The unused AIR local target remains unchanged. Exact entry/call/tail byte checks guard the added route. Original preparation and the solver each run once; owner, geometry, orientation, expiry and genuine bail checks remain active. No native state, collision or body transform is manufactured.
+
+Focused production-wrapper regressions cover the actual preparation/publication/tail sequence, unknown callers, wrong rigs, inactive holds, invalid authority and unchanged deadlines. Runtime Werror passes locally. Exact Windows/integration CI and a new controlled hardware capture remain required. This correction is not hardware accepted and is not ready for user testing.
