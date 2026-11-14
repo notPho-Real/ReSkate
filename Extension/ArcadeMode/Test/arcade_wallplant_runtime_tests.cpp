@@ -6,6 +6,9 @@ namespace fixture {
 std::uint64_t now=1000;
 bool hit_current=true,race_cancel{};
 bool collision_scope{};
+bool geometry_mode{};
+dingosdk::arcade_mode::SurfaceGeometrySample wall{};
+std::array<float,3> anchor_point{},anchor_offset{};
 dingosdk::arcade_mode::native_wall_contact::Snapshot collision{};
 unsigned begins{},releases{},cancels{},checks{};
 std::uint64_t released_identity{};
@@ -50,12 +53,15 @@ SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi&,con
         const SurfaceGeometryRequest&,SurfaceGeometryTrace*) noexcept{return {};}
 SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
         SurfaceGeometryBody,SurfaceGeometryVector,SurfaceGeometryVector,SurfaceGeometryVector,float,
-        SurfaceGeometryTrace*) noexcept{return {};}
+        SurfaceGeometryTrace*) noexcept{return fixture::geometry_mode?fixture::wall:SurfaceGeometrySample{};}
 bool revalidate_surface_geometry(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
-        const SurfaceGeometrySample&) noexcept{return false;}
+        const SurfaceGeometrySample&) noexcept{return fixture::geometry_mode;}
 SurfaceGeometryAnchor query_wallplant_anchor(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
-        SurfaceGeometryBody,SurfaceGeometryVector,SurfaceGeometryVector,SurfaceGeometryVector,
-        std::span<const SurfaceGeometryVector>,SurfaceGeometryTrace*) noexcept{return {};}
+        SurfaceGeometryBody,SurfaceGeometryVector point,SurfaceGeometryVector,SurfaceGeometryVector root,SurfaceGeometryVector offset,
+        std::span<const SurfaceGeometryVector>,SurfaceGeometryTrace*) noexcept{
+    fixture::anchor_point=point;fixture::anchor_offset=offset;
+    SurfaceGeometryAnchor result;result.target=root;result.valid=fixture::geometry_mode;return result;
+}
 }
 using namespace dingosdk::arcade_mode;
 using namespace dingosdk::arcade_mode::wallplant_runtime;
@@ -120,6 +126,29 @@ int main(){
               "early raw contact alone cannot bypass geometry, fresh A or hold entry");
     }
     fixture::collision={};fixture::collision_scope=false;
+    {
+        const auto c=setup();const auto& f=c.native;
+        SurfaceGeometryContext ctx{{1,2,3,4,5},context(f),8,7,1,9,f.owner_generation,SurfaceGeometryPhase::collision_response};
+        fixture::geometry_mode=true;fixture::wall={};fixture::wall.context=ctx;
+        fixture::wall.valid=true;fixture::wall.queried_at=1000;
+        fixture::wall.point={.02f,1.5f,.03f};fixture::wall.query_normal={1,0,0};
+        SurfaceGeometrySample ground_sample=fixture::wall;ground_sample.point={0,0,0};
+        raw={};raw.valid=true;raw.owner={1,2,3,4,5};raw.state=201;
+        raw.sampled_at=1000;raw.seconds=f.physics_seconds;raw.velocity={-10,0,0};raw.count=1;
+        auto& hit=raw.contacts[0];hit.identity_valid=hit.static_body=hit.categories_known=true;
+        hit.normal={1,0,0};hit.point={0,1.5f,0};hit.shape={7,1,0};
+        raw_frame=f;contact_identity=7;
+        SurfaceGeometryNativeApi api;api.now=[](void*)noexcept{return fixture::now;};
+        api.current=[](void*,const SurfaceGeometryContext&)noexcept{return true;};
+        const std::array<SurfaceGeometryVector,1> support{{{0,-.8f,-.6f}}};
+        publish_geometry(api,ctx,f,{.2f,2.3f,0},ground_sample,support);
+        check(candidate.valid,"guarded collision geometry reaches real publication");
+        check(fixture::anchor_point==fixture::wall.point&&fixture::anchor_offset==support[0],
+              "anchor uses measured wall plane and native board origin rather than raw contact and entity origin");
+        check(candidate.contact.point==fixture::wall.point&&candidate.hit.point==hit.point,
+              "visual point uses corroborated wall while original collision observation is retained");
+        fixture::geometry_mode=false;
+    }
     for(bool missing:{false,true}) {
         auto c=setup();if(missing)c.anchor_verified=false;else ++c.anchor[0];
         check(!enter(c,1000) && !held_command(),"changed or unverified entry anchor cannot borrow consumed geometry authority");

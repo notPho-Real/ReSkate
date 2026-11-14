@@ -1,5 +1,38 @@
 # RC4 wallplant prototype
 
+## Preserve the measured board-to-entity origin offset
+
+The `210026e7` Deck trial reached the collision worker and broad-wall query,
+but rejected `anchor_adjustment` before entering a hold. A fresh airborne A
+was recorded before that invocation. Native state subsequently became 504.
+The game remained running; a stale observer readiness sample interrupted the
+capture runner. This was a failed gameplay test, not a successful wallplant.
+
+The anchor calculation had treated a board contact point as an entity-origin
+destination. Those origins are distinct: `read_surface_board_support` reads
+native board part0, while the placement pose supplies the entity transform.
+The existing physical-target adapter already preserves their measured offset.
+The clearance calculation now does the same: establish the board destination
+at the corroborated wall plane plus the wall distance, then subtract the
+measured board-to-entity offset to obtain the entity destination. Both origins
+move by the same displacement. This is an observation/coordinate correction;
+it does not enlarge the 0.70104 m adjustment bound or change rebound tuning.
+
+The wall-outward ray ends at the board destination. Entity and measured body
+translation paths remain mandatory, with the same obstacle, ownership and
+lifetime checks. The visible foot target also uses the corroborated wall point;
+the original native contact is retained for collision revalidation. No body
+transform is teleported by the geometry query. The existing bounded native
+spring target remains responsible for the planted phase.
+
+The failed build omitted the rejected anchor operands. Its nearby asynchronous
+body samples cannot establish the exact entity pose at that invocation. Bounded
+diagnostics now retain the same-call entity origin, board origin, destination
+and displacement on both rejection and successful clearance. Focused regressions
+cover distinct origins, obstacles, unchanged displacement limits and runtime
+routing of the measured wall/body observations. Actual hold, release, foot
+alignment and combo continuity still require validation of this revised DLL.
+
 ## Qualify first contact before collision response
 
 The user-reported immediate bail was reproduced on `971c16b0`. A genuine

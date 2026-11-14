@@ -248,12 +248,13 @@ struct Fixture {
     }
     SurfaceGeometrySample query_wall() {return query_wall(wall_point,wall_normal);}
     SurfaceGeometryAnchor query_anchor(SurfaceGeometryVector root={0,1.5f,.2f},
-        std::span<const SurfaceGeometryVector> offsets=std::span<const SurfaceGeometryVector>{}) {
+        std::span<const SurfaceGeometryVector> offsets=std::span<const SurfaceGeometryVector>{},
+        SurfaceGeometryVector board_offset={}) {
         anchor=true;first=0;
         const std::array<SurfaceGeometryVector,2> measured{{{-.2f,.3f,0},{.2f,-.3f,0}}};
         if(offsets.data()==nullptr)offsets=measured;
         const auto context=live;
-        auto result=query_wallplant_anchor(api(),context,{7,1,generation},wall_point,wall_normal,root,offsets);
+        auto result=query_wallplant_anchor(api(),context,{7,1,generation},wall_point,wall_normal,root,board_offset,offsets);
         check(calls==pops && calls==frees,"anchor query releases every original native result scope");
         return result;
     }
@@ -680,6 +681,47 @@ int main() {
     for(unsigned ray=1;ray<=4;++ray) {
         Fixture f;f.anchor_block_at=ray;
         check(!f.query_anchor().valid&&f.calls==ray,"any obstacle including contacted shape blocks anchor without skipping");
+    }
+    {
+        Fixture f;
+        const SurfaceGeometryVector root{0,2.3f,.2f},board_offset{0,-.8f,0};
+        const std::array<SurfaceGeometryVector,1> supports{board_offset};
+        const auto anchor=f.query_anchor(root,supports,board_offset);
+        check(anchor.valid&&anchor.checked_rays==3,"different entity and board heights retain three real clearance paths");
+        check(std::abs(anchor.target[1]-root[1])<.000001f&&std::abs(anchor.displacement-.50104f)<.000001f,
+              "placing the board outside the wall does not pull the entity down to the contact height");
+        check(std::abs(f.anchor_segments[0].end[1]-1.5f)<.000001f&&
+              std::abs(f.anchor_segments[1].end[1]-2.3f)<.000001f,
+              "wall outward clearance ends at the board anchor while root clearance ends at the entity anchor");
+        check(f.anchor_segments[2].end==f.anchor_segments[0].end,
+              "measured board clearance reaches the same wall offset");
+    }
+    {
+        Fixture f;const SurfaceGeometryVector root{0,1.5f,1.5f},offset{0,0,-.6f};
+        const auto anchor=f.query_anchor(root,{},offset);
+        check(anchor.valid&&std::abs(anchor.target[2]-1.30104f)<.000001f&&anchor.displacement<.2f,
+              "forward board offset does not turn a small body adjustment into an excessive entity displacement");
+        check(anchor.checked_rays==5&&f.anchor_segments[2].start==SurfaceGeometryVector{0,1.5f,.9f},
+              "explicit board path is mandatory when absent from additional supports");
+    }
+    { Fixture f;f.anchor_block_at=3;
+      check(!f.query_anchor({0,1.5f,1.5f},{},{0,0,-.6f}).valid,
+            "an obstacle on the explicit board path rejects the entity translation"); }
+    { Fixture f;
+      check(!f.query_anchor({0,2.3f,-.01f},{},{0,-.8f,0}).valid&&f.calls==0,
+            "measured origin conversion cannot expand the original displacement bound"); }
+    { Fixture f;
+      check(!f.query_anchor({0,1.5f,.2f},{},{0,std::numeric_limits<float>::quiet_NaN(),0}).valid&&f.calls==0,
+            "nonfinite board origin cannot enable an anchor"); }
+    {
+        Fixture f;f.anchor=true;
+        SurfaceGeometryTrace trace;
+        const std::array<SurfaceGeometryVector,1> supports{{{0,0,0}}};
+        const auto anchor=query_wallplant_anchor(f.api(),f.live,{7,1,f.generation},f.wall_point,f.wall_normal,
+            {0,1.5f,-.01f},{0,0,0},supports,&trace);
+        check(!anchor.valid&&trace.anchor_displacement>.70104f&&trace.anchor_root[2]==-.01f&&
+              trace.anchor_body==trace.anchor_root&&std::abs(trace.anchor_target[2]-.70104f)<.000001f,
+              "rejected adjustment retains same-call operands instead of zero diagnostic coordinates");
     }
     for(unsigned failure=0;failure<13;++failure) {
         Fixture f;

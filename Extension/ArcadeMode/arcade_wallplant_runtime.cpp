@@ -92,11 +92,14 @@ void diagnose_query(const char* query,const SurfaceGeometryTrace& trace,const Ra
         if(query_diagnostic_count>=64)return;
         ++query_diagnostic_count;
         logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE WALLPLANT QUERY: query={} reason={} context_reason={} ms={} step={} state={} owner_generation={} contact={} raw={} ray={} attempt={} hits={} shape_world={} shape={} generation={} entity={} start={},{},{} end={},{},{} point={},{},{} value={}.",
+            "ARCADE WALLPLANT QUERY: query={} reason={} context_reason={} ms={} step={} state={} owner_generation={} contact={} raw={} ray={} attempt={} hits={} shape_world={} shape={} generation={} entity={} start={},{},{} end={},{},{} point={},{},{} value={} anchor_root={},{},{} anchor_body={},{},{} anchor_target={},{},{} anchor_displacement={}.",
             query,trace.reason,trace.context_reason,GetTickCount64(),f.physics_step,f.state,f.owner_generation,identity,source.serial,
             trace.ray,trace.attempt,trace.hits,trace.shape.world,trace.shape.index,trace.shape.generation,trace.entity,
             trace.start[0],trace.start[1],trace.start[2],trace.end[0],trace.end[1],trace.end[2],
-            trace.point[0],trace.point[1],trace.point[2],trace.value);
+            trace.point[0],trace.point[1],trace.point[2],trace.value,
+            trace.anchor_root[0],trace.anchor_root[1],trace.anchor_root[2],
+            trace.anchor_body[0],trace.anchor_body[1],trace.anchor_body[2],
+            trace.anchor_target[0],trace.anchor_target[1],trace.anchor_target[2],trace.anchor_displacement);
     } catch(...) {}
 }
 void diagnose(unsigned phase,unsigned stage,const char* reason,const Raw& source,
@@ -398,10 +401,12 @@ void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const Surface
         if(!wall.valid)diagnose_query("wall",trace,source,f,identity);
         if(!wall.valid){geometry(9,"broad_wall",now);continue;}
         SurfaceGeometryTrace anchor_trace;
-        const auto anchor=query_wallplant_anchor(api,ctx,shape,hit.point,hit.normal,root,
-            verified_support_offsets,&anchor_trace);
+        // The callback's first support is the revalidated native board part0.
+        // Use the corroborated wall plane, not the solver's displaced contact.
+        const auto anchor=query_wallplant_anchor(api,ctx,shape,wall.point,wall.query_normal,root,
+            verified_support_offsets.front(),verified_support_offsets,&anchor_trace);
+        diagnose_query("anchor",anchor_trace,source,f,identity);
         if(!anchor.valid) {
-            diagnose_query("anchor",anchor_trace,source,f,identity);
             geometry(16,"anchor_clearance",api.now(api.user));continue;
         }
         if(!native_wall_contact::current(hit,ctx.world)){geometry(10,"hit_current_after_query",now);continue;}
@@ -417,7 +422,7 @@ void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const Surface
         Candidate result{};result.hit=hit;result.wall=wall;result.ground=clearance_ground;result.root=root;
         result.anchor=anchor;
         result.clearance=clearance;result.published_at=now;result.valid=true;
-        auto& c=result.contact;c.native=origin;c.geometry=ctx;c.body=shape;c.point=hit.point;
+        auto& c=result.contact;c.native=origin;c.geometry=ctx;c.body=shape;c.point=wall.point;
         c.normal=hit.normal;c.approach_velocity=source.velocity;c.identity=identity;
         c.sampled_at=source.sampled_at;c.collision=c.static_world=true;
         std::lock_guard lock(mutex);

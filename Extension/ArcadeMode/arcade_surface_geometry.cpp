@@ -307,25 +307,38 @@ SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,co
 }
 SurfaceGeometryAnchor query_wallplant_anchor(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
         SurfaceGeometryBody shape,SurfaceGeometryVector point,SurfaceGeometryVector normal,
-        SurfaceGeometryVector root,std::span<const SurfaceGeometryVector> body_offsets,
+        SurfaceGeometryVector root,SurfaceGeometryVector board_offset,
+        std::span<const SurfaceGeometryVector> body_offsets,
         SurfaceGeometryTrace* trace) noexcept {
     const auto fail=[&](const char* reason)->SurfaceGeometryAnchor {if(trace)trace->reason=reason;return {};};
     if(trace)*trace={};
     try {
-        if(!current(api,ctx,trace) || !finite(point) || !finite(root) || !finite(normal) ||
+        if(!current(api,ctx,trace) || !finite(point) || !finite(root) || !finite(board_offset) || !finite(normal) ||
            std::abs(dot(normal,normal)-1.f)>.02f || !unit(normal) || std::abs(normal[1])>.1f)
             return fail("anchor_context_normal");
         if(body_offsets.empty() || body_offsets.size()>32)return fail("anchor_supports");
         for(const auto& offset:body_offsets)if(!finite(offset))return fail("anchor_support_invalid");
-        // Reference wall distance in metres; bounds target offset AND root
-        // adjustment. It is not a collision shape radius.
+        // The contact belongs to the board. The entity origin is a different
+        // point in the articulated skater. Translate both by the same measured
+        // displacement instead of pulling the entity origin onto a board anchor.
+        // Keep the existing bound on the complete adjustment, not a shape radius.
         constexpr float distance=27.6f*.0254f;
         constexpr float plane_tolerance=.005f; // Existing plane corroboration tolerance.
         SurfaceGeometryAnchor result;
-        for(unsigned axis=0;axis<3;++axis)result.target[axis]=point[axis]+normal[axis]*distance;
+        SurfaceGeometryVector body{},body_target{};
+        for(unsigned axis=0;axis<3;++axis) {
+            body[axis]=root[axis]+board_offset[axis];
+            body_target[axis]=point[axis]+normal[axis]*distance;
+            result.target[axis]=body_target[axis]-board_offset[axis];
+        }
         const auto delta=sub(result.target,root);
         result.displacement=std::sqrt(dot(delta,delta));
-        if(!finite(result.target) || !std::isfinite(result.displacement) ||
+        if(trace) {
+            trace->shape=shape;trace->point=point;trace->anchor_root=root;
+            trace->anchor_body=body;trace->anchor_target=result.target;
+            trace->anchor_displacement=result.displacement;
+        }
+        if(!finite(body) || !finite(body_target) || !finite(result.target) || !std::isfinite(result.displacement) ||
            result.displacement>distance)return fail("anchor_adjustment");
         SurfaceGeometrySample source;source.context=ctx;source.body=shape;source.queried_at=api.now(api.user);
         if(!body_owner(api,ctx,shape,source.body_owner,trace,&source.world_owner) ||
@@ -344,11 +357,16 @@ SurfaceGeometryAnchor query_wallplant_anchor(const SurfaceGeometryNativeApi& api
         for(unsigned axis=0;axis<3;++axis)outside[axis]=point[axis]+normal[axis]*plane_tolerance;
         // Never exclude the contacted wall or another obstacle. Only existing
         // revalidated local-player shape exclusions are permitted.
-        if(!clear_segment(outside,result.target))return fail("anchor_outward_blocked");
+        if(!clear_segment(outside,body_target))return fail("anchor_outward_blocked");
         // An already stationary root introduces no translated support path.
         // The nonzero wall-outward segment and unchanged owner stamp remain
         // mandatory; a zero-length native ray is never taken as clear evidence.
         if(result.displacement>0 && !clear_segment(root,result.target))return fail("anchor_root_blocked");
+        // The explicitly observed board must have a clearance path even if a
+        // caller's additional support list does not include its origin.
+        const bool board_in_supports=std::find(body_offsets.begin(),body_offsets.end(),board_offset)!=body_offsets.end();
+        if(result.displacement>0 && board_offset!=SurfaceGeometryVector{} && !board_in_supports &&
+           !clear_segment(body,body_target))return fail("anchor_board_blocked");
         if(result.displacement>0)for(const auto& offset:body_offsets) {
             SurfaceGeometryVector start{},end{};
             for(unsigned axis=0;axis<3;++axis){start[axis]=root[axis]+offset[axis];end[axis]=result.target[axis]+offset[axis];}

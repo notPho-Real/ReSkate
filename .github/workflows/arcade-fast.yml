@@ -1,7 +1,7 @@
 name: Arcade Mode targeted tests
 on:
   push:
-    branches: [arcade-mode, 'arcade-stage-*']
+    branches: [arcade-mode, wallplants, 'arcade-stage-*']
     paths:
       - 'Extension/ArcadeMode/**'
       - 'contrib/arcade-mode/ci/**'

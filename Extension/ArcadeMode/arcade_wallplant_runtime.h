@@ -10,6 +10,8 @@ void observe_physics(const NativeInputFrame&) noexcept;
 // The collision producer precedes the ordinary step listener. Keep the last
 // observed AIR frame unchanged; the collision retains its own serial and time.
 bool retain_collision_before_response(const NativeInputFrame&,std::uint64_t now) noexcept;
+// First support must be the revalidated native board part0 origin relative to
+// root; remaining entries, if any, are additional measured support positions.
 void publish_geometry(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
     const NativeInputFrame&,SurfaceGeometryVector root,const SurfaceGeometrySample& ground,
     std::span<const SurfaceGeometryVector> verified_support_offsets) noexcept;

@@ -46,6 +46,9 @@ struct SurfaceGeometryTrace {
     std::uint64_t entity{};
     SurfaceGeometryVector start{}, end{}, point{};
     float value{};
+    // Anchor operands survive individual clearance-ray diagnostics.
+    SurfaceGeometryVector anchor_root{}, anchor_body{}, anchor_target{};
+    float anchor_displacement{};
 };
 SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
                                              const SurfaceGeometryRequest&, SurfaceGeometryTrace* = nullptr) noexcept;
@@ -62,6 +65,9 @@ SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi&, const
 // from the same guarded owner observation. The live caller currently proves
 // deck part0 only, not articulated shape extents. Native collision remains enabled.
 // No missing-support fallback and no transform/position write occurs here.
+// board_offset is the separately validated part0 origin relative to the entity
+// root. The wall distance applies to that body; target is the entity translation
+// which preserves this offset. Clearance always checks both origins.
 struct SurfaceGeometryAnchor {
     SurfaceGeometryVector target{};
     float displacement{};
@@ -70,7 +76,8 @@ struct SurfaceGeometryAnchor {
 };
 SurfaceGeometryAnchor query_wallplant_anchor(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
     SurfaceGeometryBody contacted_shape, SurfaceGeometryVector contact_point, SurfaceGeometryVector normal,
-    SurfaceGeometryVector root, std::span<const SurfaceGeometryVector> body_offsets,
+    SurfaceGeometryVector root, SurfaceGeometryVector board_offset,
+    std::span<const SurfaceGeometryVector> body_offsets,
     SurfaceGeometryTrace* = nullptr) noexcept;
 // Call only in the same supported client/park callback or same-thread scoped
 // collision response contract. Never renews
