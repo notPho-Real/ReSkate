@@ -680,23 +680,18 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         for(unsigned i=0;i<executions.count;++i) {
             const auto& e=executions.rows[i];
             if(!episode.grounded() || e.episode!=episode.serial())continue;
-            if(combo_session.observe_custom(e,native_frame.owner,native_frame.owner_generation,now) && e.performed) {
-                const auto* definition=trick_definition(e.trick);
-                dingosdk::logging::log(dingosdk::logging::Level::info,dingosdk::logging::Channel::skater,
-                    "Arcade performed: id={} occurrence={} step={} custom_points={} multiplier={}.",
-                    definition?definition->key:std::string_view{},e.occurrence,e.step,
-                    combo_session.model().state().custom_points,combo_session.model().state().multiplier);
-            }
+            if(combo_session.observe_custom(e,native_frame.owner,native_frame.owner_generation,now) && e.performed)
+                input_telemetry.client(CustomScoreEvidence{now,e.occurrence,e.step,
+                    combo_session.model().state().custom_points,0,static_cast<unsigned>(e.trick),
+                    combo_session.model().state().multiplier});
         }
     static std::uint64_t custom_settlement_seen{};
     const auto& custom_terminal=combo_session.model().last_settlement();
     if(custom_terminal.sequence!=custom_settlement_seen) {
         custom_settlement_seen=custom_terminal.sequence;
         if(custom_terminal.custom_points)
-            dingosdk::logging::log(dingosdk::logging::Level::info,dingosdk::logging::Channel::skater,
-                "Arcade custom settlement: sequence={} kind={} points={} multiplier={}.",
-                custom_terminal.sequence,static_cast<unsigned>(custom_terminal.kind),
-                custom_terminal.custom_points,custom_terminal.actions);
+            input_telemetry.client(CustomScoreEvidence{now,custom_terminal.sequence,0,
+                custom_terminal.custom_points,static_cast<unsigned>(custom_terminal.kind),0,custom_terminal.actions});
     }
     if(episode_live && (failed || combo_session.manual_putdown())) {
         std::lock_guard lock(ollie_mutex);manual_episode.end(ManualEpisode::Exit::endpoint);manual_hud_episode=0;
@@ -891,6 +886,13 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE CONTROLLER ROUTE: ms={} bitmap_known={} bitmap={} physical_slot={} logical_actor={} generation={} enabled={} source_available={} reason={} explicit_binding={} binding_failure={}.",
                 r.ms,r.bitmap_known,r.bitmap,r.physical_slot,r.logical_actor,r.generation,r.enabled,r.source_available,controller_route_reason(r.reason),r.explicit_binding,static_cast<unsigned>(r.binding_failure));
+        else if constexpr (std::is_same_v<T, CustomScoreEvidence>) {
+            const auto* definition=trick_definition(static_cast<ArcadeTrick>(r.trick));
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE CUSTOM SCORE: ms={} kind={} id={} sequence={} step={} points={} multiplier={}.",
+                r.ms,r.kind,definition?definition->key:std::string_view{"combo"},
+                r.sequence,r.step,r.points,r.multiplier);
+        }
         else if constexpr (std::is_same_v<T, RevertLinkEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE REVERT LINK: ms={} sequence={} labels={} accepted={} remaining_ms={}.",

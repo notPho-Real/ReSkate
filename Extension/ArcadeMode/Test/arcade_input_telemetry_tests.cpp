@@ -16,6 +16,14 @@ constexpr std::uint64_t checksum(std::uint64_t producer, std::uint64_t ordinal) 
     return (producer * 1000003u) ^ ordinal ^ 0xabcdef12u;
 }
 void saturation_and_recovery() {
+    CustomScoreEvidence score{1000,1,7,250,0,static_cast<unsigned>(ArcadeTrick::casper),2};
+    check(client_telemetry_valid(score),"performed custom score is a bounded detached row");
+    score.trick=static_cast<unsigned>(ArcadeTrick::kickflip);
+    check(!client_telemetry_valid(score),"native trick cannot masquerade as a custom score receipt");
+    score={1000,2,0,700,1,0,2};
+    check(client_telemetry_valid(score),"custom bank uses a terminal sequence without a native action");
+    score.step=7;check(!client_telemetry_valid(score),"terminal cannot claim an execution step");
+
     BoardMotionEvidence motion{1, 500, 1.0f / 60, 3, 0, 4, 100, 1, 0x40, 0xc000, true, false};
     check(client_telemetry_valid(motion), "native60Hz velocity and step time fit the bounded telemetry channel");
     motion.seconds = 1.0f / 30;

@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_combo_session.h"
+#include "Extension/ArcadeMode/arcade_input_telemetry.h"
 #include "Extension/ArcadeMode/arcade_custom_score_display.h"
 #include <cstdlib>
 #include <iostream>
@@ -6,6 +7,10 @@ using namespace dingosdk;
 using namespace dingosdk::arcade_mode;
 void check(bool ok,const char* why){if(!ok){std::cerr<<why<<'\n';std::exit(1);}}
 int main(){
+    CustomScoreEvidence telemetry{1000,1,7,250,0,static_cast<unsigned>(ArcadeTrick::casper),2};
+    check(client_telemetry_valid(telemetry),"performed custom score fits the detached telemetry contract");
+    telemetry.kind=1;check(!client_telemetry_valid(telemetry),"a terminal cannot carry performed action fields");
+
     const NativeInputOwner owner{1,2,3,4,5};
     Model model;CustomTrickScoring score;
     CustomTrickExecution e{owner,1,7,1,1,1000,ArcadeTrick::casper,true,0};

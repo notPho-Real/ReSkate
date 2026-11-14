@@ -69,6 +69,10 @@ struct ManualPhysicsEvidence {
     float step{}, elapsed{}, repeat_pressure{}, position{}, velocity{};
     unsigned profile{};
 };
+struct CustomScoreEvidence {
+    std::uint64_t ms{}, sequence{}, step{}, points{};
+    unsigned kind{}, trick{}, multiplier{}; // kind: performed, bank, bail.
+};
 struct BalanceSampleEvidence { std::uint64_t ms{}; unsigned kind{}; float x{}, v{}, input{}, difficulty{}; short raw_x{}, raw_y{}; };
 struct ComboEventEvidence { std::uint64_t ms{}; unsigned pose{}; bool active{}, failed{}; float fatigue{}, grind{}, manual{}; };
 struct BalanceBailEvidence { std::uint64_t ms{}, request{}; unsigned result{}; };
@@ -239,10 +243,15 @@ using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFai
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
     ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence,
-    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence, GroundWriterEvidence, camera_diagnostics::Evidence, AngularWriterEvidence>;
+    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence, GroundWriterEvidence, camera_diagnostics::Evidence, AngularWriterEvidence, CustomScoreEvidence>;
 // Native UI observers use this bridge; the sink never receives native objects.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
+    if(const auto* score=std::get_if<CustomScoreEvidence>(&row))
+        return score->ms && score->sequence && score->multiplier && score->kind<=2 &&
+            (score->kind ? score->trick==0 && score->step==0 :
+                score->step && (score->trick==static_cast<unsigned>(ArcadeTrick::casper) ||
+                               score->trick==static_cast<unsigned>(ArcadeTrick::casper_flip)));
     if (const auto* manual = std::get_if<ManualPhysicsEvidence>(&row))
         return std::isfinite(manual->step) && manual->step > 0 && manual->step <= .1f &&
             std::isfinite(manual->elapsed) && manual->elapsed >= 0 &&
