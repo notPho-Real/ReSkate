@@ -364,3 +364,30 @@ ground turns and a switch-landing continuation also passed their bounded cases.
 The long-held grab attempt missed rail contact and is inconclusive. Stop/restart
 attempts did not satisfy their native prerequisites; they do not establish that
 the reported backwards restart is fixed. No blanket gameplay acceptance is claimed.
+
+## Native Nollie rail-exit follow-ups
+
+The continuous Impossible -> grind -> pop -> Heelflip trial selected native
+Nollie 16 on the rail before states 200/201. Physical Heelflip recognition was
+admitted, but the released-pop route accepted only Ollie 1 and Quick Ollie 31.
+The existing native flip bridge already accepts Nollie; no new animation,
+physics impulse or selector write is needed.
+
+The rail episode now retains that observed selection for its released follow-up.
+A different jump at or after departure is still rejected, as are owner, stance,
+clock, bail and conflicting-input boundaries. Ground takeoffs retain their
+original requested Ollie/Nollie match. Tests reproduce the recorded rail path,
+including release before and after native departure, and preserve the existing
+preloaded flip/grab negative controls.
+
+Source comparison used official upstream 355bf71e, its launch contracts and
+trick-gesture loader, plus the existing pinned fork-method survey. The upstream
+loader skips from-grind recipes; the existing RC5 ownership route remains the
+integration point. Device acceptance requires actual native Heelflip identity,
+visible rotation and a landed continuation; recognition alone is insufficient.
+
+The flatland test also reached a legitimate balance putdown before requesting
+Casper. Retesting must apply ordinary balance controls and establish the second
+Manual before X/Y. Preserve Fakie Manual after the revert, native balance
+endpoints and the existing custom animation owner. No new native Casper scoring
+or trick ID is claimed. Exact-source Windows and Deck validation are pending.

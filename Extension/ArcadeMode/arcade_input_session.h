@@ -268,7 +268,7 @@ public:
             if (admission.external_owner || (physical.buttons & (takeoff_from_rail_?0u:0x8000u)) ||
                 (takeoff_from_rail_ && (rail_ || now-takeoff_release_at_>2500)) ||
                 physical.lt>30 || physical.rt>30 || now<takeoff_release_at_ || (!native.airborne && now-takeoff_release_at_>=InputTiming::direction_ms) ||
-                (native.flip.jump() && native.flip.id!=(jump_nollie_?16:1)) ||
+                (!takeoff_from_rail_ && native.flip.jump() && native.flip.id!=(jump_nollie_?16:1)) ||
                 !(takeoff_from_rail_ ? rail_pop_followup_continues(native,takeoff_native_,now) :
                   native.released_jump_continues(takeoff_native_,now))) takeoff_release_at_=0;
             else {takeoff_native_=native;takeoff_jump_observed_=takeoff_jump_observed_ || (takeoff_from_rail_?rail_pop_jump(native.flip.id):native.flip.jump());}

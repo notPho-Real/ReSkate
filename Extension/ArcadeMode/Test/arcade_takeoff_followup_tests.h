@@ -15,7 +15,7 @@ struct Route {
     NativeInputState producer;
     NativeInputOwner owner{1,2,3,4,5};
     InputAdmission admission{};
-    unsigned flips{},grabs{};
+    unsigned flips{},grabs{}; int expected_flip{2};
     bool switched{},nose{};NativeGrabRequest grab_bridge{};
     NativeCharge charge;NativeCharge::Release release{};
     std::vector<PreparedGesture> catalog{
@@ -27,7 +27,7 @@ struct Route {
         admission.action_mode=ActionExperiment::classic;admission.catalog=catalog;
         admission.normal_flip={this,[](void* context,std::int32_t id) noexcept {
             auto& self=*static_cast<Route*>(context);
-            require(self.admission.native_context.airborne && id==2,"flip submission requires actual AIR");
+            require(self.admission.native_context.airborne && id==self.expected_flip,"flip submission requires actual AIR");
             ++self.flips;return true;
         }};
         admission.normal_grab.context=this;
@@ -66,6 +66,35 @@ struct Route {
     }
 };
 inline void run() {
+    // Device trace: an owned 401 pop selects Nollie16 before entering
+    // 200/201. The physical direction selects Heelflip3 in the same ascent.
+    for (bool grab : {false,true}) for (bool release_in_air : {false,true})
+    for (unsigned fault=0;fault<9;++fault) {
+        // A fresh B in valid AIR has independent native grab permission;
+        // cancellation controls below test preloaded grabs before departure.
+        if(grab && fault)continue;
+        auto h=std::make_unique<Route>(); h->expected_flip=3;
+        h->poll(1000,401,1,-1);
+        require(h->poll(1034,401,1,-1,{classic_a}).jump.setup_started,"Nollie rail path owns its A setup");
+        h->poll(1068,401,0,16,{classic_a});
+        if(fault==1)++h->owner.entity;
+        if(fault==2)h->admission.gameplay=false;
+        if(fault==3)h->admission.external_owner=true;
+        const auto held=static_cast<std::uint16_t>(release_in_air?classic_a:0);
+        h->poll(1102,401,0,16,{held});
+        if(fault==4)h->switched=true;
+        h->poll(1136,fault==5?300:200,0,16,{held});
+        h->poll(1170,201,2,fault==6?1:16,{held});
+        h->poll(1204,201,2,fault==6?1:16);
+        const auto shift=fault==7?501u:0u;
+        const auto face=static_cast<std::uint16_t>(grab?0x2000:(classic_x|8));
+        h->poll(1238+shift,201,2,fault==6?1:16,{face,0,0,static_cast<std::uint8_t>(fault==8?255:0)});
+        for(unsigned i=0;i<8;++i)h->poll(1272+shift+i*34,201,2,fault==6?1:16);
+        if ((grab?h->grabs:h->flips)!=(fault?0u:1u))
+            std::cerr<<"Nollie rail grab="<<grab<<" air_release="<<release_in_air<<" fault="<<fault<<" flips="<<h->flips<<" grabs="<<h->grabs<<'\n';
+        require(grab?h->grabs==(fault?0u:1u):h->flips==(fault?0u:1u),
+            "native Nollie rail exit retains follow-up only through matching owned ascent and release");
+    }
     // Device trace: native rail exit precedes the physical release by 8ms;
     // its Quick Ollie selection follows one physics step later.
     for (bool grab : {false,true}) for (unsigned fault=0;fault<10;++fault) {
