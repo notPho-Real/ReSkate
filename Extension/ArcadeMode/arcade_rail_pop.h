@@ -18,6 +18,8 @@ inline bool rail_pop_input_ready(const InputNativeContext& native, std::uint64_t
 inline bool rail_pop_input_continues(const InputNativeContext& native, std::uint64_t now) noexcept {
     return rail_pop_input_ready(native,now);
 }
+// Rail exits may select ordinary Ollie or the native Quick Ollie helper.
+inline bool rail_pop_jump(std::int32_t id) noexcept { return id==1 || id==31; }
 // Continuity of a released rail Ollie, observed at every native physics step.
 // This is a request lease only: native StateFlow/PTM still owns selection,
 // ascent admission, actor initialization and cleanup. No ground launch ticket.
@@ -38,9 +40,9 @@ inline bool rail_pop_followup_continues(const InputNativeContext& current,
         // A previous approach trick can remain selected during native rail
         // setup. Retain only that unchanged selection until the new Ollie
         // takes over; it never grants airborne flip admission by itself.
-        (current.flip.id!=1 && current.flip.id!=-1 &&
+        (!rail_pop_jump(current.flip.id) && current.flip.id!=-1 &&
             (current.airborne || current.flip.id!=before.flip.id)) ||
-        (before.flip.id==1 && current.flip.id==-1 && !current.airborne) ||
+        (rail_pop_jump(before.flip.id) && current.flip.id==-1 && !current.airborne) ||
         current.physics_step-before.physics_step>1) return false;
     const unsigned action_change=current.flip.state!=before.flip.state || current.flip.id!=before.flip.id;
     return current.generations.action-before.generations.action==action_change &&
@@ -49,4 +51,36 @@ inline bool rail_pop_followup_continues(const InputNativeContext& current,
         current.air_departure==before.air_departure &&
         current.airborne_episode==before.airborne_episode+(current.airborne&&!before.airborne?1u:0u);
 }
+// Native Quick Ollie can leave the rail before the physical A release. Keep
+// only the observation of that admitted setup after its stick owner cancels.
+// A nearby release and actual Quick Ollie selection are both required; this
+// proof cannot issue a pop, retain a held stick or qualify ordinary run-off.
+struct RailPopReleaseProof {
+    InputNativeContext native{};
+    std::uint64_t pressed_at{}, released_at{}, departure_at{};
+    void reset() noexcept { *this={}; }
+    void begin(const InputNativeContext& frame,std::uint64_t pressed) noexcept {
+        reset();
+        if (pressed && rail_pop_input_ready(frame,frame.sampled_at)) {native=frame;pressed_at=pressed;}
+    }
+    void observe(const InputNativeContext& frame) noexcept {
+        if (!pressed_at) return;
+        if (!rail_pop_followup_continues(frame,native,frame.sampled_at)) {reset();return;}
+        if (!frame.rail_family && !departure_at) departure_at=frame.sampled_at;
+        native=frame;
+        if (departure_at && frame.sampled_at-departure_at>150) reset();
+    }
+    void release(std::uint64_t now,bool a_released) noexcept {
+        if (!pressed_at) return;
+        if (!native.fresh(now) || now<pressed_at ||
+            (departure_at && (now<departure_at || now-departure_at>150))) {reset();return;}
+        if (a_released && !released_at) released_at=now;
+    }
+    bool confirmed(std::uint64_t now) const noexcept {
+        return pressed_at && released_at && departure_at && native.fresh(now) &&
+            now>=released_at && now>=departure_at && now-departure_at<=150 &&
+            native.flip.id==31 && (native.flip.state==701 || native.airborne);
+    }
+};
+
 }

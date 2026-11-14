@@ -40,6 +40,28 @@ struct Pipeline {
 };
 }
 int main() {
+    {
+        Pipeline p;unsigned submissions{};
+        p.bridge={&submissions,[](void* context,std::int32_t id) noexcept {
+            if(id!=2)return false;
+            ++*static_cast<unsigned*>(context);return true;
+        }};
+        p.step(1000,401,30);p.poll(1000,0);
+        p.step(1034,401,30);check(p.poll(1034,classic_a).jump.setup_started,"device rail setup reaches facade");
+        p.step(1068,403,30);p.poll(1068,classic_a);
+        p.step(1102,701,30);check(!p.poll(1102,classic_a).authored_playback,"early native exit still cancels held writer");
+        check(!p.poll(1110,0).jump.setup_admitted,"late physical release cannot issue a new pop");
+        p.step(1136,701,30,31,16,0);p.poll(1136,0);
+        check(p.input.rail_followup_active(1136,p.frame),"native Quick Ollie qualifies only released follow-up through facade");
+        p.poll(1144,classic_x);
+        p.step(1170,701,30,31,16,0);p.poll(1170,classic_x);
+        check(!submissions,"facade withholds follow-up before actual AIR");
+        p.step(1204,200,30,31,16,0);p.poll(1204,0);
+        for(unsigned i=0;i<10;++i) {p.step(1238+i*34,201,30,31,16,2);p.poll(1238+i*34,0);}
+        check(submissions==1,"production facade retains device-observed Quick Ollie follow-up exactly once");
+        p.step(1600,100,30);p.poll(1600,0);
+        check(!p.input.rail_followup_active(1600,p.frame),"native landing ends recovered rail follow-up");
+    }
     // The original Kickflip high clip's rail reselection interval is [7,12].
     // Its native Pop and Jump tags both span [12,14]; the unchanged bridge
     // must initialize after that interval while preserving the selected clip.

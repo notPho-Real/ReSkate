@@ -282,7 +282,7 @@ private:
             ((flip && (native.jump_selection_retired(request.generations,request.air_episode,request.waiting_flip) ||
              native.ordinary_flip_wait_continues(request.generations,request.air_episode,request.waiting_flip))) ||
              (released_jump && request.physical_pressed_at>=released_jump &&
-              request.waiting_flip.jump() && native.flip.valid &&
+              (request.waiting_flip.jump() || request.waiting_flip.id==31) && native.flip.valid &&
               request.waiting_flip.object && request.waiting_flip.object==native.flip.object &&
               request.waiting_flip.stance==native.flip.stance &&
               (native.flip.id==request.waiting_flip.id || native.flip.id==-1) &&

@@ -28,7 +28,7 @@ struct Lease {
     std::uintptr_t block{};
     std::uint64_t serial{}, expires{};
     std::int32_t requested{};
-    bool airborne{}, delivered{};
+    bool airborne{}, delivered{}, from_rail{};
     std::uintptr_t initialized_ptm{};
 };
 Lease lease;
@@ -97,7 +97,7 @@ std::uint32_t candidate(std::uintptr_t context,std::uint32_t index,std::uintptr_
     if (valid(l) && view==l.block+0x48 && in_air(l)) {
         std::int32_t current{}, intent{}; bool changed{},allowed{};
         if (state(l,0,current) && state(l,1,intent) && state(l,2,changed) && state(l,3,allowed)) {
-            const bool ollie=current==1 || current==16;
+            const bool ollie=current==1 || current==16 || (l.from_rail && current==31);
             if (ollie && l.requested && !l.delivered && allowed && rising(l) && (intent==0 || intent==current)) {
                 std::lock_guard lock(mutex);
                 if (lease.serial==l.serial && write_intent(l,l.requested)) lease.delivered=l.delivered=true;
@@ -213,12 +213,13 @@ void tick(bool gameplay) noexcept {
     if (!valid(l) || (l.airborne && !air)) { cancel();return; }
     if (air) { std::lock_guard lock(mutex);if (lease.serial==l.serial) lease.airborne=true; }
 }
-void arm(const NoBailSkater& owner) noexcept {
+void arm(const NoBailSkater& owner,bool from_rail) noexcept {
     if (!available()) return;
     const auto block=state_block(owner);
     if (!block) return;
     std::lock_guard lock(mutex);
     lease={owner,block,++next_serial,GetTickCount64()+2500};
+    lease.from_rail=from_rail;
 }
 bool request(const NoBailSkater& owner,std::int32_t id) noexcept {
     if (!available() || !ordinary_flip(id)) return false;

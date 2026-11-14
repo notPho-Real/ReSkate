@@ -2580,9 +2580,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             // Rail release has its own admitted input lease and native pop;
             // it never receives a NativeCharge/ordinary velocity ticket. The
             // original TrickLaunch PTM selects its rail filter and actor tags.
-            if (result.jump.released && result.jump.from_rail && !reference && rotation_enabled &&
+            if (!native_rail_flip_armed && !reference && rotation_enabled &&
                 arcade_input.rail_followup_active(now,rotation_native)) {
-                native_flip::arm(native_flip_owner); native_rail_flip_armed=true;
+                native_flip::arm(native_flip_owner,true); native_rail_flip_armed=true;
             }
             if (native_rail_flip_armed && !arcade_input.rail_followup_active(now,rotation_native)) {
                 native_flip::cancel(); native_rail_flip_armed=false;

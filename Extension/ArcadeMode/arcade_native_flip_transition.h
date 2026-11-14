@@ -6,6 +6,6 @@ bool start(std::uintptr_t base) noexcept;
 void tick(bool gameplay) noexcept;
 void cancel() noexcept;
 bool available() noexcept;
-void arm(const NoBailSkater& owner) noexcept;
+void arm(const NoBailSkater& owner, bool from_rail=false) noexcept;
 bool request(const NoBailSkater& owner, std::int32_t id) noexcept;
 }

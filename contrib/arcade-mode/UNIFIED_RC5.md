@@ -303,3 +303,38 @@ forward travel, reverse travel after a revert, 180-degree landings, right-stick
 look/release and focus/OFF/controller withdrawal, correlated against native
 position/velocity and the rendered camera. Grind-pop flip/grab and the remaining
 Manual/Nose and stance regressions are still required on that same DLL.
+
+
+## Native rail departure follow-up correction
+
+The November 13 exact-source Deck run on fcf70d91 passed
+revert -> Manual -> Ollie -> grab and clean landing. Continuing forward in the
+same input session produced another 14.4 metres of ground travel with the
+rendered camera following the skater. Earlier cases on that DLL passed the
+corresponding flip, a native revert, left steering and right-stick look/recenter.
+These bounded cases did not reproduce the reported backwards-control problem;
+180-degree landing and the complete stance/cancellation matrix remain open.
+
+The rail trial reproduced a remaining failure for both immediate X and B.
+Native contact progressed through 401/403, exit 701, AIR 200/201 and ground 100.
+The rendered result was a clean Quick Ollie with neither follow-up action. The
+lossless input capture placed native departure 8ms before the physical A release;
+the physics and animation selectors then chose Quick Ollie (31). The held writer
+correctly cancelled at contact loss, but that also discarded the release proof.
+The existing continuation and native flip bridge only recognized ordinary jumps.
+The pinned native catalog independently identifies 31 as the Quick Ollie helper.
+
+The correction retains a read-only observation of the original admitted setup.
+It requires the same native owner and every forward physics transition, a
+physical release within 150ms of departure and actual native Quick Ollie
+selection. It grants only follow-up recognition; the cancelled stick stays
+neutral, and no new pop or ordinary velocity ticket is issued. Actual AIR,
+ascent and existing native animation/actor admission still gate execution.
+The native flip lease accepts Quick Ollie only when armed by this rail proof.
+
+The device sequence failed the portable regression before this correction.
+It now passes through both InputSession and the real facade. Negative cases
+cover lost owner, focus, conflicting actor, late or absent release, another
+selection, bail, stance change, trigger input and unowned Quick Ollie. Existing
+held-setup contact-loss checks remain unchanged. This correction has not yet
+been installed or verified on the Deck; it is not an RC5 acceptance result.

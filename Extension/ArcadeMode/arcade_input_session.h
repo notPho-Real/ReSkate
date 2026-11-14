@@ -59,7 +59,7 @@ public:
         clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr; jump_launch_ = {};
         air_actor_episode_ = grab_actor_episode_ = manual_air_episode_ = {}; grab_actor_ = false; rail_request_ = {};
         ground_turn_ = {}; // Keep the serial watermark across resets.
-        takeoff_release_at_=0; takeoff_native_={}; takeoff_jump_observed_=false; takeoff_from_rail_=false;
+        rail_release_.reset(); takeoff_release_at_=0; takeoff_native_={}; takeoff_jump_observed_=false; takeoff_from_rail_=false;
         revert_link_={}; revert_trigger_owned_=false;
         flatland_y_held_=flatland_y_accepted_=false;
     }
@@ -123,7 +123,7 @@ public:
         input_.retire_air_actions();authored_.cancel();auxiliary_.cancel();held_flip_.cancel();
         held_flip_used_=false;held_flip_lineage_={};air_action_=native_followup_=false;
         air_followup_id_=0;air_actor_episode_={};grab_actor_=false;grab_actor_episode_={};grab_hold_button_=0;
-        takeoff_release_at_=0;takeoff_native_={};takeoff_jump_observed_=takeoff_from_rail_=false;
+        rail_release_.reset();takeoff_release_at_=0;takeoff_native_={};takeoff_jump_observed_=takeoff_from_rail_=false;
         return true;
     }
     void resume_manual_episode(const ManualInputDiagnostic& command,const InputNativeContext& native) noexcept {
@@ -133,9 +133,10 @@ public:
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
     void observe_rail_followup(const InputNativeContext& frame) noexcept {
+        rail_release_.observe(frame);
         if (!takeoff_from_rail_ || !takeoff_release_at_) return;
         if (!rail_pop_followup_continues(frame,takeoff_native_,frame.sampled_at)) takeoff_release_at_=0;
-        else { takeoff_native_=frame; takeoff_jump_observed_=takeoff_jump_observed_ || frame.flip.id==1; }
+        else { takeoff_native_=frame; takeoff_jump_observed_=takeoff_jump_observed_ || rail_pop_jump(frame.flip.id); }
     }
     bool released_pop_active(std::uint64_t now,const InputNativeContext& frame) const noexcept {
         return takeoff_release_at_ && now>=takeoff_release_at_ && now-takeoff_release_at_<=2500 &&
@@ -253,6 +254,16 @@ public:
             }
             footplant_=false;current_=nullptr;return output;
         }
+        if (admission.external_owner || auxiliary_.busy() || admission.offboard ||
+            physical.lt>30 || physical.rt>30 || admission.action_mode!=ActionExperiment::classic) rail_release_.reset();
+        else {
+            rail_release_.release(now,!(physical.buttons&classic_a));
+            if (rail_release_.confirmed(now)) {
+                takeoff_release_at_=rail_release_.released_at;takeoff_native_=rail_release_.native;
+                takeoff_jump_observed_=takeoff_from_rail_=true;
+                rail_release_.reset();
+            }
+        }
         if (takeoff_release_at_) {
             if (admission.external_owner || (physical.buttons & (takeoff_from_rail_?0u:0x8000u)) ||
                 (takeoff_from_rail_ && (rail_ || now-takeoff_release_at_>2500)) ||
@@ -260,7 +271,7 @@ public:
                 (native.flip.jump() && native.flip.id!=(jump_nollie_?16:1)) ||
                 !(takeoff_from_rail_ ? rail_pop_followup_continues(native,takeoff_native_,now) :
                   native.released_jump_continues(takeoff_native_,now))) takeoff_release_at_=0;
-            else {takeoff_native_=native;takeoff_jump_observed_=takeoff_jump_observed_ || native.flip.jump();}
+            else {takeoff_native_=native;takeoff_jump_observed_=takeoff_jump_observed_ || (takeoff_from_rail_?rail_pop_jump(native.flip.id):native.flip.jump());}
         }
         if (!admission.offboard) output.buttons &= static_cast<std::uint16_t>(~0xf00fu);
         output.right_x = output.right_y = 0; // Physical right stick belongs to the camera.
@@ -498,7 +509,7 @@ public:
             output.jump.launch.rail_input() && admission.normal_flip.submit && rail_pop_input_continues(native,now) &&
             native.flip.valid && native.flip.object) {
             takeoff_release_at_=output.jump.released_at;takeoff_native_=native;
-            takeoff_jump_observed_=native.flip.id==1;takeoff_from_rail_=true;
+            takeoff_jump_observed_=rail_pop_jump(native.flip.id);takeoff_from_rail_=true;rail_release_.reset();
         }
         const auto authored = authored_.sample(admission.tick, now);
         if (authored.owns_stick) {
@@ -699,7 +710,10 @@ private:
                 // old rail request. A missing recipe leaves that owner intact.
                 if (launch_context_==GestureContext::from_grind) { rail_=false; rail_request_={}; }
                 jump_pressed_at_ = request.physical_pressed_at; jump_nollie_ = request.nollie; jump_launch_ = admission.launch;
-                if(launch_context_==GestureContext::from_grind)jump_launch_.context=LaunchContext::rail;
+                if(launch_context_==GestureContext::from_grind) {
+                    jump_launch_.context=LaunchContext::rail;
+                    rail_release_.begin(admission.native_context,jump_pressed_at_);
+                } else rail_release_.reset();
                 out.jump={false,false,jump_nollie_,launch_context_==GestureContext::from_grind,jump_pressed_at_,0,jump_launch_,true};
             }
             return holding_ ? InputDisposition::started : InputDisposition::unsupported;
@@ -918,7 +932,7 @@ private:
         return takeoff_release_at_ && takeoff_jump_observed_ &&
             admission.action_fresh && admission.native_context.fresh(now_) &&
             admission.native_context.airborne && admission.native_context.flip.valid &&
-            (admission.native_context.flip.id==(jump_nollie_?16:1) || admission.native_context.flip.id==-1);
+            ((takeoff_from_rail_?rail_pop_jump(admission.native_context.flip.id):admission.native_context.flip.id==(jump_nollie_?16:1)) || admission.native_context.flip.id==-1);
     }
     InputDisposition request_auxiliary(const InputRequest& request) noexcept {
         auto& out = current_->action;
@@ -1054,6 +1068,7 @@ private:
     InputPolicy policy_{InputPolicy::production()};
     InputNativeContext native_{};
     InputNativeContext takeoff_native_{};
+    RailPopReleaseProof rail_release_{};
     std::uint64_t takeoff_release_at_{};
     bool takeoff_jump_observed_{}, takeoff_from_rail_{};
     InputAirEpisode air_actor_episode_{}, grab_actor_episode_{}, manual_air_episode_{};

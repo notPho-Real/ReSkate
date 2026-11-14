@@ -66,6 +66,41 @@ struct Route {
     }
 };
 inline void run() {
+    // Device trace: native rail exit precedes the physical release by 8ms;
+    // its Quick Ollie selection follows one physics step later.
+    for (bool grab : {false,true}) for (unsigned fault=0;fault<10;++fault) {
+        auto h=std::make_unique<Route>();
+        h->poll(1000,401,1,-1);
+        require(h->poll(1034,401,1,-1,{static_cast<std::uint16_t>(classic_a)}).jump.setup_started,"measured rail setup admitted");
+        h->poll(1068,403,1,-1,{static_cast<std::uint16_t>(classic_a)});
+        if(fault==1)++h->owner.entity;
+        if(fault==2)h->admission.gameplay=false;
+        if(fault==3)h->admission.external_owner=true;
+        if(fault==8)h->switched=true;
+        const auto departed=h->poll(1102,fault==7?300u:701u,1,-1,{static_cast<std::uint16_t>(classic_a)});
+        require(!departed.authored_playback,"native departure still releases input ownership");
+        const auto shift=fault==4?151u:0u;
+        const auto held=static_cast<std::uint16_t>(fault==5?classic_a:0);
+        h->poll(1110+shift,701,1,-1,{static_cast<std::uint16_t>(held),0,0,0,static_cast<std::uint8_t>(fault==9?255:0)});
+        const int selected=fault==6?4:31;
+        h->poll(1136+shift,701,0,selected,{static_cast<std::uint16_t>(held)});
+        const auto face=static_cast<std::uint16_t>(grab?0x2000:classic_x);
+        h->poll(1144+shift,701,0,selected,{static_cast<std::uint16_t>(face|held)});
+        h->poll(1170+shift,701,0,selected,{static_cast<std::uint16_t>(face|held)});
+        require(!h->flips && !h->grabs,"Quick Ollie selection alone cannot execute before AIR");
+        h->poll(1204+shift,200,0,selected,{static_cast<std::uint16_t>(held)});
+        for(unsigned i=0;i<10;++i)h->poll(1238+shift+i*34,201,2,selected,{static_cast<std::uint16_t>(held)});
+        require(grab?h->grabs==(fault?0u:1u):h->flips==(fault?0u:1u),
+            "device rail follow-up requires original owner, gameplay, timely release, native Quick Ollie and no conflict");
+        require(grab?!h->flips:!h->grabs,"rail follow-up remains in requested family");
+    }
+    for(bool grab:{false,true}) {
+        auto h=std::make_unique<Route>();
+        h->poll(1000,701,0,31);
+        h->poll(1034,701,0,31,{static_cast<std::uint16_t>(grab?0x2000:classic_x)});
+        for(unsigned i=0;i<12;++i)h->poll(1068+i*34,i<2?200:201,2,31);
+        require(!h->flips && !h->grabs,"unowned Quick Ollie cannot authorize a follow-up");
+    }
     require(!NativeCharge::input_permitted(true,false,0x2000),"B without released-pop proof still cancels launch input");
     require(!NativeCharge::input_permitted(true,true,0x2000,true),"a competing actor still cancels a released launch");
     for(bool rail:{false,true})for(bool grab:{false,true}) {
