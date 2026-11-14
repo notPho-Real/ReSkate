@@ -326,8 +326,8 @@ The pinned native catalog independently identifies 31 as the Quick Ollie helper.
 
 The correction retains a read-only observation of the original admitted setup.
 It requires the same native owner and every forward physics transition, a
-physical release within 150ms of departure and actual native Quick Ollie
-selection. It grants only follow-up recognition; the cancelled stick stays
+physical release within the existing 500ms input window after departure and
+actual native Quick Ollie selection. It grants only follow-up recognition; the cancelled stick stays
 neutral, and no new pop or ordinary velocity ticket is issued. Actual AIR,
 ascent and existing native animation/actor admission still gate execution.
 The native flip lease accepts Quick Ollie only when armed by this rail proof.
@@ -335,6 +335,8 @@ The native flip lease accepts Quick Ollie only when armed by this rail proof.
 The device sequence failed the portable regression before this correction.
 It now passes through both InputSession and the real facade. Negative cases
 cover lost owner, focus, conflicting actor, late or absent release, another
-selection, bail, stance change, trigger input and unowned Quick Ollie. Existing
-held-setup contact-loss checks remain unchanged. This correction has not yet
+selection, bail, stance change, trigger input and unowned Quick Ollie. A
+quarter-second physical hold also retains continuously observed native takeoff;
+holding A alone cannot request a follow-up. Existing held-setup contact-loss
+checks remain unchanged. This correction has not yet
 been installed or verified on the Deck; it is not an RC5 acceptance result.

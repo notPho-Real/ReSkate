@@ -68,17 +68,17 @@ struct RailPopReleaseProof {
         if (!rail_pop_followup_continues(frame,native,frame.sampled_at)) {reset();return;}
         if (!frame.rail_family && !departure_at) departure_at=frame.sampled_at;
         native=frame;
-        if (departure_at && frame.sampled_at-departure_at>150) reset();
+        if (departure_at && frame.sampled_at-departure_at>InputTiming::direction_ms) reset();
     }
     void release(std::uint64_t now,bool a_released) noexcept {
         if (!pressed_at) return;
         if (!native.fresh(now) || now<pressed_at ||
-            (departure_at && (now<departure_at || now-departure_at>150))) {reset();return;}
+            (departure_at && (now<departure_at || now-departure_at>InputTiming::direction_ms))) {reset();return;}
         if (a_released && !released_at) released_at=now;
     }
     bool confirmed(std::uint64_t now) const noexcept {
         return pressed_at && released_at && departure_at && native.fresh(now) &&
-            now>=released_at && now>=departure_at && now-departure_at<=150 &&
+            now>=released_at && now>=departure_at && now-departure_at<=InputTiming::direction_ms &&
             native.flip.id==31 && (native.flip.state==701 || native.airborne);
     }
 };
