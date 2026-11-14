@@ -5,6 +5,7 @@
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_rotation.h"
 #include "Extension/Skater/no_bail.h"
+#include "Extension/ArcadeMode/arcade_native_flip_transition.h"
 #include <atomic>
 #include <cstdlib>
 #include <iostream>
@@ -12,7 +13,7 @@
 using namespace dingosdk::arcade_mode;
 // Nonactuating native bridge boundary; these tests verify controller ownership.
 namespace dingosdk::arcade_mode::native_flip {
-void arm(const NoBailSkater&) noexcept {}
+void arm(const NoBailSkater&, bool) noexcept {}
 void cancel() noexcept {}
 }
 namespace dingosdk::arcade_mode::native_grab {void cancel() noexcept {}}
