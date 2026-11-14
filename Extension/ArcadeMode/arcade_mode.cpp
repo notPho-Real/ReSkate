@@ -1606,6 +1606,13 @@ bool claim_native_wallplant_contact(const NativeInputFrame& frame) noexcept {
     std::lock_guard lock(ollie_mutex);
     const auto now=GetTickCount64();
     if(!wallplant_execution_authorized_locked(frame,now))return false;
+    // The controller poll can accept the journaled press while collision
+    // geometry is being published. Reuse that exact observation's pending
+    // request; claiming the same press again would reject its own handoff.
+    // The collision writer still revalidates the raw contact and consumes once.
+    const auto pending=wallplant_runtime::writer_probe();
+    if(pending.input && pending.contact && pending.raw &&
+       wallplant_same_observation(pending.native,frame))return true;
     const auto surface=wallplant_runtime::surface(now,frame);
     const auto request=arcade_input.claim_wallplant_contact(now,frame,surface);
     return request.action==InputAction::wall_command &&

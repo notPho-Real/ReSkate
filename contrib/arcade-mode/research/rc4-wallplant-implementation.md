@@ -1009,3 +1009,14 @@ The production translation unit passes warnings-as-errors. Required acceptance
 remains an exact-source native hold, distinct outward/upward release, continued
 tricks, clean landing, no-A and repeated-A controls, and separate combo/scoring
 observations. No readiness claim is made from source or CI tests.
+# Pending contact handoff
+
+The controller poll may accept the physical press while the native collision
+callback publishes its checked geometry. The collision callback must reuse that
+pending request for the same original observation rather than claim the press
+again. Current controller authority is still required; the collision writer
+revalidates the raw contact and consumes the request once. A pending request from
+another physics observation cannot authorize this handoff.
+
+Focused production-wrapper regressions cover this ordering and the existing
+controller authority failures. Native hold/release acceptance remains pending.

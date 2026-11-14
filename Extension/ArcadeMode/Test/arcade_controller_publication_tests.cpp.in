@@ -26,6 +26,12 @@ namespace dingosdk::arcade_mode::native_ground_grab {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_grind {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::wallplant_runtime {
 unsigned cancellations{};
+struct WriterProbe {
+    std::uint64_t input{},contact{},raw{};
+    NativeInputFrame native{};
+};
+WriterProbe pending_probe{};
+WriterProbe writer_probe() noexcept {return pending_probe;}
 InputSurfaceState surface(std::uint64_t,const NativeInputFrame&) noexcept {return {};}
 InputDisposition request(const InputRequest&,std::uint64_t,const NativeInputFrame&) noexcept {return InputDisposition::cancelled;}
 WallplantCommand held_command() noexcept {return {};}
@@ -382,6 +388,13 @@ void run(){
         require(checked_at==clock_ms,"post-native handoff samples current time after input serialization");++checks;
         require(!claim_native_wallplant_contact(original_frame),
             "collision callback cannot create a request without independently qualified geometry and a journal A");++checks;
+        wallplant_runtime::pending_probe={5,7,9,original_frame};
+        require(claim_native_wallplant_contact(original_frame)==(boundary==0),
+            "already accepted same-observation press retains every controller authority gate");++checks;
+        ++wallplant_runtime::pending_probe.native.physics_step;
+        require(!claim_native_wallplant_contact(original_frame),
+            "pending press from another physics observation cannot enter collision handoff");++checks;
+        wallplant_runtime::pending_probe={};
     }
     // Start a real session-owned crouch through the production recognizer,
     // then publish a native AIR observation without releasing its held input.
