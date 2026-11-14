@@ -37,8 +37,9 @@ struct Snapshot {
     std::array<float,8> impacts{};
     bool processed{};
 };
-// A plant consumes only its own complete collision response. Unknown contacts,
-// another surface, or a head/torso impact retain the native bail decision.
+// A plant consumes only its own complete collision response. An articulated
+// skater can touch that wall with several body parts in the admitted step.
+// Unknown contacts and other surfaces retain the native bail decision.
 inline bool same_wall_contacts(const Snapshot& board,const Snapshot& rig,
         const SurfaceGeometryBody& shape,const Vec& normal) noexcept {
     if(!board.valid || !board.after_valid || !board.serial || !rig.valid || !rig.processed ||
@@ -56,8 +57,9 @@ inline bool same_wall_contacts(const Snapshot& board,const Snapshot& rig,
         if(!hit.identity_valid || !hit.static_body || !hit.categories_known ||
            hit.shape!=wall.shape || hit.body!=wall.body || hit.world_store!=wall.world_store ||
            hit.categories!=wall.categories || hit.kind!=wall.kind || hit.normal!=normal)return false;
-        if(sample==&rig && (hit.bone==0 || hit.bone==1 || hit.bone==2 ||
-           (hit.bone>=11 && hit.bone<=14) || hit.bone>=23))return false;
+        // Bone 0 is the board root, not a rig contact. Every actual rig body
+        // belongs to the same transaction when its full wall identity agrees.
+        if(sample==&rig && (hit.bone==0 || hit.bone>=24))return false;
     }
     for(float impact:rig.impacts)if(!std::isfinite(impact) || impact<0)return false;
     return true;

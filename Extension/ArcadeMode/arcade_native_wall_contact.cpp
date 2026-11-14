@@ -313,9 +313,11 @@ bool hooked_collision(std::uintptr_t collector,float first,float second,bool mod
         if(reported<64){
             ++reported;
             logging::log(logging::Level::info,logging::Channel::skater,
-                "ARCADE WALLPLANT COLLISION: ms={} raw={} owner={} thread={} original_result={} hold_entered={} state={} state_after={} threshold1={} threshold2={} mode={}.",
+                "ARCADE WALLPLANT COLLISION: ms={} raw={} owner={} thread={} original_result={} hold_entered={} state={} state_after={} threshold1={} threshold2={} mode={} response_armed={} rig_raw={} rig_count={}.",
                 GetTickCount64(),source.serial,owner.core,source.physics_thread,result,entered,
-                source.state,source.state_after,first,second,mode);
+                source.state,source.state_after,first,second,mode,
+                response_scope && response_scope->armed,response_scope?response_scope->rig.serial:0,
+                response_scope?response_scope->rig.count:0);
         }
     } catch(...) {}
     // The original predicate and contact processors ran. Only this
@@ -335,43 +337,53 @@ bool consume_plant_impact(std::uintptr_t rig,const float* thresholds,bool mode,
     if(!response_scope || !response_scope->armed)return result;
     auto& response=*response_scope;
     response.armed=false;
+    const auto reject=[&](const char* reason) noexcept {
+        try {
+            static std::atomic<unsigned> refusals{};
+            if(refusals.fetch_add(1,std::memory_order_relaxed)<64)
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE WALLPLANT CONTACT REFUSAL: raw={} rig_raw={} input={} reason={} original_impact={}.",
+                    response.board.serial,response.rig.serial,response.command.input_sequence,reason,result);
+        } catch(...) {}
+        return result;
+    };
     if(!result || mode || caller!=image+c::impact_return || rig!=response.collision.owner.rig ||
        !ready.load(std::memory_order_acquire) || !permitted.load(std::memory_order_acquire) ||
-       !collision_uncontested(response.collision))return result;
+       !collision_uncontested(response.collision))return reject("native_scope");
     try {
         NoBailSkater owner{};Snapshot board{},body{};
         const auto command=wallplant_runtime::held_command();
         if(!no_bail_skater(owner)||owner!=response.collision.owner||!command ||
            command.input_sequence!=response.command.input_sequence || command.contact!=response.command.contact ||
-           !wallplant_same_observation(command.native,response.command.native))return result;
+           !wallplant_same_observation(command.native,response.command.native))return reject("command_owner");
         {std::lock_guard lock(mutex);board=latest_board;body=latest;}
         if(board.serial!=response.board.serial || body.serial!=response.rig.serial ||
            board.physics_thread!=GetCurrentThreadId() ||
-           !same_wall_contacts(board,body,command.body,command.contact_normal))return result;
+           !same_wall_contacts(board,body,command.body,command.contact_normal))return reject("contact_proof");
         const auto holder=pointer(rig+b::contact_holder_offset);
         std::array<float,8> impacts{};std::array<float,5> limits{};
         if(!holder || pointer(holder+b::contact_struct_offset)!=body.summaries ||
            !read(body.summaries+c::summary_impacts,impacts) || impacts!=body.impacts ||
-           !read(reinterpret_cast<std::uintptr_t>(thresholds),limits))return result;
-        for(float limit:limits)if(!std::isfinite(limit)||limit<0)return result;
+           !read(reinterpret_cast<std::uintptr_t>(thresholds),limits))return reject("summary_changed");
+        for(float limit:limits)if(!std::isfinite(limit)||limit<0)return reject("threshold_invalid");
         // Corroborate the predicate's exact eight-summary/five-threshold inputs.
         bool measured_impact=false;
         for(std::size_t i=0;i<impacts.size();++i)
             measured_impact=measured_impact || impacts[i]>limits[c::impact_threshold_groups[i]];
-        if(!measured_impact)return result;
+        if(!measured_impact)return reject("impact_not_corroborated");
         for(std::size_t i=0;i<body.count;++i)
-            if(!current(body.contacts[i],command.body.world))return result;
+            if(!current(body.contacts[i],command.body.world))return reject("contact_changed");
         std::uint64_t now{};
         const auto execution=native_wallplant_context(command.native.owner,now);
         if(!native_wallplant_execution_authorized(execution.native,now) ||
-           !wallplant_runtime::hold_current(command,now,execution.native))return result;
+           !wallplant_runtime::hold_current(command,now,execution.native))return reject("hold_authority");
         logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE WALLPLANT CONTACT RESPONSE: ms={} raw={} rig_raw={} input={} original_impact={} consumed=true impacts={},{},{},{},{},{},{},{} thresholds={},{},{},{},{}.",
             now,board.serial,body.serial,command.input_sequence,result,
             impacts[0],impacts[1],impacts[2],impacts[3],impacts[4],impacts[5],impacts[6],impacts[7],
             limits[0],limits[1],limits[2],limits[3],limits[4]);
         return false;
-    } catch(...) {return result;}
+    } catch(...) {return reject("exception");}
 }
 bool hooked_impact(std::uintptr_t rig,const float* thresholds,bool mode) {
 #if defined(_MSC_VER)

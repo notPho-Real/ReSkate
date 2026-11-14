@@ -1,5 +1,28 @@
 # RC4 wallplant prototype
 
+## Treat the admitted articulated contact as one response
+
+The `40681eb4` Deck trial entered its hold but cancelled after 33 ms, with
+native cause 0 and no release. Its complete raw contact vector included four
+board contacts and forearm, thigh and upper-neck contacts against the same
+static wall incarnation and normal. The prior anatomical exclusion rejected
+that transaction merely because the upper neck was among those contacts.
+
+An admitted wallplant now owns that one complete same-step wall response for
+all actual rig body parts. This removes an extra restriction that was absent
+from the source mechanic; it does not extend the contact lifetime or change
+movement tuning. Invalid bone IDs, another surface, unproven contacts, other
+causes and every later collector invocation retain native behavior. A separate
+head contact against another surface still refuses arbitration. The original
+contact processing and impact predicate continue to run, and no cause flags,
+body transforms or collision observations are fabricated or cleared.
+
+The regression reconstructs the captured board/rig composition and exercises
+every valid rig body part, an independent head collision and one-use scope.
+Bounded diagnostics report whether the response was armed and the exact
+consumer refusal stage. New exact-source CI and hardware validation are still
+required; the failed trial is not evidence of a working hold or rebound.
+
 ## Consume the admitted contact's complete response once
 
 The `90a2a0c8` controlled Deck trial passed anchor clearance with a measured
@@ -14,8 +37,8 @@ successfully entered plant may consume the following rig-impact result once,
 only at its exact native call site. The original predicate still executes.
 The board and completed rig publications must belong to the same owner, worker
 and physics step, and every contact must identify the plant's exact static
-shape/body incarnation and normal. Unknown, moving, mixed-surface, head or
-torso contacts refuse arbitration. The original processor resets all eight
+shape/body incarnation and normal. Unknown, moving and mixed-surface contacts
+refuse arbitration. The original processor resets all eight
 impact summaries before rebuilding them from that contact vector; the consumer
 rechecks those values and the actual five thresholds. A changed summary,
 independent cause, expired hold or lost input authority retains the native result.

@@ -10,6 +10,7 @@
 #include <limits>
 #include <map>
 #include <mutex>
+#include <string_view>
 #include <vector>
 #if defined(_MSC_VER)
 #include <intrin.h>
@@ -54,7 +55,9 @@ WallplantExecutionProof native_wallplant_context(const NativeInputOwner&,std::ui
 bool native_wallplant_execution_authorized(const NativeInputFrame&,std::uint64_t&){return authorized;}
 namespace logging {
 enum class Level{info};enum class Channel{skater};
-template<class... T>void log(Level,Channel,const char*,T&&...){++logs;}
+template<class... T>void log(Level,Channel,const char* format,T&&...){
+    if(std::string_view(format).starts_with("ARCADE WALLPLANT CONTACT RESPONSE:"))++logs;
+}
 }
 void (*original_causes)(std::uintptr_t,bool){};
 bool (*original_impact)(std::uintptr_t,const float*,bool){};
@@ -112,6 +115,30 @@ void run_contact_response_tests(){
     setup();original_causes=native_causes;hooked_causes(9,false);
     check(!response_result && !response_scope && original_calls==1 && logs==1,"matching response not consumed once");
     setup();nested=true;hooked_causes(9,false);check(!response_scope,"collector scope leaked");
+    // A complete same-wall collision is one response even when the native rig
+    // reports the head, torso or pelvis alongside the board and limbs.
+    for(std::uint32_t bone=1;bone<24;++bone){
+        setup();latest.contacts[2].bone=bone;
+        ResponseScope scope{};scope.collector=9;response_scope=&scope;arm();
+        check(same_wall_contacts(latest_board,latest,held.body,held.contact_normal),
+            "same-wall body part split the admitted collision");
+        check(!consume() && logs==1,"complete same-wall impact not consumed");
+        check(consume(),"later impact inherited body-part authority");
+        response_scope=nullptr;
+    }
+    // Reproduce the captured collision: four board contacts plus forearm,
+    // thigh and upper-neck contacts, all on the same native wall incarnation.
+    setup();latest_board.count=4;
+    for(std::size_t i=1;i<4;++i)latest_board.contacts[i]=latest_board.contacts[0];
+    latest.contacts[0].bone=8;latest.contacts[1].bone=22;latest.contacts[2].bone=1;
+    ResponseScope captured{};captured.collector=9;response_scope=&captured;arm();
+    check(same_wall_contacts(latest_board,latest,held.body,held.contact_normal) && !consume(),
+        "captured complete wall collision still bails");
+    response_scope=nullptr;
+    setup();latest.contacts[2].bone=1;latest.contacts[2].shape.index++;
+    ResponseScope foreign{};foreign.collector=9;response_scope=&foreign;arm();
+    check(consume() && logs==0,"head impact against another surface lost native bail");
+    response_scope=nullptr;
     for(unsigned fault=0;fault<28;++fault){
         setup();ResponseScope scope{};scope.collector=9;response_scope=&scope;arm();
         switch(fault){
@@ -133,8 +160,8 @@ void run_contact_response_tests(){
         case 15:latest.contacts[1].normal={1,0,0};break;
         case 16:latest.contacts[1].identity_valid=false;break;
         case 17:latest.contacts[1].static_body=false;break;
-        case 18:latest.contacts[1].bone=1;break;
-        case 19:latest.contacts[1].bone=11;break;
+        case 18:latest.contacts[1].bone=0;break;
+        case 19:latest.contacts[1].bone=24;break;
         case 20:memory.clear();break;
         case 21:put(latest.summaries+c::summary_impacts,std::array<float,8>{});break;
         case 22:put(0x80000,std::array<float,5>{-1,2,3,4,5});break;
