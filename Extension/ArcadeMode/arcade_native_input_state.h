@@ -125,7 +125,8 @@ public:
     // an already admitted session in that gap, without publishing this newer
     // phase or renewing any permission/clock. Hard withdrawal still wins.
     bool defer_client_phase(std::uint64_t now, NativeInputOwner owner,
-            NativeRequestSample sample, const NativeInputFrame& admitted, bool permitted) const noexcept {
+            NativeRequestSample sample, const NativeInputFrame& admitted, bool permitted,
+            bool released_rail=false) const noexcept {
         const auto original = binding_owner_proof(now,owner,sample);
         const auto ordinary=[](unsigned state,unsigned mode) {
             return (state==101 && mode<=1) ||
@@ -133,11 +134,17 @@ public:
         };
         // Rail class changes also lead the callback during an admitted grind.
         // Keep only the original session proof until that callback observes
-        // the new class. Leaving rail contact still withdraws immediately.
+        // the new class. An unreleased setup still ends when contact is lost.
         const bool same_rail = rail_pop_physics_state(original.state) && original.mode<=2 &&
             rail_pop_physics_state(sample.state) && sample.crouch_mode<=2;
+        // Only an existing released-pop lease can cross the native rail exit.
+        // A held setup still ends at contact loss; this does not admit a pop.
+        const bool rail_exit = released_rail && original.mode<=2 && sample.crouch_mode<=2 &&
+            ((rail_pop_physics_state(original.state) &&
+                (sample.state==701 || sample.state==200 || sample.state==201)) ||
+             (original.state==701 && (sample.state==200 || sample.state==201)));
         return permitted && original.valid && admitted.valid && admitted.owner == original.owner &&
-            ((ordinary(original.state,original.mode) && ordinary(sample.state,sample.crouch_mode)) || same_rail) &&
+            ((ordinary(original.state,original.mode) && ordinary(sample.state,sample.crouch_mode)) || same_rail || rail_exit) &&
             admitted.owner_generation == original.owner_generation && now >= admitted.sampled_at &&
             now-admitted.sampled_at <= 150 && !correlate(now,owner,sample).valid;
     }

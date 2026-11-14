@@ -2035,7 +2035,8 @@ void on_client_tick() noexcept {
             const auto frame = native_input_state.correlate(authority_now,input_owner(native_owner),native);
             deferred_phase = native_input_state.defer_client_phase(authority_now,input_owner(native_owner),native,
                 arcade_input.native_context(authority_now), gameplay && focus_available && watch.valid &&
-                arcade_input.admitted(0,authority_now));
+                arcade_input.admitted(0,authority_now),
+                arcade_input.rail_followup_active(authority_now,arcade_input.native_context(authority_now)));
             client_frame = frame;
             gameplay = gameplay && frame.valid;
             if (!deferred_phase) {

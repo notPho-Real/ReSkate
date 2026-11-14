@@ -252,7 +252,7 @@ original physics callback caught up.
 Readiness now admits the existing rail recipe from current owner-correlated
 400..406 physics with mode <= 2. Same-owner transitions within those rail
 classes defer destructive client publication without renewing the original
-proof. Rail departure, invalid observations, owner replacement, OFF/focus loss
+proof. Held rail departure, invalid observations, owner replacement, OFF/focus loss
 and stale proof still withdraw authority. The existing native pop and follow-up
 adapters remain responsible for execution; no geometry or launch force changes.
 
@@ -260,7 +260,15 @@ Source review reused the existing rail-pop contract, the full tracked official
 source search, the pinned fork-method survey and the recorded native selector
 evidence. A composed regression reproduces the lost edge on the preceding
 headers and covers both stance flags and 30/60/120 Hz. The correction passes
-869 readiness checks under address/undefined sanitizers and all 33 focused
+1541 readiness checks under address/undefined sanitizers and all 33 focused
 suites, including Casper. Its exact Windows build and native grind-exit
 acceptance are still required; these local results do not establish a fix in
 the game.
+
+A second composed regression covers the client-ahead 701 exit after physical
+A release. Only the existing released rail-pop lease may preserve the original
+session across rail -> 701 -> 200/201 until the physics callback observes it.
+This does not refresh that lease or admit a new jump. A held pop, unrelated
+phase, landing, bail, rail recontact, unsafe mode and focus loss remain negative
+controls. The regression fails without this continuation and passes with it;
+exact-source native validation is still pending.

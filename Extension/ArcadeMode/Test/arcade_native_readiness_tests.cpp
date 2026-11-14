@@ -96,6 +96,36 @@ void rail_client_lag() {
         check(released.jump.released && released.jump.setup_admitted && released.jump.from_rail,
             "native rail class change preserves the admitted A release");
         check(input.rail_followup_active(release,frame),"released rail retains its bounded follow-up lease");
+        const bool rail_lease=input.rail_followup_active(release+1,input.native_context(release+1));
+        check(physics.defer_client_phase(release+1,owner,sample(701,stance,1),
+            input.native_context(release+1),true,rail_lease),
+            "released rail pop survives a client-ahead native exit before AIR");
+        check(!physics.defer_client_phase(release+1,owner,sample(701,stance,1),
+            input.native_context(release+1),true,false),
+            "a held or absent pop cannot borrow released rail continuation");
+        for(unsigned excluded:{100u,103u,300u,407u,504u,702u})
+            check(!physics.defer_client_phase(release+1,owner,sample(excluded,stance,1),
+                input.native_context(release+1),true,rail_lease),
+                "a released rail lease cannot defer a landing, bail or unrelated phase");
+        check(!physics.defer_client_phase(release+1,owner,sample(701,stance,3),
+            input.native_context(release+1),true,rail_lease),"unsafe exit mode still withdraws");
+        check(!physics.defer_client_phase(release+1,owner,sample(701,stance,1),
+            input.native_context(release+1),false,rail_lease),"focus loss overrides released rail continuation");
+        const auto exit=release+1000/hz;
+        frame=physics.observe(exit,owner,sample(701,stance,1),{true,-1,16});
+        input.publish_native_context(frame);
+        const bool exit_lease=input.rail_followup_active(exit+1,input.native_context(exit+1));
+        check(exit_lease,"existing lease follows the independently observed native rail exit");
+        for(unsigned air:{200u,201u}) {
+            check(physics.defer_client_phase(exit+1,owner,sample(air,stance,2),
+                input.native_context(exit+1),true,exit_lease),
+                "released native exit retains original authority until the AIR callback");
+            check(!physics.defer_client_phase(exit+1,owner,sample(air,stance,2),
+                input.native_context(exit+1),true,false),
+                "an unowned rail exit cannot defer AIR admission");
+        }
+        check(!physics.defer_client_phase(exit+1,owner,sample(403,stance,1),
+            input.native_context(exit+1),true,exit_lease),"rail recontact cannot inherit the released exit");
     }
     NativeInputOwner owner{1,2,3,4,5};
     for(unsigned fault=0;fault<10;++fault) {
