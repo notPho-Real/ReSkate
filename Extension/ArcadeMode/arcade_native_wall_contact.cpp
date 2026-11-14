@@ -40,8 +40,20 @@ using BoardProcess=void(*)(std::uintptr_t,float,const void*);
 BoardProcess original_board{};
 using CollisionPredicate=bool(*)(std::uintptr_t,float,float,bool);
 CollisionPredicate original_collision{};
+using CollectCauses=void(*)(std::uintptr_t,bool);
+CollectCauses original_causes{};
+using ImpactPredicate=bool(*)(std::uintptr_t,const float*,bool);
+ImpactPredicate original_impact{};
 struct CollisionScope {NoBailSkater owner{};std::uintptr_t collector{};std::uint64_t serial{};};
 thread_local CollisionScope collision_scope{};
+struct ResponseScope {
+    std::uintptr_t collector{};
+    CollisionScope collision{};
+    Snapshot board{},rig{};
+    WallplantCommand command{};
+    bool armed{};
+};
+thread_local ResponseScope* response_scope{};
 std::atomic<bool> permitted{},ready{};
 std::uintptr_t image{};
 std::mutex mutex;
@@ -169,22 +181,34 @@ void publish(Snapshot next) {
             next.velocity_after[0],next.velocity_after[1],next.velocity_after[2]);
     }
 }
-void capture(std::uintptr_t summaries,std::uintptr_t input) {
-    if(!permitted.load(std::memory_order_acquire))return;
+bool capture(Snapshot& next,std::uintptr_t summaries,std::uintptr_t input) {
+    if(!permitted.load(std::memory_order_acquire))return false;
     NoBailSkater owner{};
-    if(!no_bail_skater(owner)||owner.base!=image)return;
+    if(!no_bail_skater(owner)||owner.base!=image)return false;
     const auto holder=pointer(owner.rig+b::contact_holder_offset);
-    if(!holder||pointer(holder+b::contact_struct_offset)!=summaries)return;
-    {std::lock_guard lock(mutex);latest={};}
-    Snapshot next{};float seconds{};
+    if(!holder||pointer(holder+b::contact_struct_offset)!=summaries)return false;
+    {std::lock_guard lock(mutex);latest={};next.board_serial=latest_board.serial;}
+    float seconds{};
     if(!read(input+c::input_seconds,seconds)||!begin_snapshot(next,owner,seconds,Source::rig)||
        !capture_raw(next,pointer(input+c::input_contacts),b::body_bone_count)||
-       pointer(holder+b::contact_struct_offset)!=summaries)return;
-    publish(next);
+       pointer(holder+b::contact_struct_offset)!=summaries)return false;
+    next.summaries=summaries;
+    return true;
 }
 void hooked(std::uintptr_t summaries,std::uintptr_t input) {
-    try {capture(summaries,input);} catch(...) {}
+    Snapshot next{};bool captured=false;
+    try {captured=capture(next,summaries,input);} catch(...) {}
     original(summaries,input);
+    if(!captured)return;
+    try {
+        NoBailSkater owner{};
+        const auto holder=pointer(next.owner.rig+b::contact_holder_offset);
+        if(!no_bail_skater(owner)||owner!=next.owner||!holder||
+           pointer(holder+b::contact_struct_offset)!=summaries||
+           !read(summaries+c::summary_impacts,next.impacts))return;
+        next.processed=true;
+        publish(next);
+    } catch(...) {}
 }
 std::uintptr_t owned_board(const NoBailSkater& owner) noexcept {
     const auto holder=pointer(owner.core+s::board_holder_offset);
@@ -247,6 +271,7 @@ bool hooked_collision(std::uintptr_t collector,float first,float second,bool mod
     const auto caller=reinterpret_cast<std::uintptr_t>(__builtin_return_address(0));
 #endif
     const bool result=original_collision(collector,first,second,mode);
+    if(response_scope)response_scope->armed=false;
     if(!result || caller!=image+c::collision_return || !ready.load(std::memory_order_acquire) ||
        !permitted.load(std::memory_order_acquire) || collision_scope.serial)return result;
     NoBailSkater owner{};
@@ -273,6 +298,16 @@ bool hooked_collision(std::uintptr_t collector,float first,float second,bool mod
                 entered=apply_arcade_wallplant_at_collision(execution,source.serial);
         }
     } catch(...) {}
+    if(entered && response_scope && response_scope->collector==collector) {
+        try {
+            auto& response=*response_scope;
+            response.collision=scope;response.board=source;
+            {std::lock_guard lock(mutex);response.rig=latest;}
+            response.command=wallplant_runtime::held_command();
+            response.armed=response.command && same_wall_contacts(source,response.rig,
+                response.command.body,response.command.contact_normal);
+        } catch(...) {response_scope->armed=false;}
+    }
     try {
         static unsigned reported{};
         if(reported<64){
@@ -285,8 +320,67 @@ bool hooked_collision(std::uintptr_t collector,float first,float second,bool mod
     } catch(...) {}
     // The original predicate and contact processors ran. Only this
     // producer yields to a committed, qualified plant; no flags/causes are
-    // erased and every later native bail test remains in force.
+    // erased. The same invocation may also consume its matching rig response;
+    // other causes and every later invocation retain their native decisions.
     return entered?false:result;
+}
+void hooked_causes(std::uintptr_t collector,bool mode) {
+    ResponseScope scope{};scope.collector=collector;
+    auto* previous=response_scope;response_scope=&scope;
+    struct Reset {ResponseScope* previous;~Reset(){response_scope=previous;}} reset{previous};
+    original_causes(collector,mode);
+}
+bool consume_plant_impact(std::uintptr_t rig,const float* thresholds,bool mode,
+        std::uintptr_t caller,bool result) noexcept {
+    if(!response_scope || !response_scope->armed)return result;
+    auto& response=*response_scope;
+    response.armed=false;
+    if(!result || mode || caller!=image+c::impact_return || rig!=response.collision.owner.rig ||
+       !ready.load(std::memory_order_acquire) || !permitted.load(std::memory_order_acquire) ||
+       !collision_uncontested(response.collision))return result;
+    try {
+        NoBailSkater owner{};Snapshot board{},body{};
+        const auto command=wallplant_runtime::held_command();
+        if(!no_bail_skater(owner)||owner!=response.collision.owner||!command ||
+           command.input_sequence!=response.command.input_sequence || command.contact!=response.command.contact ||
+           !wallplant_same_observation(command.native,response.command.native))return result;
+        {std::lock_guard lock(mutex);board=latest_board;body=latest;}
+        if(board.serial!=response.board.serial || body.serial!=response.rig.serial ||
+           board.physics_thread!=GetCurrentThreadId() ||
+           !same_wall_contacts(board,body,command.body,command.contact_normal))return result;
+        const auto holder=pointer(rig+b::contact_holder_offset);
+        std::array<float,8> impacts{};std::array<float,5> limits{};
+        if(!holder || pointer(holder+b::contact_struct_offset)!=body.summaries ||
+           !read(body.summaries+c::summary_impacts,impacts) || impacts!=body.impacts ||
+           !read(reinterpret_cast<std::uintptr_t>(thresholds),limits))return result;
+        for(float limit:limits)if(!std::isfinite(limit)||limit<0)return result;
+        // Corroborate the predicate's exact eight-summary/five-threshold inputs.
+        bool measured_impact=false;
+        for(std::size_t i=0;i<impacts.size();++i)
+            measured_impact=measured_impact || impacts[i]>limits[c::impact_threshold_groups[i]];
+        if(!measured_impact)return result;
+        for(std::size_t i=0;i<body.count;++i)
+            if(!current(body.contacts[i],command.body.world))return result;
+        std::uint64_t now{};
+        const auto execution=native_wallplant_context(command.native.owner,now);
+        if(!native_wallplant_execution_authorized(execution.native,now) ||
+           !wallplant_runtime::hold_current(command,now,execution.native))return result;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT CONTACT RESPONSE: ms={} raw={} rig_raw={} input={} original_impact={} consumed=true impacts={},{},{},{},{},{},{},{} thresholds={},{},{},{},{}.",
+            now,board.serial,body.serial,command.input_sequence,result,
+            impacts[0],impacts[1],impacts[2],impacts[3],impacts[4],impacts[5],impacts[6],impacts[7],
+            limits[0],limits[1],limits[2],limits[3],limits[4]);
+        return false;
+    } catch(...) {return result;}
+}
+bool hooked_impact(std::uintptr_t rig,const float* thresholds,bool mode) {
+#if defined(_MSC_VER)
+    const auto caller=reinterpret_cast<std::uintptr_t>(_ReturnAddress());
+#else
+    const auto caller=reinterpret_cast<std::uintptr_t>(__builtin_return_address(0));
+#endif
+    const bool result=original_impact(rig,thresholds,mode);
+    return consume_plant_impact(rig,thresholds,mode,caller,result);
 }
 bool fingerprint(const game::build::Fingerprint& contract) noexcept {
     std::array<unsigned char,32> actual{};
@@ -300,6 +394,7 @@ bool start(std::uintptr_t base) noexcept {
     for(const auto& contract:c::contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:c::board_contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:c::collision_contracts)if(!fingerprint(contract))return false;
+    for(const auto& contract:c::impact_contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:game::build::v20260929::physics_owner::contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:game::build::v20260929::physics_owner::component_contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:b::contracts)if(!fingerprint(contract))return false;
@@ -314,10 +409,18 @@ bool start(std::uintptr_t base) noexcept {
     auto* collision_target=reinterpret_cast<void*>(base+c::collision_predicate);
     if(hook_prepare(collision_target,reinterpret_cast<void*>(&hooked_collision),&relay)!=HookOk)return false;
     original_collision=reinterpret_cast<CollisionPredicate>(relay);
+    auto* causes_target=reinterpret_cast<void*>(base+c::collect_causes);
+    if(hook_prepare(causes_target,reinterpret_cast<void*>(&hooked_causes),&relay)!=HookOk)return false;
+    original_causes=reinterpret_cast<CollectCauses>(relay);
+    auto* impact_target=reinterpret_cast<void*>(base+c::impact_predicate);
+    if(hook_prepare(impact_target,reinterpret_cast<void*>(&hooked_impact),&relay)!=HookOk)return false;
+    original_impact=reinterpret_cast<ImpactPredicate>(relay);
     HookBatch batch;
     if(hook_enable(target)!=HookOk)return false;
     if(hook_enable(board_target)!=HookOk)return false;
     if(hook_enable(collision_target)!=HookOk)return false;
+    if(hook_enable(causes_target)!=HookOk)return false;
+    if(hook_enable(impact_target)!=HookOk)return false;
     ready.store(true,std::memory_order_release);return true;
 }
 void enable(bool enabled) noexcept {

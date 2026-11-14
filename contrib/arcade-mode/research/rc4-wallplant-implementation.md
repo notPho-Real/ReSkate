@@ -1,5 +1,39 @@
 # RC4 wallplant prototype
 
+## Consume the admitted contact's complete response once
+
+The `90a2a0c8` controlled Deck trial passed anchor clearance with a measured
+0.53906983 m adjustment and entered the planted phase. Its target exit was
+(0.12839378, 12.7, 5.0783772) m/s. The native collector then recorded cause 0
+from per-bone wall impacts, after its earlier cause-2 predicate had yielded to
+the plant. The wipeout correctly invalidated input ownership; the hold cancelled
+after 30 ms without a release. This build failed hardware acceptance.
+
+The correction scopes arbitration to the original collector invocation. A
+successfully entered plant may consume the following rig-impact result once,
+only at its exact native call site. The original predicate still executes.
+The board and completed rig publications must belong to the same owner, worker
+and physics step, and every contact must identify the plant's exact static
+shape/body incarnation and normal. Unknown, moving, mixed-surface, head or
+torso contacts refuse arbitration. The original processor resets all eight
+impact summaries before rebuilding them from that contact vector; the consumer
+rechecks those values and the actual five thresholds. A changed summary,
+independent cause, expired hold or lost input authority retains the native result.
+
+The collector scope ends on return and isolates nested invocations. No collision
+data, cause flags, body velocity, ownership generation or native state is cleared
+or rewritten by this correction. Other callers, subsequent impacts and no-A
+contacts remain native. The existing anchor, hold, release and cooldown own all
+movement. Exact build fingerprints cover the collector, impact predicate, call
+site, summary resets and writes. Regression tests compose the production scope
+and consumer and exercise refusal and single-use behavior.
+
+This correction still requires exact-source Windows/integration CI and new Deck
+evidence. Acceptance requires the actual planted duration, physical foot alignment,
+outward/upward release, clean landing and trick chain, with no-A/repeated-A controls
+and combo/scoring checked separately. Requested velocity and consumed-contact
+receipts alone do not establish those outcomes.
+
 ## Preserve the measured board-to-entity origin offset
 
 The `210026e7` Deck trial reached the collision worker and broad-wall query,

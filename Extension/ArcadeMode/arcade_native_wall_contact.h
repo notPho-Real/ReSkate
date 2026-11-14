@@ -30,7 +30,38 @@ struct Snapshot {
     std::array<Contact,64> contacts{};
     std::size_t count{};
     bool valid{};
+    // Rig summaries are reset and rebuilt by the original contact processor.
+    // Link its completed publication to the board publication it followed.
+    std::uint64_t board_serial{};
+    std::uintptr_t summaries{};
+    std::array<float,8> impacts{};
+    bool processed{};
 };
+// A plant consumes only its own complete collision response. Unknown contacts,
+// another surface, or a head/torso impact retain the native bail decision.
+inline bool same_wall_contacts(const Snapshot& board,const Snapshot& rig,
+        const SurfaceGeometryBody& shape,const Vec& normal) noexcept {
+    if(!board.valid || !board.after_valid || !board.serial || !rig.valid || !rig.processed ||
+       rig.board_serial!=board.serial || board.source!=Source::board || rig.source!=Source::rig ||
+       board.owner!=rig.owner || !board.physics_thread || board.physics_thread!=rig.physics_thread ||
+       (board.state!=200 && board.state!=201) || board.state_after!=board.state || rig.state!=board.state ||
+       board.seconds!=rig.seconds || rig.sampled_at<board.sampled_at ||
+       !board.count || board.count>board.contacts.size() || !rig.count || rig.count>rig.contacts.size() ||
+       !rig.summaries)return false;
+    const auto& wall=board.contacts[0];
+    if(wall.shape.world!=shape.world || wall.shape.index!=shape.index || wall.shape.generation!=shape.generation)
+        return false;
+    for(const auto* sample:{&board,&rig})for(std::size_t i=0;i<sample->count;++i) {
+        const auto& hit=sample->contacts[i];
+        if(!hit.identity_valid || !hit.static_body || !hit.categories_known ||
+           hit.shape!=wall.shape || hit.body!=wall.body || hit.world_store!=wall.world_store ||
+           hit.categories!=wall.categories || hit.kind!=wall.kind || hit.normal!=normal)return false;
+        if(sample==&rig && (hit.bone==0 || hit.bone==1 || hit.bone==2 ||
+           (hit.bone>=11 && hit.bone<=14) || hit.bone>=23))return false;
+    }
+    for(float impact:rig.impacts)if(!std::isfinite(impact) || impact<0)return false;
+    return true;
+}
 bool start(std::uintptr_t base) noexcept;
 void enable(bool enabled) noexcept;
 Snapshot observe(const NoBailSkater& owner,std::uint64_t now) noexcept;

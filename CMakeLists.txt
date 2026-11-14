@@ -1027,10 +1027,32 @@ if(DINGOSDK_BUILD_ARCADE_MODE_TESTS)
     endforeach()
     configure_file(Extension/ArcadeMode/Test/arcade_wallplant_wrapper_tests.cpp.in
         "${CMAKE_CURRENT_BINARY_DIR}/arcade_wallplant_wrapper_tests.cpp" @ONLY)
+    set(contact_response_source "${PROJECT_SOURCE_DIR}/Extension/ArcadeMode/arcade_native_wall_contact.cpp")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${contact_response_source}")
+    file(READ "${contact_response_source}" contact_response_text)
+    foreach(kind scope consumer)
+        if(kind STREQUAL "scope")
+            set(begin_marker "struct CollisionScope {")
+            set(end_marker "std::atomic<bool> permitted{},ready{};")
+        else()
+            set(begin_marker "void hooked_causes(")
+            set(end_marker "bool fingerprint(")
+        endif()
+        string(FIND "${contact_response_text}" "${begin_marker}" begin_at)
+        string(FIND "${contact_response_text}" "${end_marker}" end_at)
+        if(begin_at LESS 0 OR end_at LESS begin_at)
+            message(FATAL_ERROR "Contact response ${kind} production boundary missing")
+        endif()
+        math(EXPR body_size "${end_at} - ${begin_at}")
+        string(SUBSTRING "${contact_response_text}" ${begin_at} ${body_size} contact_response_${kind})
+    endforeach()
+    configure_file(Extension/ArcadeMode/Test/arcade_contact_response_tests.cpp.in
+        "${CMAKE_CURRENT_BINARY_DIR}/arcade_contact_response_tests.cpp" @ONLY)
     add_executable(dingosdk_arcade_controller_route_tests
         Extension/ArcadeMode/Test/arcade_controller_route_tests.cpp
         "${CMAKE_CURRENT_BINARY_DIR}/arcade_controller_publication_tests.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/arcade_wallplant_wrapper_tests.cpp")
+        "${CMAKE_CURRENT_BINARY_DIR}/arcade_wallplant_wrapper_tests.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/arcade_contact_response_tests.cpp")
     target_include_directories(dingosdk_arcade_controller_route_tests PRIVATE "${PROJECT_SOURCE_DIR}")
     find_package(Threads REQUIRED)
     target_link_libraries(dingosdk_arcade_controller_route_tests PRIVATE Threads::Threads)

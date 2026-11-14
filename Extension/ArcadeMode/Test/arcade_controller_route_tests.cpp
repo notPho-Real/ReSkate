@@ -250,4 +250,5 @@ void diagnostics(){
 }
 void run_controller_publication_tests();
 void run_wallplant_wrapper_tests();
-int main(){slots();ambiguous();freshness();handoff();explicit_binding();diagnostics();run_controller_publication_tests();run_wallplant_wrapper_tests();std::cout<<checks<<" controller route checks passed\n";}
+void run_contact_response_tests();
+int main(){slots();ambiguous();freshness();handoff();explicit_binding();diagnostics();run_controller_publication_tests();run_wallplant_wrapper_tests();run_contact_response_tests();std::cout<<checks<<" controller route checks passed\n";}

@@ -1,0 +1,157 @@
+// Compose the actual collector lifetime and response consumer. Native reads
+// are controlled here; these tests cannot establish gameplay acceptance.
+#include "Extension/ArcadeMode/arcade_native_wall_contact.h"
+#include "Extension/ArcadeMode/arcade_wallplant.h"
+#include "Engine/Game/Build/20260929/arcade_wall_contact.h"
+#include <atomic>
+#include <cstring>
+#include <cstdlib>
+#include <iostream>
+#include <limits>
+#include <map>
+#include <mutex>
+#include <vector>
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+namespace {
+using namespace dingosdk::arcade_mode;
+using namespace dingosdk::arcade_mode::native_wall_contact;
+using dingosdk::NoBailSkater;
+namespace c=dingosdk::game::build::v20260929::arcade_wall_contact;
+namespace b=dingosdk::game::build::v20260929::skater_body;
+@contact_response_scope@
+std::atomic<bool> ready{true},permitted{true};
+std::uintptr_t image=0x100000;
+std::mutex mutex;
+Snapshot latest{},latest_board{};
+WallplantCommand held{};
+NoBailSkater local{};
+bool uncontested=true,authorized=true,hold_valid=true,handle_valid=true;
+std::map<std::uintptr_t,std::vector<unsigned char>> memory;
+unsigned checks{},original_calls{},logs{};
+bool response_result{},nested{};
+void check(bool value,const char* why){++checks;if(!value){std::cerr<<why<<'\n';std::exit(1);}}
+template<class T>void put(std::uintptr_t at,const T& value){
+    auto& bytes=memory[at];bytes.resize(sizeof(T));std::memcpy(bytes.data(),&value,sizeof(T));
+}
+template<class T>bool read(std::uintptr_t at,T& value){
+    const auto it=memory.find(at);if(it==memory.end()||it->second.size()!=sizeof(T))return false;
+    std::memcpy(&value,it->second.data(),sizeof(T));return true;
+}
+std::uintptr_t pointer(std::uintptr_t at){std::uintptr_t value{};read(at,value);return value;}
+bool fixture_owner(NoBailSkater& owner){owner=local;return local.base!=0;}
+#define no_bail_skater fixture_owner
+bool collision_uncontested(const CollisionScope&){return uncontested;}
+std::uint32_t GetCurrentThreadId(){return 7;}
+bool fixture_current(const Contact&,std::uintptr_t){return handle_valid;}
+#define current fixture_current
+namespace wallplant_runtime {
+WallplantCommand held_command(){return held;}
+bool hold_current(const WallplantCommand&,std::uint64_t&,const NativeInputFrame&){return hold_valid;}
+}
+WallplantExecutionProof native_wallplant_context(const NativeInputOwner&,std::uint64_t& now){now=100;return {held.native,{},{}};}
+bool native_wallplant_execution_authorized(const NativeInputFrame&,std::uint64_t&){return authorized;}
+namespace logging {
+enum class Level{info};enum class Channel{skater};
+template<class... T>void log(Level,Channel,const char*,T&&...){++logs;}
+}
+void (*original_causes)(std::uintptr_t,bool){};
+bool (*original_impact)(std::uintptr_t,const float*,bool){};
+@contact_response_consumer@
+#undef current
+#undef no_bail_skater
+void setup(){
+    ready=permitted=true;uncontested=authorized=hold_valid=handle_valid=true;
+    memory.clear();latest_board={};latest={};held={};logs=0;response_scope=nullptr;collision_scope={};
+    local={image,2,3,0x40000,0x50000};
+    auto& board=latest_board;board.owner=local;board.serial=20;board.sampled_at=90;
+    board.source=Source::board;board.valid=board.after_valid=true;
+    board.state=board.state_after=201;board.seconds=1.f/30;board.physics_thread=7;board.count=1;
+    auto& hit=board.contacts[0];hit.shape={11,42,48};hit.body={11,43,50331648};hit.world_store=12;
+    hit.normal={0,0,1};hit.identity_valid=hit.static_body=hit.categories_known=true;hit.categories=12272;hit.bone=4;
+    latest=board;latest.source=Source::rig;latest.serial=21;latest.board_serial=20;latest.sampled_at=91;
+    latest.processed=true;latest.summaries=0x70000;latest.count=3;
+    latest.contacts[0]=latest.contacts[1]=latest.contacts[2]=hit;
+    latest.contacts[0].bone=7;latest.contacts[1].bone=8;latest.contacts[2].bone=22;
+    latest.impacts={0,0,4,0,5,0,0,0};
+    held.motion.ready=true;held.input_sequence=1;held.contact=2;held.issued_at=95;
+    held.body={11,42,48};held.contact_normal={0,0,1};held.native.valid=true;
+    held.native.owner={image,2,3,0x40000,0x50000};held.native.owner_generation=1;
+    held.native.physics_step=4;held.native.sampled_at=90;held.native.airborne=true;
+    put(local.rig+b::contact_holder_offset,std::uintptr_t{0x60000});
+    put(std::uintptr_t{0x60000}+b::contact_struct_offset,latest.summaries);
+    put(latest.summaries+c::summary_impacts,latest.impacts);
+    put(0x80000,std::array<float,5>{1,2,3,4,5});
+}
+void arm(){
+    auto& scope=*response_scope;scope.armed=true;scope.collision={local,scope.collector,20};
+    scope.board=latest_board;scope.rig=latest;scope.command=held;
+}
+bool consume(bool result=true,bool mode=false,std::uintptr_t caller=0){
+    return consume_plant_impact(local.rig,reinterpret_cast<const float*>(0x80000),mode,
+        caller?caller:image+c::impact_return,result);
+}
+void native_causes(std::uintptr_t collector,bool){
+    ++original_calls;
+    check(response_scope && response_scope->collector==collector,"collector lifetime missing");
+    check(!response_scope->armed,"nested/next invocation inherited contact authority");
+    if(nested){nested=false;auto* parent=response_scope;arm();hooked_causes(collector+1,false);
+        check(response_scope==parent && response_scope->armed,"nested scope damaged parent");return;}
+    arm();response_result=consume();check(!response_scope->armed,"impact authority not consumed");
+    check(consume(),"second impact was suppressed");
+}
+}
+void run_contact_response_tests(){
+    original_impact=+[](std::uintptr_t rig,const float* limits,bool mode){
+        ++original_calls;check(rig==5 && reinterpret_cast<std::uintptr_t>(limits)==6 && mode,
+            "native impact arguments changed");return true;
+    };
+    check(hooked_impact(5,reinterpret_cast<const float*>(6),true) && original_calls==1,
+        "original impact predicate must run once outside a plant");original_calls=0;
+    setup();original_causes=native_causes;hooked_causes(9,false);
+    check(!response_result && !response_scope && original_calls==1 && logs==1,"matching response not consumed once");
+    setup();nested=true;hooked_causes(9,false);check(!response_scope,"collector scope leaked");
+    for(unsigned fault=0;fault<28;++fault){
+        setup();ResponseScope scope{};scope.collector=9;response_scope=&scope;arm();
+        switch(fault){
+        case 0:scope.armed=false;break;
+        case 1:ready=false;break;
+        case 2:permitted=false;break;
+        case 3:uncontested=false;break;
+        case 4:local.entity++;break;
+        case 5:held={};break;
+        case 6:held.input_sequence++;break;
+        case 7:held.contact++;break;
+        case 8:held.native.owner_generation++;break;
+        case 9:latest_board.serial++;break;
+        case 10:latest.serial++;break;
+        case 11:latest_board.physics_thread++;break;
+        case 12:latest.board_serial++;break;
+        case 13:latest.processed=false;break;
+        case 14:latest.contacts[1].shape.index++;break;
+        case 15:latest.contacts[1].normal={1,0,0};break;
+        case 16:latest.contacts[1].identity_valid=false;break;
+        case 17:latest.contacts[1].static_body=false;break;
+        case 18:latest.contacts[1].bone=1;break;
+        case 19:latest.contacts[1].bone=11;break;
+        case 20:memory.clear();break;
+        case 21:put(latest.summaries+c::summary_impacts,std::array<float,8>{});break;
+        case 22:put(0x80000,std::array<float,5>{-1,2,3,4,5});break;
+        case 23:authorized=false;break;
+        case 24:hold_valid=false;break;
+        case 25:handle_valid=false;break;
+        case 26:latest.impacts[0]=std::numeric_limits<float>::quiet_NaN();break;
+        case 27:put(0x80000,std::array<float,5>{100,100,100,100,100});break;
+        }
+        check(consume(),"independent or unproven impact lost native bail");
+        check(!scope.armed && logs==0,"refusal retained authority or claimed consumption");
+        response_scope=nullptr;
+    }
+    setup();ResponseScope scope{};scope.collector=9;response_scope=&scope;arm();
+    check(consume(true,true),"native alternate mode changed");arm();
+    check(consume(true,false,image+c::impact_return+1),"other native caller changed");arm();
+    check(!consume(false) && !scope.armed && logs==0,"false original result manufactured impact");
+    response_scope=nullptr;check(consume(),"impact outside collector changed");
+    std::cout<<checks<<" actual contact-response wrapper checks passed\n";
+}
