@@ -272,3 +272,34 @@ This does not refresh that lease or admit a new jump. A held pop, unrelated
 phase, landing, bail, rail recontact, unsafe mode and focus loss remain negative
 controls. The regression fails without this continuation and passes with it;
 exact-source native validation is still pending.
+"
+## Camera travel reversal
+
+The existing shared follow camera normalized a linear blend of travel vectors.
+Opposite vectors therefore stayed opposite: a 180-degree reversal could leave
+the camera in front of the skater indefinitely. It now eases the shortest yaw
+arc with the same response time. Position sampling retains elapsed time across
+duplicate pose reads, so an adjacent camera callback cannot discard genuine
+travel as an implausibly fast displacement. The eye still tracks the current
+root directly; physical camera input and native camera restoration are unchanged.
+
+The source review covered the integrated official source at 355bf71e, the
+existing fork-method survey, follow_camera, CameraOrbit and controller/ground
+motion routing. Forward input continues to request the existing native push;
+this camera correction does not rotate physics bodies or redirect velocity.
+Whether the reported backwards movement also needs a steering correction
+remains a separate native acceptance question.
+
+Focused tests cover reversals at 30/60/120 Hz, duplicate samples, closely spaced
+callbacks, rest, teleport rejection, camera geometry, right-stick lookaround,
+neutral return and input-owner withdrawal. Restoring the previous interpolation
+makes the reversal regression fail. The camera suite passes 2,915 checks under
+address/undefined-behavior sanitizers. The portable gameplay set passes 34 tests;
+the lifecycle composition passes all 18 cases after removing the obsolete rail
+admission local from its generated fixtures. Native visual acceptance is pending.
+
+Before acceptance, the exact packaged DLL must pass Mega Park trials for
+forward travel, reverse travel after a revert, 180-degree landings, right-stick
+look/release and focus/OFF/controller withdrawal, correlated against native
+position/velocity and the rendered camera. Grind-pop flip/grab and the remaining
+Manual/Nose and stance regressions are still required on that same DLL.

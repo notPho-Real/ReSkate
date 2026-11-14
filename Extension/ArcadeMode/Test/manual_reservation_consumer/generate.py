@@ -128,8 +128,7 @@ def generate(root,variant='current'):
          'const bool reference=false;const unsigned char physical_left_trigger=lt,physical_right_trigger=rt;')
     once(' const auto admission=native_readiness.sample(now,arcade_input.native_context(now));\n const bool game_input=active&&fixture_watch&&admission.gameplay,may_start=admission.start,may_push=false,may_toggle_board=false,offboard=admission.offboard;',
          ' bool game_input=active&&fixture_watch,capture_game_input{};\n'+control_owner+'\n (void)capture_game_input;')
-    once('const bool flip_ready=admission.flip_ready,action_safe=admission.action,may_exit_grind=false;',
-         'const bool may_exit_grind=false;')
+    once('const bool flip_ready=admission.flip_ready,action_safe=admission.action;', '')
     once('bool competing_left_owner{};', 'std::atomic<bool> input_clock_valid{true};bool competing_left_owner{};')
     once('struct PadResult {short x{},y{},rx{},ry{};',
          'NativeManualContact writer_manual;AirMotionIntent writer_intent;bool writer_manual_hold{};\nstruct PadResult {short x{},y{},rx{},ry{};')

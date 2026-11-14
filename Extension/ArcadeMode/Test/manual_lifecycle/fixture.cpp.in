@@ -185,7 +185,7 @@ NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,
  if(releasing_manual)arcade_input.cancel_manuals();
  const auto manual_deadline=manual_eligible_until.load();const bool manual_safe=game_input&&admission.manual&&manual_deadline>=now&&manual_deadline-now<=150;
  const auto prepare_deadline=manual_prepare_until.load();const bool manual_prepare=game_input&&admission.prepare&&prepare_deadline>=now&&prepare_deadline-now<=150;
- const auto action_experiment=ActionExperiment::classic;const bool flip_ready=admission.flip_ready,action_safe=admission.action,may_exit_grind=false;
+ const auto action_experiment=ActionExperiment::classic;const bool flip_ready=admission.flip_ready,action_safe=admission.action;
 @@POLL@@
  if(corrupt_manual_delivery)result.right_y=0;
 @@DELIVERY@@

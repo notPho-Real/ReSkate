@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_camera.h"
+#include "Extension/Multiplayer/Hud/follow_camera_heading.h"
 #include "Extension/ArcadeMode/arcade_camera_input.h"
 #include "Extension/ArcadeMode/arcade_controller_route.h"
 #include <cstdlib>
@@ -94,6 +95,51 @@ void lookaround(){
     }
     CameraOrbit invalid;check(!invalid.update(follow,target,NAN,0,.017f),"nonfinite camera input stays rejected");
 }
+void follow_reversal(){
+    using dingosdk::multiplayer::FollowCameraHeading;
+    for (unsigned hz : {30u,60u,120u}) {
+        const float dt=1.f/static_cast<float>(hz);
+        for (float initial : {0.f,.7f,3.14159265358979323846f}) {
+            const Vec travel{-std::sin(initial),0,-std::cos(initial)};
+            FollowCameraHeading heading, repeated;
+            Vec position{};
+            heading.reset(position,-travel[0],-travel[2]);
+            repeated.reset(position,-travel[0],-travel[2]);
+            std::array<float,2> actual{}, duplicate{};
+            for (unsigned i=0;i<hz;++i) {
+                position[0]+=travel[0]*4*dt;position[2]+=travel[2]*4*dt;
+                actual=heading.update(position,dt);
+                duplicate=repeated.update(position,dt);
+                for (unsigned phase=0;phase<3;++phase) duplicate=repeated.update(position,0);
+                check(std::abs(actual[0]-duplicate[0])<.00001f&&std::abs(actual[1]-duplicate[1])<.00001f,
+                    "duplicate camera phases cannot change follow response");
+            }
+            check(actual[0]*travel[0]+actual[1]*travel[2]>.999f,
+                "camera turns behind reversed travel instead of remaining trapped in front");
+            const auto stopped=actual;
+            for (unsigned i=0;i<hz;++i) actual=heading.update(position,dt);
+            check(actual[0]*travel[0]+actual[1]*travel[2]>.999f,
+                "standing still retains the last travel heading");
+            position[0]+=1000;
+            actual=heading.update(position,dt);
+            check(actual[0]*travel[0]+actual[1]*travel[2]>.999f,
+                "teleport displacement does not become a travel heading");
+            const auto invalid=heading.update({NAN,0,0},dt);
+            check(invalid==actual,"invalid root cannot corrupt the camera direction");
+            check(stopped[0]*travel[0]+stopped[1]*travel[2]>.999f,"reversal completes at each tested rate");
+        }
+        FollowCameraHeading split;
+        split.reset({},0,1);
+        Vec position{};
+        std::array<float,2> actual{};
+        for(unsigned i=0;i<hz;++i){
+            split.update(position,dt-.00001f);
+            position[0]+=4*dt;
+            actual=split.update(position,.00001f);
+        }
+        check(actual[0]>.999f,"a pose arriving just after another phase uses the full sample interval");
+    }
+}
 void routing(){
     ArcadeInput input{true};input.enable(true);NativeInputState producer;NativeControllerRoute route;
     NativeRequestSample sample{};sample.valid=true;sample.state=100;sample.crouch_mode=1;sample.words[0]=0x20;sample.words[1]=0xc000;
@@ -121,4 +167,4 @@ void routing(){
     check(!reassigned.same_binding(camera_input_snapshot(route,input,1000,true)),"native owner replacement cannot retain an old camera epoch");
 }
 }
-int main(){rigid_frame();lookaround();routing();std::cout<<checks<<" camera input and lookaround checks passed\n";}
+int main(){rigid_frame();lookaround();follow_reversal();routing();std::cout<<checks<<" camera input and lookaround checks passed\n";}

@@ -1,4 +1,5 @@
 #include "follow_camera.h"
+#include "follow_camera_heading.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Game/Build/addresses.h"
@@ -32,8 +33,7 @@ struct State {
     // The spectated skater.
     std::uint64_t id{};
     Clock::time_point at;
-    float hx{}, hz{1}; // direction of travel, eased
-    std::array<float, 3> last{};
+    FollowCameraHeading heading;
 };
 State &state() {
     static auto *value = new State;
@@ -96,28 +96,17 @@ std::array<float, 16> follow_camera(std::uint64_t id, const Transform &root, flo
         const float length = std::sqrt(hx * hx + hz * hz);
         if (length > .01f) { hx /= length; hz /= length; } else { hx = 0; hz = 1; }
         s.id = id;
-        s.hx = hx;
-        s.hz = hz;
-        s.last = pos;
+        s.heading.reset(pos, hx, hz);
         s.at = now;
     }
-    const float dt = std::clamp(seconds(now - s.at), 0.0005f, 0.1f);
-    const float vx = (pos[0] - s.last[0]) / dt, vz = (pos[2] - s.last[2]) / dt;
-    const float speed = std::sqrt(vx * vx + vz * vz);
-    if (speed > 1.0f && speed < 60.0f) {
-        // The heading follows the travel a little behind, so the camera swings round smoothly.
-        const float turn = 1.0f - std::exp(-dt / 0.2f);
-        float hx = s.hx + (vx / speed - s.hx) * turn, hz = s.hz + (vz / speed - s.hz) * turn;
-        const float length = std::sqrt(hx * hx + hz * hz);
-        if (length > .01f) { s.hx = hx / length; s.hz = hz / length; }
-    }
-    s.last = pos;
+    const float dt = std::clamp(seconds(now - s.at), 0.0f, 0.1f);
+    const auto heading = s.heading.update(pos, dt);
     s.at = now;
     // Rigidly at the game's own offset from the skater, so it never trails their position.
     const auto &p = s.profile;
-    const std::array<float, 3> eye{pos[0] - s.hx * p.distance, pos[1] + p.height, pos[2] - s.hz * p.distance};
+    const std::array<float, 3> eye{pos[0] - heading[0] * p.distance, pos[1] + p.height, pos[2] - heading[1] * p.distance};
     const float cp = std::cos(p.pitch), sp = std::sin(p.pitch);
-    const std::array<float, 3> back{-s.hx * cp, -sp, -s.hz * cp};
+    const std::array<float, 3> back{-heading[0] * cp, -sp, -heading[1] * cp};
     std::array<float, 3> right{back[2], 0, -back[0]};
     const float flat = std::sqrt(right[0] * right[0] + right[2] * right[2]);
     if (flat > .001f) { right[0] /= flat; right[2] /= flat; } else right = {1, 0, 0};

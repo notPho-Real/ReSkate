@@ -98,8 +98,8 @@ void native_entry() {
 void session() {
     struct Native {
         Footplant kind{};unsigned count{};FootplantControl control{true};
-        NativeFootplantRequest adapter() {return {this,[](void* p,Footplant kind) noexcept {
-            auto& s=*static_cast<Native*>(p);s.kind=kind;++s.count;return true;
+        NativeFootplantRequest adapter() {return {this,[](void* p,Footplant requested_kind) noexcept {
+            auto& s=*static_cast<Native*>(p);s.kind=requested_kind;++s.count;return true;
         },[](void* p) noexcept {return static_cast<Native*>(p)->control;}};}
     } native;
     InputSession input;InputAdmission env{};env.gameplay=env.may_start=true;env.pose=SkatePose::riding;
