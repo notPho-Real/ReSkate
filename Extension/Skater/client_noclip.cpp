@@ -1625,8 +1625,10 @@ bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
         source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor && !multiplayer_session_active(),"target_control_owner");
         const auto bodies=debug_noclip_bodies(state.trial.base,hold.client,hold.entity);
         NoBailSkater owner{};
-        source_require(no_bail_skater(owner) && owner==hold.owner && bodies.core==owner.core &&
-            !bodies.offboard && !bodies.wipeout,"target_body_owner");
+        source_require(no_bail_skater(owner),"target_owner_unavailable");
+        source_require(owner==hold.owner && bodies.core==owner.core,"target_body_owner");
+        source_require(!bodies.offboard,"target_native_offboard");
+        source_require(!bodies.wipeout,"target_native_wipeout");
         SourceReader reader;std::array<float,16> original{};
         source_require(reader.value<std::uint8_t>(hold.entity,0x7e0)==0 &&
             reader.raw(reinterpret_cast<std::uintptr_t>(supplied),original.data(),sizeof(original)) &&

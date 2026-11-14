@@ -1030,3 +1030,20 @@ crouch, controller, contact and observation checks remain in force. Reset and
 the next poll clear the marker. A real input-session regression covers the
 accepted callback, wrong input and competing crouch; the old ownership logic
 fails that regression. Native acceptance is still required.
+
+# Complete collector observation after admitted entry
+
+The controlled native trial of 72e825f2 admitted a real airborne wall contact
+and entered the plant, but cancelled after 48 ms before release. The initial
+matching impact response was consumed; the skater subsequently entered native
+wipeout. External cause polling occurred too late to identify the first cause.
+The nearby mode change does not establish causality.
+
+The existing collector hook now records its complete cause mask after the
+original returns, only for an admitted or active plant with matching native
+collector ownership. It does not change flags, counts, state selection or
+collision decisions. Hold cancellation distinguishes unavailable ownership,
+changed bodies, native offboard and native wipeout. Focused production-wrapper
+tests verify the original runs once, independent causes survive, and unrelated
+or idle collectors are not reported. This is diagnostic work, not gameplay
+acceptance; full hold, release and combo continuity remain unverified.

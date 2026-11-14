@@ -332,10 +332,32 @@ bool hooked_collision(std::uintptr_t collector,float first,float second,bool mod
     return entered?false:result;
 }
 void hooked_causes(std::uintptr_t collector,bool mode) {
+    const auto pending=wallplant_runtime::held_command();
     ResponseScope scope{};scope.collector=collector;
     auto* previous=response_scope;response_scope=&scope;
     struct Reset {ResponseScope* previous;~Reset(){response_scope=previous;}} reset{previous};
     original_causes(collector,mode);
+    // Observe the complete native decision before selection can clear or
+    // replace it. Polling after a wipeout cannot identify its first cause.
+    const auto command=scope.command?scope.command:pending;
+    if(command && ready.load(std::memory_order_acquire) && permitted.load(std::memory_order_acquire)) {
+        try {
+            NoBailSkater owner{};
+            std::array<std::uint8_t,c::collector_flag_count> flags{};
+            std::uint32_t count{};
+            if(no_bail_skater(owner) && owner.core==command.native.owner.core &&
+               owner.context==command.native.owner.context && owner.rig==command.native.owner.rig &&
+               pointer(owner.core+c::core_causes)==collector &&
+               pointer(collector+c::collector_context)==owner.context &&
+               read(collector+c::collector_flags,flags) && read(collector+c::collector_count,count)) {
+                std::uint64_t mask{};
+                for(std::size_t i=0;i<flags.size();++i)if(flags[i])mask|=std::uint64_t{1}<<i;
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE WALLPLANT COLLECTOR: ms={} input={} owner={} thread={} mode={} count={} flags={} admitted_here={}.",
+                    GetTickCount64(),command.input_sequence,owner.core,GetCurrentThreadId(),mode,count,mask,bool(scope.command));
+            }
+        } catch(...) {}
+    }
 }
 bool contact_response_current(const ResponseScope& response,std::uintptr_t rig,
         Snapshot& board,Snapshot& body,WallplantCommand& command,std::uint64_t& now) {

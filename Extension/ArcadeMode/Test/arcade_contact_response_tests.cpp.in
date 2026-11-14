@@ -32,7 +32,7 @@ WallplantCommand held{};
 NoBailSkater local{};
 bool uncontested=true,authorized=true,hold_valid=true,handle_valid=true;
 std::map<std::uintptr_t,std::vector<unsigned char>> memory;
-unsigned checks{},original_calls{},logs{};
+unsigned checks{},original_calls{},logs{},collector_logs{};
 bool response_result{},nested{};
 void check(bool value,const char* why){++checks;if(!value){std::cerr<<why<<'\n';std::exit(1);}}
 template<class T>void put(std::uintptr_t at,const T& value){
@@ -47,6 +47,7 @@ bool fixture_owner(NoBailSkater& owner){owner=local;return local.base!=0;}
 #define no_bail_skater fixture_owner
 bool collision_uncontested(const CollisionScope&){return uncontested;}
 std::uint32_t GetCurrentThreadId(){return 7;}
+std::uint64_t GetTickCount64(){return 100;}
 bool fixture_current(const Contact&,std::uintptr_t){return handle_valid;}
 #define current fixture_current
 namespace wallplant_runtime {
@@ -59,6 +60,7 @@ namespace logging {
 enum class Level{info};enum class Channel{skater};
 template<class... T>void log(Level,Channel,const char* format,T&&...){
     if(std::string_view(format).starts_with("ARCADE WALLPLANT CONTACT RESPONSE:"))++logs;
+    if(std::string_view(format).starts_with("ARCADE WALLPLANT COLLECTOR:"))++collector_logs;
 }
 }
 void (*original_causes)(std::uintptr_t,bool){};
@@ -69,7 +71,7 @@ bool (*original_pose)(std::uintptr_t,const float*){};
 #undef no_bail_skater
 void setup(){
     ready=permitted=true;uncontested=authorized=hold_valid=handle_valid=true;
-    memory.clear();latest_board={};latest={};held={};logs=0;response_scope=nullptr;collision_scope={};
+    memory.clear();latest_board={};latest={};held={};logs=collector_logs=0;response_scope=nullptr;collision_scope={};
     local={image,2,3,0x40000,0x50000};
     auto& board=latest_board;board.owner=local;board.serial=20;board.sampled_at=90;
     board.source=Source::board;board.valid=board.after_valid=true;
@@ -135,6 +137,25 @@ void run_contact_response_tests(){
     setup();original_causes=native_causes;hooked_causes(9,false);
     check(!response_result && !response_scope && original_calls==1 && logs==1,"matching response not consumed once");
     setup();nested=true;hooked_causes(9,false);check(!response_scope,"collector scope leaked");
+    // The complete collector is read only after the original runs. It must
+    // preserve independent causes and refuse unrelated collector ownership.
+    setup();
+    put(local.core+c::core_causes,std::uintptr_t{9});
+    put(9+c::collector_context,local.context);
+    original_causes=+[](std::uintptr_t collector,bool){
+        ++original_calls;
+        std::array<std::uint8_t,c::collector_flag_count> flags{};flags[19]=1;
+        put(collector+c::collector_flags,flags);put(collector+c::collector_count,std::uint32_t{1});
+    };
+    const auto calls_before=original_calls;
+    hooked_causes(9,false);
+    check(collector_logs==1 && original_calls==calls_before+1,"complete collector not observed once");
+    std::array<std::uint8_t,c::collector_flag_count> observed{};std::uint32_t count{};
+    check(read(9+c::collector_flags,observed) && observed[19]==1 &&
+        read(9+c::collector_count,count) && count==1,"collector observation modified native causes");
+    hooked_causes(10,false);check(collector_logs==1,"unrelated collector observed");
+    held={};hooked_causes(9,false);check(collector_logs==1,"idle collector observed");
+    original_causes=native_causes;
     // A complete same-wall collision is one response even when the native rig
     // reports the head, torso or pelvis alongside the board and limbs.
     for(std::uint32_t bone=1;bone<24;++bone){
