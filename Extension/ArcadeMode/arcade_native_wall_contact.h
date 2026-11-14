@@ -36,6 +36,8 @@ struct Snapshot {
     std::uintptr_t summaries{};
     std::array<float,8> impacts{};
     bool processed{};
+    std::array<std::array<float,4>,24> pose_before{};
+    bool pose_before_valid{};
 };
 // A plant consumes only its own complete collision response. An articulated
 // skater can touch that wall with several body parts in the admitted step.

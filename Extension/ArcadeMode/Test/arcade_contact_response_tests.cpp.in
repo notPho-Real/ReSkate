@@ -4,6 +4,8 @@
 #include "Extension/ArcadeMode/arcade_wallplant.h"
 #include "Engine/Game/Build/20260929/arcade_wall_contact.h"
 #include <atomic>
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -61,6 +63,7 @@ template<class... T>void log(Level,Channel,const char* format,T&&...){
 }
 void (*original_causes)(std::uintptr_t,bool){};
 bool (*original_impact)(std::uintptr_t,const float*,bool){};
+bool (*original_pose)(std::uintptr_t,const float*){};
 @contact_response_consumer@
 #undef current
 #undef no_bail_skater
@@ -89,7 +92,7 @@ void setup(){
 }
 void arm(){
     auto& scope=*response_scope;scope.armed=true;scope.collision={local,scope.collector,20};
-    scope.board=latest_board;scope.rig=latest;scope.command=held;
+    scope.board=latest_board;scope.rig=latest;scope.command=held;scope.pose_used=false;
 }
 bool consume(bool result=true,bool mode=false,std::uintptr_t caller=0){
     return consume_plant_impact(local.rig,reinterpret_cast<const float*>(0x80000),mode,
@@ -104,6 +107,23 @@ void native_causes(std::uintptr_t collector,bool){
     arm();response_result=consume();check(!response_scope->armed,"impact authority not consumed");
     check(consume(),"second impact was suppressed");
 }
+void pose_setup(){
+    setup();latest.contacts[0].bone=1;latest.pose_before_valid=true;
+    latest.pose_before[1]={.02f,0,0,0};latest.impacts[0]=7;
+    put(latest.summaries+c::summary_impacts,latest.impacts);
+    std::array<std::array<float,4>,24> pose{};pose[1]={.2f,0,0,0};
+    put(local.rig+c::pose_vectors,pose);
+    for(std::size_t i=0;i<c::pose_group_vectors.size();++i)
+        put(local.rig+c::pose_group_vectors[i],pose[c::pose_group_bones[i]]);
+    put(latest.summaries+b::bone_records_offset+b::bone_record_size+b::bone_peak_offset,
+        std::array<float,2>{7,0});
+    put(0x90000,std::array<float,5>{.1f,.1f,.1f,.1f,.1f});
+}
+bool pose_consume(bool result=true,std::uintptr_t caller=0){
+    return consume_plant_pose(local.rig,reinterpret_cast<const float*>(0x90000),
+        caller?caller:image+c::pose_return,result);
+}
+
 }
 void run_contact_response_tests(){
     original_impact=+[](std::uintptr_t rig,const float* limits,bool mode){
@@ -180,5 +200,51 @@ void run_contact_response_tests(){
     check(consume(true,false,image+c::impact_return+1),"other native caller changed");arm();
     check(!consume(false) && !scope.armed && logs==0,"false original result manufactured impact");
     response_scope=nullptr;check(consume(),"impact outside collector changed");
+    original_pose=+[](std::uintptr_t rig,const float* limits){
+        ++original_calls;check(rig==5 && reinterpret_cast<std::uintptr_t>(limits)==6,
+            "native pose arguments changed");return true;
+    };
+    original_calls=0;
+    check(hooked_pose(5,reinterpret_cast<const float*>(6)) && original_calls==1,
+        "native pose predicate must run exactly once");
+    pose_setup();ResponseScope pose_scope{};pose_scope.collector=9;response_scope=&pose_scope;arm();
+    check(!pose_consume() && pose_scope.pose_used && pose_scope.armed,
+        "new same-wall pose displacement did not hand off to hold");
+    check(pose_consume(),"second pose check inherited initial contact authority");
+    check(!consume() && !pose_scope.armed,"pose handoff skipped distinct impact check");
+    check(consume(),"impact response repeated after pose handoff");response_scope=nullptr;
+    for(unsigned fault=0;fault<22;++fault){
+        pose_setup();ResponseScope bad{};bad.collector=9;response_scope=&bad;arm();
+        switch(fault){
+        case 0:bad.armed=false;break;
+        case 1:bad.pose_used=true;break;
+        case 2:permitted=false;break;
+        case 3:ready=false;break;
+        case 4:uncontested=false;break;
+        case 5:authorized=false;break;
+        case 6:hold_valid=false;break;
+        case 7:handle_valid=false;break;
+        case 8:latest.pose_before_valid=false;break;
+        case 9:latest.pose_before[1]={.11f,0,0,0};break;
+        case 10:latest.pose_before[1][0]=std::numeric_limits<float>::quiet_NaN();break;
+        case 11:latest.contacts[0].bone=2;break;
+        case 12:latest.contacts[0].shape.index++;break;
+        case 13:put(latest.summaries+b::bone_records_offset+b::bone_record_size+b::bone_peak_offset,std::array<float,2>{0,0});break;
+        case 14:put(latest.summaries+b::bone_records_offset+b::bone_record_size+b::bone_peak_offset,std::array<float,2>{1,0});break;
+        case 15:put(local.rig+c::pose_group_vectors[0],std::array<float,4>{.8f,0,0,0});break;
+        case 16:memory.erase(local.rig+c::pose_vectors);break;
+        case 17:put(0x90000,std::array<float,5>{.1f,.1f,-1,.1f,.1f});break;
+        case 18:put(0x90000,std::array<float,5>{1,1,1,1,1});break;
+        case 19:latest_board.serial++;break;
+        case 20:held.input_sequence++;break;
+        case 21:latest.physics_thread++;break;
+        }
+        check(pose_consume(),"unrelated/unbounded pose displacement lost native bail");
+        response_scope=nullptr;
+    }
+    pose_setup();ResponseScope untouched{};untouched.collector=9;response_scope=&untouched;arm();
+    check(pose_consume(true,image+c::pose_return+1),"other pose caller lost native bail");arm();
+    check(!pose_consume(false),"false pose result manufactured a fault");
+    check(untouched.armed,"false pose result disabled the impact path");response_scope=nullptr;
     std::cout<<checks<<" actual contact-response wrapper checks passed\n";
 }

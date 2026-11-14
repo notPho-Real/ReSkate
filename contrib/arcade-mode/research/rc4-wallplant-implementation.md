@@ -970,3 +970,42 @@ and preceding orientation errors are now recorded for the next native trial.
 The prior capture did not contain those exact operands, so it does not establish
 that this mismatch was the sole failing predicate. Native validation remains
 required before user testing.
+
+
+# Admit bounded pose displacement from the initial wall contact
+
+The complete-contact build b652e942 passed exact Windows, targeted and integration
+CI but failed its controlled hardware trial. A genuine airborne contact and fresh
+A began the hold; complete board/rig wall identity passed. Native cause 18 then
+cancelled the hold after 30 ms. There was no release or rebound. This is rejected
+hardware evidence. The pose predicate runs before the ordinary per-bone impact
+predicate, explaining why the latter's response handoff was never reached.
+
+Pinned native analysis identifies cause 18 as grouped root-relative per-bone
+translation error against the animation target. The original rig processor
+recomputes those errors after processing contacts. The adapter now retains the
+preceding pose values at contact entry and observes the original grouped predicate
+at its exact collector call. It may hand off once only when the same complete
+static-wall contact has already established a held command, the preceding errors
+were within the original thresholds, each exceeding group belongs to a body that
+actually touched that wall, and its added error is bounded by that body's measured
+normal impact speed times the unchanged native physics step. Both ordinary and
+tracked contact peaks use the existing SDK layout. Missing, nonfinite, changed,
+pre-existing, uncontacted or excessive values preserve the native result.
+
+The original predicate still runs once. No pose, threshold, state, collision,
+velocity or cause flag is rewritten. The following independent root-motion check
+and the separately guarded impact check still run. The scope ends with the same
+collector invocation; later pose errors have no exception. Exact preceding and
+current magnitudes, displacement allowances and native thresholds are recorded.
+This bound is an admission hypothesis for that contact response, not proof that
+the resulting articulated hold is stable or that the foot remains planted.
+
+Focused production-wrapper regressions cover the pose-to-impact sequence and
+preserve repeat, foreign-owner, mixed-wall, changed-step, missing-reader,
+pre-existing-error and excess-displacement failures. Restoring the old pose route,
+removing the measured bound, or allowing pre-existing errors each fails a test.
+The production translation unit passes warnings-as-errors. Required acceptance
+remains an exact-source native hold, distinct outward/upward release, continued
+tricks, clean landing, no-A and repeated-A controls, and separate combo/scoring
+observations. No readiness claim is made from source or CI tests.
