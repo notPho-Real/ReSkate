@@ -169,7 +169,7 @@ jobs:
         run: find contrib/arcade-mode -type f \( -name '*.sh' -o -name '*.command' \) -print0 | xargs -0 -n1 bash -n
 
   macos-lab:
-    if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-')) && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[windows-test-diagnostic]'))
+    if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || github.ref == 'refs/heads/wallplants' || startsWith(github.ref, 'refs/heads/arcade-stage-')) && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[windows-test-diagnostic]'))
     runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
