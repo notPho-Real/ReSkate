@@ -340,3 +340,27 @@ quarter-second physical hold also retains continuously observed native takeoff;
 holding A alone cannot request a follow-up. Existing held-setup contact-loss
 checks remain unchanged. This correction has not yet
 been installed or verified on the Deck; it is not an RC5 acceptance result.
+
+
+### Vertical camera pivot
+
+Native testing of the camera follow correction also exposed an upward-look
+failure. The captured skater root is already near hip height. Adding another
+metre placed the follow camera below the orbit's lower elevation limit, so
+physical upward look could publish an unchanged frame. Orbit now uses that root
+directly, preserving the supplied neutral view and the existing input, ownership,
+angle limits and recentering behavior.
+
+A production-body regression uses the observed root and camera heights, checks
+both vertical directions and neutral recovery, and verifies that camera look
+does not change the root. Restoring the former offset must fail at the specific
+upward-look assertion. All 19 lifecycle composition tests pass locally.
+This correction still requires its exact Windows build and native retest.
+
+The preceding exact build passed native and rendered short-release grind exits
+to flip/grab, revert-to-Manual exits to flip/grab, and a 250 ms held grind exit
+to Kickflip. Casper direct and Ollie exits, horizontal camera orbit/recenter,
+ground turns and a switch-landing continuation also passed their bounded cases.
+The long-held grab attempt missed rail contact and is inconclusive. Stop/restart
+attempts did not satisfy their native prerequisites; they do not establish that
+the reported backwards restart is fixed. No blanket gameplay acceptance is claimed.

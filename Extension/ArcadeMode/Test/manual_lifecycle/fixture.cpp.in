@@ -321,11 +321,13 @@ namespace dingosdk::multiplayer {
 struct CameraUI { bool available=true,in_menu=false; } camera_ui;
 struct CameraRoot { std::array<float,3> position{}; };
 struct CameraLocal { bool ready=true; std::uintptr_t entity=2; struct { CameraRoot root; } pose; };
+CameraLocal camera_local;
+std::array<float,16> camera_follow{1,0,0,0,0,1,0,0,0,0,1,0,0,2,5,1};
 CameraUI sample_game_ui_state(std::uintptr_t){return camera_ui;}
 bool party_camera_requested(){return false;}
-CameraLocal capture_local(std::uintptr_t,std::uintptr_t,bool){if(camera_capture_hook){auto hook=std::move(camera_capture_hook);camera_capture_hook={};hook();}return {};}
+CameraLocal capture_local(std::uintptr_t,std::uintptr_t,bool){if(camera_capture_hook){auto hook=std::move(camera_capture_hook);camera_capture_hook={};hook();}return camera_local;}
 std::array<float,16> follow_camera(std::uint64_t,const CameraRoot&,float& fov){
- fov=60;return {1,0,0,0,0,1,0,0,0,0,1,0,0,2,5,1};
+ fov=60;return camera_follow;
 }
 }
 ControllerInput camera_input;
@@ -469,6 +471,33 @@ void camera_lifecycle(){
    "a later stable camera callback may acquire after the original raced lease retired");
  }
 
+}
+void camera_root_pivot(){
+ const auto saved_local=multiplayer::camera_local;
+ const auto saved_follow=multiplayer::camera_follow;
+ // Native observation: the root is at hip height, not on the floor.
+ multiplayer::camera_local.pose.root.position={0,.9508f,0};
+ const float back_y=.1421f,back_z=std::sqrt(1-back_y*back_y);
+ multiplayer::camera_follow={1,0,0,0,0,back_z,-back_y,0,0,back_y,back_z,0,0,1.0047f,2.0446f,1};
+ for(int direction:{1,-1}){
+  camera_adapter_ready=true;camera_publish_input=true;camera_override_input=false;
+  camera_input={};camera_toggle(false);on_camera_tick(1,6,true,true);
+  controller_route.reset();camera_toggle(true);on_camera_tick(1,6,true,true);
+  const auto neutral=last_camera_transform;
+  check(neutral==multiplayer::camera_follow,"neutral camera preserves the observed native framing");
+  camera_input.right_y=static_cast<short>(direction*28000);
+  for(unsigned i=0;i<18;++i){clock_ms+=34;on_camera_tick(1,6,true,true);}
+  check(direction*(neutral[9]-last_camera_transform[9])>.1f,
+        "both vertical look directions must move from the observed hip-height root");
+  check(last_camera_transform[13]>.05f,"bounded look keeps the observed floor below the camera");
+  camera_input={};
+  for(unsigned i=0;i<60;++i){clock_ms+=34;on_camera_tick(1,6,true,true);}
+  check(std::abs(last_camera_transform[9]-neutral[9])<.001f,"vertical look recenters to the supplied frame");
+  check(multiplayer::camera_local.pose.root.position==std::array<float,3>{0,.9508f,0},
+        "camera look cannot move the skater root");
+  camera_toggle(false);on_camera_tick(1,6,true,true);
+ }
+ multiplayer::camera_local=saved_local;multiplayer::camera_follow=saved_follow;
 }
 std::vector<camera_diagnostics::Evidence> camera_diagnostic_rows;
 bool camera_diagnostic_sink(const camera_diagnostics::Evidence& row) noexcept {camera_diagnostic_rows.push_back(row);return true;}
@@ -1436,6 +1465,6 @@ int main(){
  early_air_manual_landing();analog_air_boundaries();analog_air_lifecycle();air_admission_lifecycle();
  episode_airborne_combos();episode_real_exits();episode_suspension();episode_buffered_endpoint();
  ground_manual_after_completed_exit();
- camera_lifecycle();camera_routing_lifecycle();camera_diagnostic_lock_outcomes();controller_packet_dependencies();
+ camera_lifecycle();camera_routing_lifecycle();camera_root_pivot();camera_diagnostic_lock_outcomes();controller_packet_dependencies();
  std::cout<<checks<<" production-composed manual episode checks passed\n";
 }

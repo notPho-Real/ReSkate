@@ -1701,8 +1701,9 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_c
         float fov{};
         const auto follow = multiplayer::follow_camera(UINT64_MAX, local.pose.root, fov);
         camera_diagnostics::pose(4,0,0,follow,fov);
-        auto target = local.pose.root.position;
-        target[1] += 1.0f;
+        // The captured root is already at hip height; an extra metre can
+        // put the ordinary follow frame below the upward-look orbit limit.
+        const auto target = local.pose.root.position;
         const auto now = GetTickCount64();
         const float dt = camera_at && now >= camera_at ? static_cast<float>(std::min<std::uint64_t>(now - camera_at, 50)) / 1000 : 0;
         camera_at = now;

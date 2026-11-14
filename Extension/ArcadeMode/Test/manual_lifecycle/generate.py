@@ -91,6 +91,8 @@ def generated(root):
     # Expected failure is checked by assertion message, not CTest WILL_FAIL (which
     # could incorrectly treat an unrelated crash/tool error as a regression).
     controls = {
+        "camera_root_pivot": ("const auto target = local.pose.root.position;",
+                              "auto target = local.pose.root.position; target[1] += 1.0f;"),
         "camera_client_phase": ("deferred_phase = native_input_state.defer_client_phase(",
                                 "deferred_phase = false && native_input_state.defer_client_phase("),
         "camera_contention": ("std::unique_lock lock(ollie_mutex);\n            const auto sampled_at = GetTickCount64();",
@@ -149,6 +151,7 @@ def generated(root):
 
 
 FAILURES = {
+    "camera_root_pivot": "both vertical look directions must move from the observed hip-height root",
     "camera_client_phase": "a fresh client-ahead takeoff phase must not retire the current camera lease",
     "camera_contention": "contention must inspect the snapshot after its publisher completes",
     "camera_snapshot_clock": "camera snapshot freshness must include time waiting for its publisher",
