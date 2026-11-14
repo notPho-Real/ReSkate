@@ -370,7 +370,8 @@ struct Pending {
     std::vector<std::pair<std::uint16_t, pose_offset::Written>> written; // the render thread's, a joint each
     std::uintptr_t written_buffer{};
     std::uintptr_t written_interface{}, written_component{};
-    double at{};
+    double at{}, copied_at{};
+    PlaybackFrame sample, drawn_sample, copied;
     // What the buffer held where the pose was written for the render, put back once the renderer has
     // copied the pose (on_drawn). The game does not set every part of every joint again before the next
     // animation update; it only puts back a stored pose after two of every three renders (2026-10-25, a
@@ -897,6 +898,7 @@ void on_animation(std::uintptr_t component) noexcept {
             p.first = static_cast<std::uint32_t>(first);
             p.last = static_cast<std::uint32_t>(last);
             p.bones.clear();
+            p.sample = {};
             p.deltas = deltas;
             if (only_deltas) p.replay.clear();
             else p.replay = snap->offsets;
@@ -928,6 +930,12 @@ void on_animation(std::uintptr_t component) noexcept {
                 p.deltas.clear();
                 p.replay.clear();
                 p.at = at;
+                p.sample = {};
+                if (!in_room && snap->controlled_until && snap->play &&
+                    clip == snap->play->clip.get() && weight >= .999f)
+                    p.sample = {snap->serial, 0, snap->play->clip, t,
+                        l.base.load(std::memory_order_acquire),
+                        native_pose_entity.load(std::memory_order_acquire), 0};
             }
             if (clip) {
                 auto& pr = probe();
@@ -1075,7 +1083,7 @@ void on_render(std::uintptr_t animation_interface) noexcept {
         }
         auto& p = pending();
         std::lock_guard lock(p.mutex);
-        p.game.clear(); // only ever what this render wrote over
+        p.game.clear(); p.drawn_sample={}; // only ever what this render wrote over
         const auto count = [](int Probe::*n) {
             auto& pr = probe();
             std::lock_guard probe_lock(pr.mutex);
@@ -1150,6 +1158,7 @@ void on_render(std::uintptr_t animation_interface) noexcept {
             }
         }
         if (poke(layout.buffer + p.first * sizeof(NativeBone), current.data(), current.size() * sizeof(NativeBone))) {
+            p.drawn_sample=p.sample;
             p.game_first = p.first;
             p.game_buffer = layout.buffer;
             p.game_interface = animation_interface;
@@ -1167,6 +1176,12 @@ void on_drawn(std::uintptr_t animation_interface) noexcept {
     try {
         auto& p = pending();
         std::lock_guard lock(p.mutex);
+        if (!p.game.empty() && animation_interface == p.game_interface && p.drawn_sample.ticket) {
+            const auto sequence = p.copied.sequence;
+            p.copied = p.drawn_sample;
+            p.copied.sequence = sequence == UINT64_MAX ? sequence : sequence + 1;
+            p.copied_at = now_seconds();
+        }
         if (!p.game.empty() && animation_interface == p.game_interface &&
             poke(p.game_buffer + p.game_first * sizeof(NativeBone), p.game.data(), p.game.size() * sizeof(NativeBone)))
             p.written.clear(); // A completed restore makes a later matching native value genuine, not an old overlay.
@@ -1318,6 +1333,17 @@ bool controlled_play_current(std::uint64_t ticket) noexcept {
     return ticket && controlled_ticket.load(std::memory_order_acquire)==ticket &&
         now_seconds()<controlled_until.load(std::memory_order_acquire) &&
         controlled_ticket.load(std::memory_order_acquire)==ticket;
+}
+std::optional<PlaybackFrame> playback_frame(std::uint64_t ticket) noexcept {
+    if (!controlled_play_current(ticket)) return std::nullopt;
+    auto& p = pending();
+    std::lock_guard lock(p.mutex);
+    const double age = now_seconds() - p.copied_at;
+    if (p.copied.ticket != ticket || !p.copied.sequence || age < 0 || age > .15)
+        return std::nullopt;
+    auto result = p.copied;
+    result.age = age;
+    return result;
 }
 std::optional<NativePose> native_pose() {
     const double now = now_seconds();

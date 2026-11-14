@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_custom_flatland.h"
+#include "arcade_custom_score.h"
 
 namespace dingosdk::arcade_mode {
 struct CustomFlatlandBinding { bool enabled{}; unsigned branch{}; bool ready{}; bool owns_triggers{}; };
@@ -20,6 +21,7 @@ struct Status {
     CustomFlatland::Phase phase{};
     Observation observation{};
 };
+CustomExecutionBatch take_executions() noexcept;
 void set_enabled(bool) noexcept;
 Status status() noexcept;
 // Client thread performs animation calls; input/physics only touch the mailbox.

@@ -391,3 +391,37 @@ Casper. Retesting must apply ordinary balance controls and establish the second
 Manual before X/Y. Preserve Fakie Manual after the revert, native balance
 endpoints and the existing custom animation owner. No new native Casper scoring
 or trick ID is claimed. Exact-source Windows and Deck validation are pending.
+
+
+### Authored trick scoring and presentation
+
+The custom flatland execution path now emits registry identities `casper` and
+`casper_flip`, with distinct occurrence serials. A queued gesture is not an
+award: the held entry must have reached the renderer, and the flip must have
+reached its final pose while its native Manual episode and playback lease still
+match. Repeated steps, stale ownership, missing render acknowledgement and
+cancelled flips cannot mint another occurrence.
+
+The existing combo model retains an Arcade bonus subtotal: 250 for entry,
+100 per second of acknowledged hold on the original physics clock, and 500
+for a completed flip. These are new mode tuning values. Each completed action
+adds one combo multiplier without ending or reseeding Manual balance. The
+subtotal follows the existing combo through its links, banks on its clean
+landing terminal, and is lost on a bail or invalidation. It never supplies
+native score attestations, progression, XP or engine trick enum values.
+
+The existing owned score-line widget is prepared while the native root is idle.
+During a scored custom combo it shows native history rows plus the custom
+occurrences and adds the Arcade bonus to the native presentation. The native
+amounts remain display values, not inferred score events. The original
+visibility fields are leased through the existing reversible HUD hook; plugin
+hiding, activities, menu transitions, expiry and Arcade OFF restore the native
+presentation. No native score, trick row or collision contact is overwritten.
+
+Source review reused the upstream owned HUD, native score reader and animation
+renderer callbacks. The missing behavior was the connection from acknowledged
+custom execution to the existing combo and presentation, not a native flip
+selector. Focused regressions cover duplicate/invalid occurrences, rate-independent
+hold points, flip cancellation, retained balance, native-score isolation,
+bank/bail behavior and native/custom history ordering. Exact-source Windows
+compilation and device acceptance of this combined revision are still pending.

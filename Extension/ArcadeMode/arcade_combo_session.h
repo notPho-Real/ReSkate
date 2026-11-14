@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_model.h"
+#include "arcade_custom_score.h"
 #include "arcade_score_settlement.h"
 #include "arcade_manual_physics.h"
 
@@ -18,6 +19,11 @@ class ComboSession {
 public:
     explicit ComboSession(Tuning tuning = {}) noexcept : model_(tuning) {}
     const Model& model() const noexcept { return model_; }
+    const CustomTrickScoring& custom_scoring() const noexcept {return custom_scoring_;}
+    bool observe_custom(const CustomTrickExecution& e,const NativeInputOwner& owner,
+                        std::uint64_t generation,std::uint64_t now) noexcept {
+        return custom_scoring_.observe(model_,e,owner,generation,now);
+    }
     bool failed_section() const noexcept { return failed_section_; }
     bool manual_putdown() const noexcept { return manual_putdown_; }
     const State& balance_display_state() const noexcept {
@@ -42,6 +48,7 @@ public:
     }
     bool score_unverified() const noexcept { return scoring_.unverified(model_); }
     void invalidate() noexcept {
+        custom_scoring_.clear();
         scoring_.invalidate(model_);
         model_.bail();
         previous_ = SkatePose::unknown;
@@ -51,6 +58,8 @@ public:
     }
     bool step(SkatePose pose, float dt, float correction, bool observed_revert = false,
               const PhysicalBalanceSample* physical = nullptr, bool pending_manual_revert = false, bool manual_episode = false) noexcept {
+        custom_scoring_.synchronize(model_);
+        if(!model_.state().combo_active)custom_scoring_.clear();
         if(manual_episode && balance_kind(pose)==BalanceKind::manual && !failed_section_ && !manual_putdown_) {
             model_.begin_balance(BalanceKind::manual);
             model_.manual_transition(observed_revert);
@@ -132,6 +141,7 @@ public:
     }
 private:
     Model model_;
+    CustomTrickScoring custom_scoring_;
     ScoreSettlement scoring_;
     SkatePose previous_{SkatePose::unknown};
     bool failed_section_{};

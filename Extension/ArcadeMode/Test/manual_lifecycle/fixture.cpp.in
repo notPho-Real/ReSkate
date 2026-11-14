@@ -33,6 +33,10 @@
 #include <limits>
 unsigned hud_hz{}, hud_frame{};
 #endif
+namespace dingosdk::logging{
+enum class Level{info};enum class Channel{skater};
+template<class... Args>void log(Level,Channel,const char*,Args&&...){}
+}
 using namespace dingosdk;using namespace dingosdk::arcade_mode;
 using BalanceHudRenderAck = void (*)(BalanceHudSource,std::uint64_t,std::uint64_t) noexcept;
 bool fixture_watch=true;std::uint64_t clock_ms=1000;std::atomic<std::uint64_t> camera_wait_clock{};
@@ -114,6 +118,7 @@ bool current(const WallplantCommand&,std::uint64_t,const NativeInputFrame&,Surfa
 }
 // Manual fixtures supply no custom-animation receipt or motion authority.
 namespace dingosdk::arcade_mode::custom_flatland_runtime {
+CustomExecutionBatch take_executions()noexcept{return {};}
 void cancel()noexcept{}
 CustomFlatlandBinding observe(CustomFlatlandContext)noexcept{return {};}
 Status status()noexcept{return {};}
@@ -134,10 +139,6 @@ InputAdapter grind_adapter{}; // Native backend cannot execute in this fixture.
 const CustomFlatlandBinding flatland_binding{}; // No custom animation owner is supplied by manual fixtures.
 HeldFlipObservation held_flip{}; // No native held-flip evidence is supplied by manual tests.
 namespace dingosdk::arcade_mode::native_grind {void cancel()noexcept{}}
-namespace dingosdk::logging{
-enum class Level{info};enum class Channel{skater};
-template<class... Args>void log(Level,Channel,const char*,Args&&...){}
-}
 @@SET_ENABLED@@
 NoBailSkater owner{1,2,3,4,5};NativeRequestSample raw;NativeInputFrame latest;
 bool corrupt_manual_delivery{};NativeOrientation orientation{true,false};

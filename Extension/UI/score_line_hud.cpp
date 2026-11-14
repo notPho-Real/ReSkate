@@ -53,6 +53,10 @@ double now_ms() noexcept {
 }
 
 std::atomic<std::uint64_t> own_root{};
+std::string prepared_by, replacement_by;
+double prepare_at{};
+bool replacing{};
+
 
 struct Fields {
     Value hud_active, extra_info, sequence_state, action_active, is_slam;
@@ -551,9 +555,19 @@ void step(Hud& h, const Context& c, const Line* line, std::string why, double no
     signals.item = game_item;
     h.game.observe(signals, now);
     const bool game_up = h.game.running(now);
+    const bool prepared=!prepared_by.empty() && now-prepare_at<=lease_ms &&
+        (owner().owner().empty() || owner().owner()==prepared_by);
+    const bool replacement=line && !replacement_by.empty() && owner().owner()==replacement_by;
+    if(prepared && why.empty() && fresh && h.hud_read && !game_up &&
+        h.stack.handle && h.game_root.handle &&
+        (!h.model.handle || !alive(c,h.model) || !alive(c,h.item)) &&
+        root_busy(root_of(c,h.game_root,game_item)).empty()) {
+        if(h.model.handle)destroy_ours(h,c);
+        (void)make_model(h,c);
+    }
     bool wait{};
     if (why.empty() && line) {
-        if (game_up) {
+        if (game_up && !replacement) {
             why = "skate.'s own line is showing";
             if (!std::exchange(h.said_yield, true))
                 logging::log(logging::Level::info, logging::Channel::ui, "Score line: a plugin's line yields to skate.'s own ({}).", h.game.why());
@@ -584,11 +598,16 @@ void step(Hud& h, const Context& c, const Line* line, std::string why, double no
         if (h.stack.handle && (ours_in || h.presence.must_scan())) take_out(h, c, ours_in, now);
         if (!h.presence.must_scan() && !h.out_since) h.out_since = now;
         if (!wait) h.status = line ? why : std::string{};
-        if (h.model.handle && !h.presence.must_scan() && now - h.out_since >= destroy_after_ms) destroy_ours(h, c);
+        if (!prepared && h.model.handle && !h.presence.must_scan() && now - h.out_since >= destroy_after_ms) destroy_ours(h, c);
         return;
     }
     try {
         show(h, c, *line, ours_in, now);
+        replacing=replacement && h.model.handle && h.rows.size()==std::min(line->tricks.size(),most_tricks);
+        if(replacement && !replacing) {
+            take_out(h,c,hud_stack::find_key(c,h.stack,score_key).has_value(),now);
+            h.status="the replacement trick list is not ready";return;
+        }
     } catch (...) {
         if (h.stack.handle) take_out(h, c, hud_stack::find_key(c, h.stack, score_key).has_value(), now);
         throw;
@@ -599,16 +618,33 @@ void step(Hud& h, const Context& c, const Line* line, std::string why, double no
 
 std::string ask(std::string_view who, std::optional<Line> line) {
     const bool clearing = !line;
+    if(replacement_by==who)replacement_by.clear();
     auto why = owner().ask(who, std::move(line), now_ms());
     if (!why.empty() || clearing) return why;
     return hud().status;
 }
 
-void release(std::string_view who) { owner().release(who); }
+void release(std::string_view who) {
+    owner().release(who);
+    if(prepared_by==who)prepared_by.clear();
+    if(replacement_by==who)replacement_by.clear();
+}
+void prepare(std::string_view who) {
+    if(!owner().owner().empty() && owner().owner()!=who)return;
+    prepared_by=std::string(who);prepare_at=now_ms();
+}
+std::string ask_replacement(std::string_view who,std::optional<Line> line) {
+    const bool set=line.has_value();
+    const auto why=owner().ask(who,std::move(line),now_ms());
+    if(!why.empty())return why;
+    if(set)replacement_by=std::string(who);
+    else if(replacement_by==who)replacement_by.clear();
+    return hud().status;
+}
 
 bool wanted() noexcept {
     const auto& h = hud();
-    return !owner().owner().empty() || h.model.handle || h.presence.must_scan();
+    return (!prepared_by.empty() && now_ms()-prepare_at<=lease_ms) || replacing || !owner().owner().empty() || h.model.handle || h.presence.must_scan();
 }
 
 void observe(const std::optional<tricks::ScoreHud>& reading) noexcept {
@@ -620,6 +656,7 @@ void observe(const std::optional<tricks::ScoreHud>& reading) noexcept {
 
 void tick(std::uintptr_t base, std::string_view refusal) noexcept {
     auto& h = hud();
+    replacing=false;
     try {
         const auto now = now_ms();
         const Line* line = owner().current(now);
@@ -628,8 +665,9 @@ void tick(std::uintptr_t base, std::string_view refusal) noexcept {
         if (hud_corner::hidden_by_plugin()) why = "skate.'s HUD corner is hidden";
         else if (!refusal.empty()) why = std::string(refusal);
         else if (h.unsupported) why = "skate.'s score HUD cannot be shown on this game build";
-        if (!line && !h.model.handle && !h.presence.must_scan()) {
+        if (!line && prepared_by.empty() && !h.model.handle && !h.presence.must_scan()) {
             h.status.clear();
+            (void)hud_corner::replace_score(false);
             return;
         }
         const ui::OwnUiWrites own_writes; // the trick feed ignores what we write
@@ -643,9 +681,22 @@ void tick(std::uintptr_t base, std::string_view refusal) noexcept {
     } catch (...) {
         h.status = "skate.'s score HUD is unavailable now";
     }
+    if(!hud_corner::replace_score(replacing)) {
+        replacing=false;
+        (void)hud_corner::replace_score(false);
+        // A visibility-hook failure must not leave two score displays.
+        try {
+            const ui::OwnUiWrites own_writes;
+            (void)hud_stack::with_ui_models(base,[&](const Context& c) {
+                if(h.stack.handle)take_out(h,c,hud_stack::find_key(c,h.stack,score_key).has_value(),now_ms());
+            });
+        } catch(...) {}
+    }
 }
 
 void before_level_load(std::uintptr_t base) noexcept {
+    prepared_by.clear();replacement_by.clear();replacing=false;
+    (void)hud_corner::replace_score(false);
     auto& h = hud();
     bool gone = true; // nothing of ours is left in the game's UI
     if (h.model.handle || h.presence.must_scan()) {

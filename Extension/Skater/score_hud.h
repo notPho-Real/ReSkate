@@ -2,10 +2,12 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 // skate.'s score HUD as values (ScoringHUDViewModel, read through the game's UI models), what
 // trick_watch.h turns into tricks.
 namespace dingosdk::tricks {
+struct ScoreHudRow {std::uint64_t handle{};std::string name;};
 struct ScoreHud {
     bool action{}; // a trick is going on
     bool slam{};
@@ -16,6 +18,10 @@ struct ScoreHud {
     std::uint32_t sequence_state{};
     float line_timer{}; // what is left of the line's time to keep its multiplier; 0 with no line
     float line_shown{}; // the widget's LINE number, which stays after the line's action signals end
+    // Native presentation identities, newest first. They distinguish repeated
+    // names in the display but do not establish performed tricks or score awards.
+    std::vector<ScoreHudRow> rows{};
+    bool rows_read{};
 };
 // Whether the HUD names a manual going on (its header or descriptor says one).
 bool names_manual(const ScoreHud& now);

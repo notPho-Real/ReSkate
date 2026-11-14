@@ -6,7 +6,7 @@
 #include <memory>
 
 namespace dingosdk::arcade_mode {
-// Presentation only. No native trick ID, contact, balance or score is created.
+// Authored playback retains native contact and balance; completed phases emit Arcade identities.
 struct CustomTrickClips {
     std::shared_ptr<const anim_studio::Clip> entry_hold, flip_exit, direct_exit;
     float range_begin{},range_end{};
@@ -18,6 +18,7 @@ struct CustomTrickPlayback {
     bool (*owns)(void*,std::uint64_t){};
     void (*cancel)(void*,std::uint64_t){};
     void (*seek)(void*,std::uint64_t,float){}; // Optional native-time player; holds entry at 0.3 s.
+    bool (*sampled)(void*,std::uint64_t,float){}; // Renderer acknowledged this clip at or beyond the time.
     bool available() const noexcept {return begin && owns && cancel;}
 };
 enum class FlatlandSurface { unknown, ordinary, rough, sealed, slick };
@@ -61,7 +62,7 @@ struct CustomFlatlandContext {
 class CustomFlatland {
 public:
     enum class Phase { manual, entry, hold, flip_exit, direct_exit };
-    struct Motion { float x{}, z{}; bool admitted{}; };
+    struct Motion { float x{}, z{}; bool admitted{}; ArcadeTrick performed{}; float held_seconds{}; };
     CustomFlatland(CustomTrickClips clips,CustomTrickPlayback playback)
         : clips_(std::move(clips)),playback_(playback) {}
     CustomFlatland(const CustomFlatland&)=delete;
@@ -81,7 +82,7 @@ public:
     bool branch_ready() const noexcept {return phase_==Phase::manual || phase_==Phase::hold;}
     void cancel() noexcept {
         if(ticket_ && playback_.cancel)playback_.cancel(playback_.context,ticket_);
-        ticket_=episode_=started_step_=0;phase_=Phase::manual;elapsed_=sample_time_=range_weight_=motion_time_=display_radians_=0;resistance_.reset();
+        credited_=false;finish_wait_=0;ticket_=episode_=started_step_=0;phase_=Phase::manual;elapsed_=sample_time_=range_weight_=motion_time_=display_radians_=0;resistance_.reset();
         // steps_ intentionally survives cancellation and OFF/ON.
     }
     void observe(CustomFlatlandContext context) noexcept {
@@ -119,7 +120,17 @@ public:
         if(step.baseline)resistance_.reset();
         elapsed_+=step.seconds;
         if(playback_.seek && (phase_==Phase::entry || phase_==Phase::hold))elapsed_=std::min(elapsed_,.3f);
-        if(elapsed_>=duration_) {cancel();return {};}
+        if(elapsed_>=duration_) {
+            if(playback_.sampled && !playback_.sampled(playback_.context,ticket_,duration_)) {
+                finish_wait_+=step.seconds;
+                if(finish_wait_>.15f){cancel();return {};}
+                elapsed_=duration_;
+                if(playback_.seek)playback_.seek(playback_.context,ticket_,duration_);
+                return {};
+            }
+            const auto performed=phase_==Phase::flip_exit?ArcadeTrick::casper_flip:ArcadeTrick::none;
+            cancel();return {0,0,false,performed};
+        }
         if(phase_==Phase::entry && elapsed_>=.3f)phase_=Phase::hold;
         // Original ManualLink turns the display 360 degrees in .75 seconds.
         // Holding continues that rate; opposing triggers or release stop it.
@@ -136,11 +147,17 @@ public:
         }
         if(playback_.seek)playback_.seek(playback_.context,ticket_,sample_time_);
         if(phase_==Phase::direct_exit)return {}; // Direct return ends custom drag immediately.
+        ArcadeTrick performed{};
+        float held_seconds{};
+        if(phase_==Phase::hold && (!playback_.sampled || playback_.sampled(playback_.context,ticket_,.3f))) {
+            if(!credited_){performed=ArcadeTrick::casper;credited_=true;}
+            held_seconds=step.seconds;
+        }
         const float speed=std::hypot(velocity[0],velocity[2]);
         const float change=resistance_.step(step.seconds,speed,false,false,true,
             flatland_friction(context.frame,surface));
-        if(change>=0 || speed==0)return {0,0,true};
-        return {velocity[0]/speed*change,velocity[2]/speed*change,true};
+        if(change>=0 || speed==0)return {0,0,true,performed,held_seconds};
+        return {velocity[0]/speed*change,velocity[2]/speed*change,true,performed,held_seconds};
     }
 private:
     static InputDisposition receive(void* state,const InputRequest& request) noexcept {
@@ -184,6 +201,8 @@ private:
     std::uint64_t owner_generation_{},episode_{},ticket_{},started_step_{};
     GroundMotionStep steps_;
     GroundResistance resistance_;
+    float finish_wait_{};
+    bool credited_{};
     Phase phase_{Phase::manual};
     float elapsed_{},sample_time_{},range_weight_{},motion_time_{},duration_{},display_radians_{};
 };

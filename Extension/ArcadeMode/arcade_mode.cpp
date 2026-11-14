@@ -1,5 +1,8 @@
 #include "Extension/World/local_population_controls.h"
 #include "arcade_mode.h"
+#include "arcade_custom_flatland_runtime.h"
+#include "arcade_custom_score_display.h"
+#include "Extension/UI/score_line_hud.h"
 #include "arcade_air_motion.h"
 #include "arcade_movement.h"
 #include "arcade_fixture_geometry.h"
@@ -672,6 +675,29 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     if (!physical.valid && !episode_live) { manual_identity.reset(manual_label); balance_control.reset_manual(); }
     const bool failed = combo_session.step(pose, manual_pose ? physical_seconds : (episode_live?0.f:dt), correction, native_revert,
         manual_pose || (kind == BalanceKind::manual && !episode_live) ? &physical : nullptr,pending_manual_revert,episode_live);
+    const auto executions=custom_flatland_runtime::take_executions();
+    if(!executions.overflow && valid && !bail && !owner_changed && !failed)
+        for(unsigned i=0;i<executions.count;++i) {
+            const auto& e=executions.rows[i];
+            if(!episode.grounded() || e.episode!=episode.serial())continue;
+            if(combo_session.observe_custom(e,native_frame.owner,native_frame.owner_generation,now) && e.performed) {
+                const auto* definition=trick_definition(e.trick);
+                dingosdk::logging::log(dingosdk::logging::Level::info,dingosdk::logging::Channel::skater,
+                    "Arcade performed: id={} occurrence={} step={} custom_points={} multiplier={}.",
+                    definition?definition->key:std::string_view{},e.occurrence,e.step,
+                    combo_session.model().state().custom_points,combo_session.model().state().multiplier);
+            }
+        }
+    static std::uint64_t custom_settlement_seen{};
+    const auto& custom_terminal=combo_session.model().last_settlement();
+    if(custom_terminal.sequence!=custom_settlement_seen) {
+        custom_settlement_seen=custom_terminal.sequence;
+        if(custom_terminal.custom_points)
+            dingosdk::logging::log(dingosdk::logging::Level::info,dingosdk::logging::Channel::skater,
+                "Arcade custom settlement: sequence={} kind={} points={} multiplier={}.",
+                custom_terminal.sequence,static_cast<unsigned>(custom_terminal.kind),
+                custom_terminal.custom_points,custom_terminal.actions);
+    }
     if(episode_live && (failed || combo_session.manual_putdown())) {
         std::lock_guard lock(ollie_mutex);manual_episode.end(ManualEpisode::Exit::endpoint);manual_hud_episode=0;
     }
@@ -2126,6 +2152,19 @@ void on_client_tick() noexcept {
             combo_session.invalidate();
             combo_tick_at = 0;
             publish_balance_hud({}, 0, {});
+            }
+        }
+        {
+            static CustomScoreDisplay display;
+            constexpr std::string_view display_owner="arcade.custom-tricks";
+            if(gameplay && focus_available) {
+                score_line::prepare(display_owner);
+                const auto reading=tricks::read_score_hud(score_probe_base);
+                const auto line=display.update(combo_session.model(),combo_session.custom_scoring(),reading,now);
+                (void)score_line::ask_replacement(display_owner,line);
+            } else {
+                display.reset();score_line::release(display_owner);
+                (void)custom_flatland_runtime::take_executions();
             }
         }
         const auto failure_status = balance_bail_status();

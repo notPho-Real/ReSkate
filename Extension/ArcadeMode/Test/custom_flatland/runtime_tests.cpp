@@ -20,7 +20,7 @@ struct Player {
     double seed_age{.001};
     std::shared_ptr<const anim_studio::Clip> clip;
     float time{},display_radians{};
-    bool occupied{},seed_available{true},seed_wrong_owner{},reject_replace{};
+    bool renders{true},occupied{},seed_available{true},seed_wrong_owner{},reject_replace{};
     std::uintptr_t entity{2};
 } player;
 }
@@ -35,6 +35,10 @@ void prepare_playback() noexcept {++preparations;}
 bool can_play() noexcept {return !player.occupied && !player.ticket;}
 bool owns_play(std::uint64_t id) noexcept {return id && id==player.ticket && player.now<player.until;}
 bool controlled_play_current(std::uint64_t id) noexcept {return owns_play(id);}
+std::optional<PlaybackFrame> playback_frame(std::uint64_t id) noexcept {
+    if(!player.renders || !owns_play(id))return std::nullopt;
+    return PlaybackFrame{id,1,player.clip,player.time,1,player.entity,0};
+}
 void cancel_play(std::uint64_t id){if(id && id==player.ticket){player.ticket=0;++player.cancels;}}
 std::uint64_t try_play_controlled(Play play){
     if(!can_play() || !play.clip || play.clip->empty())return 0;
@@ -74,7 +78,7 @@ struct Rig {
     unsigned physical_left_trigger{},physical_right_trigger{};
     explicit Rig(float seed_pitch=0,bool reset_override=true){
         if(reset_override)custom_flatland_runtime::set_enabled(true);
-        custom_flatland_runtime::cancel();player.occupied=false;player.seed_available=true;player.seed_wrong_owner=false;player.reject_replace=false;
+        custom_flatland_runtime::cancel();player.occupied=false;player.seed_available=true;player.seed_wrong_owner=false;player.reject_replace=false;player.renders=true;
         player.seed_pitch=seed_pitch;player.seed_age=.001;
         next();tick();next();tick();
         check(binding().enabled,"a fresh matching native seed enables the flatland bridge");
@@ -131,6 +135,34 @@ struct Rig {
         check(binding().ready && std::abs(player.time-2.f)<=.301f,"entry settles into a visibly moving native-clock hold");
     }
 };
+void executed_scoring(){
+    Rig r;r.enter();player.renders=false;r.hold();
+    check(custom_flatland_runtime::take_executions().count==0,"unrendered owned animation cannot score");
+    player.renders=true;r.next();r.step();r.tick();
+    auto batch=custom_flatland_runtime::take_executions();
+    check(batch.count==1 && batch.rows[0].performed && batch.rows[0].trick==ArcadeTrick::casper,
+        "first rendered held pose emits one Casper occurrence");
+    const auto entry=batch.rows[0].occurrence;
+    r.step();
+    check(custom_flatland_runtime::take_executions().count==0,"repeated physics step cannot earn hold points");
+    r.next();r.step();r.tick();batch=custom_flatland_runtime::take_executions();
+    check(batch.count==1 && !batch.rows[0].performed && batch.rows[0].occurrence==entry,
+        "hold earns time on its existing identity");
+    r.poll(0x4000);r.poll(0);r.poll(0x4000);r.tick();r.poll(0);
+    unsigned completed=0;
+    for(unsigned i=0;i<90;++i){
+        r.next();r.step();r.tick();batch=custom_flatland_runtime::take_executions();
+        for(unsigned j=0;j<batch.count;++j)if(batch.rows[j].trick==ArcadeTrick::casper_flip) {
+            check(batch.rows[j].performed && batch.rows[j].occurrence!=entry,"flip owns a distinct completed occurrence");
+            ++completed;
+        }
+    }
+    check(completed==1,"completed rendered flip scores once and returns to Manual");
+    Rig cancelled;cancelled.enter();cancelled.hold();(void)custom_flatland_runtime::take_executions();
+    cancelled.poll(0x4000);cancelled.poll(0);cancelled.poll(0x4000);cancelled.tick();
+    cancelled.next();cancelled.step();custom_flatland_runtime::cancel();
+    check(custom_flatland_runtime::take_executions().count==0,"cancelled flip cannot earn completion points");
+}
 void runtime_admission(){
     for(bool loaded:{false,true}){
         Rig r;r.catalog_loaded=loaded;r.enter();
@@ -405,4 +437,4 @@ int main(){
     const auto prepared=preparations;
     custom_flatland_runtime::tick(gameplay);
     check(preparations==prepared,"diagnostic OFF keeps flatland hooks idle");
-    fresh_entry_seed();rejected_entry_seed();balance_range();moving_hold();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}
+    executed_scoring();fresh_entry_seed();rejected_entry_seed();balance_range();moving_hold();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

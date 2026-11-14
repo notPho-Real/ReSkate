@@ -33,6 +33,11 @@ namespace dingosdk::score_line {
 // own line is up, the corner is hidden, the HUD is not loaded).
 std::string ask(std::string_view owner, std::optional<Line> line);
 void release(std::string_view owner);
+// Trusted SDK clients can prepare an idle copy before a line starts, then show
+// their own line in place of the native presentation. Native scoring continues;
+// only the original widget's visibility is leased. Plugin asks still yield.
+void prepare(std::string_view owner);
+std::string ask_replacement(std::string_view owner, std::optional<Line> line);
 // Whether tick has anything to do: a line asked for, or something of ours still in the game's UI.
 bool wanted() noexcept;
 // This tick's reading of skate.'s own score HUD (score_hud.h), before tick: the signals of its line.

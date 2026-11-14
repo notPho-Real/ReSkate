@@ -13,6 +13,7 @@ struct ModelSettlement {
     std::uint64_t sequence{}, points{};
     SettlementKind kind{SettlementKind::none};
     unsigned actions{};
+    std::uint64_t custom_points{};
 };
 struct Tuning {
     float combo_link_grace_s{0.45f};
@@ -32,7 +33,7 @@ struct Tuning {
 };
 struct State {
     bool combo_active{};
-    std::uint64_t raw_points{};
+    std::uint64_t raw_points{}, custom_points{};
     unsigned multiplier{};
     float combo_age_s{};
     float link_grace_s{};
@@ -114,6 +115,20 @@ public:
         if (!state_.combo_active) return false;
         const auto maximum = std::numeric_limits<std::uint64_t>::max();
         state_.raw_points += std::min<std::uint64_t>(points, maximum - state_.raw_points);
+        return true;
+    }
+    bool custom_trick(std::uint32_t points) noexcept {
+        if(!state_.combo_active || state_.balance_kind!=BalanceKind::manual)return false;
+        // A branch is a new scored action inside the same physical balance.
+        // It must not reset the balance, its velocity or its failure endpoints.
+        link();
+        if(state_.multiplier<std::numeric_limits<unsigned>::max())++state_.multiplier;
+        return credit_custom_points(points);
+    }
+    bool credit_custom_points(std::uint32_t points) noexcept {
+        if(!state_.combo_active)return false;
+        const auto maximum=std::numeric_limits<std::uint64_t>::max();
+        state_.custom_points+=std::min<std::uint64_t>(points,maximum-state_.custom_points);
         return true;
     }
     void discard_unverified_points() noexcept { state_.raw_points = 0; }
@@ -226,13 +241,17 @@ private:
     BalanceExit balance_exit_{};
     std::uint64_t total_points() const noexcept {
         const auto maximum = std::numeric_limits<std::uint64_t>::max();
-        return state_.multiplier && state_.raw_points > maximum / state_.multiplier
-            ? maximum : state_.raw_points * state_.multiplier;
+        const auto raw=state_.raw_points+std::min(state_.custom_points,maximum-state_.raw_points);
+        return state_.multiplier && raw > maximum / state_.multiplier
+            ? maximum : raw * state_.multiplier;
     }
     void record_settlement(SettlementKind kind, std::uint64_t points) noexcept {
         if (settlement_.sequence != UINT64_MAX) ++settlement_.sequence;
         settlement_.kind = kind; settlement_.points = points;
         settlement_.actions = state_.multiplier;
+        const auto maximum=std::numeric_limits<std::uint64_t>::max();
+        settlement_.custom_points=state_.multiplier && state_.custom_points>maximum/state_.multiplier ?
+            maximum : state_.custom_points*state_.multiplier;
     }
     void consume_grace() noexcept {
         state_.landing_grace = state_.revert_pending = false;

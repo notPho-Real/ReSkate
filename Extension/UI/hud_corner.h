@@ -33,4 +33,7 @@ void release(std::string_view owner);
 bool hidden_by_plugin() noexcept;
 // Client thread, every tick.
 void tick() noexcept;
+// score_line's owned replacement uses the same reversible visibility hook.
+// This is separate from plugin hiding, which also suppresses that replacement.
+bool replace_score(bool hidden) noexcept;
 }

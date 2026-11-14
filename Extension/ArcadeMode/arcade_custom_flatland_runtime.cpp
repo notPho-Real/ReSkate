@@ -10,6 +10,7 @@ struct State {
     std::mutex mutex;
     CustomFlatlandContext context;
     Observation observation{};
+    CustomExecutionBatch executions{};
     NativeInputFrame spin_input{};
     std::uint64_t spin_at{};
     int spin_direction{};
@@ -51,6 +52,13 @@ struct State {
             },
             [](void* p,std::uint64_t id,float next_time) {
                 auto& s=*static_cast<State*>(p);if(id==s.logical)s.time=next_time;
+            },
+            [](void* p,std::uint64_t id,float at) {
+                const auto& s=*static_cast<State*>(p);
+                if(id!=s.logical || s.submitted!=id)return false;
+                const auto sample=skater_animation::playback_frame(s.ticket);
+                return sample && sample->clip==s.clip && sample->base==s.context.frame.owner.base &&
+                    sample->entity==s.context.frame.owner.entity && sample->seconds+1e-5f>=at;
             }};
     }
 };
@@ -66,11 +74,15 @@ void observe_locked(State& s,CustomFlatlandContext& context) noexcept {
     }
 }
 }
+CustomExecutionBatch take_executions() noexcept {
+    auto& s=state();std::lock_guard lock(s.mutex);
+    const auto result=s.executions;s.executions={};return result;
+}
 void set_enabled(bool enabled) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
     if(s.enabled==enabled)return;
     if(s.trick)s.trick->cancel();
-    s.enabled=enabled;s.ready=false;s.context.enabled=false;s.held_triggers=0;
+    s.executions={};s.enabled=enabled;s.ready=false;s.context.enabled=false;s.held_triggers=0;
     native_wall_contact::enable_materials(false);
     if(enabled)s.observation={};
 }
@@ -132,7 +144,17 @@ CustomFlatland::Motion consume(const NativeInputFrame& frame,std::uint64_t now,
         s.spin_input.contact_generation==frame.contact_generation &&
         s.spin_input.action_generation==frame.action_generation &&
         s.spin_input.physics_step<=frame.physics_step ? s.spin_direction : 0;
+    const auto occurrence=s.logical;
     const auto motion=s.trick->step(context,velocity,surface);
+    if(motion.performed!=ArcadeTrick::none || motion.held_seconds>0) {
+        auto& batch=s.executions;
+        if(batch.count<batch.rows.size() && !batch.overflow)
+            batch.rows[batch.count++]={frame.owner,frame.owner_generation,context.manual_episode,
+                occurrence,frame.physics_step,now,
+                motion.performed==ArcadeTrick::none?ArcadeTrick::casper:motion.performed,
+                motion.performed!=ArcadeTrick::none,motion.held_seconds};
+        else {batch.count=0;batch.overflow=true;}
+    }
     if(motion.admitted) {
         auto& row=s.observation;
         row.step=frame.physics_step;row.seconds=frame.physics_seconds;
@@ -154,7 +176,7 @@ void cancel() noexcept {
     native_wall_contact::enable_materials(false);
     auto& s=state();std::lock_guard lock(s.mutex);
     if(s.trick)s.trick->cancel();
-    s.ready=false;s.context.enabled=false;s.held_triggers=0;
+    s.executions={};s.ready=false;s.context.enabled=false;s.held_triggers=0;
 }
 void tick(CustomFlatlandContext context) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);

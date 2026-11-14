@@ -64,6 +64,17 @@ bool seek_owned(std::uint64_t ticket, float seconds, float display_radians);
 // blend progress. The caller supplies a continuous pose at the phase boundary.
 bool replace_owned(std::uint64_t ticket, std::shared_ptr<const Clip> clip, float seconds = 0);
 bool controlled_play_current(std::uint64_t ticket) noexcept; // any thread; no client state read
+// Last owned body pose copied by the renderer. The clip and ticket identify a
+// phase even when replace_owned retains its lease. This is execution evidence,
+// not a judgement of animation quality or physical contact.
+struct PlaybackFrame {
+    std::uint64_t ticket{}, sequence{};
+    std::shared_ptr<const Clip> clip;
+    float seconds{};
+    std::uintptr_t base{}, entity{};
+    double age{};
+};
+std::optional<PlaybackFrame> playback_frame(std::uint64_t ticket) noexcept;
 void prepare_playback() noexcept; // requests the existing hooks at the next client tick
 bool can_play() noexcept;
 bool owns_play(std::uint64_t ticket) noexcept;

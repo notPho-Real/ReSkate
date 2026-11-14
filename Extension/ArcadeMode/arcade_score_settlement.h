@@ -11,7 +11,7 @@ class ScoreSettlement {
 public:
     bool begin(Model& model, const ScoreContext& context, std::uint64_t last_serial) noexcept {
         if (output_) return false; // never erase a settlement its consumer has not taken
-        if (!model.state().combo_active || model.state().raw_points ||
+        if (!model.state().combo_active || model.state().raw_points || model.state().custom_points ||
             (started_ && context.owner == owner_ && context.generation == generation_ && context.combo == combo_)) {
             invalidate(model); return false;
         }
@@ -27,6 +27,7 @@ public:
     ScoreReceipt observe(Model& model, const native_score_detail::Event& event,
                          const ScoreProof& proof, const ScoreContext& context) noexcept {
         if (!started_) return {};
+        if(model.state().custom_points) {invalidate(model);return {ScoreDecision::ambiguous};}
         const auto receipt = gate_.observe(event, proof, context);
         if (receipt.decision == ScoreDecision::duplicate) return receipt;
         if (receipt.decision != ScoreDecision::valid) { invalidate(model); return receipt; }

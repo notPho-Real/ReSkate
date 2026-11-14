@@ -159,7 +159,8 @@ bool bind_model(Hud& h, const menu_data::Context& context) {
 
 std::optional<ScoreHud> read_score_hud(std::uintptr_t image_base) noexcept {
     auto& h = hud;
-    bool ok = false;
+    bool ok = false, rows_read=false;
+    std::vector<ScoreHudRow> rows;
     try {
         with_ui_models(image_base, [&](const menu_data::Context& context) {
             if (!bind_model(h, context)) return;
@@ -167,6 +168,27 @@ std::optional<ScoreHud> read_score_hud(std::uintptr_t image_base) noexcept {
             for (auto& field : h.fields)
                 field.read = field.present && memory::peek_bytes(at + field.offset, field.now.data(), std::min<unsigned>(field.size, value_bytes));
             ok = true;
+            try {
+                namespace corner=addr::hud_corner;
+                namespace score=addr::score_hud;
+                const auto items=context.path(h.model,{score::trick_list,corner::stack_items});
+                unsigned count{},stride{};
+                (void)context.array(items,5,count,stride);
+                for(unsigned i=0;i<count;++i) {
+                    const auto item=context.element(items,i);
+                    const auto widget=menu_data::read<menu_data::Widget>(
+                        context.address(context.field(item,corner::item_content)));
+                    if(!widget.data.handle)continue;
+                    const menu_data::Value row{widget.data.handle,context.type_of(widget.data.handle)};
+                    if(menu_data::size(row.type)!=score::trick_row_size)continue;
+                    const auto label=context.path(row,{score::row_name,score::label_text});
+                    const auto address=menu_data::read<Address>(context.address(label));
+                    char text[64]{};
+                    const auto length=memory::peek_cstring(address,text,sizeof text);
+                    if(length>0)rows.push_back({row.handle,std::string(text,static_cast<std::size_t>(length))});
+                }
+                rows_read=true;
+            } catch(...) {rows.clear();}
         });
         h.warned = false;
     } catch (const std::exception& error) {
@@ -181,6 +203,7 @@ std::optional<ScoreHud> read_score_hud(std::uintptr_t image_base) noexcept {
     ScoreHud result{flag_of(f[action_active]), flag_of(f[is_slam]), score_of(f[line_score]), score_of(f[multiplier]),
                     text_of(f[sequence_header]), text_of(f[sequence_descriptor]), enum_of(f[sequence_state]), score_of(f[line_timer])};
     result.line_shown = score_of(f[line_shown]);
+    result.rows=std::move(rows);result.rows_read=rows_read;
     trace_sequence(result);
     return result;
 }

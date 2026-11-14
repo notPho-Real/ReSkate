@@ -285,7 +285,7 @@ namespace dingosdk::hud_corner {
 namespace {
 struct Asks {
     std::map<std::string, bool, std::less<>> owners; // hidden, by plugin
-    bool hooked{};
+    bool hooked{}, replacement{};
 };
 Asks& asks() {
     static auto* value = new Asks;
@@ -304,15 +304,20 @@ bool hidden_by_plugin() noexcept {
 void tick() noexcept {
     auto& a = asks();
     try {
-        bool hidden{};
+        bool hidden=a.replacement;
         for (const auto& [owner, on] : a.owners) hidden = hidden || on;
         const bool feeding = tricks::feed::wanted();
-        if ((!a.owners.empty() || feeding) && !a.hooked) a.hooked = hook_hud(true);
+        if ((!a.owners.empty() || feeding || a.replacement) && !a.hooked) a.hooked = hook_hud(true);
         if (!a.hooked) return;
         const bool back = hide_hud(hidden);
         // No plugin left: the hook goes once the corner is the game's again.
-        if (a.owners.empty() && !feeding && back && hook_hud(false)) a.hooked = false;
+        if (a.owners.empty() && !feeding && !a.replacement && back && hook_hud(false)) a.hooked = false;
     } catch (...) {
     }
+}
+bool replace_score(bool hidden) noexcept {
+    asks().replacement=hidden;
+    tick();
+    return !hidden || (asks().hooked && score_held());
 }
 }
