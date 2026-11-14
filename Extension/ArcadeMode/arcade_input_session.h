@@ -186,6 +186,14 @@ public:
     void set_recognition_capture(bool enabled) noexcept {input_.set_recognition_capture(enabled);}
     bool busy() const noexcept { return footplant_ || ground_grab_ || auxiliary_.busy() || authored_.busy() || manual_.busy() || rail_ || board_active_ || extension_started_; }
     bool wallplant_controls_unowned() const noexcept { return !busy() && !holding_; }
+    InputRequest claim_wallplant_contact(std::uint64_t now,const InputNativeContext& native,
+                                        InputSurfaceState surface) noexcept {
+        if (!clocked_ || !wallplant_controls_unowned() || !native.follows(native_) ||
+            native.generations.owner!=native_.generations.owner) return {};
+        InputEnvironment environment{InputContext::air,true};
+        environment.ollie_allowed=false;environment.native_context=native;environment.surface=surface;
+        return input_.claim_wallplant_contact(now,environment);
+    }
     const UnifiedInput::Diagnostic& diagnostic() const noexcept { return input_.diagnostic(); }
     const InputHistory& history() const noexcept { return input_.history(); }
     InputRequest pending_manual() const noexcept { return input_.pending_manual(); }

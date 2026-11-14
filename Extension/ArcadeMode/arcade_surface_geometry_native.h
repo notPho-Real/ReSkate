@@ -72,7 +72,8 @@ SurfaceGeometryAnchor query_wallplant_anchor(const SurfaceGeometryNativeApi&, co
     SurfaceGeometryBody contacted_shape, SurfaceGeometryVector contact_point, SurfaceGeometryVector normal,
     SurfaceGeometryVector root, std::span<const SurfaceGeometryVector> body_offsets,
     SurfaceGeometryTrace* = nullptr) noexcept;
-// Call only in the same supported client/park callback contract. Never renews
+// Call only in the same supported client/park callback or same-thread scoped
+// collision response contract. Never renews
 // queried_at; physics/input consumers receive the copied publication only.
 bool revalidate_surface_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
                                  const SurfaceGeometrySample&) noexcept;

@@ -714,6 +714,26 @@ public:
         diagnostic_.session = session_;
         diagnostic_.journal_overflows = events_.history().overflows();
     }
+    // A native collision can arrive between pad polls. Claim the existing
+    // journal edge without sampling the pad again or dispatching other tricks.
+    InputRequest claim_wallplant_contact(std::uint64_t now,const InputEnvironment& environment) noexcept {
+        if (!environment.gameplay || environment.conflict || environment.context!=InputContext::air ||
+            !environment.surface.fresh || !environment.surface.can_plant ||
+            !environment.native_context.fresh(now)) return {};
+        recognize_wallplant_edge(now,environment);
+        for (const auto& queued:pending_.slots()) {
+            if (queued.action!=InputAction::wall_command || queued.variant!=1) continue;
+            const auto request=queued;
+            pending_.cancel(InputAction::wall_command);
+            if (request.surface_generation!=environment.surface.generation ||
+                request.generations!=environment.native_context.generations ||
+                request.air_episode!=environment.native_context.air_episode() ||
+                now<request.physical_pressed_at ||
+                now-request.physical_pressed_at>InputTiming::native_sample_lease_ms) return {};
+            return request;
+        }
+        return {};
+    }
 private:
     void recognize_wallplant_edge(std::uint64_t now,const InputEnvironment& environment) noexcept {
         if (!wallplant_edge_.sequence) return;

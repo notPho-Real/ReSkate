@@ -243,6 +243,14 @@ public:
     bool wallplant_controls_unowned(unsigned user) const noexcept {
         return user<sessions_.size() && sessions_[user].wallplant_controls_unowned();
     }
+    InputRequest claim_wallplant_contact(std::uint64_t now,const NativeInputFrame& frame,
+                                        InputSurfaceState surface) noexcept {
+        const auto current=native_context(now);
+        if (!admitted(0,now) || !current.valid || !frame.valid || current.owner!=frame.owner ||
+            current.physics_step!=frame.physics_step || current.owner_generation!=frame.owner_generation ||
+            current.sampled_at!=frame.sampled_at) return {};
+        return sessions_[0].claim_wallplant_contact(now,InputNativeContext::from_frame(frame),surface);
+    }
     NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, std::int16_t rx, std::int16_t ry,
             bool game_input, bool may_start, bool may_push = false, float speed = 0,

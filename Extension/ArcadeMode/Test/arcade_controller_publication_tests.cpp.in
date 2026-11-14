@@ -26,6 +26,8 @@ namespace dingosdk::arcade_mode::native_ground_grab {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_grind {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::wallplant_runtime {
 unsigned cancellations{};
+InputSurfaceState surface(std::uint64_t,const NativeInputFrame&) noexcept {return {};}
+InputDisposition request(const InputRequest&,std::uint64_t,const NativeInputFrame&) noexcept {return InputDisposition::cancelled;}
 WallplantCommand held_command() noexcept {return {};}
 bool excludes_grind(const NativeInputFrame&,std::uint64_t) noexcept {return false;}
 void cancel() noexcept {++cancellations;}
@@ -378,6 +380,8 @@ void run(){
         require(native_wallplant_execution_authorized(original_frame,checked_at)==(boundary==0),
             "post-native handoff retains controller/OFF/classic/conflict/trigger/freshness/exact-episode authority");++checks;
         require(checked_at==clock_ms,"post-native handoff samples current time after input serialization");++checks;
+        require(!claim_native_wallplant_contact(original_frame),
+            "collision callback cannot create a request without independently qualified geometry and a journal A");++checks;
     }
     // Start a real session-owned crouch through the production recognizer,
     // then publish a native AIR observation without releasing its held input.

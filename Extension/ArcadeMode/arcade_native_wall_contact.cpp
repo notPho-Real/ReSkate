@@ -1,4 +1,9 @@
 #include "arcade_native_wall_contact.h"
+#include "arcade_mode.h"
+#include "arcade_wallplant_runtime.h"
+#include "Extension/Profile/local_profile_runtime.h"
+#include "Extension/Skater/client_source_spawn.h"
+#include "Engine/Game/Build/20260929/no_bail.h"
 #include "arcade_contact_owner.h"
 #include "arcade_static_world_owner.h"
 #include "Engine/Game/World/physics_component_owner.h"
@@ -15,6 +20,10 @@
 #include <cstring>
 #include <mutex>
 #include <Windows.h>
+#include <algorithm>
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
 
 namespace dingosdk::arcade_mode::native_wall_contact {
 namespace {
@@ -29,6 +38,10 @@ using Process=void(*)(std::uintptr_t,std::uintptr_t);
 Process original{};
 using BoardProcess=void(*)(std::uintptr_t,float,const void*);
 BoardProcess original_board{};
+using CollisionPredicate=bool(*)(std::uintptr_t,float,float,bool);
+CollisionPredicate original_collision{};
+struct CollisionScope {NoBailSkater owner{};std::uintptr_t collector{};std::uint64_t serial{};};
+thread_local CollisionScope collision_scope{};
 std::atomic<bool> permitted{},ready{};
 std::uintptr_t image{};
 std::mutex mutex;
@@ -191,9 +204,11 @@ std::uintptr_t board_vector(std::uintptr_t board) noexcept {
 }
 bool capture_board(Snapshot& next,std::uintptr_t board,float seconds) {
     if(!permitted.load(std::memory_order_acquire))return false;
+    // A failed owner read for this invocation must not leave a prior board
+    // collision available to its later classification callback.
+    {std::lock_guard lock(mutex);latest_board={};}
     NoBailSkater owner{};
     if(!no_bail_skater(owner)||owner.base!=image||owned_board(owner)!=board)return false;
-    {std::lock_guard lock(mutex);latest_board={};}
     if(!begin_snapshot(next,owner,seconds,Source::board))return false;
     const auto vector=board_vector(board);
     return capture_raw(next,vector,s::board_body_count)&&board_vector(board)==vector;
@@ -212,6 +227,67 @@ void hooked_board(std::uintptr_t board,float seconds,const void* up) {
         if(next.after_valid)publish(next);
     } catch(...) {}
 }
+bool collision_uncontested(const CollisionScope& scope) noexcept {
+    namespace bail=game::build::v20260929::no_bail;
+    std::array<std::uint8_t,c::collector_flag_count> flags{};
+    std::uint32_t count{},impact{},animation{};
+    return scope.serial && scope.collector && pointer(scope.owner.core+c::core_causes)==scope.collector &&
+        pointer(scope.collector+c::collector_context)==scope.owner.context &&
+        read(scope.collector+c::collector_flags,flags) &&
+        std::all_of(flags.begin(),flags.end(),[](auto flag){return flag==0;}) &&
+        read(scope.collector+c::collector_count,count) && count==0 &&
+        read(scope.owner.context+bail::body_contact_context_offset,impact) &&
+        !(impact&(bail::body_contact_context_mask|bail::impact_request_mask)) &&
+        read(scope.owner.context+bail::animation_request_offset,animation) && !(animation&bail::animation_request_mask);
+}
+bool hooked_collision(std::uintptr_t collector,float first,float second,bool mode) {
+#if defined(_MSC_VER)
+    const auto caller=reinterpret_cast<std::uintptr_t>(_ReturnAddress());
+#else
+    const auto caller=reinterpret_cast<std::uintptr_t>(__builtin_return_address(0));
+#endif
+    const bool result=original_collision(collector,first,second,mode);
+    if(!result || caller!=image+c::collision_return || !ready.load(std::memory_order_acquire) ||
+       !permitted.load(std::memory_order_acquire) || collision_scope.serial)return result;
+    NoBailSkater owner{};
+    if(!no_bail_skater(owner))return result;
+    Snapshot source{};
+    {std::lock_guard lock(mutex);source=latest_board;}
+    const auto now=GetTickCount64();
+    if(!source.valid || !source.after_valid || source.owner!=owner ||
+       source.physics_thread!=GetCurrentThreadId() || now<source.sampled_at || now-source.sampled_at>150 ||
+       (source.state!=200 && source.state!=201) || source.state_after!=source.state)return result;
+    const CollisionScope scope{owner,collector,source.serial};
+    if(!collision_uncontested(scope))return result;
+    collision_scope=scope;
+    struct Reset {~Reset(){collision_scope={};}} reset;
+    bool entered=false;
+    try {
+        const NativeInputOwner input_owner{owner.base,owner.entity,owner.core,owner.context,owner.rig};
+        std::uint64_t at{};
+        const auto execution=native_wallplant_context(input_owner,at);
+        if(execution.native.valid && native_wallplant_execution_authorized(execution.native,at) &&
+           wallplant_runtime::retain_collision_before_response(execution.native,at)) {
+            query_arcade_wallplant_collision_geometry();
+            if(claim_native_wallplant_contact(execution.native))
+                entered=apply_arcade_wallplant_at_collision(execution,source.serial);
+        }
+    } catch(...) {}
+    try {
+        static unsigned reported{};
+        if(reported<64){
+            ++reported;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE WALLPLANT COLLISION: ms={} raw={} owner={} thread={} original_result={} hold_entered={} state={} state_after={} threshold1={} threshold2={} mode={}.",
+                GetTickCount64(),source.serial,owner.core,source.physics_thread,result,entered,
+                source.state,source.state_after,first,second,mode);
+        }
+    } catch(...) {}
+    // The original predicate and contact processors ran. Only this
+    // producer yields to a committed, qualified plant; no flags/causes are
+    // erased and every later native bail test remains in force.
+    return entered?false:result;
+}
 bool fingerprint(const game::build::Fingerprint& contract) noexcept {
     std::array<unsigned char,32> actual{};
     return read(image+contract.rva,actual)&&actual==contract.bytes;
@@ -223,6 +299,7 @@ bool start(std::uintptr_t base) noexcept {
     image=base;
     for(const auto& contract:c::contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:c::board_contracts)if(!fingerprint(contract))return false;
+    for(const auto& contract:c::collision_contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:game::build::v20260929::physics_owner::contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:game::build::v20260929::physics_owner::component_contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:b::contracts)if(!fingerprint(contract))return false;
@@ -234,14 +311,25 @@ bool start(std::uintptr_t base) noexcept {
     auto* board_target=reinterpret_cast<void*>(base+c::board_process);
     if(hook_prepare(board_target,reinterpret_cast<void*>(&hooked_board),&relay)!=HookOk)return false;
     original_board=reinterpret_cast<BoardProcess>(relay);
+    auto* collision_target=reinterpret_cast<void*>(base+c::collision_predicate);
+    if(hook_prepare(collision_target,reinterpret_cast<void*>(&hooked_collision),&relay)!=HookOk)return false;
+    original_collision=reinterpret_cast<CollisionPredicate>(relay);
     HookBatch batch;
     if(hook_enable(target)!=HookOk)return false;
     if(hook_enable(board_target)!=HookOk)return false;
+    if(hook_enable(collision_target)!=HookOk)return false;
     ready.store(true,std::memory_order_release);return true;
 }
 void enable(bool enabled) noexcept {
     permitted.store(enabled,std::memory_order_release);
     if(!enabled){std::lock_guard lock(mutex);latest={};latest_board={};}
+}
+bool collision_current(std::uint64_t expected_serial,const NoBailSkater& owner) noexcept {
+    if(!expected_serial || collision_scope.serial!=expected_serial || collision_scope.owner!=owner ||
+       !permitted.load(std::memory_order_acquire) || !collision_uncontested(collision_scope))return false;
+    const auto source=observe(owner,GetTickCount64());
+    return source.valid && source.serial==expected_serial && source.source==Source::board && source.after_valid &&
+        source.state_after==source.state && (source.state==200 || source.state==201);
 }
 Snapshot observe(const NoBailSkater& owner,std::uint64_t now) noexcept {
     std::lock_guard lock(mutex);

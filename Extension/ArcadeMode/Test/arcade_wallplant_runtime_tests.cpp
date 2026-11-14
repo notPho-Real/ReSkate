@@ -5,6 +5,8 @@
 namespace fixture {
 std::uint64_t now=1000;
 bool hit_current=true,race_cancel{};
+bool collision_scope{};
+dingosdk::arcade_mode::native_wall_contact::Snapshot collision{};
 unsigned begins{},releases{},cancels{},checks{};
 std::uint64_t released_identity{};
 std::uint64_t visual_expiry{};
@@ -23,7 +25,10 @@ void write(Level,Channel,std::string_view) noexcept{}
 namespace dingosdk::arcade_mode::native_wall_contact {
 bool start(std::uintptr_t) noexcept{return true;}
 void enable(bool) noexcept{}
-Snapshot observe(const NoBailSkater&,std::uint64_t) noexcept{return {};}
+Snapshot observe(const NoBailSkater&,std::uint64_t) noexcept{return fixture::collision;}
+bool collision_current(std::uint64_t serial,const NoBailSkater& owner) noexcept {
+    return fixture::collision_scope && serial && serial==fixture::collision.serial && owner==fixture::collision.owner;
+}
 bool current(const Contact&,std::uintptr_t) noexcept{return fixture::hit_current;}
 bool static_world_owner(const SurfaceGeometryBody&,SurfaceGeometryWorldOwner&) noexcept{return false;}
 bool local_component_owner(const SurfaceGeometryBody&,std::uintptr_t,SurfaceGeometryWorldOwner&) noexcept{return false;}
@@ -84,6 +89,37 @@ void observe_at(const NativeInputFrame& f){fixture::now=std::max(fixture::now,f.
 void finish_at(const WallplantCommand& c,bool ok,std::uint64_t at){fixture::now=at;finish_hold(c,ok,at);}
 bool preserve_at(const NativeInputFrame& f,std::uint64_t at){fixture::now=at;return preserves_combo(f,at);}
 int main(){
+    for(unsigned fault=0;fault<13;++fault) {
+        const auto command=setup();const auto origin=command.native;
+        in_flight={};candidate={};contact_active=false;last_raw=0;
+        auto& raw_contact=fixture::collision;raw_contact={};
+        raw_contact.valid=raw_contact.after_valid=true;raw_contact.serial=1;raw_contact.sampled_at=1000;
+        raw_contact.owner={1,2,3,4,5};raw_contact.state=raw_contact.state_after=201;
+        raw_contact.source=native_wall_contact::Source::board;raw_contact.seconds=origin.physics_seconds;
+        raw_contact.count=1;auto& hit=raw_contact.contacts[0];
+        hit.identity_valid=hit.static_body=hit.categories_known=true;hit.normal={1,0,0};
+        fixture::collision_scope=true;
+        auto frame=origin;
+        if(fault==1)fixture::collision_scope=false;
+        if(fault==2)++frame.owner_generation;
+        if(fault==3)takeoff=false;
+        if(fault==4)raw_contact.state_after=504;
+        if(fault==5)raw_contact.seconds=0;
+        if(fault==6)raw_contact.sampled_at=989;
+        if(fault==7)raw_contact.sampled_at=1001;
+        if(fault==8)hit.static_body=false;
+        if(fault==9)hit.normal={0,1,0};
+        if(fault==10)raw_contact.source=native_wall_contact::Source::rig;
+        if(fault==11)permitted=false;
+        if(fault==12)last_raw=raw_contact.serial;
+        check(retain_collision_before_response(frame,1000)==(fault==0),
+              "first contact requires the exact active native collision, prior AIR authority and genuine wall identity");
+        check(wallplant_same_observation(observed,origin),
+              "early contact retention never renews a native frame or manufactures a physics step");
+        check(!surface(1000,origin).can_plant && !pending.sequence && !held_command(),
+              "early raw contact alone cannot bypass geometry, fresh A or hold entry");
+    }
+    fixture::collision={};fixture::collision_scope=false;
     for(bool missing:{false,true}) {
         auto c=setup();if(missing)c.anchor_verified=false;else ++c.anchor[0];
         check(!enter(c,1000) && !held_command(),"changed or unverified entry anchor cannot borrow consumed geometry authority");

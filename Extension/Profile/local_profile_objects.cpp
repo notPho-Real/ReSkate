@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_native_input_state.h"
 #include "Extension/ArcadeMode/arcade_surface_geometry_native.h"
 #include "Extension/ArcadeMode/arcade_wallplant_runtime.h"
+#include "Extension/ArcadeMode/arcade_native_wall_contact.h"
 #include "Extension/Objects/ParkEditor/park_editor_internal.h"
 #include "Extension/Customization/local_customization_runtime.h"
 #include "Extension/Skater/no_bail.h"
@@ -284,12 +285,20 @@ struct SurfaceCallback {
  bool entered{};
  SurfaceBoardSupport board_support{};
  const char* failure{"not_checked"};
+ std::uint64_t collision_serial{};
 };
 bool surface_callback_current_impl(void* user,const SurfaceGeometryContext& context,bool wallplant) noexcept {
  try{
   auto& c=*static_cast<SurfaceCallback*>(user);auto& local=local_runtime();auto& world=world_layers_runtime();
   c.failure="callback_guard";
   const auto& editor=park_editor_detail::editor_state();
+  if(context.phase==SurfaceGeometryPhase::collision_response){
+   c.failure="collision_scope";
+   if(!native_wall_contact::collision_current(c.collision_serial,c.owner))return false;
+   const auto now=GetTickCount64();const auto gate=surface_client_gate;
+   if(gate.client!=c.client||gate.base!=context.owner[0]||gate.context!=context.client_context||
+      now<gate.sampled_at||now-gate.sampled_at>InputTiming::native_sample_lease_ms)return false;
+  }
   if(!c.entered||!c.native_lock.owns_lock()||!c.world_lock.owns_lock()||c.thread!=GetCurrentThreadId()||
      cosmetic_runtime().update_thread!=c.thread||!local.active||local.base!=context.owner[0]||context!=c.context||
      world.root_generation!=context.world_generation||!world.model.ready||
@@ -338,16 +347,26 @@ bool wallplant_surface_callback_current(void* user,const SurfaceGeometryContext&
  return surface_callback_current_impl(user,context,true);
 }
 }
-void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
- PreserveError preserve;arcade_mode::invalidate_surface_geometry();
+static void update_arcade_surface_geometry(std::uintptr_t client,bool collision_response) noexcept {
+ PreserveError preserve;if(!collision_response)arcade_mode::invalidate_surface_geometry();
  const auto probe=wallplant_runtime::geometry_probe();
  const auto note=[&](unsigned stage,const char* reason){wallplant_runtime::geometry_event(probe,stage,reason);};
  note(0,"client_entry");
  if(!arcade_mode::enabled()){note(1,"disabled");return;}
  try{
-  auto& local=local_runtime();std::unique_lock native(local.native_mutex);
-  auto& world=world_layers_runtime();std::unique_lock lifetime(world.lifetime_mutex);
+  auto& local=local_runtime();std::unique_lock native(local.native_mutex,std::defer_lock);
+  auto& world=world_layers_runtime();std::unique_lock lifetime(world.lifetime_mutex,std::defer_lock);
+  // The collision path never waits for another thread's lifetime locks.
+  // Queries remain on the verified client update thread and exact predicate scope.
+  if(collision_response){if(!native.try_lock()||!lifetime.try_lock()){note(15,"collision_query_busy");return;}}
+  else {native.lock();lifetime.lock();}
   if(!local.active||cosmetic_runtime().update_thread!=GetCurrentThreadId()||!world.model.ready||!world.root_generation){note(2,"local_world_guard");return;}
+  if(collision_response){
+   const auto now=GetTickCount64();const auto gate=surface_client_gate;
+   if(!probe.contact||!gate.client||gate.base!=local.base||now<gate.sampled_at||
+      now-gate.sampled_at>InputTiming::native_sample_lease_ms){note(16,"collision_client_lease");return;}
+   client=gate.client;
+  }
   const char* frame_reason{};
   const auto ordinary_frame=arcade_mode::surface_geometry_native_frame(GetTickCount64(),&frame_reason);
   const auto admission=wallplant_surface_frame(ordinary_frame,probe.contact!=0,[&] {
@@ -374,9 +393,11 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
   SurfaceSelf self;if(!read_surface_self(context[0],owner,self)){note(7,"native_self");return;}
   const auto physics_world=editor.surface_api.world(context[0]);if(!physics_world){note(8,"physics_world");return;}
   SurfaceGeometryContext origin{{owner.base,owner.entity,owner.core,owner.context,owner.rig},InputNativeContext::from_frame(frame),
-   context[0],physics_world,world.root_generation,self.entity,frame.owner_generation,SurfaceGeometryPhase::client};
-  surface_client_gate={client,local.base,context[0],GetTickCount64()};
+   context[0],physics_world,world.root_generation,self.entity,frame.owner_generation,
+   collision_response?SurfaceGeometryPhase::collision_response:SurfaceGeometryPhase::client};
+  if(!collision_response)surface_client_gate={client,local.base,context[0],GetTickCount64()};
   SurfaceCallback callback{native,lifetime,GetCurrentThreadId(),client,owner,self,origin,editor.surface_api,editor.picking_api,true};
+  if(collision_response)callback.collision_serial=probe.raw;
   SurfaceGeometryNativeApi api;api.base=local.base;api.surface=callback.surface;
   api.picking={callback.picking.hit_body,callback.picking.body_valid,callback.picking.body_entity,callback.picking.ready};
   api.user=&callback;api.now=[](void*)noexcept->std::uint64_t{return GetTickCount64();};api.current=&surface_callback_current;api.read_bytes=&memory::read_bytes;
@@ -391,7 +412,7 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
    {pose[8]+offsets[i][0],pose[9]-2.f,pose[10]+offsets[i][1]}};
   auto sample=query_surface_geometry(api,origin,request);
   if(sample.valid&&!revalidate_surface_geometry(api,origin,sample))sample={};
-  if(!admission.wallplant_only)publish_surface_geometry(sample);
+  if(!admission.wallplant_only&&!collision_response)publish_surface_geometry(sample);
   auto wallplant_api=api;wallplant_api.current=&wallplant_surface_callback_current;
   const SurfaceGeometryVector root{pose[8],pose[9],pose[10]};
   std::array<SurfaceGeometryVector,1> board_offsets{};
@@ -407,6 +428,8 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
   callback.entered=false;
  }catch(...){note(12,"exception");arcade_mode::invalidate_surface_geometry();}
 }
+void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {update_arcade_surface_geometry(client,false);}
+void query_arcade_wallplant_collision_geometry() noexcept {update_arcade_surface_geometry(0,true);}
 
 // Scope/table/selected-pose reuse: davad00/ReSkate (GPL-3.0),
 // 992e35fddb5bcef914e2ec20b13e9316393b6763, traffic_vehicle_provider.cpp.

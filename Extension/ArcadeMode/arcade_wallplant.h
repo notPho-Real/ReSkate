@@ -119,6 +119,7 @@ struct WallplantPolicyDecision {
     const char* reason{"not_evaluated"};
     float current_normal{},target_normal{};
     bool reconstruction{};
+    bool collision_response{};
 };
 // A real riding collision supplies this record. SurfaceGeometrySample (a ray
 // query) deliberately cannot be converted into a collision record here.
@@ -129,6 +130,22 @@ struct WallplantContact {
     SurfaceGeometryVector point{}, normal{}, approach_velocity{};
     std::uint64_t identity{}, sampled_at{};
     bool collision{}, static_world{}, rail{}, skater{};
+};
+// Supplied by the exact collision producer after its original solver ran.
+// Runtime joins raw to the active native invocation before using this proof;
+// it is distinct from a chooser result and never claims reconstruction100.
+struct WallplantCollisionResponseProof {
+    WallplantExecutionProof execution{};
+    NativeRequestSample live{};
+    std::uint64_t input{},contact{},raw{},sampled_at{};
+    bool matches(const NativeInputFrame& frame,std::uint64_t sequence,
+                 const WallplantContact& hit,std::uint64_t now) const noexcept {
+        return raw && input && input==sequence && contact && contact==hit.identity &&
+            sampled_at==hit.sampled_at && sampled_at>=frame.sampled_at && sampled_at<=now &&
+            wallplant_same_observation(execution.native,frame) &&
+            (live.state==200 || live.state==201) &&
+            wallplant_execution_current(execution,frame.owner,live,now);
+    }
 };
 struct WallplantPress {
     InputNativeContext native{};
@@ -204,7 +221,8 @@ public:
     void cancel() noexcept { separated_=false; }
     WallplantCommand step(const WallplantFrame& frame,const WallplantContact& contact,
                           const WallplantPress& press,const WallplantReconstructionProof* reconstruction=nullptr,
-                          WallplantPolicyDecision* diagnostic=nullptr) noexcept {
+                          WallplantPolicyDecision* diagnostic=nullptr,
+                          const WallplantCollisionResponseProof* collision=nullptr) noexcept {
         if(diagnostic)*diagnostic={};
         const auto reject=[&](const char* reason) {
             if(diagnostic)diagnostic->reason=reason;
@@ -245,8 +263,10 @@ public:
         const float incoming=-dot(contact.approach_velocity);
         const float approach_speed=std::hypot(contact.approach_velocity[0],contact.approach_velocity[2]);
         const float current_normal=dot(frame.velocity);
-        const bool response=reconstruction && reconstruction->matches(frame.native,press.sequence,contact.identity,frame.now);
-        if(diagnostic){diagnostic->current_normal=current_normal;diagnostic->reconstruction=response;}
+        const bool reconstructed=reconstruction && reconstruction->matches(frame.native,press.sequence,contact.identity,frame.now);
+        const bool collided=collision && collision->matches(frame.native,press.sequence,contact,frame.now);
+        const bool response=reconstructed || collided;
+        if(diagnostic){diagnostic->current_normal=current_normal;diagnostic->reconstruction=reconstructed;diagnostic->collision_response=collided;}
         if(std::hypot(contact.approach_velocity[0],contact.approach_velocity[1],contact.approach_velocity[2])<
                .01f*GameplayProfile::metres_per_inch || !(incoming>0) || !(approach_speed>0) ||
            incoming/approach_speed<parameters_.minimum_approach_sine)return reject("policy_approach");

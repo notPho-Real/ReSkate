@@ -1,5 +1,43 @@
 # RC4 wallplant prototype
 
+## Qualify first contact before collision response
+
+The user-reported immediate bail was reproduced on `971c16b0`. A genuine
+airborne A preceded a vertical board contact by 91 ms. The collision producer
+recorded cause index 2 before the ordinary physics listener; the listener then
+started a new owner generation, discarded takeoff continuity and rejected the
+contact. No planted hold or release ran. The nearby bench in that capture has
+not been proved to satisfy the broad-wall and clearance requirements.
+
+The existing path now has an earlier entry at that exact collision predicate
+call site. The original predicate runs first. A false result, foreign caller,
+missing local collision, independent pending bail, disabled mode, stale input
+or changed owner preserves the native result. Geometry uses the existing
+queries only on the verified client update thread, under the native/world
+lifetime locks and the active collision invocation. It still requires ground
+clearance, a broad static face and the checked support-ray anchor. A worker
+thread or unavailable query context cannot borrow client query authority.
+
+The callback consumes the original input-journal A without polling a held
+button again. It retains the original AIR observation and the collision's own
+timestamp and serial. After all gates pass it calls the same entry brake,
+native drive and bounded hold used by the chooser path. Only successful entry
+replaces this one predicate result; it does not clear cause flags, change a
+selected state, disable collision processing or suppress later bail checks.
+The typed collision proof also corroborates a solver response already moving
+slightly outward. The exit still comes from preimpact reflection and scalar
+damping, and only the difference from measured body velocity is applied.
+
+Focused regressions cover callback-time A consumption, stale/foreign/repeated
+input, early contact without geometry, unchanged observation clocks, solver
+response provenance and the existing hold/controller composition. Exact-source
+Windows CI and native validation are required before this correction is ready
+for user testing. Required HIL includes a valid broad wall's first-contact
+hold/release, consumed up/out velocity, clean landing, the trick chain and
+genuine no-A/repeated-A controls. The earlier `971c16b0` successes do not validate
+this correction. Spring drift, sole alignment and native scoring remain
+separate measurements; PR #1 stays experimental.
+
 ## Route the held board reference to the native drive
 
 The `93399cb1` trial passed the release-boundary timing check: the last held

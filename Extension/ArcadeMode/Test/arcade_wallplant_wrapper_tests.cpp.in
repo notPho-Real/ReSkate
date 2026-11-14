@@ -70,10 +70,11 @@ ORDINARY(trainer_transition)
 void callback(){event("callback");}
 void arcade_air_apply(std::uintptr_t core,bool active){event("arcade_air_apply",core,active);}
 @wallplant_wrapper_handoff@
-void arcade_wallplant_after_reconstruction(const WallplantHandoff& staged,std::uintptr_t core) noexcept {
- if(!staged.ticket.selected || staged.execution.native.owner.core!=core)return;
+bool arcade_wallplant_enter_hold(const WallplantHandoff& staged,std::uintptr_t core) noexcept {
+ if(!staged.ticket.selected || staged.execution.native.owner.core!=core)return false;
  ++writes;event("final_write",core);
  if(begin_hold_on_write)wallplant_hold_core.store(core);
+ return true;
 }
 void arcade_wallplant_hold_step(std::uintptr_t core) noexcept {
  if(wallplant_hold_core.load()!=core)return;

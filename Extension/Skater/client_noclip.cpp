@@ -24,6 +24,7 @@
 #include "Extension/ArcadeMode/arcade_ground_writer_observation.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_wallplant_runtime.h"
+#include "Extension/ArcadeMode/arcade_native_wall_contact.h"
 #include "Extension/ArcadeMode/arcade_wallplant_hold.h"
 #include "Extension/ArcadeMode/arcade_ground_rotation.h"
 #include "free_flight.h"
@@ -1028,6 +1029,7 @@ struct WallplantHandoff {
     arcade_mode::wallplant_runtime::WriterProbe probe{};
     arcade_mode::WallplantSelectionTicket ticket{};
     std::uint64_t intent_generation{};
+    std::uint64_t collision_serial{};
 };
 // A different scheduler/thread is rejected; no cross-thread frame is invented.
 WallplantHandoff& wallplant_handoff() { static thread_local WallplantHandoff value;return value; }
@@ -1127,8 +1129,8 @@ std::uint64_t arcade_wallplant_before_selection(std::uintptr_t selector,std::uin
     }
     return 0;
 }
-void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::uintptr_t core) noexcept {
-    if(!handoff.ticket.selected || core!=handoff.execution.native.owner.core)return;
+bool arcade_wallplant_enter_hold(const WallplantHandoff& handoff,std::uintptr_t core) noexcept {
+    if((!handoff.ticket.selected&&!handoff.collision_serial) || core!=handoff.execution.native.owner.core)return false;
     SourceLastError error;
     std::uint64_t now{};
     const auto note=[&](unsigned stage,const char* reason,std::uint32_t selected=0) {
@@ -1136,10 +1138,10 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
     };
     note(16,"reconstruction_writer_entry");
     if(!arcade_mode::native_wallplant_execution_authorized(handoff.execution.native,now)) {
-        note(19,"reconstruction_controller_authority");return;
+        note(19,"reconstruction_controller_authority");return false;
     }
     auto& state=source_state();
-    if(state.busy.test_and_set(std::memory_order_acquire)){note(19,"reconstruction_source_busy");return;}
+    if(state.busy.test_and_set(std::memory_order_acquire)){note(19,"reconstruction_source_busy");return false;}
     SourceBusyScope scope{state.busy};
     arcade_mode::WallplantCommand command{};
     try {
@@ -1171,7 +1173,12 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         live.words[0]=reader.value<std::uint32_t>(bodies.context,native::request_words);
         live.words[1]=reader.value<std::uint32_t>(bodies.context,native::request_words+4);
         const auto previous=reader.value<std::uint32_t>(bodies.context,native::previous_selected_state);
-        source_require(arcade_mode::wallplant_reconstruction_current(handoff.ticket,handoff.execution,
+        if(handoff.collision_serial) {
+            source_require(handoff.collision_serial==handoff.probe.raw &&
+                arcade_mode::native_wall_contact::collision_current(handoff.collision_serial,owner) &&
+                arcade_mode::wallplant_execution_current(handoff.execution,input_owner,live,now),
+                "Wallplant collision invocation or AIR observation changed.");
+        } else source_require(arcade_mode::wallplant_reconstruction_current(handoff.ticket,handoff.execution,
             input_owner,selector,previous,live,now),"Wallplant native reconstruction or chooser result changed.");
         const auto pending=arcade_mode::wallplant_runtime::writer_probe();
         source_require(pending.input==handoff.probe.input && pending.contact==handoff.probe.contact &&
@@ -1190,9 +1197,14 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         // completion phase of this recorded selector invocation, never admission.
         const arcade_mode::WallplantReconstructionProof reconstruction{
             handoff.ticket,handoff.execution,live,selector,previous,handoff.probe.contact};
-        command=arcade_mode::wallplant_runtime::consume(now,handoff.execution.native,velocities[0],handoff.ticket.input,&reconstruction);
+        const auto collision_source=handoff.collision_serial?
+            arcade_mode::native_wall_contact::observe(owner,now):arcade_mode::native_wall_contact::Snapshot{};
+        const arcade_mode::WallplantCollisionResponseProof collision{
+            handoff.execution,live,handoff.probe.input,handoff.probe.contact,handoff.collision_serial,collision_source.sampled_at};
+        command=arcade_mode::wallplant_runtime::consume(now,handoff.execution.native,velocities[0],handoff.probe.input,
+            handoff.collision_serial?nullptr:&reconstruction,handoff.collision_serial?&collision:nullptr);
         note(17,command?"reconstruction_command_ready":"reconstruction_consume_empty",live.state);
-        if(!command)return;
+        if(!command)return false;
         source_require(arcade_mode::wallplant_hold_anchor_current(command,bodies.root),
             "Wallplant anchor moved beyond validated adjustment.");
         std::array<float,16> hold_target{};
@@ -1225,6 +1237,9 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         source_require(no_bail_skater(after) && after==owner,"Wallplant reconstruction ownership changed before writing.");
         source_require(arcade_mode::wallplant_runtime::current(command,now,handoff.execution.native,command.before),
             "Wall contact changed before hold entry.");
+        source_require(!handoff.collision_serial ||
+            arcade_mode::native_wall_contact::collision_current(handoff.collision_serial,owner),
+            "Wallplant collision authority changed before hold entry.");
         source_require(wallplant_native_drive().start(owner.base,client,drive_witness.body,
             wallplant_drive_pose(drive_witness.matrix)),"Wallplant physical drive unavailable.");
         source_require(wallplant_native_drive().update(drive_witness.body,wallplant_drive_pose(initial_bounded)),
@@ -1261,6 +1276,7 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         wallplant_hold_core.store(core,std::memory_order_release);
         wallplant_hold_log(hold,"entry","braked",started,live.state);
         note(18,"hold_entry_committed",live.state);
+        return true;
     } catch(...) {
         if(command) {
             wallplant_native_drive().stop();
@@ -1269,6 +1285,7 @@ void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::
         try{throw;}catch(const SourceGuard& issue){note(19,issue.message);}
         catch(...){note(19,"reconstruction_exception");}
     }
+    return false;
 }
 struct WallplantReleaseTrajectory {
     std::uintptr_t object{};
@@ -2738,7 +2755,7 @@ void noclip_physics_update(std::uintptr_t core) {
     }
     // Native100 entry 482c200 has reconstructed body velocities before this
     // existing +58 update. All ordinary writers finish before the single kick.
-    arcade_wallplant_after_reconstruction(handoff,core);
+    (void)arcade_wallplant_enter_hold(handoff,core);
     arcade_wallplant_hold_step(core);
     retained_phase(4,"after_reconstruction");
 }
@@ -3171,6 +3188,15 @@ void observe_arcade_wallplant_native_response(std::uintptr_t rig,bool wipeout,
 }
 std::uint64_t apply_arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept {
     return arcade_wallplant_before_selection(selector,current);
+}
+bool apply_arcade_wallplant_at_collision(const arcade_mode::WallplantExecutionProof& execution,std::uint64_t raw) noexcept {
+    const auto probe=arcade_mode::wallplant_runtime::writer_probe();
+    if(!raw || probe.raw!=raw || !probe.input ||
+       !arcade_mode::wallplant_same_observation(probe.native,execution.native))return false;
+    // This is the actual collision callback, not a fabricated chooser ticket.
+    // Both entry paths use the same brake, anchor, drive and hold transaction.
+    const WallplantHandoff handoff{execution,probe,{},0,raw};
+    return arcade_wallplant_enter_hold(handoff,execution.native.owner.core);
 }
 void finish_arcade_wallplant_selection(std::uint64_t ticket,std::uintptr_t selector,
         std::uint32_t current,std::uint32_t chosen) noexcept {

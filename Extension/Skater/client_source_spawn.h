@@ -4,7 +4,7 @@
 #include <string>
 #include "Extension/UI/Overlay/overlay.h"
 
-namespace dingosdk::arcade_mode { struct NativeManualContact; struct NativeInputFrame; struct GroundControl; struct SpinCommand; struct LaunchDescriptor; struct GroundTurnCommand; }
+namespace dingosdk::arcade_mode { struct NativeManualContact; struct NativeInputFrame; struct GroundControl; struct SpinCommand; struct LaunchDescriptor; struct GroundTurnCommand; struct WallplantExecutionProof; }
 namespace dingosdk {
 // Binds the native camera functions the debug controls use. Installs no hooks.
 void initialize_client_source_spawn(std::uintptr_t base);
@@ -15,6 +15,7 @@ bool start_client_noclip_velocity(std::uintptr_t base) noexcept;
 std::uint64_t apply_arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept;
 void finish_arcade_wallplant_selection(std::uint64_t ticket,std::uintptr_t selector,
     std::uint32_t current,std::uint32_t chosen) noexcept;
+bool apply_arcade_wallplant_at_collision(const arcade_mode::WallplantExecutionProof&,std::uint64_t raw) noexcept;
 // Read the bounded hold/release before listeners, before the original response,
 // and after it. The callback sequence ties the observations together; no writes.
 void observe_arcade_wallplant_native_response(std::uintptr_t rig,bool wipeout,

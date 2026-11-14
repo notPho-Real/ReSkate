@@ -7,13 +7,17 @@
 namespace dingosdk::arcade_mode::wallplant_runtime {
 void tick(std::uintptr_t base,bool gameplay) noexcept;
 void observe_physics(const NativeInputFrame&) noexcept;
+// The collision producer precedes the ordinary step listener. Keep the last
+// observed AIR frame unchanged; the collision retains its own serial and time.
+bool retain_collision_before_response(const NativeInputFrame&,std::uint64_t now) noexcept;
 void publish_geometry(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
     const NativeInputFrame&,SurfaceGeometryVector root,const SurfaceGeometrySample& ground,
     std::span<const SurfaceGeometryVector> verified_support_offsets) noexcept;
 InputSurfaceState surface(std::uint64_t now,const NativeInputFrame&) noexcept;
 InputDisposition request(const InputRequest&,std::uint64_t now,const NativeInputFrame&) noexcept;
 WallplantCommand consume(std::uint64_t now,const NativeInputFrame&,SurfaceGeometryVector velocity,
-    std::uint64_t expected_input=0,const WallplantReconstructionProof* reconstruction=nullptr) noexcept;
+    std::uint64_t expected_input=0,const WallplantReconstructionProof* reconstruction=nullptr,
+    const WallplantCollisionResponseProof* collision=nullptr) noexcept;
 bool current(const WallplantCommand&,std::uint64_t now,const NativeInputFrame&,SurfaceGeometryVector velocity) noexcept;
 void completed(const WallplantCommand&,bool applied) noexcept;
 WallplantCommand latest_completed() noexcept;

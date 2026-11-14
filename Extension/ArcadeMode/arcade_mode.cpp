@@ -1589,9 +1589,7 @@ WallplantExecutionProof native_wallplant_context(const NativeInputOwner& owner,s
     }
     return {frame,sample,imported_contact};
 }
-bool native_wallplant_execution_authorized(const NativeInputFrame& original,std::uint64_t& now) noexcept {
-    std::lock_guard lock(ollie_mutex);
-    now=GetTickCount64();
+static bool wallplant_execution_authorized_locked(const NativeInputFrame& original,std::uint64_t now) noexcept {
     const auto physical=controller_route.physical(now);
     return mode_enabled.load(std::memory_order_acquire) &&
         action_mode.load(std::memory_order_acquire)==ActionExperiment::classic && !grind_change.active() &&
@@ -1599,6 +1597,19 @@ bool native_wallplant_execution_authorized(const NativeInputFrame& original,std:
         arcade_input.admitted(0,now) && arcade_input.wallplant_controls_unowned(0) &&
         original.owner_generation==arcade_input.owner_epoch() &&
         wallplant_same_observation(original,arcade_input.native_context(now));
+}
+bool native_wallplant_execution_authorized(const NativeInputFrame& original,std::uint64_t& now) noexcept {
+    std::lock_guard lock(ollie_mutex);now=GetTickCount64();
+    return wallplant_execution_authorized_locked(original,now);
+}
+bool claim_native_wallplant_contact(const NativeInputFrame& frame) noexcept {
+    std::lock_guard lock(ollie_mutex);
+    const auto now=GetTickCount64();
+    if(!wallplant_execution_authorized_locked(frame,now))return false;
+    const auto surface=wallplant_runtime::surface(now,frame);
+    const auto request=arcade_input.claim_wallplant_contact(now,frame,surface);
+    return request.action==InputAction::wall_command &&
+        wallplant_runtime::request(request,now,frame)==InputDisposition::started;
 }
 NativeInputFrame native_wallplant_hold_context(const NativeInputOwner& owner,std::uint64_t& now) noexcept {
     std::lock_guard lock(ollie_mutex);

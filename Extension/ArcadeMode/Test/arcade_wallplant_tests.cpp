@@ -45,6 +45,36 @@ struct Fixture {
 };
 }
 int main() {
+    for(unsigned fault=0;fault<12;++fault) {
+        Fixture f;f.frame.native.state=201;f.sync();
+        f.frame.now=1030;f.contact.sampled_at=1028;f.press.pressed_at=1010;
+        f.contact.approach_velocity={-12,-2,5};f.frame.velocity={.25f,-2,5};
+        NativeRequestSample live{};live.valid=true;live.state=201;
+        WallplantCollisionResponseProof proof{{f.frame.native,live,false},live,1,1,7,1028};
+        if(fault==1)proof.raw=0;
+        if(fault==2)++proof.input;
+        if(fault==3)++proof.contact;
+        if(fault==4)--proof.sampled_at;
+        if(fault==5)proof.live.state=504;
+        if(fault==6)++proof.execution.native.owner_generation;
+        if(fault==7)++proof.execution.native.physics_step;
+        if(fault==8)proof.live.crouch_mode=1;
+        if(fault==9)proof.live.words[1]=0x8000;
+        if(fault==10)f.frame.velocity[0]=7;
+        if(fault==11)f.frame.now=1151;
+        WallplantPolicyDecision decision{};
+        const auto command=f.policy.step(f.frame,f.contact,f.press,nullptr,&decision,&proof);
+        check(bool(command)==(fault==0),"only the exact fresh collision response can corroborate already outward solver velocity");
+        if(!fault) {
+            check(decision.collision_response&&!decision.reconstruction,
+                  "collision response does not manufacture a native100 chooser result");
+            check(near(command.after[0],6.7246154f)&&near(command.after[1],12.7f)&&near(command.after[2],2.8019231f)&&
+                  near(command.before[0]+command.motion.delta_x,command.after[0]),
+                  "preimpact reflection uses scalar damping and only the difference from actual solver velocity");
+            check(!f.policy.step(f.frame,f.contact,f.press,nullptr,nullptr,&proof),
+                  "same native collision and A cannot apply a second response");
+        }
+    }
     {
         const auto setup=[](Fixture& f) {
             f.frame.native.state=201;f.frame.native.mode=2;f.frame.native.contacts=0;f.sync();
