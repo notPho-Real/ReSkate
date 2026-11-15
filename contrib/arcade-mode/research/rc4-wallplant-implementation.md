@@ -1,3 +1,42 @@
+## Fixed AIR reference motion reserve
+
+The 386ed161 native trial entered AIR201 hold, retained it for 160 ms, then
+cancelled with ground_target_motion_budget before release. There was no rebound;
+state504 followed. Its full capture hashes are 4479c1ea9f3eba7605338ebe3a161eb34f5119b24c1c31a1c491d51ceb07a7c0
+(compressed) and dbb8e07b275614a817fadf8c45b214df06485aaaf0644c9f9e53011dc796914a
+(raw). The prior 4 ms board-preparation rejection did not recur. This is a failed
+gameplay result, not acceptance.
+
+Offline inspection of the pinned image confirms both orientation predicates,
+474ba43 and 474c22b, call getter47c87f0, which selects body8 through47c8590.
+They compare that physical basis with the stored context basis using the
+minimum corresponding-axis dot product and the unchanged configured limits.
+AIR publication composes the world target into a stored reference; it is not a
+second freely rotating physical body. Once our preceding publication is proved
+owned and unchanged, adding root-body angular travel to body8 travel reserves
+motion for a matrix that does not itself rotate between publications.
+
+Only that owned AIR world-reference route now reserves body8 angular travel.
+Initial/unowned, Ground and post-release routes retain the previous calculation.
+Root and board observations remain finite and transaction-watched. Publication
+ownership, native angle limits, original predicates, collision/bail checks,
+hold deadline and the single-release transaction are unchanged.
+
+A production-wrapper regression fails the previous calculation and passes the
+correction. It uses angular rates from an external sample near cancellation,
+not an atomic replay of the rejected callback. It rejects exhausted board
+travel, an unowned/replaced reference, nonfinite rates, changed snapshots and
+an already invalid physical pose. An independent rotation model evaluates the
+native axis-dot predicate through a step of board travel in both directions
+about each axis. These checks mock native I/O and do not simulate articulated
+acceleration or prove gameplay. Exact-source Windows CI and another native
+hold/release/trick/landing batch remain required.
+
+The November13 build971c16b0 remains the demonstrated baseline: its recorded
+contact route entered/released in state100 and completed clean landings. The
+alternative changes admission to native AIR preparation; its failed trial does
+not supersede that baseline or establish that the original route needs replacing.
+
 # RC4 wallplant prototype
 
 ## Treat the admitted articulated contact as one response

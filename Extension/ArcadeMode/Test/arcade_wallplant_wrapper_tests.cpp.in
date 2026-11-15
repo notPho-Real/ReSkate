@@ -872,6 +872,57 @@ void run(){
  check(originals==1 && copies==0 && stored==prepared && cancelled.empty() && wallplant_hold_core.load()==1,
        "overtaken final target reader forwards native preparation without writing or canceling newer hold");
  check(physical_hold.started==100,"deferred target cannot restart planted duration");
+
+ // Native predicates compare body 8 with the stored context basis. During an
+ // owned AIR publication, root-body spin does not rotate that stored matrix.
+ // Rates below are from posetrial386 external observations, not an atomic
+ // replay of the cancellation callback.
+ for(unsigned fault=0;fault<8;++fault) {
+  reset();state_id=201;clock_ms=260;orientation_snapshot.limit=1.1f;
+  physical_hold.orientation_reference_owned=true;
+  physical_hold.orientation_reference=orientation_snapshot.actual;
+  last_drive_reference=orientation_snapshot.actual;
+  orientation_snapshot.root_spin={.891521f,-21.885048f,1.335459f};
+  orientation_snapshot.reference_spin={-.13173029f,-12.882467f,.05811278f};
+  if(fault==1)physical_hold.orientation_reference_owned=false;
+  if(fault==2)orientation_snapshot.reference_spin={0,34,0};
+  if(fault==3)last_drive_reference=game::orientation_target::rotation({0,std::sin(.1),0,std::cos(.1)});
+  if(fault==4)orientation_snapshot.root_spin[0]=std::numeric_limits<float>::quiet_NaN();
+  if(fault==5)orientation_snapshot.reference_spin[0]=std::numeric_limits<float>::quiet_NaN();
+  if(fault==6)change_orientation_at_permission=5;
+  if(fault==7)orientation_snapshot.actual=game::orientation_target::rotation({0,std::sin(.7),0,std::cos(.7)});
+  original(2,.03333333f);
+  wallplant_prepared_target(2,.03333333f,true);
+  if(!fault) {
+   check(copies==1&&cancelled.empty(),
+         "owned fixed AIR reference does not spend a second body's angular travel");
+   const auto rate=std::hypot(orientation_snapshot.reference_spin[0],
+       orientation_snapshot.reference_spin[1],orientation_snapshot.reference_spin[2]);
+   check(physical_hold.orientation.applied_error+rate*.03333333f<=orientation_snapshot.limit,
+         "fixed-reference target retains a full board angular-travel reserve");
+   // Independently apply angular travel in both directions about each axis
+   // and evaluate the native minimum-axis-dot predicate against the fixed
+   // publication. This is a rotation model, not a solver/gameplay simulation.
+   std::array<float,16> world{};std::copy_n(stored.begin()+16,16,world.begin());
+   const auto fixed=game::orientation_target::compose_basis(orientation_snapshot.local_root,world);
+   for(unsigned axis=0;axis<3;++axis)for(int direction:{-1,1})for(unsigned sample=0;sample<=4;++sample) {
+    const double half=double(direction)*rate*.03333333*double(sample)/8;
+    game::orientation_target::Quaternion q{};q[axis]=std::sin(half);q[3]=std::cos(half);
+    const auto advanced=game::orientation_target::compose_basis(orientation_snapshot.actual,
+        game::orientation_target::rotation(q));
+    double minimum=1;
+    for(unsigned row=0;row<3;++row) {
+     double dot=0;for(unsigned lane=0;lane<3;++lane)dot+=double(advanced[row*4+lane])*fixed[row*4+lane];
+     minimum=std::min(minimum,dot);
+    }
+    check(std::acos(std::clamp(minimum,-1.,1.))<=orientation_snapshot.limit,
+          "fixed reference remains inside the native predicate during modeled board travel");
+   }
+   check(physical_hold.started==100&&wallplant_hold_core&&physical_drive_updates==0,
+         "budget correction changes no hold deadline, body, impulse or native constraint");
+  } else check(copies==0&&!cancelled.empty(),
+       "unowned reference, exhausted board travel, changed publication or invalid physical observation still cancels");
+ }
  reset();clock_ms=285;noclip_ground_target(2,.03333333f);
  check(originals==1&&copies==1&&cancelled.empty()&&stored[29]==8,
        "due185ms release retains the anchored ground target before its body callback");

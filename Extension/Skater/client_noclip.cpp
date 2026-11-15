@@ -3023,8 +3023,19 @@ void wallplant_prepared_target(std::uintptr_t rig,float seconds,bool world_refer
         } else if(!arcade_wallplant_hold_target(rig,held.native.owner.context,&world,target,frame,now,false))return;
         const auto orientation=wallplant_orientation_snapshot(held.native.owner,reader);
         float target_limit{},angular_travel{};
+        auto reference_motion=orientation.root_spin;
+        if(world_reference && !released && hold.orientation_reference_owned) {
+            // AIR publishes a fixed world-space basis. The native predicates
+            // compare body 8 with that stored basis, not with the moving root
+            // body. The preceding publication was proved ours above; reserve
+            // body 8 travel without making that fixed reference rotate again.
+            // Keep every physical observation finite and transaction-watched.
+            source_require(std::all_of(reference_motion.begin(),reference_motion.end(),
+                [](float value){return std::isfinite(value);}),"ground_target_motion_budget");
+            reference_motion={};
+        }
         source_require(game::orientation_target::motion_budget(orientation.limit,seconds,
-            orientation.root_spin,orientation.reference_spin,target_limit,angular_travel),"ground_target_motion_budget");
+            reference_motion,orientation.reference_spin,target_limit,angular_travel),"ground_target_motion_budget");
         if(!released && hold.orientation_reference_owned) {
             std::array<float,16> prepared_local{};
             std::copy_n(preparation.begin(),16,prepared_local.begin());
