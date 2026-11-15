@@ -28,6 +28,10 @@
 // tried again every tick until a read of the stack finds none of ours. Client thread, under the model
 // lock the game's writers take, inside ui::OwnUiWrites.
 namespace dingosdk::score_line {
+// Display-only authored rows in the original native trick stack. Existing native
+// entries retain their models and bytes; release removes only rows we own.
+struct ExtraTrick { std::uint64_t occurrence{}; std::string name; std::uint64_t scope{}; };
+void extra_tricks(std::string_view owner, std::uint64_t original_hud, std::vector<ExtraTrick> rows);
 // Plugins (plugin_game_runtime.cpp). `owner` shows `line`, or (nullopt) clears its own: "" when it is
 // kept, or why it does not show (another plugin's line is up, or what the last tick found: skate.'s
 // own line is up, the corner is hidden, the HUD is not loaded).

@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_model.h"
+#include "Extension/Skater/native_score_progress.h"
 #include "arcade_custom_score.h"
 #include "arcade_score_settlement.h"
 #include "arcade_manual_physics.h"
@@ -17,7 +18,13 @@ inline BalanceKind balance_kind(SkatePose pose) noexcept {
 // balance cannot restart the combo on the next frame of the same native section.
 class ComboSession {
 public:
-    explicit ComboSession(Tuning tuning = {}) noexcept : model_(tuning) {}
+    explicit ComboSession(Tuning tuning = {}, bool native_scoring = false) noexcept : model_(tuning, 1, native_scoring) {}
+    bool observe_native_score(const std::optional<tricks::NativeScoreSnapshot>& snapshot) {
+        const auto progress = native_scoring_.observe(snapshot, model_.state().combo_active,
+            model_.last_settlement().sequence);
+        model_.native_score(progress ? progress->points : 0, progress ? progress->actions : 0);
+        return progress.has_value();
+    }
     const Model& model() const noexcept { return model_; }
     const CustomTrickScoring& custom_scoring() const noexcept {return custom_scoring_;}
     bool observe_custom(const CustomTrickExecution& e,const NativeInputOwner& owner,
@@ -49,6 +56,7 @@ public:
     bool score_unverified() const noexcept { return scoring_.unverified(model_); }
     void invalidate() noexcept {
         custom_scoring_.clear();
+        native_scoring_.reset();
         scoring_.invalidate(model_);
         model_.bail();
         previous_ = SkatePose::unknown;
@@ -142,6 +150,7 @@ public:
 private:
     Model model_;
     CustomTrickScoring custom_scoring_;
+    tricks::NativeScoreProgress native_scoring_;
     ScoreSettlement scoring_;
     SkatePose previous_{SkatePose::unknown};
     bool failed_section_{};

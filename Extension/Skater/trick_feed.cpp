@@ -72,6 +72,7 @@ void ask(const std::string& owner, bool on) {
     if (f.owners.empty()) f.notes.clear();
 }
 bool wanted() noexcept { return feed().on.load(std::memory_order_acquire); }
+bool own_model(std::uint64_t handle) noexcept { return owned_entries.contains(handle >> 16); }
 void own(const std::vector<std::uint64_t>& entries) noexcept { owned_entries.set(entries); }
 std::vector<Note> take() {
     auto& f = feed();

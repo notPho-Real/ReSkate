@@ -1,69 +1,55 @@
 #pragma once
 #include "arcade_custom_score.h"
 #include "Extension/Skater/score_hud.h"
-#include "Extension/UI/score_line.h"
+#include "Extension/UI/hud_corner.h"
+#include "Extension/UI/score_line_hud.h"
 
 namespace dingosdk::arcade_mode {
-// Combines native presentation with the separately earned Arcade bonus. Native
-// UI amounts remain presentation only: no inferred native score enters Model.
+// The original native widget owns visibility and animations. Its Arcade numbers
+// come from performed native/custom actions, never its fractional display value.
 class CustomScoreDisplay {
 public:
-    void reset() noexcept {*this={};}
-    std::optional<score_line::Line> update(const Model& model,const CustomTrickScoring& scoring,
-        const std::optional<tricks::ScoreHud>& hud,std::uint64_t now) {
-        const auto& state=model.state();
-        const auto& terminal=model.last_settlement();
-        if(state.combo_active && (!active_ || terminal.sequence!=terminal_)) {
-            names_.clear();last_custom_=0;closed_until_=0;banked_=0;
-        }
+    void reset() noexcept { *this = {}; }
+    const auto& rows() const noexcept { return rows_; }
+    std::optional<hud_corner::ScorePresentation> update(const Model& model,const CustomTrickScoring& scoring,
+        const std::optional<tricks::ScoreHud>& hud,std::uint64_t now,bool verified) {
+        if(!hud || !hud->native_scoring) { reset();return std::nullopt; }
+        const auto& native=*hud->native_scoring;
+        const auto& state=model.state();const auto& terminal=model.last_settlement();
+        const bool same_owner=last_ && last_->manager==native.manager && last_->hud==native.hud && last_->scoring==native.scoring;
+        if(!same_owner) {last_.reset();rows_.clear();until_=0;proven_=false;}
         if(terminal.sequence!=terminal_) {
+            if(last_ && proven_ && terminal.kind==SettlementKind::bank && terminal.actions && terminal.points) {
+                last_->total=terminal.points;last_->multiplier=terminal.actions;
+                last_->points=terminal.points/terminal.actions;until_=now+3000;
+            } else {last_.reset();rows_.clear();until_=0;}
             terminal_=terminal.sequence;
-            banked_=terminal.kind==SettlementKind::bank?terminal.custom_points:0;
-            closed_until_=banked_?now+2000:0;
         }
-        active_=state.combo_active;
-        if(hud && hud->rows_read) {
-            for(auto& prior:seen_)if(prior.handle && std::none_of(hud->rows.begin(),hud->rows.end(),
-                [&](const auto& row){return row.handle==prior.handle;}))prior={};
-            for(auto it=hud->rows.rbegin();it!=hud->rows.rend();++it) {
-                if(!it->handle || it->name.empty())continue;
-                // The native HUD recycles its row models. A handle identifies
-                // storage, not a permanent trick occurrence.
-                auto prior=std::find_if(seen_.begin(),seen_.end(),
-                    [&](const auto& row){return row.handle==it->handle;});
-                if(prior!=seen_.end() && prior->name==it->name)continue;
-                if(prior==seen_.end())prior=seen_.begin()+(seen_next_++ % seen_.size());
-                *prior=*it;
-                if(active_)append(it->name);
+        hud_corner::ScorePresentation view{native.manager,native.hud,native.scoring,0,0,0};
+        if(state.combo_active) {
+            until_=0;rows_.clear();
+            if(verified) {
+                const auto maximum=std::numeric_limits<std::uint64_t>::max();
+                view.points=state.raw_points+std::min(state.custom_points,maximum-state.raw_points);
+                view.multiplier=state.multiplier;
+                view.total=view.multiplier && view.points>maximum/view.multiplier ? maximum : view.points*view.multiplier;
             }
+            if(state.custom_points)for(unsigned i=0;i<scoring.row_count();++i) {
+                const auto& row=scoring.rows()[i];
+                rows_.push_back({row.occurrence,std::string(trick_definition(row.trick)->name),terminal.sequence});
+            }
+            last_=view;proven_=verified;return view;
         }
-        if(active_ && state.custom_points)for(unsigned i=0;i<scoring.row_count();++i) {
-            const auto& row=scoring.rows()[i];
-            if(row.occurrence<=last_custom_)continue;
-            append(std::string(trick_definition(row.trick)->name));last_custom_=row.occurrence;
-        }
-        if(!hud || !hud->rows_read || (active_?!state.custom_points:(!closed_until_ || now>=closed_until_)))return std::nullopt;
-        score_line::Line line;
-        line.tricks=names_;
-        line.closed=!active_;
-        const double bonus=active_?static_cast<double>(state.custom_points)*state.multiplier:static_cast<double>(banked_);
-        const auto amount=[](double value) {return std::isfinite(value)?std::clamp(value,0.0,score_line::most_points):0.0;};
-        line.points=amount(static_cast<double>(hud->line_score)+bonus);
-        line.line=amount(static_cast<double>(hud->line_shown)+bonus);
-        line.multiplier=static_cast<float>(std::clamp(state.multiplier,1u,99u));
-        line.timer=state.landing_grace?std::clamp(state.link_grace_s/.45f,0.f,1.f):1.f;
-        return line;
+        if(last_ && until_ && now<until_)return last_;
+        last_.reset();rows_.clear();proven_=false;
+        // No fractional native multiplier leaks through while Arcade owns this
+        // HUD. Zero hides the ring until there is a performed action to count.
+        return view;
     }
 private:
-    void append(std::string name) {
-        if(name.empty())return;
-        if(names_.size()==score_line::most_tricks)names_.erase(names_.begin());
-        names_.push_back(std::move(name));
-    }
-    std::vector<std::string> names_;
-    std::array<tricks::ScoreHudRow,64> seen_{};
-    unsigned seen_next_{};
-    std::uint64_t last_custom_{},terminal_{},banked_{},closed_until_{};
-    bool active_{};
+    std::optional<hud_corner::ScorePresentation> last_;
+    std::vector<score_line::ExtraTrick> rows_;
+    std::uint64_t terminal_{},until_{};
+    bool proven_{};
 };
 }

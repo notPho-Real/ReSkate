@@ -11,6 +11,12 @@ std::string label(std::uint32_t button){return button==0x1000?"A":button==0x4000
 }
 #include "arcade_evidence_tests.inl"
 int main() {
+    for(const auto title:{"ID_SKATEPEDIA_FS_POPSHUVIT","ID_SKATEPEDIA_NOLLIE_BS_POPSHUVIT",
+                          "ID_SKATEPEDIA_HOSPITALFLIP","ID_SKATEPEDIA_FRONTFOOTIMPOSSIBLE"}) {
+        const auto binding=dingosdk::arcade_mode::trickpedia::native_card_binding(title);
+        if(binding.trick || !binding.planned)return 1;
+    }
+
     const auto errors=validate_registry(trick_registry);for(const auto& e:errors)std::cerr<<e<<'\n';
     require(errors.empty(),"registry invalid");
     for(const auto& t:trick_registry) {
@@ -125,5 +131,59 @@ int main() {
     const auto steps=trickpedia::diagram(*boneless,boneless->bindings[0]);
     require(steps.window_ms==footplant_repeat_ms && trickpedia::diagram_text(steps,label)=="Up -> release direction -> Up -> A","multi-stage diagram");
     require(trick_definition(ArcadeTrick::nosegrab_alternate)==trick_definition(ArcadeTrick::nosegrab),"duplicate pose identity");
+    const auto native_kick=trickpedia::native_card_guidance(*trick_definition(ArcadeTrick::kickflip),label);
+    require(!native_kick.inputs.empty() && native_kick.inputs.front().find("X")!=std::string::npos,
+        "native card did not reuse the production flip binding");
+    require(native_kick.status=="Experimental","native card overstated unverified gameplay");
+    const auto native_planned=trickpedia::native_card_guidance(proposed,label);
+    require(native_planned.status=="Planned" && native_planned.inputs.size()==1 &&
+        native_planned.inputs.front().find("not available yet")!=std::string::npos,
+        "planned native card advertised an executable sequence");
+    const auto native_casper=trickpedia::native_card_guidance(*trick_definition(ArcadeTrick::casper),label);
+    require(native_casper.inputs.size()>=3 && native_casper.inputs.back().find("Ollie out")!=std::string::npos,
+        "native Casper guidance omitted its exit");
+    const auto native_casper_flip=trickpedia::native_card_guidance(*trick_definition(ArcadeTrick::casper_flip),label);
+    require(native_casper_flip.inputs.back()=="During Casper; returns to Manual.",
+        "Casper Flip guidance used the entry phase instead of the held phase");
+    require(trickpedia::native_card_trick("ID_SKATEPEDIA_OLLIE")->id==ArcadeTrick::ollie &&
+        trickpedia::native_card_trick("ID_SKATEPEDIA_KICKFLIP")->id==ArcadeTrick::kickflip,
+        "observed native title identifiers no longer match the registry");
+    require(!trickpedia::native_card_trick("ID_SKATEPEDIA_UNKNOWN") &&
+        !trickpedia::native_card_trick("ID_OTHER_KICKFLIP"),"unrecognized native title matched");
+    struct NativeMapping {std::string_view title;ArcadeTrick trick;bool nollie;};
+    for(const auto& sample:std::array{
+        NativeMapping{"ID_SKATEPEDIA_BS_POPSHUVIT",ArcadeTrick::pop_shove_it,false},
+        NativeMapping{"ID_SKATEPEDIA_360_POPSHUVIT",ArcadeTrick::shove_it_360,false},
+        NativeMapping{"ID_SKATEPEDIA_INWARDHEEL",ArcadeTrick::inward_heelflip,false},
+        NativeMapping{"ID_SKATEPEDIA_LASERFLIP",ArcadeTrick::heelflip_360,false},
+        NativeMapping{"ID_SKATEPEDIA_NOLLIE",ArcadeTrick::ollie,true},
+        NativeMapping{"ID_SKATEPEDIA_NOLLIE_KICKFLIP",ArcadeTrick::kickflip,true},
+        NativeMapping{"ID_SKATEPEDIA_N_VARIALKICKFLIP",ArcadeTrick::varial_kickflip,true},
+        NativeMapping{"ID_SKATEPEDIA_N_LASERFLIP",ArcadeTrick::heelflip_360,true},
+        NativeMapping{"ID_SKATEPEDIA_N_360INWARDHEEL",ArcadeTrick::inward_heelflip_360,true},
+        NativeMapping{"ID_SKATEPEDIA_GRIND_BS5050",ArcadeTrick::grind_50_50,false},
+        NativeMapping{"ID_SKATEPEDIA_GRIND_FSNOSE",ArcadeTrick::nosegrind,false},
+        NativeMapping{"ID_SKATEPEDIA_GRIND_BS50",ArcadeTrick::grind_5_0,false},
+        NativeMapping{"ID_SKATEPEDIA_GRIND_FSSALAD",ArcadeTrick::salad,false},
+        NativeMapping{"ID_SKATEPEDIA_GRABFS",ArcadeTrick::indy,false},
+        NativeMapping{"ID_SKATEPEDIA_GRABBS",ArcadeTrick::basic_bs_grab,false},
+        NativeMapping{"ID_SKATEPEDIA_GRABDOUBLE",ArcadeTrick::double_grab,false},
+        NativeMapping{"ID_SKATEPEDIA_GRABNOSEGRAB",ArcadeTrick::nosegrab,false},
+        NativeMapping{"ID_SKATEPEDIA_GRABNOSEBONE",ArcadeTrick::fs_nosebone,false},
+        NativeMapping{"ID_SKATEPEDIA_GRABWEDDLE",ArcadeTrick::weddle,false},
+        NativeMapping{"ID_SKATEPEDIA_GRABTUCKKNEE",ArcadeTrick::tuck_knee,false},
+        NativeMapping{"ID_SKATEPEDIA_GRABFSSHIFTYTAILGRAB",ArcadeTrick::tail_fs_shifty,false},
+        NativeMapping{"ID_SKATEPEDIA_GRABBSSHIFTYTAILGRAB",ArcadeTrick::tail_bs_shifty,false}}) {
+        const auto binding=trickpedia::native_card_binding(sample.title);
+        require(binding.trick && binding.trick->id==sample.trick && binding.nollie==sample.nollie,
+            "observed native variant did not resolve to its own binding");
+    }
+    for(const auto title:{"ID_SKATEPEDIA_FS_POPSHUVIT","ID_SKATEPEDIA_FS_360_POPSHUVIT",
+        "ID_SKATEPEDIA_FRONTFOOTIMPOSSIBLE","ID_SKATEPEDIA_NOLLIE_BACKFOOTIMPOSSIBLE",
+        "ID_SKATEPEDIA_NOLLIE_BS_POPSHUVIT","ID_SKATEPEDIA_NOLLIE_METHOD"})
+        require(!trickpedia::native_card_binding(title).trick,"missing or ambiguous variant borrowed another trick");
+    const auto nollie_guidance=trickpedia::native_card_guidance(*trick_definition(ArcadeTrick::kickflip),
+        [](std::uint32_t b){return b==TrickControls::trigger_mask(0)?std::string("LT"):label(b);},ArcadeTrick::double_grab,true);
+    require(nollie_guidance.inputs.back()=="Hold LT for nollie inputs.","nollie card omitted its trigger modifier");
     std::cout<<trick_registry.size()<<" canonical tricks: registry and guide checks passed; native UI/gameplay acceptance remains separate\n";
 }

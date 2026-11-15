@@ -34,7 +34,7 @@ struct Tuning {
 struct State {
     bool combo_active{};
     std::uint64_t raw_points{}, custom_points{};
-    unsigned multiplier{};
+    unsigned multiplier{}, custom_actions{};
     float combo_age_s{};
     float link_grace_s{};
     float fatigue{};
@@ -48,7 +48,7 @@ struct State {
 // Fixed 240 Hz integration makes disturbance and inertia independent of render rate.
 class Model {
 public:
-    explicit Model(Tuning tuning = {}, std::uint32_t seed = 1) noexcept : tuning_(tuning), seed_(seed) {
+    explicit Model(Tuning tuning = {}, std::uint32_t seed = 1, bool native_scoring = false) noexcept : tuning_(tuning), seed_(seed), native_scoring_(native_scoring) {
         tuning_.combo_link_grace_s = bounded(tuning_.combo_link_grace_s, 0.0f, 10.0f);
         tuning_.revert_link_grace_s = bounded(tuning_.revert_link_grace_s, 0.0f, 10.0f);
         tuning_.fatigue_per_second = bounded(tuning_.fatigue_per_second, 0.0f, 10.0f);
@@ -107,7 +107,16 @@ public:
         end_balance();
         consume_grace();
         credit_points(points);
-        if (state_.multiplier < std::numeric_limits<unsigned>::max()) ++state_.multiplier;
+        if (!native_scoring_ && state_.multiplier < std::numeric_limits<unsigned>::max()) ++state_.multiplier;
+    }
+    // Revisions replace the native subtotal without touching physical balance,
+    // fatigue or link grace. Custom actions retain their separate proof owner.
+    bool native_score(std::uint64_t points, unsigned actions) noexcept {
+        if (!native_scoring_ || !state_.combo_active) return false;
+        state_.raw_points = points;
+        state_.multiplier = state_.custom_actions + std::min(actions,
+            std::numeric_limits<unsigned>::max() - state_.custom_actions);
+        return true;
     }
     // Late verified points attach to an already observed action. They must not
     // count its takeoff twice, end an ongoing manual, or refresh link grace.
@@ -123,6 +132,7 @@ public:
         // It must not reset the balance, its velocity or its failure endpoints.
         link();
         if(state_.multiplier<std::numeric_limits<unsigned>::max())++state_.multiplier;
+        if(state_.custom_actions<std::numeric_limits<unsigned>::max())++state_.custom_actions;
         return credit_custom_points(points);
     }
     bool credit_custom_points(std::uint32_t points) noexcept {
@@ -266,5 +276,6 @@ private:
     double remainder_{}, elapsed_{};
     std::uint64_t banked_{};
     ModelSettlement settlement_{};
+    bool native_scoring_{};
 };
 }

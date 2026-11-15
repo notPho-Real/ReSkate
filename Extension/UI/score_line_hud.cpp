@@ -100,6 +100,9 @@ struct Hud {
     unsigned failed_makes{}; // make_model failures in a row (it is tried again until three)
     bool said_made{}, said_in{}, said_out{}, said_yield{}, said_busy{}, said_rows{}, said_rows_off{};
 };
+void forget_native_rows();
+bool has_native_rows();
+void clear_native_rows(Hud& h, const Context& c);
 Hud& hud() {
     static auto* value = new Hud;
     return *value;
@@ -125,6 +128,7 @@ void destroy_quietly(const Context& c, Value& value) noexcept {
 // ---- What a new registry or a level load leaves: nothing of ours (it went with the old registry,
 // and nothing is destroyed through another), and nothing found of the game's.
 void forget(Hud& h, Address manager) noexcept {
+    forget_native_rows();
     h.manager = manager;
     h.game_root = h.stack = {};
     h.score_blueprint = h.row_blueprint = h.row_type = 0;
@@ -483,6 +487,8 @@ void show_rows_or_none(Hud& h, const Context& c, const std::vector<std::string>&
             "Score line: a trick list row could not be made ({}); lines show without their trick names until the next level.", why);
 }
 
+#include "score_line_native_rows.inl"
+
 // ---- Our line up: the model's values as the game's own line looks, then our item in.
 void publish(Hud& h, const Context& c, const Look& look) {
     const auto& f = h.fields;
@@ -624,8 +630,17 @@ std::string ask(std::string_view who, std::optional<Line> line) {
     return hud().status;
 }
 
+void extra_tricks(std::string_view who,std::uint64_t original_hud,std::vector<ExtraTrick> rows) {
+    auto& n=native_rows();
+    if(!n.owner.empty() && n.owner!=who && now_ms()-n.at<=lease_ms)return;
+    if(rows.size()>most_tricks || std::any_of(rows.begin(),rows.end(),[](const ExtraTrick& row){
+        return !row.occurrence || row.name.empty() || row.name.size()>128;
+    }))return;
+    n.owner=std::string(who);n.requested_root=original_hud;n.requested=std::move(rows);n.at=now_ms();
+}
 void release(std::string_view who) {
     owner().release(who);
+    auto& n=native_rows();if(n.owner==who){n.requested.clear();n.owner.clear();}
     if(prepared_by==who)prepared_by.clear();
     if(replacement_by==who)replacement_by.clear();
 }
@@ -644,7 +659,7 @@ std::string ask_replacement(std::string_view who,std::optional<Line> line) {
 
 bool wanted() noexcept {
     const auto& h = hud();
-    return (!prepared_by.empty() && now_ms()-prepare_at<=lease_ms) || replacing || !owner().owner().empty() || h.model.handle || h.presence.must_scan();
+    return has_native_rows() || (!prepared_by.empty() && now_ms()-prepare_at<=lease_ms) || replacing || !owner().owner().empty() || h.model.handle || h.presence.must_scan();
 }
 
 void observe(const std::optional<tricks::ScoreHud>& reading) noexcept {
@@ -665,13 +680,17 @@ void tick(std::uintptr_t base, std::string_view refusal) noexcept {
         if (hud_corner::hidden_by_plugin()) why = "skate.'s HUD corner is hidden";
         else if (!refusal.empty()) why = std::string(refusal);
         else if (h.unsupported) why = "skate.'s score HUD cannot be shown on this game build";
-        if (!line && prepared_by.empty() && !h.model.handle && !h.presence.must_scan()) {
+        if (!line && prepared_by.empty() && !h.model.handle && !h.presence.must_scan() && !has_native_rows()) {
             h.status.clear();
             (void)hud_corner::replace_score(false);
             return;
         }
         const ui::OwnUiWrites own_writes; // the trick feed ignores what we write
-        if (!hud_stack::with_ui_models(base, [&](const Context& c) { step(h, c, line, why, now); }))
+        if (!hud_stack::with_ui_models(base, [&](const Context& c) {
+            if(line || !why.empty())clear_native_rows(h,c);
+            step(h, c, line, why, now);
+            update_native_rows(h,c,!line && why.empty(),now);
+        }))
             h.status = line ? std::string("skate.'s score HUD is not loaded") : std::string{};
         else h.warned = false;
     } catch (const std::exception& error) {
@@ -696,10 +715,12 @@ void tick(std::uintptr_t base, std::string_view refusal) noexcept {
 
 void before_level_load(std::uintptr_t base) noexcept {
     prepared_by.clear();replacement_by.clear();replacing=false;
+    native_rows().requested.clear();
+    hud_corner::present_score(std::nullopt);
     (void)hud_corner::replace_score(false);
     auto& h = hud();
     bool gone = true; // nothing of ours is left in the game's UI
-    if (h.model.handle || h.presence.must_scan()) {
+    if (h.model.handle || h.presence.must_scan() || has_native_rows()) {
         gone = false;
         try {
             const ui::OwnUiWrites own_writes;
@@ -712,8 +733,9 @@ void before_level_load(std::uintptr_t base) noexcept {
                     (void)hud_stack::remove_key(c, h.stack, score_key);
                     h.presence.scanned(hud_stack::find_key(c, h.stack, score_key).has_value());
                 } else h.presence.scanned(false); // the stack went, and our item with it
+                clear_native_rows(h,c);
                 destroy_ours(h, c);
-                gone = !h.presence.must_scan();
+                gone = !h.presence.must_scan() && !has_native_rows();
             });
             if (!registry) gone = true; // no registry, and ours with it
         } catch (const std::exception& error) {

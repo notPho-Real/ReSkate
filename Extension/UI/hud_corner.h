@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <optional>
 #include <string_view>
 
 // skate.'s HUD in the bottom left corner (the d-pad menu, and the score HUD there while a line goes
@@ -14,6 +15,15 @@
 // writers take too. The score HUD held is always the game's own root, never a plugin's line
 // (score_line_hud.h), which is a model of the same type.
 namespace dingosdk::hud_corner {
+// Changes only numbers in the original score widget. The caller identifies the
+// original HUD and scoring owner from a fresh native read. No native award,
+// progression, action state, history or widget lifetime is changed here.
+struct ScorePresentation {
+    std::uintptr_t manager{};
+    std::uint64_t hud{}, scoring{}, points{}, total{};
+    unsigned multiplier{};
+};
+void present_score(std::optional<ScorePresentation> value) noexcept;
 // Startup, with the game's image base: prepares the model write hook, which patches nothing; without
 // it the score HUD stays as it is.
 void start_hud(std::uintptr_t base) noexcept;

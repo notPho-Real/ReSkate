@@ -23,7 +23,8 @@ std::vector<Note> take();
 void tap(std::uint64_t handle, std::uintptr_t type, const void* value) noexcept;
 // Entry ids of the SDK's own display models, never the game's trick list. The widget can write them
 // outside OwnUiWrites; the score line publishes the root and its rows before showing them.
-inline constexpr std::size_t most_owned = 8;
+inline constexpr std::size_t most_owned = 16;
+bool own_model(std::uint64_t handle) noexcept;
 void own(const std::vector<std::uint64_t>& entries) noexcept;
 // A song the game began, or the one a Spotify station shows (spotify_rows.cpp, spotify_station.cpp):
 // the game's music writes its title to the trick list's name field in another model, so a name that

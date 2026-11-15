@@ -512,8 +512,6 @@ struct HubPage {
     int section{};
 };
 inline constexpr int hub_home_section = 3;
-inline constexpr int trickpedia_section = 4;
-static_assert(trickpedia_section != hub_home_section);
 using HubPageFeed = HubPage (*)();
 void set_hub_page_feed(HubPageFeed) noexcept;
 // Text the game draws with its debug text natives, where retail draws nothing (the

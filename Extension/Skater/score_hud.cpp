@@ -1,4 +1,6 @@
 #include "score_hud.h"
+#include "trick_feed.h"
+#include "Engine/Game/Build/20260929/native_scoring.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Game/Abi/native_data.h"
@@ -23,6 +25,8 @@ namespace {
 namespace menu_data = multiplayer::menu_data;
 using Address = std::uintptr_t;
 using Clock = std::chrono::steady_clock;
+
+#include "native_score_snapshot.inl"
 
 // ScoringHUDViewModel's fields, by the hashes of their names in the game's own type data
 // (ui/features/hud/scoring/ScoringHUDViewModel; HudWidgetActive 0x3aa2f739 and ExtraInfoStyle
@@ -157,10 +161,11 @@ bool bind_model(Hud& h, const menu_data::Context& context) {
 }
 }
 
-std::optional<ScoreHud> read_score_hud(std::uintptr_t image_base) noexcept {
+std::optional<ScoreHud> read_score_hud(std::uintptr_t image_base, bool include_native_scoring) noexcept {
     auto& h = hud;
     bool ok = false, rows_read=false;
     std::vector<ScoreHudRow> rows;
+    std::optional<NativeScoreSnapshot> native_scoring;
     try {
         with_ui_models(image_base, [&](const menu_data::Context& context) {
             if (!bind_model(h, context)) return;
@@ -168,17 +173,19 @@ std::optional<ScoreHud> read_score_hud(std::uintptr_t image_base) noexcept {
             for (auto& field : h.fields)
                 field.read = field.present && memory::peek_bytes(at + field.offset, field.now.data(), std::min<unsigned>(field.size, value_bytes));
             ok = true;
+            try { if (include_native_scoring) native_scoring = native_scoring_read::snapshot(context, h.model); }
+            catch (...) { native_scoring.reset(); }
             try {
                 namespace corner=addr::hud_corner;
                 namespace score=addr::score_hud;
                 const auto items=context.path(h.model,{score::trick_list,corner::stack_items});
                 unsigned count{},stride{};
-                (void)context.array(items,5,count,stride);
+                (void)context.array(items,64,count,stride);
                 for(unsigned i=0;i<count;++i) {
                     const auto item=context.element(items,i);
                     const auto widget=menu_data::read<menu_data::Widget>(
                         context.address(context.field(item,corner::item_content)));
-                    if(!widget.data.handle)continue;
+                    if(!widget.data.handle || feed::own_model(widget.data.handle))continue;
                     const menu_data::Value row{widget.data.handle,context.type_of(widget.data.handle)};
                     if(menu_data::size(row.type)!=score::trick_row_size)continue;
                     const auto label=context.path(row,{score::row_name,score::label_text});
@@ -204,6 +211,7 @@ std::optional<ScoreHud> read_score_hud(std::uintptr_t image_base) noexcept {
                     text_of(f[sequence_header]), text_of(f[sequence_descriptor]), enum_of(f[sequence_state]), score_of(f[line_timer])};
     result.line_shown = score_of(f[line_shown]);
     result.rows=std::move(rows);result.rows_read=rows_read;
+    result.native_scoring=std::move(native_scoring);
     trace_sequence(result);
     return result;
 }

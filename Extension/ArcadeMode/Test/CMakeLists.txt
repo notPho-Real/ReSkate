@@ -14,7 +14,7 @@ include(manual_test_warnings.cmake)
 # Compile the production headers without starting the root runtime/launcher build
 # or depending on the fork's CI scripts. Native execution still needs Windows
 # and independent gameplay acceptance; these tests cover the portable contracts.
-foreach(test custom_score score_settlement score_replay camera_input input_session neutral_flip_release air_motion_proof launch_descriptor
+foreach(test native_score_rows native_score_presentation native_score_progress native_score_snapshot custom_score score_settlement score_replay camera_input input_session neutral_flip_release air_motion_proof launch_descriptor
              input_pattern_dispatch manual_step manual_balance_entry
              native_spin_integration native_readiness rail_pop
              grind_transition_lifetime grind_change native_grab manual_throw

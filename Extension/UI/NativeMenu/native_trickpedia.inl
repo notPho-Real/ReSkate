@@ -1,101 +1,92 @@
-// The live 20260929 screen registers PageViewModel directly. Its authored
-// Back command identifies Skatepedia; its resource wrapper is not a live root.
-// Retain every original field without changing localized strings or trick assets.
+namespace skatepedia_fields=addr::skatepedia;
+constexpr Schema skatepedia_card{skatepedia_fields::info_card_schema,skatepedia_fields::info_card_size};
 struct TrickpediaPageLease {
     Address manager{};
-    Value root{}, target{}, saved{}, replacement{};
-    std::uint64_t seen{}, next_scan{};
-    bool back_held{};
-    Address back_input{};
-    std::string back_navigation;
-    bool back_active{};
+    Value page{}, card{}, saved{}, replacement{};
+    std::string title;
+    std::vector<std::string> applied;
+    std::uint64_t next_scan{};
+    ControllerStyle controller_style{};
+    arcade_mode::ArcadeTrick selected_grab{};
 };
 TrickpediaPageLease trickpedia_page;
-std::atomic<std::uint64_t> trickpedia_seen{};
-void hold_trickpedia_back(const Context& c,bool held) {
-    auto& lease=trickpedia_page;
-    if(held==lease.back_held)return;
-    const auto action=c.path(lease.target,{0x10810f0b,button_field,0xa704272a,0xc52416ef,0xa704272a});
-    const auto back=c.field(action,0xa2b71c93);
-    if(held) {
-        // Like the native Hub, retain only the fields we temporarily change.
-        // The rest of this action continues to belong to native navigation.
-        lease.back_input=read<Address>(c.address(c.field(back,0x3d00de27)));
-        lease.back_navigation=c.text(c.field(back,0xb1e14cd6));
-        lease.back_active=read<bool>(c.address(c.field(action,0x4b3146e9)));
-        lease.back_held=true;
-        c.set(c.field(back,0x3d00de27),Address{});
-        c.text(c.field(back,0xb1e14cd6),"");
-        c.set(c.field(action,0x4b3146e9),true);
-    } else {
-        c.set(c.field(back,0x3d00de27),lease.back_input);
-        c.text(c.field(back,0xb1e14cd6),lease.back_navigation);
-        c.set(c.field(action,0x4b3146e9),lease.back_active);
-        lease.back_held=false;
-    }
+std::vector<std::string> card_inputs(const Context& c,Value card) {
+    const auto inputs=c.field(card,skatepedia_fields::inputs);
+    unsigned count{},stride{};
+    (void)c.array(inputs,16,count,stride);
+    std::vector<std::string> out;
+    for(unsigned i=0;i<count;++i)out.push_back(c.text(c.field(c.element(inputs,i),skatepedia_fields::text),2048));
+    return out;
+}
+std::string card_title(const Context& c,Value card) {
+    return c.text(c.path(card,{skatepedia_fields::title,skatepedia_fields::text}));
 }
 bool restore_trickpedia(const Context& c) {
     auto& lease=trickpedia_page;
-    trickpedia_seen.store(0,std::memory_order_release);
     if(!lease.manager)return true;
-    if(lease.manager!=c.manager) {lease={};return true;}
-    // Handles are revalidated before every access; a released screen needs no write.
-    if(c.type_of(lease.root.handle)==lease.root.type && c.type_of(lease.target.handle)==lease.target.type)
-    {
-        // The screen record belongs to the native navigation owner and can
-        // change while our body is shown. Restore only fields we replaced.
-        hold_trickpedia_back(c,false);
-        for(const auto field:{0x716496c8U,0x3781b603U})
-            c.copy(c.field(lease.target,field),c.address(c.field(lease.saved,field)));
-    }
+    if(lease.manager!=c.manager){lease={};return true;}
+    // Native selection can replace this same card in place. Restore only an
+    // input array we still own, never stale inputs over the newly selected trick.
+    if(c.type_of(lease.card.handle)==lease.card.type &&
+        card_title(c,lease.card)==lease.title && card_inputs(c,lease.card)==lease.applied)
+        c.copy(c.field(lease.card,skatepedia_fields::inputs),c.address(c.field(lease.saved,skatepedia_fields::inputs)));
     c.destroy(lease.replacement);c.destroy(lease.saved);lease={};return true;
+}
+bool skatepedia_visible(const Context& c,Value target) {
+    if(!game_in_menu.load(std::memory_order_relaxed) || c.type_of(target.handle)!=target.type)return false;
+    const auto focus_value=c.path(target,{skatepedia_fields::focus,skatepedia_fields::focus_state,skatepedia_fields::focus_index});
+    if(read<int>(c.address(focus_value))<0)return false;
+    const auto back_value=c.path(target,{skatepedia_fields::back,skatepedia_fields::button,skatepedia_fields::action,skatepedia_fields::action_state,
+        skatepedia_fields::action,skatepedia_fields::navigation,skatepedia_fields::navigation_name});
+    return c.text(back_value)=="SP_Back";
 }
 void update_trickpedia(const Context& c,std::uint64_t now) {
     auto& lease=trickpedia_page;
-    if(lease.manager && lease.manager!=c.manager){lease={};trickpedia_seen.store(0,std::memory_order_release);}
-    if(!arcade_mode::enabled()) {restore_trickpedia(c);return;}
+    if(lease.manager && lease.manager!=c.manager)lease={};
+    if(!arcade_mode::enabled() || !game_in_menu.load(std::memory_order_relaxed)){restore_trickpedia(c);return;}
+    ControllerInput controller{};DingoSDKOverlayReadControllerInput(&controller,true);
+    const auto selected_grab=arcade_mode::selected_grab();
     if(lease.manager) {
-        if(c.type_of(lease.root.handle)!=lease.root.type || c.type_of(lease.target.handle)!=lease.target.type) {
-            restore_trickpedia(c);return;
-        }
-        const auto focus=c.path(lease.target,{0xfafda1a6,0x20a39d92,0x6b01fd01});
-        const bool shown=game_in_menu.load(std::memory_order_relaxed) && read<int>(c.address(focus))>=0;
-        if(!shown){restore_trickpedia(c);return;}
-        hold_trickpedia_back(c,back_wanted.load(std::memory_order_relaxed));
-        trickpedia_seen.store(shown?now:0,std::memory_order_release);
-        return;
+        if(lease.controller_style==controller.style && lease.selected_grab==selected_grab &&
+            skatepedia_visible(c,lease.page) && c.type_of(lease.card.handle)==lease.card.type &&
+            card_title(c,lease.card)==lease.title && card_inputs(c,lease.card)==lease.applied)return;
+        restore_trickpedia(c);
     }
     if(now<lease.next_scan)return;
     lease.next_scan=now+250;
-    const auto& source=page_state(menu_view::tools_page);
-    if(source.manager!=c.manager || !source.page.handle || c.type_of(source.page.handle)!=source.page.type)return;
-    for(const auto& root:c.roots({page.hash})) {
-        const auto target=root.model;
-        if(target.type!=c.type(page))continue;
-        const auto focus=c.path(target,{0xfafda1a6,0x20a39d92,0x6b01fd01});
-        if(!game_in_menu.load(std::memory_order_relaxed) || read<int>(c.address(focus))<0)continue;
-        const auto back=c.path(target,{0x10810f0b,button_field,0xa704272a,0xc52416ef,0xa704272a,0xa2b71c93});
-        if(c.text(c.field(back,0xb1e14cd6))!="SP_Back")continue;
-        // Two engine-owned copies retain nested arrays, strings and asset references.
-        // Nothing is exposed before both copies and the original Back action exist.
+    Value native_page{};
+    for(const auto& root:c.roots({page.hash}))if(skatepedia_visible(c,root.model)){native_page=root.model;break;}
+    if(!native_page.handle)return;
+    for(const auto& root:c.roots({skatepedia_card.hash})) {
+        const auto card=root.model;
+        if(card.type!=c.type(skatepedia_card))continue;
+        const auto title=card_title(c,card);
+        const auto binding=arcade_mode::trickpedia::native_card_binding(title);
+        const auto* trick=binding.trick;
+        if(!trick && !binding.planned)continue;
+        unsigned count{},stride{};
+        const auto original=c.array(c.field(card,skatepedia_fields::inputs),16,count,stride);
+        if(!count || !stride)continue;
+        const auto guidance=trick ? arcade_mode::trickpedia::native_card_guidance(*trick,
+            [&](std::uint32_t buttons){return controller_combo_label(buttons,controller.style);},selected_grab,binding.nollie) :
+            arcade_mode::trickpedia::NativeCardGuidance{{"Arcade controls for this variation are not available yet."},"Planned"};
+        std::string text;
+        for(const auto& input:guidance.inputs){if(!text.empty())text+="\n";text+=input;}
+        text+="\n"+guidance.status;
         Value saved{},replacement{};
         try {
-            saved=c.create(page,0x545249434b534156ULL);
-            c.copy(saved,c.address(target));
-            replacement=c.create(page,0x545249434b504544ULL);
-            c.copy(replacement,c.address(target));
-            c.copy(c.field(replacement,0x716496c8U),c.address(c.field(source.page,0x716496c8U)));
-            c.text(c.path(replacement,{0x3781b603,text_field}),"ARCADE TRICKPEDIA");
-            lease={c.manager,root.model,target,saved,replacement,now,now+250,false,0,{},false};
-            // Replacing the whole Page overwrites its live screen state and
-            // leaves the overlay visible after native Back. Keep that owner.
-            for(const auto field:{0x716496c8U,0x3781b603U})
-                c.copy(c.field(target,field),c.address(c.field(replacement,field)));
-            trickpedia_seen.store(now,std::memory_order_release);
+            saved=c.create(skatepedia_card,0x534b415445534156ULL);c.copy(saved,c.address(card));
+            replacement=c.create(skatepedia_card,0x534b415445494e50ULL);c.copy(replacement,c.address(card));
+            const auto inputs=c.field(replacement,skatepedia_fields::inputs);
+            // Reuse the first native label's styling. The typed array writer
+            // retains its nested values before resizing; no borrowed text escapes.
+            c.array(inputs,std::span<const std::byte>(original.data(),stride),1);
+            c.text(c.field(c.element(inputs,0),skatepedia_fields::text),text);
+            lease={c.manager,native_page,card,saved,replacement,title,{text},now+250,controller.style,selected_grab};
+            c.copy(c.field(card,skatepedia_fields::inputs),c.address(inputs));
             return;
         } catch(...) {
-            // If publication began, keep the retained original for the next cleanup attempt.
-            if(lease.manager) {restore_trickpedia(c);throw;}
+            if(lease.manager){restore_trickpedia(c);throw;}
             if(replacement.handle)c.destroy(replacement);
             if(saved.handle)c.destroy(saved);
             throw;

@@ -805,3 +805,37 @@ Focused regressions independently unwrap the sampled board heading and roll,
 and require readable hip and hand displacement from the actual baked hold.
 Existing limb/deck clearance and ownership checks remain mandatory. Native
 rendered review is required before claiming that the revised motion is ready.
+
+
+### Original score HUD and Skatepedia integration
+
+Arcade now reads committed action lists from the original HUD's referenced
+native scoring model. Its per-trick multiplier uses whole performed actions:
+an Ollie followed by a Heelflip counts twice. A held action does not count each
+frame, and a selected but unperformed action does not count. Native sequence
+numbers repeat even within one line, so the adapter follows live transitions
+and committed history positions. Landing quality replaces the sequence's points
+rather than accumulating every observed revision.
+
+The existing combo model combines that native subtotal with independently
+acknowledged custom trick credit. The existing HUD write hook leases only the
+original widget's number/ring fields, retaining the latest native field, label
+and whole-model writes for restoration. The existing row factory adds owned
+Casper rows to the native history stack; native row models and history bytes
+are preserved, and only owned rows are removed on release. Owned labels remain
+excluded from native trick observations. No progression or native score award is
+written by these display changes.
+
+The separate trick browser is removed. Arcade changes the input section of
+existing Skatepedia cards, preserving native titles, descriptions, preview and
+navigation. Known unsupported variations say Planned rather than borrowing a
+different trick's controls. Mode OFF restores the current card's native input
+section, including after selection, controller-style or registry changes.
+
+Focused production-composed tests cover native schema/owner validation, whole
+multipliers, held/repeated actions, native history preservation, parent writes,
+partial publication and restoration. Retained device captures were replayed
+through the counter and exposed the reused-index defect before a runtime build.
+Those cross-process captures are not frame-atomic. New widget rendering, native
+menu layout and the complete combo matrix still require an exact-source DLL
+and device acceptance; source tests do not establish that visual result.

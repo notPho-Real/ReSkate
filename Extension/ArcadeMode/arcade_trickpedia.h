@@ -247,6 +247,110 @@ template<class ButtonLabel> std::string diagram_text(const InputDiagram& value,B
 inline std::string fold(std::string_view text) {
     std::string out(text);for(auto& c:out)c=static_cast<char>(std::tolower(static_cast<unsigned char>(c)));return out;
 }
+// Guidance for the existing native trick detail card. The native page keeps
+// its title, description, categories, preview and navigation.
+inline std::string card_key(std::string_view value) {
+    std::string out;
+    for(const char raw:value) {
+        const auto c=static_cast<unsigned char>(raw);
+        if(std::isalnum(c))out+=static_cast<char>(std::tolower(c));
+    }
+    return out;
+}
+struct NativeCardBinding {
+    const TrickDefinition* trick{};
+    bool nollie{}, planned{};
+};
+inline NativeCardBinding native_card_binding(std::string_view title) {
+    constexpr std::string_view prefix="ID_SKATEPEDIA_";
+    if(!title.starts_with(prefix))return {};
+    auto token=title.substr(prefix.size());
+    bool nollie=false;
+    if(token=="NOLLIE"){token="OLLIE";nollie=true;}
+    else if(token.starts_with("NOLLIE_")){token.remove_prefix(7);nollie=true;}
+    else if(token.starts_with("N_")){token.remove_prefix(2);nollie=true;}
+    const auto key=card_key(token);
+    constexpr std::array<std::string_view,9> unavailable{
+        "bspopshuvitunderflip","frontfootimpossible","fspopshuvitunderflip",
+        "fs360popshuvit","fspopshuvit","grabbstweak","heelflipunderflip",
+        "hospitalflip","kickflipunderflip"};
+    if(std::find(unavailable.begin(),unavailable.end(),key)!=unavailable.end())return {nullptr,nollie,true};
+    // Native card identifiers differ from their displayed names. Keep these
+    // explicit so a missing binding never borrows a different trick's inputs.
+    struct Alias {std::string_view key;ArcadeTrick trick;};
+    constexpr std::array aliases{
+        Alias{"bspopshuvit",ArcadeTrick::pop_shove_it},
+        Alias{"360popshuvit",ArcadeTrick::shove_it_360},
+        Alias{"inwardheel",ArcadeTrick::inward_heelflip},
+        Alias{"360inwardheel",ArcadeTrick::inward_heelflip_360},
+        Alias{"laserflip",ArcadeTrick::heelflip_360},
+        Alias{"grindbs5050",ArcadeTrick::grind_50_50},
+        Alias{"grindfs50",ArcadeTrick::grind_5_0},
+        Alias{"grindbs50",ArcadeTrick::grind_5_0},
+        Alias{"grindfsnose",ArcadeTrick::nosegrind},
+        Alias{"grindbsnose",ArcadeTrick::nosegrind},
+        Alias{"grindfscrooked",ArcadeTrick::crooked},
+        Alias{"grindbscrooked",ArcadeTrick::crooked},
+        Alias{"grindfsovercrook",ArcadeTrick::overcrook},
+        Alias{"grindbsovercrook",ArcadeTrick::overcrook},
+        Alias{"grindfssalad",ArcadeTrick::salad},
+        Alias{"grindbssalad",ArcadeTrick::salad},
+        Alias{"grindfssmith",ArcadeTrick::smith},
+        Alias{"grabbs",ArcadeTrick::basic_bs_grab},
+        Alias{"grabfs",ArcadeTrick::indy},
+        Alias{"grabdouble",ArcadeTrick::double_grab},
+        Alias{"grabnosebone",ArcadeTrick::fs_nosebone},
+        Alias{"grabtailbone",ArcadeTrick::fs_tailbone},
+        Alias{"grabfsshiftytailgrab",ArcadeTrick::tail_fs_shifty},
+        Alias{"grabbsshiftytailgrab",ArcadeTrick::tail_bs_shifty}
+    };
+    // Directional nollie labels and their diagrams use different side names.
+    // They need an explicit identity match before receiving Arcade guidance.
+    if(nollie && (key.find("popshuvit")!=std::string::npos))return {nullptr,nollie,true};
+    const TrickDefinition* result=nullptr;
+    for(const auto& alias:aliases)if(key==alias.key){result=trick_definition(alias.trick);break;}
+    for(const auto& trick:trick_registry) {
+        if(result)break;
+        if(key==card_key(trick.key) || key==card_key(trick.name) ||
+            (trick.category==TrickCategory::grabs && key=="grab"+card_key(trick.name)))result=&trick;
+    }
+    if(nollie && result && !result->nollie_flip && result->executor!=TrickExecutor::native_ollie)return {nullptr,nollie,true};
+    return {result,nollie};
+}
+inline const TrickDefinition* native_card_trick(std::string_view title) {
+    return native_card_binding(title).trick;
+}
+struct NativeCardGuidance {
+    std::vector<std::string> inputs;
+    std::string status;
+};
+template<class ButtonLabel> NativeCardGuidance native_card_guidance(const TrickDefinition& trick,
+    ButtonLabel&& label,ArcadeTrick selected=ArcadeTrick::double_grab,bool nollie=false) {
+    NativeCardGuidance out;
+    out.status=status_names[static_cast<unsigned>(trick_status(trick))];
+    if(trick.executor==TrickExecutor::none) {
+        out.inputs.emplace_back("Arcade controls planned; not available yet.");
+        return out;
+    }
+    for(unsigned i=0;i<trick.binding_count;++i) {
+        const auto d=diagram(trick,trick.bindings[i],selected);
+        auto text=diagram_text(d,label);
+        if(text.empty())continue;
+        if(d.proposed)text="Planned: "+text;
+        out.inputs.push_back(std::move(text));
+    }
+    if(out.inputs.empty())out.inputs.emplace_back("Arcade controls are not assigned.");
+    if(nollie)out.inputs.emplace_back("Hold "+label(TrickControls::trigger_mask(0))+" for nollie inputs.");
+    if(trick.id==ArcadeTrick::casper) {
+        out.inputs.emplace_back("During Manual; keep balancing.");
+        out.inputs.emplace_back(label(TrickControls::trigger_mask(0))+" / "+
+            label(TrickControls::trigger_mask(1))+" to turn; "+
+            label(TrickControls::mask(TrickControls::ollie))+" to Ollie out.");
+    }
+    if(trick.id==ArcadeTrick::casper_flip)
+        out.inputs.emplace_back("During Casper; returns to Manual.");
+    return out;
+}
 struct Query { std::string search; int category{-1}, status{-1}; };
 inline constexpr std::array<std::string_view,40> search_keys{
     "A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P",

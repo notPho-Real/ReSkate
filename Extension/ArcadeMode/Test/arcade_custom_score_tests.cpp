@@ -41,52 +41,43 @@ int main(){
     check(!native.begin(model,{11,7,3,e.at,0,0,0,0,true,true},0) &&
         model.state().custom_points==850,"custom bonus cannot become a native score attestation");
     CustomScoreDisplay display;tricks::ScoreHud hud;hud.rows_read=true;
-    hud.rows={{2,"Fakie Manual"},{1,"Kickflip"}};hud.line_score=70;hud.line_shown=100;
-    const auto line=display.update(model,score,hud,e.at);
-    check(line && line->tricks==std::vector<std::string>{"Kickflip","Fakie Manual","Casper","Casper Flip"},
-        "native rows retain order alongside distinct custom identities");
-    check(line->points==2620 && model.state().raw_points==0,"native display is passed through without manufacturing native evidence");
-    hud.rows={{2,"Pop Shove-It"},{1,"Kickflip"}};
-    const auto reused=display.update(model,score,hud,e.at+1);
-    check(reused && reused->tricks.back()=="Pop Shove-It",
-        "recycled native row updates the trick following Casper");
-    const auto repeated=display.update(model,score,hud,e.at+2);
-    check(repeated && repeated->tricks==reused->tricks,
-        "unchanged recycled row is not appended every UI tick");
-    hud.rows.clear();(void)display.update(model,score,hud,e.at+3);
-    hud.rows={{2,"Pop Shove-It"}};
-    const auto reappeared=display.update(model,score,hud,e.at+4);
-    check(reappeared && reappeared->tricks.back()=="Pop Shove-It" &&
-        reappeared->tricks.size()==score_line::most_tricks &&
-        reappeared->tricks[reappeared->tricks.size()-2]=="Pop Shove-It",
-        "a row retired then reused for the same name remains a new display occurrence");
+    hud.native_scoring=tricks::NativeScoreSnapshot{1,2,3,{},{},{},{}};
+    hud.rows={{2,"Fakie Manual"},{1,"Kickflip"}};hud.line_score=70;hud.line_shown=100;hud.multiplier=1.5f;
+    const auto line=display.update(model,score,hud,e.at,true);
+    check(line && line->multiplier==3 && line->points==850 && line->total==2550,
+        "native fractional display values never enter the Arcade multiplier or total");
+    check(display.rows().size()==2 && display.rows()[0].name=="Casper" && display.rows()[1].name=="Casper Flip",
+        "only proved custom rows are requested; native history is never reconstructed");
+    const auto unknown=display.update(model,score,hud,e.at+1,false);
+    check(unknown && !unknown->multiplier,"unverified data cannot fall back to a fractional Arcade multiplier");
+    (void)display.update(model,score,hud,e.at+2,true);
     model.manual_airborne();model.trick(0);model.landing();model.tick(.5f);
     check(model.last_settlement().kind==SettlementKind::bank &&
         model.last_settlement().custom_points==3400,"clean landing banks bonus with continuing combo multiplier");
     check(model.take_banked_points()==3400 && model.take_banked_points()==0,"bank drains once");
-    const auto closed=display.update(model,score,hud,e.at+500);
-    check(closed && closed->closed && closed->line==3500,"banked bonus remains in summary");
+    const auto closed=display.update(model,score,hud,e.at+500,true);
+    check(closed && closed->total==3400 && closed->multiplier==4,"banked bonus remains in summary");
     model.begin_balance(BalanceKind::manual);score.clear();
     e={owner,1,8,3,90,3000,ArcadeTrick::casper,true,0};
     check(score.observe(model,e,owner,1,e.at),"fresh combo can score new occurrence");
     model.bail();
     check(model.take_banked_points()==0 && !model.state().custom_points,"bail loses provisional points");
-    check(!display.update(model,score,hud,3001),"bail removes custom score summary");
+    const auto bailed=display.update(model,score,hud,3001,true);
+    check(bailed && !bailed->multiplier && display.rows().empty(),"bail removes custom score summary and fractional native multiplier");
     // A terminal and fresh balance can occur between two UI polls.
     Model rollover;CustomTrickScoring rollover_score;CustomScoreDisplay rollover_display;
     rollover.begin_balance(BalanceKind::manual);
     CustomTrickExecution first{owner,1,20,10,100,4000,ArcadeTrick::casper,true,0};
     check(rollover_score.observe(rollover,first,owner,1,4000),"rollover entry scored");
-    check(rollover_display.update(rollover,rollover_score,hud,4000).has_value(),"scored combo shown");
+    check(rollover_display.update(rollover,rollover_score,hud,4000,true).has_value(),"scored combo shown");
     rollover.bank();rollover.begin_balance(BalanceKind::manual);
-    check(!rollover_display.update(rollover,rollover_score,hud,4100),"prior custom rows and bank never reopen in a new native combo");
+    check(rollover_display.update(rollover,rollover_score,hud,4100,true)->points==0,"prior custom rows and bank never reopen in a new native combo");
     auto stale=first;stale.trick=ArcadeTrick::casper_flip;++stale.occurrence;++stale.step;stale.at=4100;
     check(!rollover_score.observe(rollover,stale,owner,1,4100),"prior episode flip cannot score after settlement");
     first.episode=21;first.occurrence=12;first.step=102;first.at=4200;
     check(rollover_score.observe(rollover,first,owner,1,4200),"fresh episode starts its own custom score");
-    hud.rows_read=false;
-    check(!rollover_display.update(rollover,rollover_score,hud,4200),"missing native history keeps original presentation visible");
-    hud.rows_read=true;
+    auto missing=hud;missing.native_scoring.reset();
+    check(!rollover_display.update(rollover,rollover_score,missing,4200,false),"missing native owner releases augmentation");
     ComboSession hop;
     hop.step(SkatePose::manual,0,0,false,nullptr,false,true);
     check(hop.observe_custom({owner,1,1,1,1,1000,ArcadeTrick::casper,true,0},owner,1,1000),

@@ -1,5 +1,7 @@
 #include "Extension/Skater/trick_feed.h"
 #include "hud_corner.h"
+#include "own_ui_writes.h"
+#include "Engine/Game/Build/20260929/score_hud.h"
 #include "hud_stack.h"
 #include "score_line.h"
 #include "score_line_hud.h"
@@ -18,6 +20,8 @@
 #include <chrono>
 #include <cstring>
 #include <map>
+#include <mutex>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -71,12 +75,19 @@ Hook& hook() {
 // the LINE label then stayed hidden after the corner was given back (#318).
 thread_local bool publishing{};
 
+#include "native_score_presentation.inl"
+
 // The game's write of a taken field writes ours instead and keeps the game's.
 std::uint64_t model_write(Address manager, std::uint64_t handle, Address type, const void* value, std::uint8_t flag) {
     auto& h = hook();
     // SmokeyDawg58's trick feed reads the score HUD's trick list off the same writes.
     if (handle && value && tricks::feed::wanted()) tricks::feed::tap(handle, type, value);
     if (handle && value && !publishing) {
+        try {
+            std::uint64_t result{};
+            if (score_presentation::write(manager, handle, type, value, flag,
+                    h.original.load(std::memory_order_acquire), result)) return result;
+        } catch (...) { /* An unreadable native write is forwarded unchanged. */ }
         for (std::size_t index = 0; index < score_switches.size(); ++index) {
             auto& field = h.fields[index];
             if (!field.taken.load(std::memory_order_acquire) || handle != field.handle.load(std::memory_order_acquire)) continue;
@@ -286,6 +297,9 @@ namespace {
 struct Asks {
     std::map<std::string, bool, std::less<>> owners; // hidden, by plugin
     bool hooked{}, replacement{};
+    std::optional<ScorePresentation> presentation;
+    Clock::time_point presentation_at{};
+    bool presentation_held{};
 };
 Asks& asks() {
     static auto* value = new Asks;
@@ -307,13 +321,29 @@ void tick() noexcept {
         bool hidden=a.replacement;
         for (const auto& [owner, on] : a.owners) hidden = hidden || on;
         const bool feeding = tricks::feed::wanted();
-        if ((!a.owners.empty() || feeding || a.replacement) && !a.hooked) a.hooked = hook_hud(true);
+        if ((!a.owners.empty() || feeding || a.replacement || a.presentation || a.presentation_held) && !a.hooked) a.hooked = hook_hud(true);
         if (!a.hooked) return;
         const bool back = hide_hud(hidden);
+        if (a.presentation || a.presentation_held) {
+            auto wanted = a.presentation;
+            if (hidden || Clock::now() - a.presentation_at > std::chrono::milliseconds(250)) wanted.reset();
+            auto& c = corner_state();
+            hud_stack::with_ui_models(c.base, [&](const menu_data::Context& context) {
+                follow_registry(c, context);
+                if (wanted) (void)find_score(c, context);
+                // Mark before publication so a partial failure is retried on release.
+                if (wanted) a.presentation_held = true;
+                score_presentation::apply(context, c.score_model, wanted);
+                a.presentation_held = wanted.has_value();
+            });
+        }
         // No plugin left: the hook goes once the corner is the game's again.
-        if (a.owners.empty() && !feeding && !a.replacement && back && hook_hud(false)) a.hooked = false;
+        if (a.owners.empty() && !feeding && !a.replacement && !a.presentation && !a.presentation_held && back && hook_hud(false)) a.hooked = false;
     } catch (...) {
     }
+}
+void present_score(std::optional<ScorePresentation> value) noexcept {
+    auto& a = asks(); a.presentation = value; a.presentation_at = Clock::now(); tick();
 }
 bool replace_score(bool hidden) noexcept {
     asks().replacement=hidden;

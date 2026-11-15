@@ -1,4 +1,5 @@
 #pragma once
+#include "native_score_snapshot.h"
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -22,10 +23,13 @@ struct ScoreHud {
     // names in the display but do not establish performed tricks or score awards.
     std::vector<ScoreHudRow> rows{};
     bool rows_read{};
+    // Read from the original HUD's referenced scoring owner. Absence means
+    // unreadable, never an empty or zero-point award.
+    std::optional<NativeScoreSnapshot> native_scoring{};
 };
 // Whether the HUD names a manual going on (its header or descriptor says one).
 bool names_manual(const ScoreHud& now);
 // Client thread. Empty while there is no score HUD model (the menu, a level loading), or when this
 // game build's model has none of the fields; the model is looked for at most once a second.
-std::optional<ScoreHud> read_score_hud(std::uintptr_t image_base) noexcept;
+std::optional<ScoreHud> read_score_hud(std::uintptr_t image_base, bool include_native_scoring = false) noexcept;
 }

@@ -1,5 +1,7 @@
 #include "native_menu.h"
 #include "Extension/ArcadeMode/arcade_mode.h"
+#include "Extension/ArcadeMode/arcade_trickpedia.h"
+#include "Engine/Game/Build/20260929/skatepedia.h"
 #include "native_menu_internal.h"
 #if defined(DINGOSDK_DEV_TOOLS)
 #include "native_menu_dump.h"
@@ -860,8 +862,6 @@ void native_menu_before_level_transition(std::uintptr_t base, unsigned next) noe
     });
 }
 overlay::HubPage native_menu_page() noexcept {
-    const auto trick_seen=trickpedia_seen.load(std::memory_order_acquire);
-    if(arcade_mode::enabled() && trick_seen && GetTickCount64()-trick_seen<250)return {true,overlay::trickpedia_section};
     // Seen every 50 ms while it is up; a little longer than that and it has gone.
     const auto seen = page_seen.load(std::memory_order_relaxed);
     if (!seen || GetTickCount64() - seen > 200) return {};

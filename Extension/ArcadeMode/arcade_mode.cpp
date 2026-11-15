@@ -3,6 +3,7 @@
 #include "arcade_custom_flatland_runtime.h"
 #include "arcade_custom_score_display.h"
 #include "Extension/UI/score_line_hud.h"
+#include "Extension/UI/hud_corner.h"
 #include "arcade_air_motion.h"
 #include "arcade_movement.h"
 #include "arcade_fixture_geometry.h"
@@ -497,7 +498,7 @@ void prepare_authored_catalog() noexcept {
         authored_status.store(3, std::memory_order_release);
     }
 }
-ComboSession combo_session(native_combo_tuning());
+ComboSession combo_session(native_combo_tuning(), true);
 ManualPhysics physical_manual;
 ManualPhysicsSteps physical_manual_steps; // Original native intervals; same input mutex.
 void reset_manual_physics() noexcept {
@@ -2157,17 +2158,24 @@ void on_client_tick() noexcept {
             }
         }
         {
-            static CustomScoreDisplay display;
+            // Release the former replacement; the original widget keeps its own
+            // animations, native history, signals and ScoringData reference.
             constexpr std::string_view display_owner="arcade.custom-tricks";
+            score_line::release(display_owner);
+            static CustomScoreDisplay display;
+            std::optional<hud_corner::ScorePresentation> presentation;
             if(gameplay && focus_available) {
-                score_line::prepare(display_owner);
-                const auto reading=tricks::read_score_hud(score_probe_base);
-                const auto line=display.update(combo_session.model(),combo_session.custom_scoring(),reading,now);
-                (void)score_line::ask_replacement(display_owner,line);
+                const auto reading=tricks::read_score_hud(score_probe_base,true);
+                const auto native_score=reading ? reading->native_scoring : std::nullopt;
+                const bool verified=combo_session.observe_native_score(native_score);
+                presentation=display.update(combo_session.model(),combo_session.custom_scoring(),reading,now,verified);
+                if(presentation)score_line::extra_tricks(display_owner,presentation->hud,display.rows());
             } else {
-                display.reset();score_line::release(display_owner);
+                display.reset();
+                (void)combo_session.observe_native_score(std::nullopt);
                 (void)custom_flatland_runtime::take_executions();
             }
+            hud_corner::present_score(presentation);
         }
         const auto failure_status = balance_bail_status();
         if (failure_status.serial != previous_balance_bail.serial || failure_status.result != previous_balance_bail.result) {
