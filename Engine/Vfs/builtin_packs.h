@@ -20,6 +20,15 @@ struct BuiltinPack {
 // launcher) is opened as data. Never throws; `notes` says what was unpacked or went wrong.
 std::vector<BuiltinPack> unpack_builtin_packs(const std::filesystem::path& mods_root,
                                               std::vector<std::string>& notes) noexcept;
+// Trusted startup authors may generate a small pack from the installed game.
+// Factories run before scanning mods; their private output is never distributed.
+// Registration precedes catalogue loading. A failed factory is left out.
+using LocalPackFactory = void (*)(const std::filesystem::path& game_root,
+                                  const std::filesystem::path& output);
+void register_local_pack(std::string name, LocalPackFactory factory);
+std::vector<BuiltinPack> prepare_local_packs(const std::filesystem::path& game_root,
+                                            std::vector<std::string>& notes) noexcept;
+
 // One pack's bytes as ReSkate.dll carries them (builtin_pack_format.h, or a plain zip) unpacked
 // into `target`; false with `issue` saying why. For tests and tools: unpack_builtin_packs uses it.
 bool unpack_builtin_pack(std::span<const unsigned char> bytes, const std::filesystem::path& target, std::string& issue) noexcept;

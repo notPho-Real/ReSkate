@@ -142,7 +142,7 @@ void apply(const Context& c, menu_data::Value root, const std::optional<ScorePre
     s.fields[0].shown = bits(static_cast<float>(wanted->multiplier));
     s.fields[1].shown = bits(static_cast<float>(std::min<double>(static_cast<double>(wanted->total), score_line::most_points)));
     s.fields[2].shown_text = std::to_string(wanted->points);
-    s.fields[3].shown_text = wanted->multiplier ? std::to_string(wanted->multiplier) : std::string{};
+    s.fields[3].shown_text = wanted->multiplier ? "x" + std::to_string(wanted->multiplier) : std::string{};
     s.fields[4].shown = wanted->multiplier ? 1u : 0u;
     s.fields[5].shown = bits(static_cast<float>(std::min(1.0, static_cast<double>(wanted->points) / score::action_fill_points)));
     Publishing ours;

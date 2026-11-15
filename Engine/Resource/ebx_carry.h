@@ -17,7 +17,8 @@ namespace dingosdk::frostbite::ebx::detail {
 // number them independently.
 class Carrier final {
 public:
-    Carrier(const Document& from, Document& to);
+    // Opt in for independently numbered field tables from different assets.
+    Carrier(const Document& from, Document& to, bool remap_fields = false);
 
     // The instance `from` index resolves to the existing `to` index instead of
     // being carried, for a copy the caller has matched by content.
@@ -42,6 +43,7 @@ private:
     std::map<Guid, std::size_t> instanceByGuid_;
     std::map<std::size_t, std::size_t> carriedInternal_;
     std::map<std::size_t, std::size_t> aliases_;
+    bool remap_fields_{};
     unsigned depth_{}; // instances being carried inside one another
 };
 

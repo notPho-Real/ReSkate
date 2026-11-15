@@ -13,6 +13,7 @@
 #include "Extension/Boot/eadp_errors_arena.h"
 #include "Extension/Assets/native_patch_support.h"
 #include "Extension/Assets/mod_layers.h"
+#include "Extension/UI/score_multiplier_asset.h"
 #include "Extension/Assets/loose_files.h"
 #include "Extension/Scripting/lua_native_block.h"
 #include "Extension/Assets/morph_memory_pool.h"
@@ -58,6 +59,7 @@ bool initialize_bootstrap(std::uintptr_t base, std::string& failure) {
     (void)stage(Channel::runtime, "Crash dumps from the game's own fatal handlers", ready, error);
     error.clear(); ready = start_native_patch_support(base, error);
     if (!stage(Channel::assets, "Native InitFS/package support", ready, error)) return false;
+    score_line::register_multiplier_label_pack();
     error.clear(); ready = start_mod_layers(base, error);
     if (!stage(Channel::assets, "Mod layout layers", ready, error)) return false;
     // Before anything that lets a script of the player's own into the game's Lua.

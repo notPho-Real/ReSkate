@@ -104,9 +104,9 @@ foreach(variant current client_phase)
     target_compile_features(${target} PRIVATE cxx_std_20)
     add_dependencies(dingosdk_arcade_manual_lifecycle_composition_tests ${target})
     if(variant STREQUAL current)
-        add_test(NAME arcade_score_phase COMMAND ${target})
+        add_test(NAME arcade_manual_lifecycle_score_phase COMMAND ${target})
     else()
-        add_test(NAME arcade_score_phase_rollback COMMAND "${Python3_EXECUTABLE}" "${lifecycle_generator}"
+        add_test(NAME arcade_manual_lifecycle_score_phase_rollback COMMAND "${Python3_EXECUTABLE}" "${lifecycle_generator}"
             --expect-failure score_client_phase --binary $<TARGET_FILE:${target}>)
     endif()
 endforeach()

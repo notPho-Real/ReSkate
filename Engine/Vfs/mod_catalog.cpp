@@ -19,6 +19,7 @@
 #include <chrono>
 #include <cstring>
 #include <fstream>
+#include <iterator>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -337,7 +338,9 @@ Catalog load_catalog(const std::filesystem::path& data_root, const MergeObserver
     // Content ReSkate carries itself (builtin_packs.h), unpacked first: it makes the Mods folder
     // when there is none, so the content loads without any mod installed.
     std::vector<std::string> builtin_notes;
-    const auto builtin = unpack_builtin_packs(data_root / mods_folder, builtin_notes);
+    auto builtin = unpack_builtin_packs(data_root / mods_folder, builtin_notes);
+    auto local = prepare_local_packs(data_root, builtin_notes);
+    builtin.insert(builtin.end(), std::make_move_iterator(local.begin()), std::make_move_iterator(local.end()));
     auto list = scan_mods(data_root);
     for (auto& note : builtin_notes) list.notes.push_back(std::move(note));
     result.root = std::move(list.root);

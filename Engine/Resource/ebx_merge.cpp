@@ -253,7 +253,8 @@ template <typename Visit> void each_pointer(Value& value, const Visit& visit) {
 
 namespace detail {
 
-Carrier::Carrier(const Document& from, Document& to) : from_(from), to_(to) {
+Carrier::Carrier(const Document& from, Document& to, bool remap_fields)
+    : from_(from), to_(to), remap_fields_(remap_fields) {
     for (std::size_t index = 0; index < to.types.size(); ++index)
         typeByName_.emplace(to.types[index].name, static_cast<std::int32_t>(index));
     for (std::size_t index = 0; index < to.instances.size(); ++index)
@@ -327,8 +328,33 @@ std::shared_ptr<Object> Carrier::object(const Object& source) {
     auto result = std::make_shared<Object>();
     result->descriptor = type(source.descriptor);
     result->fields.reserve(source.fields.size());
-    for (const auto& field : source.fields)
-        result->fields.push_back({field.descriptor, field.name, value(field.value)});
+    for (const auto& field : source.fields) {
+        if (!remap_fields_) {
+            result->fields.push_back({field.descriptor, field.name, value(field.value)});
+            continue;
+        }
+        // A carrier can copy between different native assets. Their field
+        // tables are numbered independently, just like their type tables.
+        std::size_t descriptor = field.descriptor;
+        bool found = false;
+        for (const auto& owner : from_.types) {
+            if (owner.fieldIndex < 0 || descriptor < static_cast<std::size_t>(owner.fieldIndex) ||
+                descriptor - static_cast<std::size_t>(owner.fieldIndex) >= owner.fieldCount) continue;
+            const auto target = typeByName_.find(owner.name);
+            if (target == typeByName_.end()) continue;
+            const auto& target_type = to_.types.at(static_cast<std::size_t>(target->second));
+            for (std::size_t i = 0; i < target_type.fieldCount; ++i) {
+                const auto at = static_cast<std::size_t>(target_type.fieldIndex) + i;
+                if (to_.fields.at(at).name != field.name) continue;
+                descriptor = at;
+                found = true;
+                break;
+            }
+            if (found) break;
+        }
+        if (!found) throw std::runtime_error("EBX carried field has no target descriptor: " + field.name);
+        result->fields.push_back({descriptor, field.name, value(field.value)});
+    }
     return result;
 }
 
@@ -377,6 +403,7 @@ std::shared_ptr<Object> clone_object(const Object& source) {
 
 Value clone_value(const Value& source) {
     Value result;
+    result.arrayHash = source.arrayHash;
     if (const auto* nested = std::get_if<std::shared_ptr<Object>>(&source.data)) {
         result.data = *nested ? clone_object(**nested) : nullptr;
         return result;

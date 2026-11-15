@@ -82,8 +82,22 @@ void update_native_rows(Hud& h,const Context& c,bool allowed,double now) {
                 return row.trick.occurrence==requested.occurrence && row.trick.scope==requested.scope && row.trick.name==requested.name;
             });
             if(existing!=n.rows.end()) {next.push_back(*existing);continue;}
+            // The native widget takes its font/style from the label model.
+            // A newly allocated row with just Text does not carry that styling.
+            // Copy only a live native name label, never its score or parent stack.
+            Value name_template;
+            for(const auto& donor:native) {
+                if(donor.widget.blueprint!=h.row_blueprint || c.type_of(donor.widget.data.handle)!=type)continue;
+                name_template=c.field(Value{donor.widget.data.handle,type},score::row_name);
+                break;
+            }
+            require(name_template.handle!=0,"Native trick label template is unavailable.");
             NativeRow row;row.trick=requested;row.row=make_row(h,c,type,requested.name);
             made.push_back(row);
+            const auto label=c.field(row.row.model,score::row_name);
+            require(label.type==name_template.type,"Native trick label type differs.");
+            c.copy(label,c.address(name_template));
+            c.text(label_text(c,row.row.model,score::row_name),requested.name);
             for(const auto& old:native)row.older.emplace_back(old.widget.data.handle,old.name);
             next.push_back(std::move(row));
         }

@@ -15,9 +15,44 @@
 #include <span>
 #include <string_view>
 #include <utility>
+#include <mutex>
+#include <stdexcept>
 #include <vector>
 
 namespace dingosdk::mods {
+namespace {
+struct LocalPack { std::string name; LocalPackFactory factory{}; };
+std::vector<LocalPack>& local_packs() { static std::vector<LocalPack> value; return value; }
+std::mutex& local_pack_mutex() { static std::mutex value; return value; }
+}
+void register_local_pack(std::string name, LocalPackFactory factory) {
+    if (!factory || name.empty() || name.size() > 64 ||
+        name.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789-_") != std::string::npos)
+        throw std::invalid_argument("Invalid local pack registration");
+    std::lock_guard lock(local_pack_mutex());
+    for (const auto& pack : local_packs()) if (pack.name == name) {
+        if (pack.factory != factory) throw std::runtime_error("Local pack name already registered");
+        return;
+    }
+    local_packs().push_back({std::move(name), factory});
+}
+std::vector<BuiltinPack> prepare_local_packs(const std::filesystem::path& game_root,
+                                           std::vector<std::string>& notes) noexcept {
+    std::vector<BuiltinPack> result;
+    try {
+        std::lock_guard lock(local_pack_mutex());
+        for (const auto& pack : local_packs()) {
+            try {
+                const auto directory = game_root / L"Mods" / builtin_folder / pack.name;
+                pack.factory(game_root, directory);
+                result.push_back({"reskate-builtin-" + pack.name, directory});
+            } catch (const std::exception& error) {
+                notes.push_back("Local native asset pack " + pack.name + " unavailable: " + error.what());
+            }
+        }
+    } catch (const std::exception& error) { notes.push_back(error.what()); }
+    return result;
+}
 namespace {
 namespace fs = std::filesystem;
 // Each pack: its RCDATA resource in ReSkate.dll (cmake/Runtime.cmake) and its folder name.

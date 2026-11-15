@@ -24,13 +24,19 @@ struct Widget {Address blueprint{};Ref data;};
 namespace menu_data { struct Schema{unsigned size{};};constexpr Schema stack_item{48}; }
 void require(bool ok,const char* why){if(!ok)throw std::runtime_error(why);}
 struct Context {
-    Address manager{1};mutable unsigned made{},destroyed{},published{};mutable bool fail_after_publish{},fail_make{};
+    Address manager{1};mutable unsigned made{},destroyed{},published{};mutable bool fail_after_publish{},fail_make{},fail_label_copy{};
     mutable std::map<std::uint64_t,std::string> names{{20,"Manual"},{21,"Kickflip"},{22,"Heelflip"}};
+    mutable std::map<std::uint64_t,unsigned> label_styles{{20,42},{21,43},{22,44}};
     mutable std::map<std::uint64_t,std::vector<std::byte>> items;
     mutable std::vector<std::byte> stack;
     bool root_live{true};
     Address type_of(std::uint64_t h)const{return h==1?(root_live?100u:0u):names.contains(h)?200u:items.contains(h)?300u:0u;}
     Value path(Value v,std::initializer_list<std::uint32_t>)const{return v;}
+    Value field(Value v,std::uint32_t hash)const{require(hash==score::row_name,"copied a field outside the name label");return {v.handle,400};}
+    Address address(Value v)const{require(v.type==400,"copied a complete trick row");return static_cast<Address>(v.handle);}
+    void copy(Value v,Address source)const{require(v.type==400 && v.handle>=65536 && source<65536,"label copy touched native ownership");names[v.handle]=names.at(source);label_styles[v.handle]=label_styles.at(source);if(fail_label_copy){fail_label_copy=false;throw std::runtime_error("partial label initialization");}}
+    void text(Value v,const std::string& text)const{require(v.handle>=65536,"rewrote native label");names[v.handle]=text;}
+
     std::string text(Value v,unsigned)const{return names.at(v.handle);}
     std::vector<std::byte> array(Value,unsigned max,unsigned& count,unsigned& stride)const{stride=48;count=static_cast<unsigned>(stack.size()/stride);require(count<=max,"overflow");return stack;}
     void array(Value,std::span<const std::byte> b,unsigned n)const{require(b.size()==std::size_t{n}*48,"stride");stack.assign(b.begin(),b.end());++published;if(fail_after_publish){fail_after_publish=false;throw std::runtime_error("partial native publication");}}
@@ -43,11 +49,11 @@ Value label_text(const Context&,Value v,std::uint32_t){return v;}
 Address row_type_now(Hud&,const Context&,double){return 200;}
 Row make_row(Hud&,const Context& c,Address,const std::string& name){
     if(c.fail_make)throw std::runtime_error("allocation failed");
-    const std::uint64_t id=65536ull*(++c.made);c.names[id]=name;std::vector<std::byte> bytes(48);
+    const std::uint64_t id=65536ull*(++c.made);c.names[id]=name;c.label_styles[id]=0;std::vector<std::byte> bytes(48);
     const Widget widget{900,{0,id}};std::memcpy(bytes.data(),&widget,sizeof widget);c.items[id+1]=bytes;return {name,{id,200},{id+1,300}};
 }
 std::vector<std::byte> bytes_of(const Context& c,Value value){return c.items.at(value.handle);}
-void destroy_quietly(const Context& c,Value& v){require(v.handle>=65536,"destroyed a native model");c.names.erase(v.handle);c.items.erase(v.handle);++c.destroyed;v={};}
+void destroy_quietly(const Context& c,Value& v){require(v.handle>=65536,"destroyed a native model");c.names.erase(v.handle);c.label_styles.erase(v.handle);c.items.erase(v.handle);++c.destroyed;v={};}
 #include "Extension/UI/score_line_native_rows.inl"
 std::vector<std::string> shown(const Context& c){std::vector<std::string> out;for(std::size_t i=0;i<c.stack.size();i+=48){Widget w{};std::memcpy(&w,c.stack.data()+i,sizeof w);out.push_back(c.names.at(w.data.handle));}return out;}
 void request(std::vector<ExtraTrick> rows,double now){auto& n=native_rows();n.requested=std::move(rows);n.requested_root=1;n.at=now;}
@@ -57,6 +63,8 @@ int main(){using namespace dingosdk::score_line;
     request({{1,"Casper",1}},1000);update_native_rows(h,c,true,1000);
     require(shown(c)==std::vector<std::string>{"Casper","Manual","Kickflip"},"custom row missing or native order changed");
     require(c.names.at(20)=="Manual" && c.names.at(21)=="Kickflip","rewrote native row labels");
+    require(c.label_styles.at(native_rows().rows.front().row.model.handle)==42,"custom row did not retain the native name label styling");
+    require(c.label_styles.at(20)==42 && c.label_styles.at(21)==43,"native label styling changed");
     const auto made=c.made,published=c.published;update_native_rows(h,c,true,1010);
     require(c.made==made && c.published==published,"unchanged native history rebuilt every tick");
     request({{1,"Casper",1},{2,"Casper Flip",1}},1020);update_native_rows(h,c,true,1020);
@@ -78,6 +86,9 @@ int main(){using namespace dingosdk::score_line;
     request({{5,"Casper",5}},4000);c.fail_make=true;
     try{update_native_rows(h,c,true,4000);}catch(const std::runtime_error&){}
     c.fail_make=false;clear_native_rows(h,c);require(c.stack==refreshed && c.items.empty(),"failed allocation changed native history");
+    request({{8,"Casper",5}},4500);c.fail_label_copy=true;
+    try{update_native_rows(h,c,true,4500);}catch(const std::runtime_error&){}
+    update_native_rows(h,c,false,4510);require(c.stack==refreshed && c.items.empty(),"partial label initialization leaked a row or changed native history");
     request({{6,"Casper",6}},5000);update_native_rows(h,c,true,5000);Context other;other.manager=2;other.native({21});
     request({{7,"Casper Flip",7}},5010);update_native_rows(h,other,true,5010);update_native_rows(h,other,false,5020);
     require(shown(other)==std::vector<std::string>{"Kickflip"},"old registry history was copied into the new registry");

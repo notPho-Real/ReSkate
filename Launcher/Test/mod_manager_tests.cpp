@@ -17,6 +17,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -506,6 +507,23 @@ int main() {
             packed.resize(ZSTD_compress(packed.data(), packed.size(), plain.data(), plain.size(), 19));
             return packed;
         };
+        const auto local_factory = +[](const fs::path&, const fs::path& output) {
+            fs::create_directories(output);
+            std::ofstream(output / "layout.toc", std::ios::binary) << "local test pack";
+        };
+        mods::register_local_pack("test-local", local_factory);
+        mods::register_local_pack("test-local", local_factory);
+        mods::register_local_pack("test-refused", +[](const fs::path&, const fs::path&) {
+            throw std::runtime_error("fixture refusal");
+        });
+        bool invalid_name = false;
+        try { mods::register_local_pack("../outside", local_factory); }
+        catch (const std::invalid_argument&) { invalid_name = true; }
+        std::vector<std::string> local_notes;
+        const auto local = mods::prepare_local_packs(root / "local-native", local_notes);
+        check(invalid_name && local.size() == 1 && local.front().name == "reskate-builtin-test-local" &&
+              local_notes.size() == 1 && read(local.front().directory / "layout.toc") == "local test pack",
+              "Local native packs reject unsafe names, deduplicate registration and omit failed factories");
         const auto target = root / L"builtin" / L"good";
         std::string issue;
         const auto good = pack({{"layout.toc", "toc"}, {"sounds/body/Body Impact 1.wav", "RIFF"}, {"decks/wide/layout.toc", "deck"}});

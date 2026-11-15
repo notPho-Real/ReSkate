@@ -221,5 +221,71 @@ The source-composed regression executes the real transaction: the old code fails
 the correction shows one action for the observed Ollie and two after the native
 Heelflip commit, retains them through landing, and refuses recovery after genuine
 evidence loss. The rollback control must fail at the phase-boundary assertion.
-This is local regression evidence; the correction still requires exact-source
-Windows compilation and native device acceptance.
+The exact `886d3091` DLL built successfully and was tested on the device at a
+measured 60 Hz native physics cadence. Ollie followed by Heelflip displayed 2x
+through landing. Manual, Casper, Casper Flip and Ollie retained counts 1, 2, 3
+and 4. The longer flatland sequence reached 12 performed actions, and the
+balance-bail trial produced a failed-combo event without banking it.
+
+This candidate did not pass full acceptance. At counts 7, 9 and 12 the original
+HUD model contained the expected integer and text, but the circle's number was
+not visibly rendered. Casper and Casper Flip existed in the native stack model
+without visible names. Registry publication is not rendering proof. The rail
+chain also remains unverified: the aligned attempt bailed before its first grind
+request. These results require widget diagnosis and another bounded native check,
+not a scoring-success claim based only on model values.
+
+The Windows preflight compiled the new phase regressions but its existing test
+selector omitted their original names. Registering them as
+`arcade_manual_lifecycle_score_phase` and
+`arcade_manual_lifecycle_score_phase_rollback` puts both under that selector.
+Local CTest selection and execution pass; Windows execution of these renamed
+registrations remains pending the next substantive candidate build.
+
+The private authored-widget inspection identifies `Multiplier_Texture` inside
+`ScoringMultiplier_Widget`. Its graph selects texture artwork; it has no text
+label element. The field previously called `multiplier_text` is the root's
+`LineMultiplier` label model, not the circle's drawing source. Updating that
+string alone cannot display larger counts. The existing `ScoringAssetElements`
+list accepts fill styles, not arbitrary child widgets, so it is not an attachment
+point for a number label. A correction must attach native text inside the
+multiplier's existing container, preserving its layout and animation transforms.
+No replacement score HUD or capped numeric multiplier is an accepted solution.
+
+The custom-row candidate now copies only a live native name label's styling
+before setting its own text. It never copies the row's score or parent-stack
+reference. Source-composed tests cover style retention and partial initialization
+cleanup; the previous implementation fails the new style assertion. This is a
+candidate initialization correction, not proof that its names render on device.
+
+### Native circle text candidate after the 886 device capture
+
+The circle now has a locally authored native label inside the same container as
+its number texture. It inherits the texture's layout and the original container's
+motion. A native float comparison selects the text above four and retains the
+original texture at or below four. The text binds to the existing LineMultiplier
+label model; it does not create a second score owner. Publication includes the
+native `x` prefix. Native scoring, action admission and physics are unchanged.
+
+Startup generates this amendment from the installed game's four UI assets into
+a private built-in mod directory. The existing mod merger loads that output.
+No extracted assets are embedded in the DLL or added to distributable source.
+Equal generated files retain their timestamps, preserving the merge cache.
+The amendment is absent when an older DLL without its factory builds the mod
+catalogue. Device verification must include restoring the original presentation
+when Arcade Mode is disabled, and the prior DLL rollback.
+
+A sanitizer-enabled private export/import check preserved all 2,569 original
+widget fields, including boxed animation data. Only the container's children,
+the widget's components and the root's property connections were extended.
+The graph adds one native label and three native binding/visibility components.
+The generic EBX authoring support explicitly imports only non-array types,
+remaps field descriptors across assets, and preserves array reflection hashes
+when cloning. Focused tests cover round trips, malformed/conflicting donors,
+source preservation, and a negative control without field remapping. Native
+score-presentation, custom-row and existing EBX merge regressions also pass.
+
+These checks establish source/asset consistency only. The new text has not yet
+been rendered on hardware. Native custom-row visibility, high-count rendering,
+Arcade OFF restoration and the remaining requested rail/grab chain still need
+exact-source device acceptance before this candidate is ready for owner testing.
