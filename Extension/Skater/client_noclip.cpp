@@ -898,6 +898,22 @@ bool wallplant_physical_target(WallplantDriveFrame frame,const std::array<float,
     target=out;
     return true;
 }
+// Admission follows ordinary movement preparation. Its first spring target
+// must already contain the checked anchor in the articulated board frame.
+bool wallplant_initial_drive_target(const arcade_mode::WallplantCommand& command,
+        const std::array<float,16>& entity,const std::array<float,16>& board,
+        const std::array<float,16>& actual,float limit,
+        const std::array<float,3>& root_spin,const std::array<float,3>& reference_spin,
+        std::array<float,16>& target,game::orientation_target::Result& report) noexcept {
+    std::array<float,16> anchored{},physical{};
+    float available{},travel{};
+    return wallplant_hold_target_matrix(command,entity,anchored) &&
+        wallplant_hold_orientation(command,board,0,anchored) &&
+        wallplant_physical_target(WallplantDriveFrame::entity,entity,board,anchored,physical) &&
+        game::orientation_target::motion_budget(limit,command.native.physics_seconds,
+            root_spin,reference_spin,available,travel) &&
+        game::orientation_target::bound(actual,physical,available,target,report);
+}
 // Move the native target pair together, preserving the relative articulated
 // pose and world-origin translation. These are drive targets, not body poses.
 bool wallplant_ground_target_matrices(const std::array<float,48>& supplied,
@@ -1215,20 +1231,17 @@ bool arcade_wallplant_enter_hold(const WallplantHandoff& handoff,std::uintptr_t 
         source_require(admission.begin(command,now),"Wallplant hold origin is invalid.");
         const auto drive_witness=wallplant_drive_witness(owner,reader);
         const auto entry_orientation=wallplant_orientation_snapshot(input_owner,reader);
-        auto initial_drive=hold_target;
-        source_require(wallplant_hold_orientation(command,drive_witness.matrix,0,initial_drive),
-            "Wallplant initial turn is invalid.");
-        float initial_limit{},initial_travel{};
-        source_require(game::orientation_target::motion_budget(entry_orientation.limit,command.native.physics_seconds,
-            entry_orientation.root_spin,entry_orientation.reference_spin,initial_limit,initial_travel),
-            "Wallplant initial turn has no native motion budget.");
         game::orientation_target::Result initial_turn;
         std::array<float,16> initial_bounded{};
-        source_require(game::orientation_target::bound(entry_orientation.actual,initial_drive,initial_limit,
-            initial_bounded,initial_turn),"Wallplant initial turn exceeds the native constraint.");
-        // Establish orientation immediately, at the actual board origin. The
-        // collision-checked position remains owned by the normal target route.
-        for(unsigned axis=0;axis<3;++axis)initial_bounded[12+axis]=drive_witness.matrix[12+axis];
+        source_require(wallplant_initial_drive_target(command,bodies.matrix,drive_witness.matrix,
+            entry_orientation.actual,entry_orientation.limit,entry_orientation.root_spin,
+            entry_orientation.reference_spin,initial_bounded,initial_turn),
+            "Wallplant initial anchor or orientation is invalid.");
+        // Admission occurs after this step's ordinary drive preparation.
+        // Start the physical drive at the checked anchor now; waiting for the
+        // next preparation leaves the first held step targeting the wall.
+        // The articulated origin offset was composed above. These are spring
+        // targets only; no physical-body transform is repositioned here.
         arcade_mode::AirMotionOutput brake{};brake.ready=brake.vertical=brake.horizontal=true;
         brake.delta_x=-velocities[0][0];brake.delta_z=-velocities[0][2];
         source_require(arcade_mode::AirMotion::apply_bodies(brake,velocities,spins,bodies.up),

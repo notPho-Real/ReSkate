@@ -3,6 +3,12 @@
 #include "Extension/ArcadeMode/arcade_native_wall_contact.h"
 #include "Extension/ArcadeMode/arcade_wallplant.h"
 #include "Engine/Game/Build/20260929/arcade_wall_contact.h"
+#include <cstdint>
+#if !defined(_WIN32)
+using LONG=std::int32_t;
+#endif
+#include "Engine/Game/Build/20260929/no_bail.h"
+#include "Engine/Game/Build/20260929/skater_state.h"
 #include <atomic>
 #include <algorithm>
 #include <cmath>
@@ -21,8 +27,10 @@ namespace {
 using namespace dingosdk::arcade_mode;
 using namespace dingosdk::arcade_mode::native_wall_contact;
 using dingosdk::NoBailSkater;
+namespace game=dingosdk::game;
 namespace c=dingosdk::game::build::v20260929::arcade_wall_contact;
 namespace b=dingosdk::game::build::v20260929::skater_body;
+namespace s=dingosdk::game::build::v20260929::skater_state;
 @contact_response_scope@
 std::atomic<bool> ready{true},permitted{true};
 std::uintptr_t image=0x100000;
@@ -30,7 +38,7 @@ std::mutex mutex;
 Snapshot latest{},latest_board{};
 WallplantCommand held{};
 NoBailSkater local{};
-bool uncontested=true,authorized=true,hold_valid=true,handle_valid=true;
+bool authorized=true,hold_valid=true,handle_valid=true;
 std::map<std::uintptr_t,std::vector<unsigned char>> memory;
 unsigned checks{},original_calls{},logs{},collector_logs{};
 bool response_result{},nested{};
@@ -45,7 +53,11 @@ template<class T>bool read(std::uintptr_t at,T& value){
 std::uintptr_t pointer(std::uintptr_t at){std::uintptr_t value{};read(at,value);return value;}
 bool fixture_owner(NoBailSkater& owner){owner=local;return local.base!=0;}
 #define no_bail_skater fixture_owner
-bool collision_uncontested(const CollisionScope&){return uncontested;}
+bool consume_published_report(std::uintptr_t address) {
+    std::uint8_t value{};if(!read(address,value) || value!=1)return false;
+    put(address,std::uint8_t{});return true;
+}
+@contact_response_uncontested@
 std::uint32_t GetCurrentThreadId(){return 7;}
 std::uint64_t GetTickCount64(){return 100;}
 bool fixture_current(const Contact&,std::uintptr_t){return handle_valid;}
@@ -70,9 +82,16 @@ bool (*original_pose)(std::uintptr_t,const float*){};
 #undef current
 #undef no_bail_skater
 void setup(){
-    ready=permitted=true;uncontested=authorized=hold_valid=handle_valid=true;
-    memory.clear();latest_board={};latest={};held={};logs=collector_logs=0;response_scope=nullptr;collision_scope={};
+    ready=permitted=true;authorized=hold_valid=handle_valid=true;
+    memory.clear();latest_board={};latest={};held={};logs=collector_logs=0;response_scope=nullptr;collision_scope={};publication_response={};
     local={image,2,3,0x40000,0x50000};
+    put(local.core+c::core_causes,std::uintptr_t{9});
+    put(9+c::collector_context,local.context);
+    put(9+c::collector_flags,std::array<std::uint8_t,c::collector_flag_count>{});
+    put(9+c::collector_count,std::uint32_t{});
+    namespace bail=dingosdk::game::build::v20260929::no_bail;
+    put(local.context+bail::impact_request_offset,std::uint32_t{});
+    put(local.context+bail::animation_request_offset,std::uint32_t{});
     auto& board=latest_board;board.owner=local;board.serial=20;board.sampled_at=90;
     board.source=Source::board;board.valid=board.after_valid=true;
     board.state=board.state_after=201;board.seconds=1.f/30;board.physics_thread=7;board.count=1;
@@ -80,6 +99,7 @@ void setup(){
     hit.normal={0,0,1};hit.identity_valid=hit.static_body=hit.categories_known=true;hit.categories=12272;hit.bone=4;
     latest=board;latest.source=Source::rig;latest.serial=21;latest.board_serial=20;latest.sampled_at=91;
     latest.processed=true;latest.summaries=0x70000;latest.count=3;
+    latest.body_report_known=latest.body_report=true;
     latest.contacts[0]=latest.contacts[1]=latest.contacts[2]=hit;
     latest.contacts[0].bone=7;latest.contacts[1].bone=8;latest.contacts[2].bone=22;
     latest.impacts={0,0,4,0,5,0,0,0};
@@ -90,6 +110,10 @@ void setup(){
     put(local.rig+b::contact_holder_offset,std::uintptr_t{0x60000});
     put(std::uintptr_t{0x60000}+b::contact_struct_offset,latest.summaries);
     put(latest.summaries+c::summary_impacts,latest.impacts);
+    put(latest.summaries+c::summary_body_contact,std::uint8_t{1});
+    put(local.core+s::trick_state_offset,std::uintptr_t{0xa0000});
+    put(0xa0000+c::trick_contacts,std::uintptr_t{0xb0000});
+    put(0xb0000+bail::body_contact_output_offset,std::uint8_t{1});
     put(0x80000,std::array<float,5>{1,2,3,4,5});
 }
 void arm(){
@@ -156,6 +180,55 @@ void run_contact_response_tests(){
     hooked_causes(10,false);check(collector_logs==1,"unrelated collector observed");
     held={};hooked_causes(9,false);check(collector_logs==1,"idle collector observed");
     original_causes=native_causes;
+    // The recorded later selector word contains independent body-contact and
+    // impact requests even though the earlier collector had no cause flags.
+    for(const auto word:{0x400000u,0x8000u,0xb508000u}) {
+        setup();ResponseScope scope{};scope.collector=9;response_scope=&scope;arm();
+        put(local.context+dingosdk::game::build::v20260929::no_bail::impact_request_offset,word);
+        const auto before=memory;
+        check(consume() && memory==before,"independent native request must survive complete same-wall fixture");
+        response_scope=nullptr;
+    }
+    setup();hooked_causes(9,false);
+    const auto before_publication=memory;
+    check(finish_contact_publication(local.core),"admitted collision did not consume its separate body report");
+    auto expected_publication=before_publication;
+    expected_publication[0xb0000+game::build::v20260929::no_bail::body_contact_output_offset]={0};
+    check(memory==expected_publication,"contact publication modified raw contacts or native requests");
+    check(!finish_contact_publication(local.core),"contact publication authority repeated");
+    setup();hooked_causes(9,false);
+    check(!finish_contact_publication(local.core+1) && !finish_contact_publication(local.core),
+          "wrong publisher retained or consumed contact authority");
+    setup();hooked_causes(9,true);
+    check(!finish_contact_publication(local.core),"alternate collector mode granted publication authority");
+    setup();held={};hooked_causes(9,false);
+    check(!finish_contact_publication(local.core),"no admitted A command consumed a native body report");
+    setup();hooked_causes(9,false);held={};hooked_causes(9,false);
+    check(!finish_contact_publication(local.core),"later collector retained earlier publication authority");
+    for(unsigned fault=0;fault<15;++fault) {
+        setup();hooked_causes(9,false);
+        switch(fault) {
+        case 0:held={};break;
+        case 1:latest.serial++;break;
+        case 2:latest_board.serial++;break;
+        case 3:local.entity++;break;
+        case 4:permitted=false;break;
+        case 5:authorized=false;break;
+        case 6:hold_valid=false;break;
+        case 7:handle_valid=false;break;
+        case 8:latest.body_report_known=false;break;
+        case 9:put(latest.summaries+c::summary_body_contact,std::uint8_t{0});break;
+        case 10:put(local.context+game::build::v20260929::no_bail::impact_request_offset,std::uint32_t{0x8000});break;
+        case 11:put(local.context+game::build::v20260929::no_bail::impact_request_offset,std::uint32_t{0x400000});break;
+        case 12:put(local.context+game::build::v20260929::no_bail::animation_request_offset,std::uint32_t{0x8000000});break;
+        case 13:latest.contacts[1].shape.index++;break;
+        case 14:put(9+c::collector_count,std::uint32_t{1});break;
+        }
+        const auto before=memory;
+        check(!finish_contact_publication(local.core) && memory==before,
+              "independent fault or changed contact lost its published native report");
+        check(!finish_contact_publication(local.core),"rejected publication retained authority");
+    }
     // A complete same-wall collision is one response even when the native rig
     // reports the head, torso or pelvis alongside the board and limbs.
     for(std::uint32_t bone=1;bone<24;++bone){
@@ -174,7 +247,7 @@ void run_contact_response_tests(){
     latest.contacts[0].bone=8;latest.contacts[1].bone=22;latest.contacts[2].bone=1;
     ResponseScope captured{};captured.collector=9;response_scope=&captured;arm();
     check(same_wall_contacts(latest_board,latest,held.body,held.contact_normal) && !consume(),
-        "captured complete wall collision still bails");
+        "captured matching impact was not consumed");
     response_scope=nullptr;
     setup();latest.contacts[2].bone=1;latest.contacts[2].shape.index++;
     ResponseScope foreign{};foreign.collector=9;response_scope=&foreign;arm();
@@ -186,7 +259,7 @@ void run_contact_response_tests(){
         case 0:scope.armed=false;break;
         case 1:ready=false;break;
         case 2:permitted=false;break;
-        case 3:uncontested=false;break;
+        case 3:put(local.context+dingosdk::game::build::v20260929::no_bail::impact_request_offset,std::uint32_t{0x8000});break;
         case 4:local.entity++;break;
         case 5:held={};break;
         case 6:held.input_sequence++;break;
@@ -241,7 +314,7 @@ void run_contact_response_tests(){
         case 1:bad.pose_used=true;break;
         case 2:permitted=false;break;
         case 3:ready=false;break;
-        case 4:uncontested=false;break;
+        case 4:put(local.context+dingosdk::game::build::v20260929::no_bail::impact_request_offset,std::uint32_t{0x8000});break;
         case 5:authorized=false;break;
         case 6:hold_valid=false;break;
         case 7:handle_valid=false;break;

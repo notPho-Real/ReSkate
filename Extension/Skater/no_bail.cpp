@@ -1,4 +1,5 @@
 #include "no_bail.h"
+#include "Extension/ArcadeMode/arcade_native_wall_contact.h"
 #include "client_source_spawn.h"
 #include "Extension/Skater/skater_events.h"
 #include "Engine/Game/Input/controller_bindings.h"
@@ -2146,6 +2147,7 @@ void publish_animation(std::uintptr_t core) {
     // unchanged: forcing it true used to put the skater into a stumbling state.
     (void)filter_requests(core, &Owner::core);
     protection().publish_original(core);
+    arcade_mode::native_wall_contact::finish_publication(core);
     filter_contact_animation(core);
     // Sample the game's own failed-landing/runout result at its publication
     // boundary. It may be true for only one physics frame, between mode ticks.

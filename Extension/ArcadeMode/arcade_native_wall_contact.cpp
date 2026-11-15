@@ -56,6 +56,7 @@ struct ResponseScope {
     bool armed{},pose_used{};
 };
 thread_local ResponseScope* response_scope{};
+thread_local ResponseScope publication_response{};
 std::atomic<bool> permitted{},ready{};
 std::uintptr_t image{};
 std::mutex mutex;
@@ -211,6 +212,9 @@ void hooked(std::uintptr_t summaries,std::uintptr_t input) {
         if(!no_bail_skater(owner)||owner!=next.owner||!holder||
            pointer(holder+b::contact_struct_offset)!=summaries||
            !read(summaries+c::summary_impacts,next.impacts))return;
+        std::uint8_t report{};
+        next.body_report_known=read(summaries+c::summary_body_contact,report) && report<=1;
+        next.body_report=next.body_report_known && report!=0;
         next.processed=true;
         publish(next);
     } catch(...) {}
@@ -255,6 +259,12 @@ void hooked_board(std::uintptr_t board,float seconds,const void* up) {
             read(after.context+game::build::v20260929::skater_movement::context_velocity,next.velocity_after)&&finite(next.velocity_after);
         if(next.after_valid)publish(next);
     } catch(...) {}
+}
+bool consume_published_report(std::uintptr_t address) noexcept {
+    if(address<0x10000 || address>memory::highest_user_address)return false;
+    __try {
+        return _InterlockedCompareExchange8(reinterpret_cast<volatile char*>(address),0,1)==1;
+    } __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
 }
 bool collision_uncontested(const CollisionScope& scope) noexcept {
     namespace bail=game::build::v20260929::no_bail;
@@ -333,10 +343,16 @@ bool hooked_collision(std::uintptr_t collector,float first,float second,bool mod
 }
 void hooked_causes(std::uintptr_t collector,bool mode) {
     const auto pending=wallplant_runtime::held_command();
+    publication_response={};
     ResponseScope scope{};scope.collector=collector;
     auto* previous=response_scope;response_scope=&scope;
     struct Reset {ResponseScope* previous;~Reset(){response_scope=previous;}} reset{previous};
     original_causes(collector,mode);
+    // Keep authority only for this completed, uncontested contact transaction.
+    // Every subsequent collector invalidates it, including an unrelated owner.
+    if(!mode && scope.command && scope.rig.body_report_known && scope.rig.body_report &&
+       collision_uncontested(scope.collision) && same_wall_contacts(scope.board,scope.rig,
+           scope.command.body,scope.command.contact_normal))publication_response=scope;
     // Observe the complete native decision before selection can clear or
     // replace it. Polling after a wipeout cannot identify its first cause.
     const auto command=scope.command?scope.command:pending;
@@ -495,11 +511,36 @@ bool hooked_impact(std::uintptr_t rig,const float* thresholds,bool mode) {
     const bool result=original_impact(rig,thresholds,mode);
     return consume_plant_impact(rig,thresholds,mode,caller,result);
 }
+// Consume only the semantic report produced by the already-admitted contact.
+// Raw contacts, per-bone histories, impulses, causes and request words stay native.
+bool finish_contact_publication(std::uintptr_t core) noexcept {
+    const auto response=publication_response;publication_response={};
+    if(!response.command || core!=response.collision.owner.core)return false;
+    try {
+        Snapshot board{},body{};WallplantCommand command{};std::uint64_t now{};
+        if(!contact_response_current(response,response.collision.owner.rig,board,body,command,now) ||
+           !body.body_report_known || !body.body_report)return false;
+        const auto holder=pointer(body.owner.rig+b::contact_holder_offset);
+        std::uint8_t summary{},published{};
+        namespace bail=game::build::v20260929::no_bail;
+        const auto trick=pointer(core+s::trick_state_offset);
+        const auto contacts=trick?pointer(trick+c::trick_contacts):0;
+        if(!holder || pointer(holder+b::contact_struct_offset)!=body.summaries || !contacts ||
+           !read(body.summaries+c::summary_body_contact,summary) || summary!=1 ||
+           !read(contacts+bail::body_contact_output_offset,published) || published!=1)return false;
+        if(!consume_published_report(contacts+bail::body_contact_output_offset))return false;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT CONTACT PUBLICATION: ms={} input={} raw={} rig_raw={} original_body_report=true consumed=true.",
+            now,command.input_sequence,board.serial,body.serial);
+        return true;
+    } catch(...) {return false;}
+}
 bool fingerprint(const game::build::Fingerprint& contract) noexcept {
     std::array<unsigned char,32> actual{};
     return read(image+contract.rva,actual)&&actual==contract.bytes;
 }
 }
+void finish_publication(std::uintptr_t core) noexcept { (void)finish_contact_publication(core); }
 bool start(std::uintptr_t base) noexcept {
     if(ready.load(std::memory_order_acquire))return base==image;
     if(!base||(image&&image!=base)||!supported_build::running_image_matches(base))return false;
@@ -509,6 +550,9 @@ bool start(std::uintptr_t base) noexcept {
     for(const auto& contract:c::collision_contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:c::impact_contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:c::pose_contracts)if(!fingerprint(contract))return false;
+    for(const auto& contract:c::body_report_contracts)if(!fingerprint(contract))return false;
+    for(const auto& contract:game::build::v20260929::no_bail::body_contact_contracts)
+        if(!fingerprint(contract))return false;
     for(const auto& contract:game::build::v20260929::physics_owner::contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:game::build::v20260929::physics_owner::component_contracts)if(!fingerprint(contract))return false;
     for(const auto& contract:b::contracts)if(!fingerprint(contract))return false;

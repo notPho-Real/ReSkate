@@ -1085,3 +1085,40 @@ The earlier AIR201 call-path description was incorrect: update 4822230 ends befo
 The existing bounded hold writer now also runs after that exact position preparation, before native reference publication. AIR publication composes the world target directly; ground publication retains its local target plus origin. The unused AIR local target remains unchanged. Exact entry/call/tail byte checks guard the added route. Original preparation and the solver each run once; owner, geometry, orientation, expiry and genuine bail checks remain active. No native state, collision or body transform is manufactured.
 
 Focused production-wrapper regressions cover the actual preparation/publication/tail sequence, unknown callers, wrong rigs, inactive holds, invalid authority and unchanged deadlines. Runtime Werror passes locally. Exact Windows/integration CI and a new controlled hardware capture remain required. This correction is not hardware accepted and is not ready for user testing.
+
+
+### Initial physical anchor and contact publication
+
+The 7827d8a4 capture entered a plant but cancelled after 51 ms because the
+native rider was already off-board. The cached observation still said AIR201;
+the following selector returned 300. Zero subsequent hold targets and no
+release were observed. Earlier empty collector flags were insufficient evidence:
+the later selector word contained both body-contact and impact-request bits.
+
+The first spring target had deliberately overwritten the checked anchor with
+the current board origin. Admission occurs after ordinary target preparation,
+so this delayed the anchor until a later tick that the failed run never reached.
+Entry now composes the measured articulated offset into the checked anchor
+before applying the existing orientation constraint. Only a solver target
+changes; physical transforms are not repositioned.
+
+The pinned image also publishes the completed rig's sensitive-contact summary
+independently of the cause collector: summary +10fe becomes contacts +fb8,
+then animation contact +d6 and context request bit22. The completed, admitted,
+uncontested collision now owns one publication receipt. After the original
+publisher runs, the matching receipt can consume that single contact output.
+It cannot clear raw contacts, histories, impulses, cause records, impact or
+animation request words, or native states. New collector calls invalidate it;
+changed owner, serials, surface handles, hold authority or independent native
+requests refuse it. Producer reset/classification and consumer byte contracts
+are checked against the supported image before enabling this path.
+
+Offline regressions execute the actual collision-admission, collector and
+publication functions, including independent requests, changed contacts,
+missing A admission and repeated publication. The first anchor regression
+covers the captured displacement and rotated approaches. Restoring the old
+origin override or omitting the publication handoff makes these tests fail.
+Host runtime syntax checks treat warnings as errors. These checks do not
+simulate the native solver or establish causal exclusivity of the captured
+bail: exact Windows/integration CI and measured native hold/release remain
+the final acceptance gates. This candidate is not yet ready for user testing.

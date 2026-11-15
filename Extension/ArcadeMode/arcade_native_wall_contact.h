@@ -36,6 +36,7 @@ struct Snapshot {
     std::uintptr_t summaries{};
     std::array<float,8> impacts{};
     bool processed{};
+    bool body_report_known{},body_report{};
     std::array<std::array<float,4>,24> pose_before{};
     bool pose_before_valid{};
 };
@@ -66,6 +67,9 @@ inline bool same_wall_contacts(const Snapshot& board,const Snapshot& rig,
     for(float impact:rig.impacts)if(!std::isfinite(impact) || impact<0)return false;
     return true;
 }
+// One admitted collision may own its independently published contact response.
+// Called only after the original native animation publisher completed.
+void finish_publication(std::uintptr_t core) noexcept;
 bool start(std::uintptr_t base) noexcept;
 void enable(bool enabled) noexcept;
 Snapshot observe(const NoBailSkater& owner,std::uint64_t now) noexcept;
