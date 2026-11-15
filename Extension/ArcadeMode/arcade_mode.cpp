@@ -2157,7 +2157,9 @@ void on_client_tick() noexcept {
             publish_balance_hud({}, 0, {});
             }
         }
-        {
+        // Keep score continuity through the existing bounded client/physics handoff.
+        // A deferred phase is not missing ownership; real withdrawal still clears it.
+        if (!deferred_phase) {
             // Release the former replacement; the original widget keeps its own
             // animations, native history, signals and ScoringData reference.
             constexpr std::string_view display_owner="arcade.custom-tricks";

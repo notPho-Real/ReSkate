@@ -139,6 +139,14 @@ def generated(root):
     rollback = rollback.replace("ManualEpisode", "ManualEpisodeWithoutHeldPressure")
     rollback = re.sub(r'#include "(arcade_[^"/]+\.h)"', r'#include "Extension/ArcadeMode/\1"', rollback)
     outputs["episode_without_held_pressure.h"] = rollback
+    score_body = between(mode, "        // Keep score continuity through",
+                         "        const auto failure_status =")
+    score_template = (folder / "score_fixture.cpp.in").read_text(encoding="utf-8")
+    score_source = replace_once(score_template, "@@SCORE_UPDATE@@", score_body)
+    outputs["score_current.cpp"] = score_source
+    outputs["score_client_phase.cpp"] = replace_once(score_source,
+        "        if (!deferred_phase) {", "        if (true) {")
+    parts["SCORE_UPDATE"] = score_body
     manifest = {
         "source_chunks_sha256": {name: hashlib.sha256(body.encode()).hexdigest()
                                  for name, body in parts.items()},
@@ -151,6 +159,7 @@ def generated(root):
 
 
 FAILURES = {
+    "score_client_phase": "deferred client phase must not clear the score baseline or presentation",
     "camera_root_pivot": "both vertical look directions must move from the observed hip-height root",
     "camera_client_phase": "a fresh client-ahead takeoff phase must not retire the current camera lease",
     "camera_contention": "contention must inspect the snapshot after its publisher completes",

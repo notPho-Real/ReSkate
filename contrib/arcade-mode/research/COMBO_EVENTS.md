@@ -203,3 +203,23 @@ Next diagnostic reads those bounded32-bit scalars, without assigning semantics
 until controlled traces distinguish them. No native pointer calls or writes.
 Manual→ollie repetition evidence:20/20 named chains in one flat near-stationary
 context,11 Clean/7 Sketchy/2 unqualified; not Arcade model integration.
+
+
+## Deferred native phase and score continuity
+
+The native device trial of `da7efdec` performed an Ollie followed by Heelflip,
+with a committed native action and 150 native points, but displayed zero Arcade
+points. The client score transaction consumed a null observation during an
+already admitted client/physics phase handoff. That discarded the inactive
+baseline or invalidated a running score even though the combo lifecycle correctly
+waited for the matching original physics callback.
+
+The score transaction now shares that existing bounded phase deferral. It does
+not read new evidence, award actions, renew a presentation, or clear the prior
+baseline in that gap. Actual focus/ownership withdrawal still clears normally.
+The source-composed regression executes the real transaction: the old code fails,
+the correction shows one action for the observed Ollie and two after the native
+Heelflip commit, retains them through landing, and refuses recovery after genuine
+evidence loss. The rollback control must fail at the phase-boundary assertion.
+This is local regression evidence; the correction still requires exact-source
+Windows compilation and native device acceptance.

@@ -1,0 +1,61 @@
+// Executes the actual score client transaction with controlled native observations.
+#include "Extension/ArcadeMode/arcade_combo_session.h"
+#include "Extension/ArcadeMode/arcade_custom_score_display.h"
+#include "Extension/ArcadeMode/arcade_custom_flatland_runtime.h"
+#include "Extension/Skater/no_bail.h"
+#include <cstdlib>
+#include <iostream>
+using namespace dingosdk;
+using namespace dingosdk::arcade_mode;
+std::optional<tricks::ScoreHud> fixture_score_reading;
+std::optional<hud_corner::ScorePresentation> shown;
+unsigned writes{}, reads{};
+namespace dingosdk::tricks {
+std::optional<ScoreHud> read_score_hud(std::uintptr_t,bool) noexcept { ++reads;return fixture_score_reading; }
+}
+namespace dingosdk::hud_corner {
+void present_score(std::optional<ScorePresentation> value) noexcept {++writes;shown=value;}
+}
+namespace dingosdk::score_line {
+void release(std::string_view) {}
+void extra_tricks(std::string_view,std::uint64_t,std::vector<ExtraTrick>) {}
+}
+namespace dingosdk::arcade_mode::native_flip {
+int selected=1;
+std::optional<int> observed_trick(const NoBailSkater&) noexcept { return selected; }
+}
+namespace dingosdk::arcade_mode::custom_flatland_runtime {
+CustomExecutionBatch take_executions() noexcept { return {}; }
+}
+ComboSession combo_session({},true);
+void update(bool gameplay,bool focus_available,bool deferred_phase,NativeInputFrame client_frame,std::uint64_t now) {
+ const std::uintptr_t score_probe_base=1;const NoBailSkater native_owner{};
+ (void)deferred_phase;
+@@SCORE_UPDATE@@
+}
+void check(bool ok,const char* why){if(!ok){std::cerr<<why<<'\n';std::exit(1);}}
+int main(){
+ fixture_score_reading=tricks::ScoreHud{};fixture_score_reading->native_scoring=tricks::NativeScoreSnapshot{1,2,3,{},{},{},{}};
+ NativeInputFrame frame{};frame.owner_generation=7;
+ update(true,true,false,frame,1000);
+ // The client sees takeoff before its original physics callback. The existing
+ // phase authority defers it; this must neither clear the baseline nor credit it.
+ const auto before_reads=reads,before_writes=writes;
+ update(false,true,true,{},1008);
+ check(reads==before_reads && writes==before_writes,"deferred client phase must not clear the score baseline or presentation");
+ frame.airborne=true;frame.airborne_episode=1;
+ combo_session.step(SkatePose::air,0,0);update(true,true,false,frame,1017);
+ check(shown && shown->multiplier==1,"performed Ollie counts after deferred takeoff");
+ auto& current=fixture_score_reading->native_scoring->current;current.points=150;current.action_objects={42};
+ native_flip::selected=3;update(true,true,false,frame,1034);
+ check(shown && shown->multiplier==2 && shown->points==150,"Ollie then committed Heelflip must display two actions");
+ update(false,true,true,{},1042);
+ check(shown && shown->multiplier==2,"deferred landing retains the last proven score without a new observation");
+ frame.airborne=false;combo_session.step(SkatePose::riding,0,0);update(true,true,false,frame,1050);
+ check(shown && shown->multiplier==2,"correlated landing resumes native score continuity");
+ update(false,false,false,{},1060);
+ check(!shown,"focus loss must release presentation immediately");
+ update(true,true,false,frame,1070);
+ check(shown && !shown->multiplier,"real evidence loss cannot silently resume the old score");
+ std::cout<<"Actual score transaction preserves bounded phase handoffs and rejects real evidence loss\n";
+}
