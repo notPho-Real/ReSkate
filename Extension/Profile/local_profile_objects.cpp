@@ -207,6 +207,7 @@ using namespace arcade_mode;
 // self_construct/self_fields/self_attach and skater_identity/query_identity.
 // No traffic/car-grab behavior or legacy-pointer-to-ECS conversion is used.
 constexpr std::array surface_self_contracts{
+ game::build::v20260929::skater_body::body_transform_contract,
  game::build::Fingerprint{0xf88670,{0x48,0x89,0x5c,0x24,0x10,0x48,0x89,0x6c,0x24,0x18,0x56,0x57,0x41,0x55,0x41,0x56,0x41,0x57,0x48,0x81,0xec,0xf0,0x00,0x00,0x00,0x44,0x0f,0xb7,0x05,0xff,0x85,0x2f}},
  game::build::Fingerprint{0x104bee0,{0x48,0x89,0x5c,0x24,0x08,0x57,0x48,0x83,0xec,0x20,0x48,0x8d,0x05,0x8f,0x18,0x13,0x05,0x48,0x89,0x51,0x08,0x48,0x89,0x01,0x48,0x8b,0xf9,0x4c,0x89,0x41,0x10,0x49}},
  game::build::Fingerprint{0x105d0c3,{0x4c,0x8b,0x4e,0x20,0x4c,0x8b,0xc3,0x89,0x4c,0x24,0x20,0x48,0x8b,0xc8,0xe8,0xda,0xda,0xfc,0xff,0x48,0x8b,0x08,0x48,0x89,0x4e,0x18,0x4c,0x85,0x76,0x18,0x4c,0x89}}};
@@ -266,16 +267,19 @@ bool read_surface_board_support(const NoBailSkater& owner,SurfaceBoardSupport& o
   namespace state=game::build::v20260929::skater_state;
   const auto read=[&](SurfaceBoardSupport& value) {
    std::uintptr_t identity{};std::uint32_t count{};
-   return memory::read(owner.core+movement::skater_board,value.wrapper)&&value.wrapper&&
+   std::array<float,16> transform{};
+   const bool valid=memory::read(owner.core+movement::skater_board,value.wrapper)&&value.wrapper&&
     memory::read(value.wrapper+adapter::board_physics,value.physics)&&value.physics&&
     memory::read(value.physics,identity)&&identity==owner.base+state::board_physics_vtable&&
     memory::read(value.physics+adapter::board_parts,value.parts)&&value.parts&&
     memory::read(value.parts,count)&&count==adapter::board_part_count&&
     memory::read(value.parts+adapter::parts_owner,identity)&&identity==value.physics&&
     memory::read(value.parts+adapter::parts_position,value.point)&&surface_geometry_detail::finite(value.point)&&
-    memory::read(value.parts+game::build::v20260929::skater_body::body_transform_offset+16,value.up)&&
+    memory::read(value.parts+game::build::v20260929::skater_body::body_transform_offset,transform)&&
     memory::read(value.parts+state::body_velocity_offset,value.velocity)&&
-    surface_geometry_detail::finite(value.up)&&surface_geometry_detail::finite(value.velocity);
+    surface_geometry_detail::finite(value.velocity);
+   value.up={transform[4],transform[5],transform[6]};
+   return valid&&surface_geometry_detail::finite(value.up);
   };
   NoBailSkater before{},after{};SurfaceBoardSupport first{},second{};
   if(!no_bail_skater(before)||before!=owner||!read(first)||!read(second)||first!=second||
