@@ -5,6 +5,17 @@
 #include "arcade_wallplant_geometry_admission.h"
 
 namespace dingosdk::arcade_mode::wallplant_runtime {
+// Observation only. The caller fills this receipt without logging or taking a
+// diagnostic lock; enqueue only after its admission decision and scope teardown.
+struct MotionDiagnostic {
+    NativeInputFrame native{};
+    std::uint64_t started{},finished{},token{};
+    std::uint32_t request_word{},animation{};
+    const char* reason{"exception"};
+    const char* geometry_reason{"not_queried"};
+    SurfaceGeometryTrace trace{};
+};
+void motion_diagnostic(const MotionDiagnostic&) noexcept;
 void tick(std::uintptr_t base,bool gameplay) noexcept;
 void observe_physics(const NativeInputFrame&) noexcept;
 // Admission lives only on the native AIR position-preparation call stack.
@@ -15,7 +26,8 @@ bool motion_current(std::uint64_t,const NativeInputFrame&) noexcept;
 void end_motion(std::uint64_t) noexcept;
 void publish_motion_geometry(std::uint64_t,const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
     const NativeInputFrame&,SurfaceGeometryVector root,SurfaceGeometryVector up,SurfaceGeometryVector velocity,
-    const SurfaceGeometrySample& ground,std::span<const SurfaceGeometryVector> supports) noexcept;
+    const SurfaceGeometrySample& ground,std::span<const SurfaceGeometryVector> supports,
+    MotionDiagnostic* diagnostic=nullptr) noexcept;
 // Kept for the native observer callback: this alternative refuses late
 // collision admission and enters exclusively through the motion scope.
 bool retain_collision_before_response(const NativeInputFrame&,std::uint64_t now) noexcept;

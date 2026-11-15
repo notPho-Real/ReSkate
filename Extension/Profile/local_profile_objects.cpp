@@ -366,11 +366,15 @@ bool wallplant_surface_callback_current(void* user,const SurfaceGeometryContext&
 }
 }
 static void update_arcade_surface_geometry(std::uintptr_t client,bool collision_response,
-        std::uint64_t motion=0,const NativeInputFrame* motion_frame=nullptr) noexcept {
+        std::uint64_t motion=0,const NativeInputFrame* motion_frame=nullptr,
+        wallplant_runtime::MotionDiagnostic* diagnostic=nullptr) noexcept {
  const bool worker=collision_response || motion;
  PreserveError preserve;if(!worker)arcade_mode::invalidate_surface_geometry();
  const auto probe=wallplant_runtime::geometry_probe();
- const auto note=[&](unsigned stage,const char* reason){wallplant_runtime::geometry_event(probe,stage,reason);};
+ const auto note=[&](unsigned stage,const char* reason){
+  if(diagnostic)diagnostic->geometry_reason=reason?reason:"motion_frame_unavailable";
+  if(!motion)wallplant_runtime::geometry_event(probe,stage,reason);
+ };
  note(0,"client_entry");
  if(!arcade_mode::enabled()){note(1,"disabled");return;}
  try{
@@ -454,13 +458,14 @@ static void update_arcade_surface_geometry(std::uintptr_t client,bool collision_
   note(11,"before_publish");
   if(motion)
    wallplant_runtime::publish_motion_geometry(motion,wallplant_api,origin,frame,root,
-    callback.board_support.up,callback.board_support.velocity,sample,supports);
+    callback.board_support.up,callback.board_support.velocity,sample,supports,diagnostic);
   else wallplant_runtime::publish_geometry(wallplant_api,origin,frame,root,sample,supports);
   callback.entered=false;
  }catch(...){note(12,"exception");arcade_mode::invalidate_surface_geometry();}
 }
-void query_arcade_wallplant_motion_geometry(std::uint64_t token,const arcade_mode::NativeInputFrame& frame) noexcept {
- if(token)update_arcade_surface_geometry(0,false,token,&frame);
+void query_arcade_wallplant_motion_geometry(std::uint64_t token,const arcade_mode::NativeInputFrame& frame,
+        wallplant_runtime::MotionDiagnostic* diagnostic) noexcept {
+ if(token)update_arcade_surface_geometry(0,false,token,&frame,diagnostic);
 }
 void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {update_arcade_surface_geometry(client,false);}
 void query_arcade_wallplant_collision_geometry() noexcept {update_arcade_surface_geometry(0,true);}

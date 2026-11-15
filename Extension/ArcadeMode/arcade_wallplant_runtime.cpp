@@ -69,6 +69,37 @@ struct RetainedPhaseRow {
 std::array<RetainedPhaseRow,128> retained_writer_rows{};
 unsigned retained_writer_read{};
 std::atomic<bool> retained_writer_queued{};
+std::array<MotionDiagnostic,128> motion_rows{};
+unsigned motion_count{},motion_read{},motion_dropped{},motion_reported_dropped{};
+std::atomic<bool> motion_queued{};
+void flush_motion_diagnostics() noexcept {
+    if(!motion_queued.load(std::memory_order_acquire))return;
+    try {
+        for(;;) {
+            MotionDiagnostic row{};unsigned dropped{};
+            {
+                std::lock_guard lock(diagnostic_mutex);
+                if(motion_read==motion_count) {
+                    dropped=motion_dropped-motion_reported_dropped;
+                    motion_reported_dropped=motion_dropped;
+                    motion_queued.store(false,std::memory_order_release);
+                    if(!dropped)return;
+                } else row=motion_rows[motion_read++];
+            }
+            if(dropped) {
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE WALLPLANT MOTION: dropped_at_first_overflow={} capacity=128 further_receipts_suppressed=true.",dropped);
+                return;
+            }
+            const auto& f=row.native;const auto& t=row.trace;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE WALLPLANT MOTION: begin={} end={} token={} reason={} geometry={} owner={} owner_generation={} step={} frame_ms={} state={} dt={} request={} animation={} query={} context={} ray={} hits={} start={},{},{} end={},{},{} value={}.",
+                row.started,row.finished,row.token,row.reason,row.geometry_reason,f.owner.core,
+                f.owner_generation,f.physics_step,f.sampled_at,f.state,f.physics_seconds,row.request_word,row.animation,
+                t.reason,t.context_reason,t.ray,t.hits,t.start[0],t.start[1],t.start[2],t.end[0],t.end[1],t.end[2],t.value);
+        }
+    } catch(...) {}
+}
 void flush_retained_phases() noexcept {
     if(!retained_writer_queued.load(std::memory_order_acquire))return;
     try {
@@ -228,6 +259,19 @@ void withdraw(const char* reason,const NativeInputFrame* frame=nullptr) noexcept
 }
 }
 
+void motion_diagnostic(const MotionDiagnostic& diagnostic) noexcept {
+    // Called after scope retirement. Never reads game memory or updates policy.
+    try {
+        auto row=diagnostic;row.finished=GetTickCount64();
+        std::lock_guard lock(diagnostic_mutex);
+        if(motion_count<motion_rows.size())motion_rows[motion_count++]=row;
+        else {
+            if(motion_dropped!=UINT_MAX)++motion_dropped;
+            if(motion_reported_dropped)return;
+        }
+        motion_queued.store(true,std::memory_order_release);
+    } catch(...) {}
+}
 void cancel() noexcept {
     {std::lock_guard lock(mutex);permitted=false;withdraw("cancel");observed={};last_handled_input=0;receipt={};}
     interrupt.store(true,std::memory_order_release);
@@ -236,6 +280,7 @@ void cancel() noexcept {
 void interrupt_animation() noexcept {interrupt.store(true,std::memory_order_release);}
 void tick(std::uintptr_t base,bool gameplay) noexcept {
     flush_retained_phases();
+    flush_motion_diagnostics();
     const bool active=gameplay && native_wall_contact::start(base);
     native_wall_contact::enable(active);
     if(interrupt.exchange(false,std::memory_order_acq_rel)) {
@@ -359,7 +404,10 @@ void end_motion(std::uint64_t token) noexcept {
 void publish_motion_geometry(std::uint64_t token,const SurfaceGeometryNativeApi& supplied,
         const SurfaceGeometryContext& ctx,const NativeInputFrame& f,SurfaceGeometryVector root,
         SurfaceGeometryVector up,SurfaceGeometryVector velocity,const SurfaceGeometrySample& ground,
-        std::span<const SurfaceGeometryVector> supports) noexcept {
+        std::span<const SurfaceGeometryVector> supports,MotionDiagnostic* diagnostic) noexcept {
+    const auto note=[&](const char* reason){if(diagnostic)diagnostic->geometry_reason=reason;};
+    auto* trace=diagnostic?&diagnostic->trace:nullptr;
+    note("motion_geometry_guard");
     if(!supplied.now || !supplied.current || supports.empty() || supports.size()>32 ||
        ctx.phase!=SurfaceGeometryPhase::motion_admission || !motion_current(token,f))return;
     auto api=supplied;
@@ -371,20 +419,25 @@ void publish_motion_geometry(std::uint64_t token,const SurfaceGeometryNativeApi&
         return native_wall_contact::local_component_owner(shape,context.owner[1],owner);
     };
     auto board=root;for(unsigned axis=0;axis<3;++axis)board[axis]+=supports.front()[axis];
-    const auto wall=query_motion_wall(api,ctx,board,up,velocity,f.physics_seconds);
+    note("motion_wall");
+    const auto wall=query_motion_wall(api,ctx,board,up,velocity,f.physics_seconds,trace);
     if(!wall.valid) {
         std::lock_guard lock(mutex);
         if(scoped_motion(token,f,api.now(api.user))) {motion_wall_near=false;separated=true;}
         return;
     }
+    note("wall_identity");
     if(!query_current(wall))return;
+    note("clearance");
     auto clearance=ground;
     if(!clearance.fresh_for(ctx,api.now(api.user)))clearance=query_surface_geometry(api,ctx,wallplant_clearance_request(root));
     const auto height=root[1]-clearance.point[1];
     if(!clearance.valid || !revalidate_surface_geometry(api,ctx,clearance) ||
        !std::isfinite(height) || height<WallplantParameters::reference_prototype().minimum_height)return;
-    const auto anchor=query_wallplant_anchor(api,ctx,wall.body,wall.point,wall.query_normal,root,supports.front(),supports);
+    note("anchor");
+    const auto anchor=query_wallplant_anchor(api,ctx,wall.body,wall.point,wall.query_normal,root,supports.front(),supports,trace);
     if(!anchor.valid || !revalidate_surface_geometry(api,ctx,wall))return;
+    note("motion_publication_guard");
     const auto now=api.now(api.user);
     std::lock_guard lock(mutex);
     if(!permitted || !takeoff || hold.active() || pending.sequence || in_flight ||
@@ -396,7 +449,7 @@ void publish_motion_geometry(std::uint64_t token,const SurfaceGeometryNativeApi&
     contact.point=wall.point;contact.normal=wall.query_normal;contact.approach_velocity=velocity;
     contact.identity=++contact_identity;contact.sampled_at=wall.queried_at;
     contact.motion_query=contact.static_world=true;
-    motion_wall_near=true;candidate=result;
+    motion_wall_near=true;candidate=result;note("published");
 }
 void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const SurfaceGeometryContext& ctx,
         const NativeInputFrame& f,SurfaceGeometryVector root,const SurfaceGeometrySample& ground,

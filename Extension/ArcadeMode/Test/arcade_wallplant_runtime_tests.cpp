@@ -4,14 +4,14 @@
 #include <iostream>
 #include <thread>
 namespace fixture {
-std::uint64_t now=1000;
+std::uint64_t now=1000,query_latency{};
 bool hit_current=true,race_cancel{};
 bool collision_scope{};
 bool geometry_mode{},motion_geometry{};
 dingosdk::arcade_mode::SurfaceGeometrySample wall{};
 std::array<float,3> anchor_point{},anchor_offset{};
 dingosdk::arcade_mode::native_wall_contact::Snapshot collision{};
-unsigned begins{},releases{},cancels{},checks{};
+unsigned begins{},releases{},cancels{},checks{},log_calls{};
 std::uint64_t released_identity{};
 std::uint64_t visual_expiry{};
 dingosdk::arcade_mode::WallplantCommand active{};
@@ -22,9 +22,9 @@ std::uint64_t GetTickCount64(){return fixture::now;}
 DWORD GetLastError(){return 0;}
 void SetLastError(DWORD){}
 namespace dingosdk::logging {
-bool enabled(Level) noexcept{return false;}
-void write(Level,Context,Channel,std::string_view) noexcept{}
-void write(Level,Channel,std::string_view) noexcept{}
+bool enabled(Level) noexcept{return true;}
+void write(Level,Context,Channel,std::string_view) noexcept{++fixture::log_calls;}
+void write(Level,Channel,std::string_view) noexcept{++fixture::log_calls;}
 }
 namespace dingosdk::arcade_mode::native_wall_contact {
 bool start(std::uintptr_t) noexcept{return true;}
@@ -54,6 +54,7 @@ SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi&,con
         const SurfaceGeometryRequest&,SurfaceGeometryTrace*) noexcept{return {};}
 SurfaceGeometrySample query_motion_wall(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
         SurfaceGeometryVector,SurfaceGeometryVector,SurfaceGeometryVector,float,SurfaceGeometryTrace*) noexcept {
+    fixture::now+=fixture::query_latency;
     return fixture::geometry_mode?fixture::wall:SurfaceGeometrySample{};
 }
 SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
@@ -169,8 +170,73 @@ void motion_admission_checks() {
     }
     fixture::motion_geometry=fixture::geometry_mode=false;
 }
+void motion_geometry_diagnostic_checks() {
+    for(unsigned fault=0;fault<4;++fault) {
+        setup();in_flight={};candidate={};raw={};pending={};
+        const auto f=observed;
+        SurfaceGeometryContext ctx{{1,2,3,4,5},context(f),8,7,1,9,f.owner_generation,SurfaceGeometryPhase::motion_admission};
+        fixture::motion_geometry=fixture::geometry_mode=true;fixture::wall={};
+        auto& wall=fixture::wall;wall.valid=true;wall.context=ctx;wall.queried_at=1000;
+        wall.point={0,2,0};wall.query_normal={1,0,0};
+        wall.body={7,10,1};wall.world_owner={{7,70,50331648},77,69,50331648,0,1234};
+        auto ground_sample=wall;ground_sample.point={0,0,0};
+        SurfaceGeometryNativeApi api;api.now=[](void*)noexcept{return fixture::now;};
+        api.current=[](void*,const SurfaceGeometryContext&)noexcept{return true;};
+        const std::array<SurfaceGeometryVector,1> supports{{{0,0,0}}};
+        auto span=std::span<const SurfaceGeometryVector>(supports);
+        if(fault==1)span={};
+        if(fault==2)wall.valid=false;
+        fixture::query_latency=fault==3?25:0;
+        const auto token=begin_motion(f,1000);
+        MotionDiagnostic diagnostic{};
+        publish_motion_geometry(token,api,ctx,f,{.4f,2,0},{0,1,0},{-12,-2,0},ground_sample,span,&diagnostic);
+        const char* expected[]{"published","motion_geometry_guard","motion_wall","motion_publication_guard"};
+        check(std::string_view(diagnostic.geometry_reason)==expected[fault],
+              "geometry receipt distinguishes publication, missing support, missing wall and expired scope");
+        check(candidate.valid==(fault==0),
+              "diagnostic output cannot turn failed geometry or expired scope into an admissible candidate");
+        check(f.sampled_at==990 && motion_scope.frame.sampled_at==990,
+              "diagnostics preserve the original sample clock through a delayed query");
+        end_motion(token);fixture::query_latency=0;
+    }
+    fixture::motion_geometry=fixture::geometry_mode=false;
+}
+void motion_diagnostic_checks() {
+    setup();in_flight={};candidate={};pending={};
+    auto f=observed;const auto token=begin_motion(f,fixture::now);
+    check(token!=0,"diagnostic fixture starts a real runtime scope");
+    MotionDiagnostic row{};row.native=f;row.token=token;row.started=fixture::now;
+    row.reason="input_claim";row.geometry_reason="motion_wall";row.trace.reason="no_hit";
+    row.request_word=0x408000;row.trace.ray=2;
+    end_motion(token);
+    const auto before=fixture::log_calls;
+    motion_diagnostic(row);
+    check(fixture::log_calls==before && motion_count==1 && motion_read==0,
+          "receipt enqueue never formats or emits logging on the physics callback");
+    row.request_word=0;row.trace.ray=4;
+    check(motion_rows[0].request_word==0x408000 && motion_rows[0].trace.ray==2 &&
+          motion_rows[0].native.sampled_at==f.sampled_at,
+          "queued evidence is an immutable copy and never refreshes the frame");
+    check(!candidate.valid && !writer_probe().input && !held_command() && !motion_current(token,f),
+          "an admission receipt cannot create geometry, input, scope or hold authority");
+    flush_motion_diagnostics();
+    check(motion_read==1 && fixture::log_calls>before && !motion_queued.load(),
+          "deferred flush emits and drains the real receipt");
+    const auto after=fixture::log_calls;flush_motion_diagnostics();
+    check(fixture::log_calls==after,"drained observations are not emitted twice");
+    for(unsigned i=0;i<130;++i)motion_diagnostic(row);
+    check(motion_count==128 && motion_dropped==3,"diagnostic storage has a fixed process bound and counts overflow");
+    flush_motion_diagnostics();
+    check(motion_read==128 && motion_reported_dropped==3 && !motion_queued.load(),
+          "overflow is reported rather than silently interpreted as absence of attempts");
+    const auto full=fixture::log_calls;motion_diagnostic(row);flush_motion_diagnostics();
+    check(motion_dropped==4 && fixture::log_calls==full && !motion_queued.load(),
+          "process capacity also bounds log output after the single overflow notice");
+}
 int main(){
+    motion_diagnostic_checks();
     motion_admission_checks();
+    motion_geometry_diagnostic_checks();
     {
         const auto c=setup();check(enter(c,1000),"pose interruption fixture enters");
         interrupt_animation();fixture::now=1030;tick(1,true);

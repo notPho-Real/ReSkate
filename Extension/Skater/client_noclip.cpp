@@ -2898,27 +2898,45 @@ void wallplant_admit_motion(std::uintptr_t rig,std::uintptr_t caller) noexcept {
     try {
         NoBailSkater owner{};
         if(!no_bail_skater(owner) || owner.rig!=rig || caller!=owner.base+spawn::air_position_return)return;
+        arcade_mode::wallplant_runtime::MotionDiagnostic diagnostic{};
+        struct Report {
+            arcade_mode::wallplant_runtime::MotionDiagnostic& value;
+            ~Report(){arcade_mode::wallplant_runtime::motion_diagnostic(value);}
+        } report{diagnostic};
         const arcade_mode::NativeInputOwner input_owner{owner.base,owner.entity,owner.core,owner.context,owner.rig};
         std::uint64_t now{};
         const auto execution=arcade_mode::native_wallplant_context(input_owner,now);
+        diagnostic.native=execution.native;diagnostic.started=now;diagnostic.request_word=execution.live.words[0];
         namespace bail=game::build::v20260929::no_bail;
         std::uint32_t animation{};
-        if(!arcade_mode::native_wall_contact::motion_uncontested(owner) ||
-           !execution.native.valid || execution.native.state!=201 || execution.imported_contact ||
-           (execution.live.words[0]&(bail::body_contact_context_mask|bail::impact_request_mask)) ||
-           !memory::peek(owner.context+bail::animation_request_offset,animation) ||
-           (animation&bail::animation_request_mask) ||
-           !arcade_mode::native_wallplant_execution_authorized(execution.native,now))return;
+        diagnostic.reason="native_contention";
+        if(!arcade_mode::native_wall_contact::motion_uncontested(owner))return;
+        diagnostic.reason="native_frame";
+        if(!execution.native.valid || execution.native.state!=201 || execution.imported_contact)return;
+        diagnostic.reason="request_word";
+        if(execution.live.words[0]&(bail::body_contact_context_mask|bail::impact_request_mask))return;
+        diagnostic.reason="animation_read";
+        if(!memory::peek(owner.context+bail::animation_request_offset,animation))return;
+        diagnostic.animation=animation;diagnostic.reason="animation_request";
+        if(animation&bail::animation_request_mask)return;
+        diagnostic.reason="execution_authority";
+        if(!arcade_mode::native_wallplant_execution_authorized(execution.native,now))return;
+        diagnostic.reason="begin_motion";
         const auto token=arcade_mode::wallplant_runtime::begin_motion(execution.native,now);
+        diagnostic.token=token;
         if(!token)return;
         struct End {std::uint64_t token;~End(){arcade_mode::wallplant_runtime::end_motion(token);}} end{token};
-        query_arcade_wallplant_motion_geometry(token,execution.native);
+        diagnostic.reason="geometry_exception";
+        query_arcade_wallplant_motion_geometry(token,execution.native,&diagnostic);
+        diagnostic.reason="input_claim";
         if(!arcade_mode::claim_native_wallplant_contact(execution.native))return;
+        diagnostic.reason="writer_proof";
         const auto probe=arcade_mode::wallplant_runtime::writer_probe();
         if(probe.motion!=token || !probe.input || probe.raw ||
            !arcade_mode::wallplant_same_observation(probe.native,execution.native))return;
         const WallplantHandoff handoff{execution,probe,{},0,0,token};
-        (void)arcade_wallplant_enter_hold(handoff,owner.core);
+        diagnostic.reason="hold_entry";
+        if(arcade_wallplant_enter_hold(handoff,owner.core))diagnostic.reason="hold_entered";
     } catch(...) {}
 }
 void wallplant_prepared_target(std::uintptr_t rig,float seconds,bool world_reference=false) {

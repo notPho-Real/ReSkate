@@ -1738,7 +1738,9 @@ Proof fixture_execution;
 std::vector<std::string> sequence;
 bool stock{},enabled=true,owner_valid=true,uncontested=true,authorized=true,readable=true,claim=true;
 std::uint32_t fixture_animation{};
-std::uint64_t fixture_token{7};unsigned entries{},ends{};
+std::uint64_t fixture_token{7};unsigned entries{},ends{},reports{};
+bool entry_result=true,query_throws{};
+
 std::atomic<std::uintptr_t> wallplant_hold_core{};
 bool competition_stock_physics(){return stock;}
 bool no_bail_skater(Owner& out){out=fixture_owner;return owner_valid;}
@@ -1757,13 +1759,27 @@ bool native_wallplant_execution_authorized(const NativeFrame&,std::uint64_t&){se
 bool claim_native_wallplant_contact(const NativeFrame&){sequence.push_back("claim");return claim;}
 namespace native_wall_contact {bool motion_uncontested(const Owner&){return uncontested;}}
 namespace wallplant_runtime {
+// Native I/O is mocked here; the runtime fixture covers real receipt storage.
+struct MotionDiagnostic {
+ NativeFrame native{};std::uint64_t started{},token{};
+ std::uint32_t request_word{},animation{};
+ const char* reason{"exception"};const char* geometry_reason{"not_queried"};
+};
+MotionDiagnostic last_report;
+void motion_diagnostic(const MotionDiagnostic& row){
+ check(sequence.empty() || sequence.back()=="end" || !row.token,"receipt follows retirement of every begun scope");
+ last_report=row;++reports;sequence.push_back("report");
+}
 struct Probe {std::uint64_t input{1},contact{2},raw{};NativeFrame native;std::uint64_t motion{7};} probe;
 std::uint64_t begin_motion(const NativeFrame&,std::uint64_t){sequence.push_back("begin");return fixture_token;}
 void end_motion(std::uint64_t value){check(value==7,"scope retires its actual fixture_token");sequence.push_back("end");++ends;}
 Probe writer_probe(){sequence.push_back("probe");return probe;}
 }
 }
-void query_arcade_wallplant_motion_geometry(std::uint64_t,const NativeFrame&){sequence.push_back("query");}
+void query_arcade_wallplant_motion_geometry(std::uint64_t,const NativeFrame&,arcade_mode::wallplant_runtime::MotionDiagnostic* diagnostic){
+ sequence.push_back("query");diagnostic->geometry_reason="fixture_query";
+ if(query_throws)throw 1;
+}
 struct WallplantHandoff {
  Proof fixture_execution;arcade_mode::wallplant_runtime::Probe probe;dingosdk::arcade_mode::WallplantSelectionTicket ticket;
  std::uint64_t intent_generation{},collision_serial{},motion_serial{};
@@ -1771,12 +1787,13 @@ struct WallplantHandoff {
 bool arcade_wallplant_enter_hold(const WallplantHandoff& h,std::uintptr_t core){
  check(core==fixture_owner.core && h.motion_serial==7 && h.probe.motion==7 && !h.collision_serial && !h.ticket.selected,
        "motion entry uses its actual callback fixture_token rather than a fabricated collision or chooser ticket");
- sequence.push_back("enter");++entries;return true;
+ sequence.push_back("enter");++entries;return entry_result;
 }
 @wallplant_wrapper_motion_admission@
 void run(){
- for(unsigned fault=0;fault<21;++fault){
-  sequence.clear();entries=ends=0;stock=false;enabled=owner_valid=uncontested=authorized=readable=claim=true;
+ auto& last_report=arcade_mode::wallplant_runtime::last_report;
+ for(unsigned fault=0;fault<24;++fault){
+  sequence.clear();entries=ends=reports=0;entry_result=true;query_throws=false;last_report={};stock=false;enabled=owner_valid=uncontested=authorized=readable=claim=true;
   fixture_animation=0;fixture_token=7;wallplant_hold_core=0;fixture_execution={};
   auto& f=fixture_execution.native;f.valid=f.airborne=true;f.owner={1,2,3,4,5};f.state=201;
   f.owner_generation=1;f.physics_step=10;f.sampled_at=1000;f.airborne_episode=1;
@@ -1802,10 +1819,24 @@ void run(){
   if(fault==18)++probe.motion;
   if(fault==19)probe.raw=99;
   if(fault==20)++probe.native.physics_step;
+  if(fault==21)entry_result=false;
+  if(fault==22)query_throws=true;
+  if(fault==23)probe.input=0;
   wallplant_admit_motion(rig,caller);
-  check(entries==(fault==0?1u:0u),"actual admission wrapper rejects foreign callers, faults, stale proof and missing fresh A");
+  check(entries==((fault==0 || fault==21)?1u:0u),"actual admission wrapper rejects foreign callers, faults, stale proof and missing fresh A");
   check(ends==((fault==0 || fault>=17)?1u:0u),"every begun callback scope retires even when input or entry validation fails");
-  if(!fault)check(sequence==std::vector<std::string>{"context","authorize","begin","query","claim","probe","enter","end"},
+  check(reports==((fault>=1 && fault<=6)?0u:1u),"only locally identified AIR callers enqueue an observation");
+  if(reports){
+   static constexpr const char* reasons[]{"hold_entered","","","","","","","native_contention","native_frame",
+    "native_frame","native_frame","request_word","request_word","animation_request","animation_read",
+    "execution_authority","begin_motion","input_claim","writer_proof","writer_proof","writer_proof",
+    "hold_entry","geometry_exception","writer_proof"};
+   check(std::string(last_report.reason)==reasons[fault],"receipt identifies the actual last admission stage");
+   check(last_report.request_word==fixture_execution.live.words[0],"receipt preserves original request bits");
+   if(fault==0 || fault>=17)check(std::string(last_report.geometry_reason)=="fixture_query",
+     "query observation survives later input and hold rejection");
+  }
+  if(!fault)check(sequence==std::vector<std::string>{"context","authorize","begin","query","claim","probe","enter","end","report"},
       "actual wrapper queries and commits synchronously before retiring evidence");
  }
  std::cout<<checks<<" combined production motion-admission ordering checks passed; native query and physical writer mocked\n";
