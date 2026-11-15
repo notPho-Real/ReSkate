@@ -358,3 +358,20 @@ preserves the original enum array identity while the failed candidate does not.
 This identifies another export defect, not yet a proven complete explanation
 of the native exit. No new runtime build or successful native loading claim
 follows from the offline result.
+
+
+The enum-corrected private asset was next exercised with the existing candidate
+runtime, without another DLL build. The mod was admitted and the game displayed
+the native map/menu. This does not establish a valid loaded level or local skater:
+the follow-up native state check failed before gameplay acceptance. A map-close
+menu input had already been sent by that helper. Normal window close did not
+stop the process; targeted graceful termination of the verified test process was
+required. The separate outdated-mod warning was observed but is not proven to
+explain the shutdown failure. Both session packs were removed and the prior
+installation and all 123 rollback sets were verified before hardware return.
+
+The next asset-only trial separates native level observation from menu input and
+requires the selected test map and local skater before gameplay. Multiplier text,
+custom history visibility and full combo acceptance remain unverified. The new
+Python metadata comparison can recheck retained assets without compiling or
+using hardware; its authored regressions and retained negative control pass.

@@ -1,5 +1,7 @@
 # Arcade Lab and Deck updates
 
+For RC5 development, use the [offline-first iteration workflow](ITERATION.md).
+
 Start with [STATE.md](STATE.md) for persistent engineering context and
 [LAB_PROTOCOL.md](LAB_PROTOCOL.md) for the tested Mac lab workflow. Double-click
 **Install Arcade Lab.command** to run offline self-tests, install the controller

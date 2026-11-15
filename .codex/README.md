@@ -33,3 +33,12 @@ wait for the preceding controller job to complete before starting another.
 Use the Skate 3 Mega Park custom map for gameplay testing, including future
 RC3 sessions. The owner explicitly selected it on November 5, 2026. Verify the
 loaded map before sending test inputs; do not substitute another map for trials.
+
+## Build and hardware necessity
+
+For RC5 work, follow [the iteration workflow](../contrib/arcade-mode/ITERATION.md).
+Build only when useful progress requires changed compiled code. Use the Deck
+only when useful progress requires native observation. Exhaust relevant offline
+work first, reuse existing binaries and receipts, and batch related changes.
+Final gameplay acceptance still requires exact-candidate HIL. These gates do not
+require asking the owner again for already authorized work.
