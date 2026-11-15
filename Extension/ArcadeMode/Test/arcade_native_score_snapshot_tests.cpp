@@ -20,6 +20,7 @@ struct Value { std::uint64_t handle{}; Address type{}; };
 struct Ref { Address record{}; std::uint64_t handle{}; };
 void require(bool ok,const char* why){if(!ok)throw std::runtime_error(why);}
 template<class T>T read(Address a){require(a!=0,"null read");T v{};std::memcpy(&v,reinterpret_cast<const void*>(a),sizeof v);return v;}
+std::string string(Address at,std::size_t maximum){const auto p=reinterpret_cast<const char*>(at);const auto n=std::find(p,p+maximum,'\0');require(n!=p+maximum,"unterminated string");return {p,n};}
 unsigned kind(Address t){return (read<std::uint16_t>(read<Address>(t)+4)>>5)&31;}
 unsigned size(Address t){return kind(t)==3?8u:read<std::uint16_t>(read<Address>(t)+6);}
 struct Type {
@@ -69,19 +70,37 @@ struct Fixture {
     menu_data::Value hud=c.make(c.type(2,addr::score_hud::score_view_size,addr::hud_corner::score_view_schema));
     menu_data::Value scoring=c.make(c.type(2,layout::size,layout::schema));
     menu_data::Value reference=c.scalar(c.type(2,16),menu_data::Ref{42,scoring.handle});
+    std::array<std::byte,24> name_field{};
+    std::map<std::uint64_t,std::array<std::byte,layout::action_size>> action_storage;
+    std::uint64_t object(std::uint64_t id) {
+        if (!id) return 0;
+        auto& bytes=action_storage[id];
+        const char* name=id==101?"ollie":"heelflip";
+        std::memcpy(bytes.data()+96,&name,sizeof name);
+        return reinterpret_cast<std::uint64_t>(bytes.data());
+    }
     menu_data::Value seq(std::uint32_t points,std::initializer_list<std::uint64_t> objects){
         auto v=c.make(sequence_type);auto& f=c.nodes.at(v.handle).fields;
         f[layout::sequence_points]=c.scalar(u32,points);f[layout::sequence_index]=c.scalar(u32,std::uint32_t{0});
         f[layout::sequence_kind]=c.scalar(enum_type,std::uint32_t{1});
         f[layout::current_action]=c.scalar(action,objects.size()?*objects.begin():std::uint64_t{0});
         auto a=c.make(action_array);auto& n=c.nodes.at(a.handle);n.count=static_cast<unsigned>(objects.size());n.stride=8;n.bytes.resize(objects.size()*8);
-        if(objects.size())std::memcpy(n.bytes.data(),objects.begin(),n.bytes.size());f[layout::sequence_actions]=a;return v;
+        std::vector<std::uint64_t> pointers;for(const auto id:objects)pointers.push_back(object(id));
+        if(!pointers.empty())std::memcpy(n.bytes.data(),pointers.data(),n.bytes.size());f[layout::sequence_actions]=a;return v;
     }
     menu_data::Value line(std::initializer_list<menu_data::Value> sequences){
         auto v=c.make(line_type),a=c.make(sequence_array);auto& n=c.nodes.at(a.handle);n.count=static_cast<unsigned>(sequences.size());n.stride=layout::sequence_size;
         n.bytes.resize(n.count*n.stride);n.elements=sequences;c.nodes.at(v.handle).fields[layout::line_sequences]=a;return v;
     }
     Fixture(){
+        const auto text=c.type(7,8),fields=reinterpret_cast<Address>(name_field.data());
+        const auto meta=menu_data::read<Address>(action);
+        const std::uint16_t count=1,offset=96;
+        std::memcpy(reinterpret_cast<void*>(meta+layout::field_count),&count,2);
+        std::memcpy(reinterpret_cast<void*>(meta+layout::class_fields),&fields,8);
+        std::memcpy(name_field.data(),&layout::action_name,4);
+        std::memcpy(name_field.data()+layout::field_offset,&offset,2);
+        std::memcpy(name_field.data()+layout::field_type,&text,8);
         c.reference_handle=reference.handle;c.scoring_handle=scoring.handle;c.nodes.at(hud.handle).fields[addr::score_hud::scoring_data]=reference;
         auto& f=c.nodes.at(scoring.handle).fields;f[layout::current_sequence]=seq(15,{101});f[layout::previous_sequence]=seq(13,{91});
         f[layout::current_line]=line({f.at(layout::previous_sequence)});f[layout::previous_line]=line({});
@@ -93,7 +112,7 @@ void check(bool ok,const char* why){if(!ok)throw std::runtime_error(why);}
 template<class Change>void rejects(Change change,const char* why){Fixture f;change(f);bool refused=false;try{(void)f.sample();}catch(...){refused=true;}check(refused,why);}
 }
 int test_snapshot(){
-    Fixture f;auto a=f.sample();check(a && a->current.points==15 && a->current.action_objects==std::vector<std::uint64_t>{101} &&
+    Fixture f;auto a=f.sample();check(a && a->current.points==15 && a->current.action_objects==std::vector<std::uint64_t>{f.object(101)} && a->current.ollie_actions==a->current.action_objects && a->previous.ollie_actions.empty() &&
         a->completed.size()==1 && a->completed[0].points==13 && a->previous_line.empty(),"native sequences and raw field values read independently of labels");
     const auto held=f.sample();check(held && held->current.action_objects==a->current.action_objects,"held frame retains native action identity");
     Fixture absent;absent.c.put(absent.reference,menu_data::Ref{});check(!absent.sample(),"empty scoring ref is unavailable, not a zero award");
@@ -106,6 +125,9 @@ int test_snapshot(){
     rejects([](auto& x){auto v=x.c.field(x.current(),layout::sequence_actions);x.c.put(v,std::uint64_t{0});},"null action accepted");
     rejects([](auto& x){auto& fields=x.c.nodes.at(x.current().handle).fields;fields.erase(layout::sequence_points);},"missing native point field accepted");
     rejects([](auto& x){auto& v=x.c.nodes.at(x.current().handle).fields.at(layout::sequence_points);v.type=x.enum_type;},"wrong native score type accepted");
+    rejects([](auto& x){x.name_field.fill(std::byte{});},"missing action name declaration accepted");
+    rejects([](auto& x){const std::uint16_t bad=110;std::memcpy(x.name_field.data()+layout::field_offset,&bad,2);},"out-of-bounds action name accepted");
+    rejects([](auto& x){auto& object=x.action_storage.at(101);std::memset(object.data()+96,0,8);},"missing action name accepted");
     std::cout<<"Native scoring production reader: schemas, ownership, held records and failure checks passed\n";return 0;
 }
 }

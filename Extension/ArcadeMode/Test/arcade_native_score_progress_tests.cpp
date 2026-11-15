@@ -19,7 +19,7 @@ int main() {
     check(value && value->actions==1 && value->points==15, "committed action counts once");
     for(unsigned i=0;i<120;++i) check(p.observe(s,true,0)->actions==1, "held action never counts per frame");
     s.current=sequence(0,20,{200}); value=p.observe(s,true,0);
-    check(value && value->actions==2 && value->points==20, "Ollie then Heelflip is two performed tricks even in the same native slot");
+    check(value && value->actions==2 && value->points==20, "two committed actions count separately even when they reuse the same native slot");
     s.current=sequence(0,35,{200,300}); value=p.observe(s,true,0);
     check(value && value->actions==3 && value->points==35, "native appended action adds a multiplier step");
     s.previous=sequence(0,30,{200,300}); s.completed={s.previous}; value=p.observe(s,true,0);
@@ -80,5 +80,63 @@ int main() {
     rapid.current=sequence(0,15,{30});rapid.previous=rapid.current;rapid.completed={rapid.current};
     check(missed.observe(rapid,true,0)->actions==1,
         "first observation of an already finalized action counts once across live and history copies");
+    // Captured device case: the animation runs Ollie, then Heelflip, but
+    // sequence_actions first commits only Heelflip. Points remain native.
+    using tricks::NativeScoreMotion;
+    tricks::NativeScoreSnapshot flight_score{1,2,3,{},{},{},{}};
+    tricks::NativeScoreProgress flight_progress;
+    NativeScoreMotion ground{7,0,false,0}, pop{7,1,true,1}, heel{7,1,true,3};
+    flight_progress.observe(flight_score,false,0,ground);
+    auto flight_value=flight_progress.observe(flight_score,true,0,pop);
+    check(flight_value && flight_value->actions==1 && !flight_value->points,
+        "performed Ollie appears before native scoring commits the follow-up");
+    for(unsigned i=0;i<120;++i)check(flight_progress.observe(flight_score,true,0,pop)->actions==1,
+        "held Ollie animation contributes once per physical flight");
+    flight_score.current.current_action=77;
+    check(flight_progress.observe(flight_score,true,0,heel)->actions==1,
+        "selected Heelflip without committed action earns nothing");
+    flight_score.current=sequence(0,75,{77});
+    flight_value=flight_progress.observe(flight_score,true,0,heel);
+    check(flight_value && flight_value->actions==2 && flight_value->points==75,
+        "device Ollie then Heelflip counts two while preserving the native points");
+    flight_score.previous=flight_score.current;flight_score.completed={flight_score.current};flight_score.current={};
+    ground.flight=1;flight_progress.observe(flight_score,true,0,ground);
+    pop.flight=2;flight_progress.observe(flight_score,true,0,pop);
+    flight_score.current=sequence(0,2,{88});flight_score.current.ollie_actions={88};
+    flight_value=flight_progress.observe(flight_score,true,0,pop);
+    check(flight_value && flight_value->actions==3 && flight_value->points==77,
+        "a later committed Ollie reconciles only its own flight, preserving the earlier replaced Ollie");
+    flight_score.previous=flight_score.current;flight_score.completed.push_back(flight_score.current);flight_score.current={};
+    ground.flight=2;flight_progress.observe(flight_score,true,0,ground);
+    pop.flight=3;flight_progress.observe(flight_score,true,0,pop);
+    flight_score.current=sequence(0,3,{99});flight_score.current.ollie_actions={99};
+    flight_value=flight_progress.observe(flight_score,true,0,pop);
+    check(flight_value && flight_value->actions==4,"consecutive standalone Ollies do not double count");
+    heel.flight=3;flight_score.current=sequence(0,80,{100});
+    check(flight_progress.observe(flight_score,true,0,heel)->actions==5,
+        "Ollie that was already committed before replacement still counts exactly once");
+    flight_score.current=sequence(0,95,{100,101});
+    check(flight_progress.observe(flight_score,true,0,heel)->actions==6,
+        "repeated committed flips remain additive alongside the observed Ollie");
+    check(!flight_progress.observe(flight_score,true,0,std::nullopt),"lost motion ownership invalidates combined scoring");
+    flight_progress.reset();flight_score={1,2,3,{},{},{},{}};
+    ground={7,0,false,0};pop={7,1,true,1};heel={7,1,true,3};
+    flight_progress.observe(flight_score,false,0,ground);
+    flight_progress.observe(flight_score,true,0,pop);
+    ground.flight=1;flight_score.completed={sequence(0,2,{200})};flight_score.completed[0].ollie_actions={200};
+    flight_value=flight_progress.observe(flight_score,true,0,ground);
+    check(flight_value && flight_value->actions==1,"Ollie first committed at landing reconciles its observed flight");
+    flight_progress.reset();flight_score={1,2,3,{},{},{},{}};
+    ground.flight=0;flight_progress.observe(flight_score,false,0,ground);
+    flight_score.current=sequence(0,75,{300});
+    check(flight_progress.observe(flight_score,true,0,heel)->actions==1,
+        "flip without observed Ollie does not invent a pop");
+    heel.owner=8;check(!flight_progress.observe(flight_score,true,0,heel),"physics owner replacement invalidates active score");
+    flight_progress.reset();flight_score={1,2,3,{},{},{},{}};
+    flight_progress.observe(flight_score,false,0,pop);
+    check(flight_progress.observe(flight_score,true,0,pop)->actions==0,"joining mid-flight cannot credit a lingering Ollie");
+    flight_progress.reset();flight_progress.observe(flight_score,false,0,ground);
+    NativeScoreMotion no_animation{7,1,true,-1};
+    check(flight_progress.observe(flight_score,true,0,no_animation)->actions==0,"physical takeoff without animation proof is not a trick");
     std::cout << "Native action slots, revisions, ownership, settlement and balance preservation passed\n";
 }

@@ -178,6 +178,18 @@ void cancel() noexcept {
         state(lease,1,intent) && intent==lease.requested) write_intent(lease,0);
     lease={};
 }
+std::optional<int> observed_trick(const NoBailSkater& expected) noexcept {
+    if (!gameplay_allowed.load() || !assets_ready.load()) return std::nullopt;
+    NoBailSkater before{}, after{};
+    if (!no_bail_skater(before) || before != expected) return std::nullopt;
+    const auto block = state_block(before);
+    std::int32_t selected{};
+    const Lease observation{before, block};
+    if (!block || !in_air(observation) || !state(observation, 0, selected) || selected < 0 || selected > 58 ||
+        !no_bail_skater(after) || after != before || state_block(after) != block || !in_air(observation))
+        return std::nullopt;
+    return selected;
+}
 bool available() noexcept { return hooks_ready.load() && assets_ready.load() && gameplay_allowed.load(); }
 void tick(bool gameplay) noexcept {
     gameplay_allowed.store(gameplay);

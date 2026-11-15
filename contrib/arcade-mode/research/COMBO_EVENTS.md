@@ -1,7 +1,41 @@
 # Combo event evidence
 
-Status: native observation and balance plumbing exist; scored combo integration,
-physical balance failure and real chain acceptance remain incomplete.
+Status: native HUD scoring integration is implemented. The latest performed-Ollie
+reconciliation has portable and captured-observation coverage; corrected-DLL
+hardware acceptance remains pending.
+
+## Performed Ollies and native sequence replacement
+
+A bounded Deck capture on the previously installed build shows physical states
+100 → 103 → 200 → 201 → 100 and animation trick values 1 → 3. The native
+ScoringData action list first commits only Heelflip. Counting only that list
+therefore loses the preceding performed Ollie. Counting requested buttons or
+physical takeoffs would instead award unperformed tricks.
+
+The existing flip-state reader now offers a read-only observation checked
+against the local owner before and after the read. The combo adapter joins it
+to the existing physics flight identity. An observed Ollie contributes once per
+flight; a committed native action whose internal name is `ollie` reconciles that
+same contribution rather than adding another. Native points remain unchanged.
+Missing ownership, ambiguous historical association and mid-flight joins cannot
+manufacture additional credit. Custom trick scoring remains separate.
+
+The original native HUD and its animations remain the display owner. No scoring
+settings, native action records or game progression are written. The observer
+adds no animation, physics or input actuator.
+
+Focused coverage includes the captured replacement case, standalone Ollies,
+late landing commits, repeated flips, multiple flights, held animation states,
+missing evidence and ownership changes. The retained 90-sample replay produces
+two actions and 75 native points; removing animation evidence leaves one action
+and the same points. Four older capture replays preserve their totals. These
+cross-process samples are not frame-atomic and do not prove rendered acceptance.
+
+Before owner testing, verify the exact corrected DLL on the Deck: native ring
+1x → 2x for Ollie → Heelflip, standalone Ollie 1x, consecutive linked flights,
+Casper and other custom credit, banking/bailing, focus loss and Arcade OFF
+restoration. Verify the original Skatepedia navigation and input annotations in
+the same candidate; portable passes do not replace these device checks.
 
 ## Current source reuse checkpoint — 2026-10-14
 

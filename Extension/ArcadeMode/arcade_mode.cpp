@@ -2167,7 +2167,10 @@ void on_client_tick() noexcept {
             if(gameplay && focus_available) {
                 const auto reading=tricks::read_score_hud(score_probe_base,true);
                 const auto native_score=reading ? reading->native_scoring : std::nullopt;
-                const bool verified=combo_session.observe_native_score(native_score);
+                const auto animation = client_frame.airborne ? native_flip::observed_trick(native_owner) : std::nullopt;
+                const tricks::NativeScoreMotion motion{client_frame.owner_generation, client_frame.airborne_episode,
+                    client_frame.airborne, animation.value_or(-1)};
+                const bool verified=combo_session.observe_native_score(native_score, motion);
                 presentation=display.update(combo_session.model(),combo_session.custom_scoring(),reading,now,verified);
                 if(presentation)score_line::extra_tricks(display_owner,presentation->hud,display.rows());
             } else {

@@ -16,6 +16,13 @@ inline constexpr std::uint32_t line_sequences = 0xbcc10735, sequence_actions = 0
 inline constexpr std::uint32_t sequence_points = 0x7d1e237c, sequence_index = 0x8c2ce177;
 inline constexpr std::uint32_t sequence_kind = 0xa11c5161, current_action = 0x13e749e5;
 inline constexpr std::uint32_t action_schema = 0xcc74a280;
+// The committed action class declares its internal animation name directly.
+// Read-only captures identify "ollie" here even when the display text changes.
+inline constexpr std::uint16_t action_size = 112;
+inline constexpr std::uint32_t action_name = 0x7f1e40dd;
+inline constexpr std::size_t type_size = 6, field_count = 0x2a;
+inline constexpr std::size_t class_fields = 0x38, field_stride = 24;
+inline constexpr std::size_t field_offset = 8, field_type = 16;
 // Native ArrayTypeInfo's element declaration, shared by both array types.
 inline constexpr std::size_t array_element_type = 0x30;
 }

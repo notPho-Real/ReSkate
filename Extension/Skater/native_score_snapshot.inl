@@ -23,6 +23,24 @@ Address array_type(Value array, unsigned kind, unsigned bytes, std::uint32_t has
         read<std::uint32_t>(read<Address>(element)) == hash, "Native scoring array element differs.");
     return element;
 }
+unsigned action_name_offset(Address type) {
+    const auto meta = read<Address>(type);
+    require(menu_data::kind(type) == 3 && read<std::uint16_t>(meta + layout::type_size) == layout::action_size &&
+        read<std::uint32_t>(meta) == layout::action_schema, "Native action class differs.");
+    const auto count = read<std::uint16_t>(meta + layout::field_count);
+    const auto fields = read<Address>(meta + layout::class_fields);
+    require(fields && count <= 128, "Native action declarations differ.");
+    for (unsigned i = 0; i < count; ++i) {
+        const auto at = fields + i * layout::field_stride;
+        if (read<std::uint32_t>(at) != layout::action_name) continue;
+        const auto offset = read<std::uint16_t>(at + layout::field_offset);
+        const auto name_type = read<Address>(at + layout::field_type);
+        require(menu_data::kind(name_type) == 7 && menu_data::size(name_type) == sizeof(Address) &&
+            offset + sizeof(Address) <= layout::action_size, "Native action name differs.");
+        return offset;
+    }
+    throw std::runtime_error("Native action name declaration is missing.");
+}
 NativeScoreSequence sequence(const Context& c, Value value) {
     schema(value.type, layout::sequence_schema, layout::sequence_size);
     NativeScoreSequence result;
@@ -31,7 +49,7 @@ NativeScoreSequence sequence(const Context& c, Value value) {
     result.kind = read<std::uint32_t>(c.address(field(c, value, layout::sequence_kind, 8, 4)));
     result.current_action = read<Address>(c.address(field(c, value, layout::current_action, 3, sizeof(Address))));
     const auto actions = field(c, value, layout::sequence_actions, 4, sizeof(Address));
-    (void)array_type(actions, 3, sizeof(Address), layout::action_schema);
+    const auto action_type = array_type(actions, 3, sizeof(Address), layout::action_schema);
     unsigned count{}, stride{};
     const auto bytes = c.array(actions, 64, count, stride);
     require(stride == sizeof(Address) && bytes.size() == std::size_t{count} * stride,
@@ -40,6 +58,14 @@ NativeScoreSequence sequence(const Context& c, Value value) {
     if (count) std::memcpy(result.action_objects.data(), bytes.data(), bytes.size());
     require(std::all_of(result.action_objects.begin(), result.action_objects.end(),
         [](auto action) { return action != 0; }), "Native scoring action is unavailable.");
+    if (count) {
+        const auto offset = action_name_offset(action_type);
+        for (const auto action : result.action_objects) {
+            const auto text = read<Address>(action + offset);
+            require(text != 0, "Native action name is unavailable.");
+            if (menu_data::string(text, 48) == "ollie") result.ollie_actions.push_back(action);
+        }
+    }
     return result;
 }
 std::vector<NativeScoreSequence> line(const Context& c, Value value) {

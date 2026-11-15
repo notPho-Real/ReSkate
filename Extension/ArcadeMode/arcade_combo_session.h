@@ -19,9 +19,10 @@ inline BalanceKind balance_kind(SkatePose pose) noexcept {
 class ComboSession {
 public:
     explicit ComboSession(Tuning tuning = {}, bool native_scoring = false) noexcept : model_(tuning, 1, native_scoring) {}
-    bool observe_native_score(const std::optional<tricks::NativeScoreSnapshot>& snapshot) {
+    bool observe_native_score(const std::optional<tricks::NativeScoreSnapshot>& snapshot,
+                              std::optional<tricks::NativeScoreMotion> motion = std::nullopt) {
         const auto progress = native_scoring_.observe(snapshot, model_.state().combo_active,
-            model_.last_settlement().sequence);
+            model_.last_settlement().sequence, motion);
         model_.native_score(progress ? progress->points : 0, progress ? progress->actions : 0);
         return progress.has_value();
     }
