@@ -1811,7 +1811,29 @@ void run(){
  std::cout<<checks<<" combined production motion-admission ordering checks passed; native query and physical writer mocked\n";
 }
 }
-void run_wallplant_wrapper_tests(){run();physical_cleanup_route::run();ground_route::run();body_observation_route::run();release_trajectory_route::run();native_query_route::run();world_trajectory_route::run();departure_authority_route::run();hold_admission_route::run();motion_admission_route::run();}
+namespace entry_commit_route {
+bool admitted{};unsigned writes{};
+std::uint64_t GetTickCount64(){return 1035;}
+void source_require(bool ok,const char*){if(!ok)throw 1;}
+namespace arcade_mode::wallplant_runtime {
+bool begin_hold(int,std::uint64_t&){return admitted;}
+}
+template<class F> void write_arcade_bodies(int,int,int,int,bool,bool,F){++writes;}
+void commit(){
+ struct {int parts{};} bodies;
+ int command{},velocities{},spins{},flags{};
+ @wallplant_wrapper_entry_commit@
+}
+void run(){
+ for(bool accept:{false,true}){
+  admitted=accept;writes=0;bool threw=false;
+  try{commit();}catch(int){threw=true;}
+  check(threw!=accept && writes==(accept?1u:0u),
+        "actual entry commit refuses expired authority before any velocity write");
+ }
+}
+}
+void run_wallplant_wrapper_tests(){run();physical_cleanup_route::run();ground_route::run();body_observation_route::run();release_trajectory_route::run();native_query_route::run();world_trajectory_route::run();departure_authority_route::run();hold_admission_route::run();motion_admission_route::run();entry_commit_route::run();}
 #ifdef ARCADE_WALLPLANT_WRAPPER_STANDALONE
 int main(){run_wallplant_wrapper_tests();}
 #endif

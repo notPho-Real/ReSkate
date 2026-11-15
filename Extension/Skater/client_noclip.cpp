@@ -1273,8 +1273,14 @@ bool arcade_wallplant_enter_hold(const WallplantHandoff& handoff,std::uintptr_t 
             wallplant_drive_pose(drive_witness.matrix)),"Wallplant physical drive unavailable.");
         source_require(wallplant_native_drive().update(drive_witness.body,wallplant_drive_pose(initial_bounded)),
             "Wallplant initial drive target failed.");
-        write_arcade_bodies(bodies.parts,velocities,spins,flags,true,false,[]{});
+        // Hold entry commit begin.
+        // Expiry must reject before the first body write. Once admitted, the
+        // hold owns its separate lifetime instead of the short query lease.
         auto started=GetTickCount64();
+        source_require(arcade_mode::wallplant_runtime::begin_hold(command,started),
+            "Wallplant hold authority expired before entry brake.");
+        write_arcade_bodies(bodies.parts,velocities,spins,flags,true,false,[]{});
+        // Hold entry commit end.
         SourceReader written;
         const auto readback0=written.value<std::array<float,3>>(bodies.parts[0],0x70);
         const auto readback8=written.value<std::array<float,3>>(bodies.parts[8],0x70);
@@ -1282,8 +1288,6 @@ bool arcade_wallplant_enter_hold(const WallplantHandoff& handoff,std::uintptr_t 
         written.verify();
         auto& air=arcade_air();
         air.controller.yield_ordinary_motion();air.output.vertical=air.output.horizontal=false;
-        source_require(arcade_mode::wallplant_runtime::begin_hold(command,started),
-            "Wallplant hold authority changed after entry brake.");
         auto& hold=wallplant_physical_hold();
         wallplant_released_departure()={};wallplant_released_core.store(0,std::memory_order_release);
         wallplant_release_observation()={};wallplant_observed_release_core.store(0,std::memory_order_release);
@@ -1309,6 +1313,7 @@ bool arcade_wallplant_enter_hold(const WallplantHandoff& handoff,std::uintptr_t 
     } catch(...) {
         if(command) {
             wallplant_native_drive().stop();
+            arcade_mode::wallplant_runtime::finish_hold(command,false,GetTickCount64());
             arcade_mode::wallplant_runtime::completed(command,false);
         }
         try{throw;}catch(const SourceGuard& issue){note(19,issue.message);}

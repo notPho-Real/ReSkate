@@ -100,7 +100,7 @@ void observe_at(const NativeInputFrame& f){fixture::now=std::max(fixture::now,f.
 void finish_at(const WallplantCommand& c,bool ok,std::uint64_t at){fixture::now=at;finish_hold(c,ok,at);}
 bool preserve_at(const NativeInputFrame& f,std::uint64_t at){fixture::now=at;return preserves_combo(f,at);}
 void motion_admission_checks() {
-    for(unsigned fault=0;fault<10;++fault) {
+    for(unsigned fault=0;fault<11;++fault) {
         setup();in_flight={};candidate={};raw={};pending={};last_used_contact=0;last_handled_input=0;policy.reset();
         auto f=observed;f.airborne_started_known=true;f.airborne_started_at=900;observed=f;
         SurfaceGeometryContext ctx{{1,2,3,4,5},context(f),8,7,1,9,f.owner_generation,SurfaceGeometryPhase::motion_admission};
@@ -136,7 +136,12 @@ void motion_admission_checks() {
         if(fault==7)req.physical_pressed_at=1001;
         const auto disposition=request(req,fixture::now,f);
         const auto command=consume(fixture::now,f,{-12,-2,0},req.input_sequence);
-        check(bool(command)==(fault==0),"only same-call geometry and fresh airborne A reach the existing command");
+        check(bool(command)==(fault==0 || fault==10),"only same-call geometry and fresh airborne A reach the existing command");
+        if(fault==10) {
+            fixture::now=1035;auto at=fixture::now;
+            check(!begin_hold(command,at) && !held_command(),
+                  "consumed motion command expires before physical entry without starting a hold");
+        }
         if(!fault) {
             check(disposition==InputDisposition::started,"same-call request is admitted");
             check(std::abs(command.after[0]-6.285f)<.0001f && std::abs(command.after[1]-12.7f)<.0001f,
