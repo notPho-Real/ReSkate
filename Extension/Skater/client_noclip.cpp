@@ -1011,15 +1011,16 @@ bool wallplant_ground_orientation(const std::array<float,48>& supplied,
     }
     return false;
 }
-// Ground motion publishes a reference and then prepares a separate board
-// target from the old physical pose. Route the same bounded reference to that
-// target, only when both still belong to this exact preparation. The native
+// Native motion publishes a reference and then prepares a separate board
+// target. Route the same bounded reference there only when both still belong
+// to this exact preparation. The native
 // constraint drive, rather than a physical-pose write, performs the movement.
 bool wallplant_ground_drive_target(const std::array<float,16>& local_root,
         const std::array<float,16>& local_target,const std::array<float,3>& origin,
-        const std::array<float,16>& actual,const std::array<float,16>& reference,
-        const std::array<float,16>& supplied,float limit,std::array<float,16>& result) noexcept {
-    for(const auto& matrix:{local_root,local_target,actual,reference,supplied})
+        const std::array<float,16>& actual,const std::array<float,16>& prepared_board,
+        const std::array<float,16>& reference,const std::array<float,16>& supplied,
+        float limit,std::array<float,16>& result) noexcept {
+    for(const auto& matrix:{local_root,local_target,actual,prepared_board,reference,supplied})
         if(!valid_flight_transform(matrix))return false;
     for(float value:origin)if(!std::isfinite(value) || std::abs(value)>1000000)return false;
     if(!std::isfinite(limit) || limit<=0 || limit>3.14159265358979323846f ||
@@ -1035,7 +1036,7 @@ bool wallplant_ground_drive_target(const std::array<float,16>& local_root,
         const auto lane=row*4+axis;
         // Float matrix publication tolerance, not a movement allowance.
         if(std::abs(reference[lane]-expected[lane])>.001f ||
-           supplied[lane]!=actual[lane])return false;
+           supplied[lane]!=prepared_board[lane])return false;
         candidate[lane]=reference[lane];
     }
     result=candidate;
@@ -3172,11 +3173,15 @@ void wallplant_prepare_board_drive(std::uintptr_t rig,std::uintptr_t caller) noe
         const auto published=matrix(rig,spawn::rig_published_motion_reference);
         source_require(game::orientation_target::same_basis(reference,published),"board_drive_publication");
         const auto supplied=matrix(rig,spawn::rig_board_drive_target);
+        // AIR's getter can transform its pose before storing this snapshot.
+        // Validate the exact native copy, while retaining body 8 for the
+        // physical orientation limit. Ground still requires raw body 8.
+        const auto prepared_board=world_reference?matrix(rig,spawn::rig_prepared_board_pose):orientation.actual;
         for(unsigned axis=0;axis<3;++axis)
             source_require(std::abs(world[12+axis]-held.anchor[axis])<=.001f,"board_drive_anchor");
         std::array<float,16> replacement{},check{};
         source_require(wallplant_ground_drive_target(orientation.local_root,local,origin,
-            orientation.actual,reference,supplied,orientation.limit,replacement),"board_drive_preparation");
+            orientation.actual,prepared_board,reference,supplied,orientation.limit,replacement),"board_drive_preparation");
         arcade_mode::AirMotionIntent intent{};
         wallplant_read_current_intent(intent,now,hold.intent_generation);
         bool stale_query{};

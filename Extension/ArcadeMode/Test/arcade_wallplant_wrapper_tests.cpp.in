@@ -640,7 +640,7 @@ struct Released {Hold release;dingosdk::arcade_mode::NativeInputFrame frame;
 Released& wallplant_released_departure(){return released_value;}
 std::atomic<std::uintptr_t> wallplant_released_core{};
 std::array<float,48> prepared{},stored{};
-std::array<float,16> board_target{},published_reference{},last_drive_reference{},consumed_target{};
+std::array<float,16> board_target{},prepared_board_pose{},published_reference{},last_drive_reference{},consumed_target{};
 unsigned drives{};
 std::array<float,3> world_origin{100,200,300};
 Command held_value;
@@ -672,13 +672,15 @@ bool hold_current(const Command&,std::uint64_t now,const NativeInputFrame&,bool*
  if(change_orientation_at_permission==4)orientation_snapshot.root_spin[0]=1;
  if(change_orientation_at_permission==5)orientation_snapshot.reference_spin[0]=1;
  if(change_orientation_at_permission==6)last_drive_reference[0]=.5f;
+ if(change_orientation_at_permission==7)prepared_board_pose[12]+=1;
  if(stale)*stale=fixture_stale_query;return fixture_current && !fixture_stale_query && now<=physical_hold.started+194;
 }
 }
 }
 struct SourceReader {
  bool orientation_watched{};
- bool reference_watched{};
+ bool reference_watched{},board_pose_watched{};
+ std::array<float,16> watched_board_pose{};
  std::array<float,16> watched_reference{};
  WallplantOrientationSnapshot watched_orientation{};
  std::uintptr_t pointer(std::uintptr_t rig){check(rig==2,"ground reads only held rig");return native_context;}
@@ -691,6 +693,10 @@ struct SourceReader {
    if(offset>=spawn::rig_published_motion_reference&&offset<spawn::rig_published_motion_reference+64){
     if(!reference_watched){reference_watched=true;watched_reference=last_drive_reference;}
     std::copy_n(last_drive_reference.begin()+(offset-spawn::rig_published_motion_reference)/4,4,out.begin());return out;
+   }
+   if(offset>=spawn::rig_prepared_board_pose&&offset<spawn::rig_prepared_board_pose+64){
+    if(!board_pose_watched){board_pose_watched=true;watched_board_pose=prepared_board_pose;}
+    std::copy_n(prepared_board_pose.begin()+(offset-spawn::rig_prepared_board_pose)/4,4,out.begin());return out;
    }
    if(offset>=spawn::rig_board_drive_target&&offset<spawn::rig_board_drive_target+64){
     std::copy_n(board_target.begin()+(offset-spawn::rig_board_drive_target)/4,4,out.begin());return out;
@@ -713,6 +719,7 @@ struct SourceReader {
  void verify(){
   source_require(!fail_verify,"snapshot_invalid");
   source_require(!reference_watched || watched_reference==last_drive_reference,"published_reference_changed");
+  source_require(!board_pose_watched || watched_board_pose==prepared_board_pose,"prepared_board_pose_changed");
   source_require(!orientation_watched || (watched_orientation.actual==orientation_snapshot.actual &&
     watched_orientation.local_root==orientation_snapshot.local_root && watched_orientation.limit==orientation_snapshot.limit &&
     watched_orientation.root_spin==orientation_snapshot.root_spin && watched_orientation.reference_spin==orientation_snapshot.reference_spin),
@@ -779,7 +786,7 @@ void reset(){
  physical_drive_updates=0;fail_physical_drive=false;
  ground_state.initialized=true;ground_state.velocity_guard_active=true;ground_state.busy.clear();ground_state.ground_target_original=original;
  ground_state.air_position_original=original_position;
- ground_state.rig_drive_original=original_drive;drives=0;board_target={};published_reference={};last_drive_reference={};consumed_target={};
+ ground_state.rig_drive_original=original_drive;drives=0;board_target={};prepared_board_pose={};published_reference={};last_drive_reference={};consumed_target={};
  held_value={};held_value.motion.ready=true;held_value.input_sequence=7;held_value.native.owner.rig=2;held_value.native.owner.context=3;
  held_value.anchor_verified=true;held_value.anchor={7,8,9};held_value.hold_forward={1,0,0};physical_hold={held_value,100};
  wallplant_hold_core=1;cancelled.clear();clock_ms=110;originals=target_calls=copies=reads=0;state_id=100;
@@ -950,11 +957,11 @@ void run(){
  const std::array<float,16> reference{-1,0,0,0, 0,1,0,0, 0,0,-1,0, 107,207,305,1};
  auto supplied=reference;supplied[3]=17;supplied[7]=18;supplied[11]=19;supplied[15]=20;
  auto routed=supplied;
- check(wallplant_ground_drive_target(local_root,local_target,{100,200,300},reference,
+ check(wallplant_ground_drive_target(local_root,local_target,{100,200,300},reference,reference,
        reference,supplied,1.1f,routed)&&routed==supplied,
        "board route composes translated nonidentity local frames and preserves SIMD padding");
  auto wrong_reference=reference;wrong_reference[12]=105;
- check(!wallplant_ground_drive_target(local_root,local_target,{100,200,300},reference,
+ check(!wallplant_ground_drive_target(local_root,local_target,{100,200,300},reference,reference,
        wrong_reference,supplied,1.1f,routed),"board route rejects a world/local translation mixup");
  const auto prepare_drive=[] {
   reset();noclip_ground_target(2,.03333333f);
@@ -986,11 +993,62 @@ void run(){
  std::copy_n(stored.begin()+16,16,published_reference.begin());
  check(std::equal(stored.begin(),stored.begin()+16,prepared.begin()),
        "AIR position target keeps the unused local matrix unchanged");
- last_drive_reference=published_reference;board_target=orientation_snapshot.actual;copies=reads=0;
+ last_drive_reference=published_reference;board_target=prepared_board_pose=orientation_snapshot.actual;copies=reads=0;
  wallplant_prepare_board_drive(2,spawn::air_position_drive_return);
  check(copies==1&&physical_drive_updates==1&&board_target==published_reference&&cancelled.empty(),
        "actual AIR201 tail caller consumes the anchored reference once");
  check(physical_hold.started==100,"AIR201 routing cannot renew the hold deadline");
+ // Native AIR uses a transformed getter; Ground's raw body-8 equality is not
+ // its publication contract. Native I/O is mocked; the wrappers are production.
+ for(unsigned fault=0;fault<9;++fault){
+  reset();state_id=201;
+  // A translated, nonidentity local root from the failed native trial.
+  // SIMD padding is excluded from pose equality, as in native publication.
+  orientation_snapshot.local_root={
+   .9907270074f,-.1275773644f,.0467386693f,17,
+   .1194913238f,.9818620682f,.1472035795f,18,
+   -.0646707565f,-.1402536780f,.9880014658f,19,
+   .0427086949f,-.6804596782f,.1760414094f,20};
+  original_position(2,&position);
+  wallplant_prepared_air_position(2,spawn::air_position_return);
+  // Independently reproduce the pinned AIR multiply/add publication, using
+  // the world target and no Ground origin, rather than an identity shortcut.
+  for(unsigned row=0;row<4;++row)for(unsigned axis=0;axis<3;++axis){
+   float value=row==3?stored[28+axis]:0.f;
+   for(unsigned k=0;k<3;++k)value+=orientation_snapshot.local_root[row*4+k]*stored[16+k*4+axis];
+   published_reference[row*4+axis]=value;
+  }
+  last_drive_reference=published_reference;
+  prepared_board_pose=orientation_snapshot.actual;
+  prepared_board_pose[12]=.125f;prepared_board_pose[13]=-.25f;
+  board_target=prepared_board_pose;copies=reads=0;
+  const auto body_before=orientation_snapshot.actual;
+  switch(fault){
+   case 1:board_target[12]+=.01f;break;
+   case 2:prepared_board_pose[13]+=.01f;break;
+   case 3:change_orientation_at_permission=7;break;
+   case 4:orientation_snapshot.limit=.1f;break;
+   case 5:published_reference[12]+=1;break;
+   case 6:state_id=504;break;
+   case 7:native_context=4;break;
+   case 8:fixture_current=false;break;
+  }
+  const auto target_before=board_target;
+  wallplant_prepare_board_drive(2,spawn::air_position_drive_return);
+  if(fault==0){
+   bool published_pose=true,padding_preserved=true;
+   for(unsigned row=0;row<4;++row){
+    for(unsigned axis=0;axis<3;++axis)published_pose&=board_target[row*4+axis]==published_reference[row*4+axis];
+    padding_preserved&=board_target[row*4+3]==target_before[row*4+3];
+   }
+   check(copies==1&&physical_drive_updates==1&&cancelled.empty()&&published_pose&&padding_preserved,
+         "AIR getter pose may differ from body 8 while the checked publication reaches the native drive");
+   check(physical_hold.started==100&&orientation_snapshot.actual==body_before,
+         "AIR publication correction neither renews the hold nor writes a physical pose");
+  } else check(copies==0&&physical_drive_updates==0&&board_target==target_before,
+         "AIR getter mismatch, stale snapshot, excessive turn, bad publication or lost authority cannot write");
+ }
+
  for(unsigned fault=0;fault<6;++fault){
   reset();state_id=201;original_position(2,&position);
   auto caller=spawn::air_position_return;auto rig=std::uintptr_t{2};
