@@ -3,6 +3,7 @@
 #include "Engine/Game/Build/20260929/score_hud.h"
 #include "Engine/Game/Build/20260929/hud_corner.h"
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <iostream>
 #include <map>

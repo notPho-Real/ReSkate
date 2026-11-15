@@ -27,7 +27,7 @@ void* assign(void* out,const char* text,std::uint32_t n) {
     *static_cast<Address*>(out)=reinterpret_cast<Address>(p);++strings;return out;
 }
 void release(Address* p){delete[] reinterpret_cast<char*>(*p);*p=0;++released;}
-struct Data {struct {decltype(&assign) assign{&game::assign};} values;};
+struct Data {struct {decltype(&game::assign) assign{&game::assign};} values;};
 Data& native_data(){static Data d;return d;}
 }
 namespace multiplayer::menu_data {

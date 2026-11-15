@@ -58,7 +58,7 @@ struct Context {
         if(k==addr::skatepedia::title)return {v.handle,22,0};
         throw std::runtime_error("unexpected path");
     }
-    Value element(Value v,unsigned i)const {models.at(v.handle).inputs.at(i);return {v.handle,11,i};}
+    Value element(Value v,unsigned i)const {(void)models.at(v.handle).inputs.at(i);return {v.handle,11,i};}
     Address address(Value v)const {
         const auto& m=models.at(v.handle);
         if(v.type==20)return reinterpret_cast<Address>(&m.focus);
