@@ -201,9 +201,11 @@ bool query_current(const SurfaceGeometrySample& wall) noexcept {
         native_wall_contact::static_world_owner(wall.body,owner) && owner==wall.world_owner;
 }
 bool scoped_motion(std::uint64_t token,const NativeInputFrame& frame,std::uint64_t now) noexcept {
+    // AIR preparation runs inside the original update; its observation was
+    // published after the preceding update. Budget this callback from entry,
+    // while keeping the unchanged observation under its separate native lease.
     return token && token==motion_scope.serial && wallplant_same_observation(motion_scope.frame,frame) &&
-        now>=motion_scope.started && now>=frame.sampled_at && std::isfinite(frame.physics_seconds) && frame.physics_seconds>0 &&
-        double(now-frame.sampled_at)<=std::ceil(double(frame.physics_seconds)*1000) &&
+        now>=motion_scope.started && fresh(frame,now) && std::isfinite(frame.physics_seconds) && frame.physics_seconds>0 &&
         double(now-motion_scope.started)<=std::ceil(double(frame.physics_seconds)*1000);
 }
 bool candidate_current() noexcept {

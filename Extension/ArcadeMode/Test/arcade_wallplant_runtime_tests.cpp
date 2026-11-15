@@ -170,8 +170,59 @@ void motion_admission_checks() {
     }
     fixture::motion_geometry=fixture::geometry_mode=false;
 }
+void motion_scope_clock_checks() {
+    // Native b661 attempt 17: previous publication 9450, current callback
+    // 9479..9489. These are captured clock values; native geometry is mocked.
+    setup();in_flight={};candidate={};raw={};pending={};
+    auto f=observed;f.sampled_at=1518939450;observed=f;
+    fixture::now=1518939479;
+    const auto token=begin_motion(f,fixture::now);
+    check(token && motion_current(token,f),"captured callback starts with its preceding physics observation");
+    fixture::now=1518939489;
+    check(motion_current(token,f),
+          "ten milliseconds of current callback work cannot expire because the preceding sample is 39ms old");
+    check(f.sampled_at==1518939450 && motion_scope.frame.sampled_at==1518939450,
+          "accepting the current callback never refreshes its preceding observation");
+    fixture::now=1518939513;
+    check(motion_current(token,f),"the current callback retains its own 34ms budget at 30Hz");
+    fixture::now=1518939514;
+    check(!motion_current(token,f),"a callback exceeding its own physics-step budget is refused");
+    fixture::now=1518939478;
+    check(!motion_current(token,f),"a clock preceding callback entry is refused");
+    fixture::now=1518939489;
+    auto changed=f;++changed.owner_generation;
+    check(!motion_current(token,changed),"captured timing cannot authorize another owner generation");
+    changed=f;++changed.physics_step;
+    check(!motion_current(token,changed),"captured timing cannot authorize another physics observation");
+    changed=f;changed.state=504;
+    check(!motion_current(token,changed),"captured timing cannot authorize an offboard frame");
+    check(!motion_current(token+1,f),"captured timing cannot authorize a foreign token");
+    bool foreign=true;
+    std::thread other([&]{foreign=motion_current(token,f);});other.join();
+    check(!foreign,"captured timing cannot authorize another thread");
+    permitted=false;check(!motion_current(token,f),"Arcade OFF withdraws the current callback");
+    permitted=true;++observed.physics_step;
+    check(!motion_current(token,f),"a newly published observation invalidates the old callback");
+    observed=f;end_motion(token);
+    check(!motion_current(token,f),"callback return withdraws admission immediately");
+
+    // The observation lease and callback budget are independent. Neither is
+    // renewed by scope entry, even if the other still has time remaining.
+    fixture::now=f.sampled_at+140;
+    const auto late=begin_motion(f,fixture::now);
+    check(late!=0,"an observation inside its established lease can start a scope");
+    fixture::now=f.sampled_at+InputTiming::native_sample_lease_ms;
+    check(motion_current(late,f),"observation lease remains inclusive at its existing boundary");
+    ++fixture::now;
+    check(!motion_current(late,f),"a stale observation is refused even within the current callback budget");
+    end_motion(late);
+    check(!begin_motion(f,fixture::now),"scope entry cannot renew an expired observation");
+    fixture::now=f.sampled_at-1;
+    check(!begin_motion(f,fixture::now),"a future observation cannot start a scope");
+}
+
 void motion_geometry_diagnostic_checks() {
-    for(unsigned fault=0;fault<4;++fault) {
+    for(unsigned fault=0;fault<5;++fault) {
         setup();in_flight={};candidate={};raw={};pending={};
         const auto f=observed;
         SurfaceGeometryContext ctx{{1,2,3,4,5},context(f),8,7,1,9,f.owner_generation,SurfaceGeometryPhase::motion_admission};
@@ -186,14 +237,14 @@ void motion_geometry_diagnostic_checks() {
         auto span=std::span<const SurfaceGeometryVector>(supports);
         if(fault==1)span={};
         if(fault==2)wall.valid=false;
-        fixture::query_latency=fault==3?25:0;
+        fixture::query_latency=fault==3?35:(fault==4?25:0);
         const auto token=begin_motion(f,1000);
         MotionDiagnostic diagnostic{};
         publish_motion_geometry(token,api,ctx,f,{.4f,2,0},{0,1,0},{-12,-2,0},ground_sample,span,&diagnostic);
-        const char* expected[]{"published","motion_geometry_guard","motion_wall","motion_publication_guard"};
+        const char* expected[]{"published","motion_geometry_guard","motion_wall","motion_publication_guard","published"};
         check(std::string_view(diagnostic.geometry_reason)==expected[fault],
-              "geometry receipt distinguishes publication, missing support, missing wall and expired scope");
-        check(candidate.valid==(fault==0),
+              "geometry receipt distinguishes failed geometry, expired callback and valid work after the prior frame interval");
+        check(candidate.valid==(fault==0 || fault==4),
               "diagnostic output cannot turn failed geometry or expired scope into an admissible candidate");
         check(f.sampled_at==990 && motion_scope.frame.sampled_at==990,
               "diagnostics preserve the original sample clock through a delayed query");
@@ -236,6 +287,7 @@ void motion_diagnostic_checks() {
 int main(){
     motion_diagnostic_checks();
     motion_admission_checks();
+    motion_scope_clock_checks();
     motion_geometry_diagnostic_checks();
     {
         const auto c=setup();check(enter(c,1000),"pose interruption fixture enters");
