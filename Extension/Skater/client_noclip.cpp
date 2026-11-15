@@ -16,6 +16,7 @@
 #include "Engine/Game/Abi/orientation_target.h"
 #include "Engine/Game/Build/20260929/body_drive.h"
 #include "Extension/World/native_body_drive.h"
+#include "Extension/Profile/local_profile_runtime.h"
 #include "Engine/Game/Multiplayer/session_tools.h"
 #include "Extension/ArcadeMode/arcade_movement.h"
 #include "Extension/ArcadeMode/arcade_mode.h"
@@ -1046,6 +1047,7 @@ struct WallplantHandoff {
     arcade_mode::WallplantSelectionTicket ticket{};
     std::uint64_t intent_generation{};
     std::uint64_t collision_serial{};
+    std::uint64_t motion_serial{};
 };
 // A different scheduler/thread is rejected; no cross-thread frame is invented.
 WallplantHandoff& wallplant_handoff() { static thread_local WallplantHandoff value;return value; }
@@ -1146,7 +1148,7 @@ std::uint64_t arcade_wallplant_before_selection(std::uintptr_t selector,std::uin
     return 0;
 }
 bool arcade_wallplant_enter_hold(const WallplantHandoff& handoff,std::uintptr_t core) noexcept {
-    if((!handoff.ticket.selected&&!handoff.collision_serial) || core!=handoff.execution.native.owner.core)return false;
+    if((!handoff.ticket.selected&&!handoff.collision_serial&&!handoff.motion_serial) || core!=handoff.execution.native.owner.core)return false;
     SourceLastError error;
     std::uint64_t now{};
     const auto note=[&](unsigned stage,const char* reason,std::uint32_t selected=0) {
@@ -1189,7 +1191,17 @@ bool arcade_wallplant_enter_hold(const WallplantHandoff& handoff,std::uintptr_t 
         live.words[0]=reader.value<std::uint32_t>(bodies.context,native::request_words);
         live.words[1]=reader.value<std::uint32_t>(bodies.context,native::request_words+4);
         const auto previous=reader.value<std::uint32_t>(bodies.context,native::previous_selected_state);
-        if(handoff.collision_serial) {
+        if(handoff.motion_serial) {
+            namespace bail=game::build::v20260929::no_bail;
+            const auto animation=reader.value<std::uint32_t>(owner.context,bail::animation_request_offset);
+            source_require(arcade_mode::native_wall_contact::motion_uncontested(owner) &&
+                !handoff.execution.imported_contact && live.state==201 &&
+                !(live.words[0]&(bail::body_contact_context_mask|bail::impact_request_mask)) &&
+                !(animation&bail::animation_request_mask) && handoff.probe.motion==handoff.motion_serial &&
+                arcade_mode::wallplant_runtime::motion_current(handoff.motion_serial,handoff.execution.native) &&
+                arcade_mode::wallplant_execution_current(handoff.execution,input_owner,live,now),
+                "Wallplant motion scope or clean AIR observation changed.");
+        } else if(handoff.collision_serial) {
             source_require(handoff.collision_serial==handoff.probe.raw &&
                 arcade_mode::native_wall_contact::collision_current(handoff.collision_serial,owner) &&
                 arcade_mode::wallplant_execution_current(handoff.execution,input_owner,live,now),
@@ -1198,7 +1210,7 @@ bool arcade_wallplant_enter_hold(const WallplantHandoff& handoff,std::uintptr_t 
             input_owner,selector,previous,live,now),"Wallplant native reconstruction or chooser result changed.");
         const auto pending=arcade_mode::wallplant_runtime::writer_probe();
         source_require(pending.input==handoff.probe.input && pending.contact==handoff.probe.contact &&
-            pending.raw==handoff.probe.raw && arcade_mode::wallplant_same_observation(
+            pending.raw==handoff.probe.raw && pending.motion==handoff.probe.motion && arcade_mode::wallplant_same_observation(
                 handoff.execution.native,pending.native),"Wallplant reconstruction input or episode changed.");
         std::array<std::array<float,3>,32> velocities{},spins{};
         std::array<std::uint32_t,32> flags{};
@@ -1218,7 +1230,7 @@ bool arcade_wallplant_enter_hold(const WallplantHandoff& handoff,std::uintptr_t 
         const arcade_mode::WallplantCollisionResponseProof collision{
             handoff.execution,live,handoff.probe.input,handoff.probe.contact,handoff.collision_serial,collision_source.sampled_at};
         command=arcade_mode::wallplant_runtime::consume(now,handoff.execution.native,velocities[0],handoff.probe.input,
-            handoff.collision_serial?nullptr:&reconstruction,handoff.collision_serial?&collision:nullptr);
+            (handoff.collision_serial||handoff.motion_serial)?nullptr:&reconstruction,handoff.collision_serial?&collision:nullptr);
         note(17,command?"reconstruction_command_ready":"reconstruction_consume_empty",live.state);
         if(!command)return false;
         source_require(arcade_mode::wallplant_hold_anchor_current(command,bodies.root),
@@ -1237,9 +1249,9 @@ bool arcade_wallplant_enter_hold(const WallplantHandoff& handoff,std::uintptr_t 
             entry_orientation.actual,entry_orientation.limit,entry_orientation.root_spin,
             entry_orientation.reference_spin,initial_bounded,initial_turn),
             "Wallplant initial anchor or orientation is invalid.");
-        // Admission occurs after this step's ordinary drive preparation.
-        // Start the physical drive at the checked anchor now; waiting for the
-        // next preparation leaves the first held step targeting the wall.
+        // Install the checked anchor before returning to the native caller.
+        // Waiting for the next preparation would leave the first held step
+        // targeting the wall.
         // The articulated origin offset was composed above. These are spring
         // targets only; no physical-body transform is repositioned here.
         arcade_mode::AirMotionOutput brake{};brake.ready=brake.vertical=brake.horizontal=true;
@@ -1250,6 +1262,10 @@ bool arcade_wallplant_enter_hold(const WallplantHandoff& handoff,std::uintptr_t 
         source_require(no_bail_skater(after) && after==owner,"Wallplant reconstruction ownership changed before writing.");
         source_require(arcade_mode::wallplant_runtime::current(command,now,handoff.execution.native,command.before),
             "Wall contact changed before hold entry.");
+        source_require(!handoff.motion_serial ||
+            (arcade_mode::native_wall_contact::motion_uncontested(owner) &&
+             arcade_mode::wallplant_runtime::motion_current(handoff.motion_serial,handoff.execution.native)),
+            "Wallplant motion callback expired before hold entry.");
         source_require(!handoff.collision_serial ||
             arcade_mode::native_wall_contact::collision_current(handoff.collision_serial,owner),
             "Wallplant collision authority changed before hold entry.");
@@ -2867,6 +2883,39 @@ bool noclip_motion_target(std::uintptr_t rig, std::uintptr_t context,
       catch (...) { debug_stop_noclip(debug); debug.status = "Flight stopped after a motion error."; }
     return false;
 }
+// Called after the fingerprinted AIR position preparation and before its
+// caller publishes the reference or invokes the native drive. The query,
+// journaled A claim and existing physical hold commit share this call stack.
+void wallplant_admit_motion(std::uintptr_t rig,std::uintptr_t caller) noexcept {
+    if(competition_stock_physics() || !arcade_mode::enabled() ||
+       wallplant_hold_core.load(std::memory_order_acquire))return;
+    SourceLastError error;
+    try {
+        NoBailSkater owner{};
+        if(!no_bail_skater(owner) || owner.rig!=rig || caller!=owner.base+spawn::air_position_return)return;
+        const arcade_mode::NativeInputOwner input_owner{owner.base,owner.entity,owner.core,owner.context,owner.rig};
+        std::uint64_t now{};
+        const auto execution=arcade_mode::native_wallplant_context(input_owner,now);
+        namespace bail=game::build::v20260929::no_bail;
+        std::uint32_t animation{};
+        if(!arcade_mode::native_wall_contact::motion_uncontested(owner) ||
+           !execution.native.valid || execution.native.state!=201 || execution.imported_contact ||
+           (execution.live.words[0]&(bail::body_contact_context_mask|bail::impact_request_mask)) ||
+           !memory::peek(owner.context+bail::animation_request_offset,animation) ||
+           (animation&bail::animation_request_mask) ||
+           !arcade_mode::native_wallplant_execution_authorized(execution.native,now))return;
+        const auto token=arcade_mode::wallplant_runtime::begin_motion(execution.native,now);
+        if(!token)return;
+        struct End {std::uint64_t token;~End(){arcade_mode::wallplant_runtime::end_motion(token);}} end{token};
+        query_arcade_wallplant_motion_geometry(token,execution.native);
+        if(!arcade_mode::claim_native_wallplant_contact(execution.native))return;
+        const auto probe=arcade_mode::wallplant_runtime::writer_probe();
+        if(probe.motion!=token || !probe.input || probe.raw ||
+           !arcade_mode::wallplant_same_observation(probe.native,execution.native))return;
+        const WallplantHandoff handoff{execution,probe,{},0,0,token};
+        (void)arcade_wallplant_enter_hold(handoff,owner.core);
+    } catch(...) {}
+}
 void wallplant_prepared_target(std::uintptr_t rig,float seconds,bool world_reference=false) {
     SourceLastError error;
     const bool released=!wallplant_hold_core.load(std::memory_order_acquire);
@@ -3034,6 +3083,7 @@ void noclip_ground_target(std::uintptr_t rig,float seconds) {
     wallplant_prepared_target(rig,seconds);
 }
 void wallplant_prepared_air_position(std::uintptr_t rig,std::uintptr_t caller) {
+    wallplant_admit_motion(rig,caller);
     if(!wallplant_hold_core.load(std::memory_order_acquire))return;
     const auto held=arcade_mode::wallplant_runtime::held_command();
     if(!held || held.native.owner.rig!=rig ||

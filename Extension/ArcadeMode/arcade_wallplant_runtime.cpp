@@ -18,7 +18,7 @@ struct Candidate {
     SurfaceGeometryVector root{};
     SurfaceGeometryAnchor anchor{};
     float clearance{};
-    std::uint64_t published_at{};
+    std::uint64_t published_at{},motion{};
     bool valid{};
 };
 std::mutex mutex;
@@ -32,6 +32,11 @@ WallplantCommand in_flight{},receipt{};
 WallplantHoldContinuity hold,combo_bridge;
 WallplantCommand hold_play{},hold_stop{},grind_exclusion{};
 Hit held_hit{};
+SurfaceGeometrySample held_wall{};
+bool held_motion{},motion_wall_near{};
+struct MotionScope {std::uint64_t serial{},started{};NativeInputFrame frame{};};
+thread_local MotionScope motion_scope{};
+std::uint64_t motion_serial{};
 std::uint64_t hold_play_started{},grind_exclusion_started{};
 std::uint64_t contact_identity{},last_raw{},last_used_contact{},last_success_at{},last_handled_input{};
 bool grounded{},takeoff{},separated{},contact_active{},permitted{},animation_ready{};
@@ -159,8 +164,30 @@ bool raw_wall(const Hit& h) noexcept {
         h.kind!=4 && h.kind!=5 && h.kind!=8 && h.kind!=11 &&
         std::isfinite(h.normal[1]) && std::abs(h.normal[1])<=.1f;
 }
+bool query_current(const SurfaceGeometrySample& wall) noexcept {
+    SurfaceGeometryWorldOwner owner{};
+    return wall.valid && wall.world_owner.value &&
+        native_wall_contact::static_world_owner(wall.body,owner) && owner==wall.world_owner;
+}
+bool scoped_motion(std::uint64_t token,const NativeInputFrame& frame,std::uint64_t now) noexcept {
+    return token && token==motion_scope.serial && wallplant_same_observation(motion_scope.frame,frame) &&
+        now>=motion_scope.started && now>=frame.sampled_at && std::isfinite(frame.physics_seconds) && frame.physics_seconds>0 &&
+        double(now-frame.sampled_at)<=std::ceil(double(frame.physics_seconds)*1000) &&
+        double(now-motion_scope.started)<=std::ceil(double(frame.physics_seconds)*1000);
+}
+bool candidate_current() noexcept {
+    return candidate.contact.motion_query?
+        (scoped_motion(candidate.motion,candidate.contact.native,GetTickCount64()) && query_current(candidate.wall)):
+        native_wall_contact::current(candidate.hit,candidate.contact.geometry.world);
+}
+bool held_current(const WallplantCommand& command) noexcept {
+    return held_motion?query_current(held_wall):native_wall_contact::current(held_hit,command.geometry.world);
+}
 bool ready(std::uint64_t now,const NativeInputFrame& f) noexcept {
-    if(!permitted || hold.active() || !animation_ready || !takeoff || !candidate.valid || pending.sequence || in_flight ||
+    // The alternative admits only during the native motion call. Collision
+    // publications and the optional pose cannot authorize a late plant.
+    if(!candidate.contact.motion_query || !scoped_motion(candidate.motion,f,now) ||
+       !permitted || hold.active() || !takeoff || !candidate.valid || pending.sequence || in_flight ||
        !fresh(f,now) || !flight(candidate.contact.native,f) || !flight(observed,f) ||
        now<candidate.published_at || now-candidate.published_at>InputTiming::native_sample_lease_ms ||
        now<candidate.contact.sampled_at || now-candidate.contact.sampled_at>InputTiming::native_sample_lease_ms ||
@@ -168,7 +195,7 @@ bool ready(std::uint64_t now,const NativeInputFrame& f) noexcept {
        now<candidate.ground.queried_at || now-candidate.ground.queried_at>InputTiming::native_sample_lease_ms)return false;
     if(last_used_contact && (candidate.contact.identity==last_used_contact || !separated ||
        now<last_success_at || now-last_success_at<WallplantParameters::reference_prototype().repeat_ms))return false;
-    return native_wall_contact::current(candidate.hit,candidate.contact.geometry.world);
+    return candidate_current();
 }
 WallplantFrame frame(std::uint64_t now,const NativeInputFrame& f,SurfaceGeometryVector velocity) noexcept {
     WallplantFrame out{};out.native=f;out.geometry=candidate.contact.geometry;
@@ -195,7 +222,7 @@ void withdraw(const char* reason,const NativeInputFrame* frame=nullptr) noexcept
         hold_stop=hold.command();
         hold_rejected(hold.command(),frame?*frame:observed,GetTickCount64(),reason);
     }
-    hold.cancel(reason);combo_bridge.cancel(reason);hold_play={};held_hit={};
+    hold.cancel(reason);combo_bridge.cancel(reason);hold_play={};held_hit={};held_wall={};held_motion=false;motion_wall_near=false;
     pending_writer_input.store(0,std::memory_order_release);
     takeoff=grounded=separated=contact_active=animation_ready=false;policy.cancel();
 }
@@ -213,7 +240,9 @@ void tick(std::uintptr_t base,bool gameplay) noexcept {
     native_wall_contact::enable(active);
     if(interrupt.exchange(false,std::memory_order_acq_rel)) {
         wallplant_animation::cancel();
-        std::lock_guard lock(mutex);withdraw("controller_interrupt",&observed);
+        // X/B may interrupt the optional pose. Physical cancellation is owned
+        // by cancel(), native ownership/state checks and the hold deadline.
+        std::lock_guard lock(mutex);hold_play={};
     }
     if(stop_pose.exchange(false,std::memory_order_acq_rel))wallplant_animation::cancel();
     wallplant_animation::tick(active);
@@ -269,7 +298,7 @@ void observe_physics(const NativeInputFrame& f) noexcept {
     if(hold.active()) {
         const auto active_command=hold.command();
         if(permitted && hold.observe(f,GetTickCount64()) &&
-           native_wall_contact::current(held_hit,hold.command().geometry.world)) {
+           held_current(hold.command())) {
             observed=f;return;
         }
         if(!hold.active())hold_rejected(active_command,f,GetTickCount64(),hold.reason());
@@ -294,7 +323,7 @@ void observe_physics(const NativeInputFrame& f) noexcept {
     if(contacts.sampled_at<preceding_at){retention(4,"raw_before_preceding_frame");return;}
     if(!std::isfinite(contacts.seconds) || contacts.seconds<=0 ||
        !AirMotion::same_velocity(contacts.seconds,f.physics_seconds)){retention(5,"physics_seconds");return;}
-    if(!wall){separated=true;contact_active=false;retained_contact_hint.store(false,std::memory_order_release);return;}
+    if(!wall){if(!motion_wall_near)separated=true;contact_active=false;retained_contact_hint.store(false,std::memory_order_release);return;}
     if(!contact_active) {
         if(contact_identity==UINT64_MAX){withdraw("contact_overflow",&f);return;}
         ++contact_identity;
@@ -303,24 +332,71 @@ void observe_physics(const NativeInputFrame& f) noexcept {
     retained_contact_hint.store(true,std::memory_order_release);
     retention(6,"retained");
 }
-bool retain_collision_before_response(const NativeInputFrame& f,std::uint64_t now) noexcept {
-    const auto contacts=native_wall_contact::observe(skater(f.owner),now);
-    if(!native_wall_contact::collision_current(contacts.serial,skater(f.owner)))return false;
+bool retain_collision_before_response(const NativeInputFrame&,std::uint64_t) noexcept {
+    // Original collision processing is already under way. This branch plants
+    // at motion preparation and never converts a pending bail into a plant.
+    return false;
+}
+std::uint64_t begin_motion(const NativeInputFrame& f,std::uint64_t now) noexcept {
     std::lock_guard lock(mutex);
-    if(!permitted || !takeoff || hold.active() || in_flight || pending.sequence ||
-       !fresh(f,now) || !wallplant_same_observation(observed,f) || !contacts.valid ||
-       contacts.source!=native_wall_contact::Source::board || !contacts.after_valid ||
-       contacts.state!=f.state || contacts.state_after!=f.state ||
-       contacts.sampled_at<f.sampled_at || contacts.sampled_at>now || contacts.serial==last_raw ||
-       !AirMotion::same_velocity(contacts.seconds,f.physics_seconds))return false;
-    bool wall=false;
-    for(std::size_t i=0;i<contacts.count;++i)wall=wall||raw_wall(contacts.contacts[i]);
-    if(!wall || contact_identity==UINT64_MAX)return false;
-    if(!contact_active)++contact_identity;
-    last_raw=contacts.serial;contact_active=true;raw=contacts;raw_frame=f;candidate={};
-    retained_contact_hint.store(true,std::memory_order_release);
-    diagnose(0,7,"before_collision_response",raw,f,now,contact_identity);
-    return true;
+    if(motion_scope.serial || !permitted || !takeoff || hold.active() || pending.sequence || in_flight ||
+       !fresh(f,now) || f.state!=201 || !wallplant_same_observation(observed,f) ||
+       motion_serial==UINT64_MAX)return 0;
+    candidate={};motion_scope={++motion_serial,now,f};return motion_scope.serial;
+}
+bool motion_current(std::uint64_t token,const NativeInputFrame& f) noexcept {
+    std::lock_guard lock(mutex);
+    return permitted && scoped_motion(token,f,GetTickCount64()) && wallplant_same_observation(observed,f);
+}
+void end_motion(std::uint64_t token) noexcept {
+    std::lock_guard lock(mutex);
+    if(!token || motion_scope.serial!=token)return;
+    if(candidate.motion==token) {
+        candidate={};pending={};in_flight={};pending_writer_input.store(0,std::memory_order_release);
+    }
+    motion_scope={};
+}
+void publish_motion_geometry(std::uint64_t token,const SurfaceGeometryNativeApi& supplied,
+        const SurfaceGeometryContext& ctx,const NativeInputFrame& f,SurfaceGeometryVector root,
+        SurfaceGeometryVector up,SurfaceGeometryVector velocity,const SurfaceGeometrySample& ground,
+        std::span<const SurfaceGeometryVector> supports) noexcept {
+    if(!supplied.now || !supplied.current || supports.empty() || supports.size()>32 ||
+       ctx.phase!=SurfaceGeometryPhase::motion_admission || !motion_current(token,f))return;
+    auto api=supplied;
+    api.static_world_owner=[](void*,const SurfaceGeometryBody& shape,SurfaceGeometryWorldOwner& owner) noexcept {
+        return native_wall_contact::static_world_owner(shape,owner);
+    };
+    api.local_component_owner=[](void*,const SurfaceGeometryContext& context,const SurfaceGeometryBody& shape,
+            SurfaceGeometryWorldOwner& owner) noexcept {
+        return native_wall_contact::local_component_owner(shape,context.owner[1],owner);
+    };
+    auto board=root;for(unsigned axis=0;axis<3;++axis)board[axis]+=supports.front()[axis];
+    const auto wall=query_motion_wall(api,ctx,board,up,velocity,f.physics_seconds);
+    if(!wall.valid) {
+        std::lock_guard lock(mutex);
+        if(scoped_motion(token,f,api.now(api.user))) {motion_wall_near=false;separated=true;}
+        return;
+    }
+    if(!query_current(wall))return;
+    auto clearance=ground;
+    if(!clearance.fresh_for(ctx,api.now(api.user)))clearance=query_surface_geometry(api,ctx,wallplant_clearance_request(root));
+    const auto height=root[1]-clearance.point[1];
+    if(!clearance.valid || !revalidate_surface_geometry(api,ctx,clearance) ||
+       !std::isfinite(height) || height<WallplantParameters::reference_prototype().minimum_height)return;
+    const auto anchor=query_wallplant_anchor(api,ctx,wall.body,wall.point,wall.query_normal,root,supports.front(),supports);
+    if(!anchor.valid || !revalidate_surface_geometry(api,ctx,wall))return;
+    const auto now=api.now(api.user);
+    std::lock_guard lock(mutex);
+    if(!permitted || !takeoff || hold.active() || pending.sequence || in_flight ||
+       !scoped_motion(token,f,now) || !wallplant_same_observation(observed,f) ||
+       !wall.fresh_for(ctx,now) || !clearance.fresh_for(ctx,now) || contact_identity==UINT64_MAX)return;
+    Candidate result{};result.wall=wall;result.ground=clearance;result.root=root;result.anchor=anchor;
+    result.clearance=height;result.published_at=now;result.motion=token;result.valid=true;
+    auto& contact=result.contact;contact.native=f;contact.geometry=ctx;contact.body=wall.body;
+    contact.point=wall.point;contact.normal=wall.query_normal;contact.approach_velocity=velocity;
+    contact.identity=++contact_identity;contact.sampled_at=wall.queried_at;
+    contact.motion_query=contact.static_world=true;
+    motion_wall_near=true;candidate=result;
 }
 void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const SurfaceGeometryContext& ctx,
         const NativeInputFrame& f,SurfaceGeometryVector root,const SurfaceGeometrySample& ground,
@@ -437,7 +513,7 @@ InputSurfaceState surface(std::uint64_t now,const NativeInputFrame& f) noexcept 
     std::lock_guard lock(mutex);
     const bool eligible=ready(now,f);
     // Pure copies of the existing gates: no extra native identity queries.
-    const std::uint64_t flags=(permitted?1ull:0ull)|(animation_ready?2ull:0ull)|(takeoff?4ull:0ull)|
+    const std::uint64_t flags=(permitted?1ull:0ull)|2ull|(takeoff?4ull:0ull)|
         (candidate.valid?8ull:0ull)|(!pending.sequence?16ull:0ull)|(!in_flight?32ull:0ull)|
         (fresh(f,now)?64ull:0ull)|(flight(candidate.contact.native,f)?128ull:0ull)|
         (flight(observed,f)?256ull:0ull)|
@@ -510,7 +586,7 @@ bool current(const WallplantCommand& command,std::uint64_t now,const NativeInput
     std::lock_guard lock(mutex);
     return permitted && candidate.valid && in_flight && command.input_sequence==in_flight.input_sequence &&
         flight(command.native,f) && fresh(f,now) &&
-        native_wall_contact::current(candidate.hit,candidate.contact.geometry.world) &&
+        candidate_current() &&
         policy.current(command,frame(now,f,velocity),candidate.contact);
 }
 void completed(const WallplantCommand& command,bool applied) noexcept {
@@ -527,8 +603,8 @@ bool begin_hold(const WallplantCommand& command,std::uint64_t& now) noexcept {
     if(!permitted || hold.active() || !command || !in_flight || !candidate.valid ||
        !command.anchor_verified || !surface_geometry_detail::finite(command.anchor) ||
        !same_command(command,in_flight,true) ||
-       !native_wall_contact::current(candidate.hit,command.geometry.world) || !hold.begin(command,now))return false;
-    held_hit=candidate.hit;in_flight={};hold_play=command;hold_play_started=now;
+       !candidate_current() || !hold.begin(command,now))return false;
+    held_hit=candidate.hit;held_wall=candidate.wall;held_motion=candidate.contact.motion_query;in_flight={};hold_play=command;hold_play_started=now;
     combo_bridge.cancel();last_used_contact=command.contact;last_success_at=now;
     grind_exclusion=command;grind_exclusion_started=now;
     separated=false;animation_ready=false;return true;
@@ -538,7 +614,7 @@ bool hold_current(const WallplantCommand& command,std::uint64_t& now,const Nativ
     now=GetTickCount64();
     if(stale_query)*stale_query=false;
     if(!hold.active() || !same_command(command,hold.command(),true))return false;
-    const bool contact_current=permitted && native_wall_contact::current(held_hit,command.geometry.world);
+    const bool contact_current=permitted && held_current(command);
     if(contact_current) {
         if(hold.stale_query(live,now)) {
             if(stale_query)*stale_query=true;
@@ -616,7 +692,7 @@ void geometry_event(const GeometryProbe& probe,unsigned stage,const char* reason
 WriterProbe writer_probe() noexcept {
     if(!pending_writer_input.load(std::memory_order_acquire))return {};
     std::lock_guard lock(mutex);
-    return {pending.sequence,contact_identity,raw.serial,observed};
+    return {pending.sequence,candidate.contact.identity,candidate.motion?0:raw.serial,observed,candidate.motion};
 }
 WriterProbe retained_writer_probe() noexcept {
     if(!retained_contact_hint.load(std::memory_order_acquire))return {};

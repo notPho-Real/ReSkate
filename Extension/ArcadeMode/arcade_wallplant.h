@@ -121,15 +121,15 @@ struct WallplantPolicyDecision {
     bool reconstruction{};
     bool collision_response{};
 };
-// A real riding collision supplies this record. SurfaceGeometrySample (a ray
-// query) deliberately cannot be converted into a collision record here.
+// Retained collisions and native motion queries have distinct provenance.
+// A query never asserts that a rigid-body collision or response has occurred.
 struct WallplantContact {
     NativeInputFrame native{};
     SurfaceGeometryContext geometry{};
     SurfaceGeometryBody body{};
     SurfaceGeometryVector point{}, normal{}, approach_velocity{};
     std::uint64_t identity{}, sampled_at{};
-    bool collision{}, static_world{}, rail{}, skater{};
+    bool collision{}, static_world{}, rail{}, skater{}, motion_query{};
 };
 // Supplied by the exact collision producer after its original solver ran.
 // Runtime joins raw to the active native invocation before using this proof;
@@ -338,7 +338,7 @@ private:
             std::isfinite(f.ground_clearance) && f.ground_clearance>=parameters_.minimum_height && finite_velocity(f.velocity);
     }
     bool contact_ready(const WallplantFrame& f,const WallplantContact& c) const noexcept {
-        return c.collision && c.static_world && !c.rail && !c.skater && c.identity &&
+        return (c.collision!=c.motion_query) && c.static_world && !c.rail && !c.skater && c.identity &&
             c.body.world==f.geometry.world && c.body.index!=UINT32_MAX &&
             same_geometry(c.geometry,f.geometry) && c.geometry.native.fresh(f.now) &&
             c.native.valid && c.native.owner==f.native.owner &&

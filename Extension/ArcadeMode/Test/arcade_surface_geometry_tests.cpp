@@ -247,6 +247,12 @@ struct Fixture {
         return result;
     }
     SurfaceGeometrySample query_wall() {return query_wall(wall_point,wall_normal);}
+    SurfaceGeometrySample query_motion(SurfaceGeometryVector velocity={0,0,-10},float seconds=1.f/30.f) {
+        wall=true;live.native.airborne=true;live.phase=SurfaceGeometryPhase::motion_admission;
+        const auto ctx=live;
+        const auto result=query_motion_wall(api(),ctx,{0,1.3f,.4f},{0,1,0},velocity,seconds);
+        check(calls==pops && calls==frees,"motion query releases native result allocations");return result;
+    }
     SurfaceGeometryAnchor query_anchor(SurfaceGeometryVector root={0,1.5f,.2f},
         std::span<const SurfaceGeometryVector> offsets=std::span<const SurfaceGeometryVector>{},
         SurfaceGeometryVector board_offset={}) {
@@ -277,6 +283,32 @@ bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) no
 }
 }
 int main() {
+    {
+        Fixture f;const auto hit=f.query_motion();
+        check(hit.valid && f.calls==5,"motion query finds a wall without a physics contact record");
+        check(hit.query_normal[2]>.9999f && std::abs(hit.point[2])<.00001f,"motion query measures the wall plane");
+        check(std::abs(f.wall_segments[0].end[2]-(.4f-10.f/30.f-.254f))<.00001f,
+              "motion ray reach is observed step motion plus ten inches");
+    }
+    for(unsigned fault=0;fault<9;++fault) {
+        Fixture f;
+        if(fault==0)f.miss=true;
+        if(fault==1)f.seam=true;
+        if(fault==2)f.upper_gap=true;
+        if(fault==3)f.changed_context=true;
+        if(fault==4)f.bad_fraction=true;
+        if(fault==5)f.wall_point[2]=-2;
+        if(fault==6)f.wall_normal={0,1,0};
+        if(fault==7)f.bad_body=true;
+        if(fault==8)f.changed_owner=true;
+        check(!f.query_motion().valid,"motion query refuses misses, narrow faces, changed owners and bad native data");
+    }
+    for(auto velocity:{SurfaceGeometryVector{},SurfaceGeometryVector{0,10,0},SurfaceGeometryVector{0,0,10}}) {
+        Fixture f;check(!f.query_motion(velocity).valid,"stationary, vertical and departing movement cannot plant");
+    }
+    for(float seconds:{0.f,-1.f,.101f}) {
+        Fixture f;check(!f.query_motion({0,0,-10},seconds).valid && f.calls==0,"invalid timestep cannot expand motion reach");
+    }
     physics_query_context_checks();
     {
         namespace p=game::build::v20260929::physics_owner;

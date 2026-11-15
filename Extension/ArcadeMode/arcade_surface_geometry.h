@@ -21,7 +21,7 @@ struct SurfaceGeometryWorldOwner {
     std::uint64_t value{};
     bool operator==(const SurfaceGeometryWorldOwner&) const = default;
 };
-enum class SurfaceGeometryPhase : std::uint8_t { unavailable, client, park, collision_response };
+enum class SurfaceGeometryPhase : std::uint8_t { unavailable, client, park, collision_response, motion_admission };
 struct SurfaceGeometryContext {
     std::array<std::uintptr_t, 5> owner{};
     InputNativeContext native;
@@ -33,7 +33,7 @@ struct SurfaceGeometryContext {
         return native.required && native.fresh(now) && client_context && world && world_generation &&
             self_entity && self_generation &&
             (phase == SurfaceGeometryPhase::client || phase == SurfaceGeometryPhase::park ||
-             phase == SurfaceGeometryPhase::collision_response) &&
+             phase == SurfaceGeometryPhase::collision_response || phase == SurfaceGeometryPhase::motion_admission) &&
             owner[0] && owner[1] && owner[2] && owner[3] && owner[4];
     }
 };

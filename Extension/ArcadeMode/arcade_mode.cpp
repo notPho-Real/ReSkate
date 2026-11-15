@@ -1554,7 +1554,7 @@ NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& o
 }
 WallplantExecutionProof native_wallplant_context(const NativeInputOwner& owner,std::uint64_t& now,
                                          const char** diagnostic_reason) noexcept {
-    // Only the retained-contact preselector uses synchronous arbitration. Its
+    // Native wallplant admission uses synchronous arbitration. Its
     // caller holds no source busy flag, runtime mutex or No Bail lease lock.
     // Refresh both time and native inputs AFTER acquiring authority; waiting
     // never extends a frame, physical press or controller lease.
@@ -1592,7 +1592,7 @@ WallplantExecutionProof native_wallplant_context(const NativeInputOwner& owner,s
 static bool wallplant_execution_authorized_locked(const NativeInputFrame& original,std::uint64_t now) noexcept {
     const auto physical=controller_route.physical(now);
     const auto pending=wallplant_runtime::writer_probe();
-    const auto accepted=pending.contact && pending.raw && wallplant_same_observation(pending.native,original)
+    const auto accepted=pending.contact && pending.motion && wallplant_runtime::motion_current(pending.motion,original) && wallplant_same_observation(pending.native,original)
         ? pending.input : 0;
     return mode_enabled.load(std::memory_order_acquire) &&
         action_mode.load(std::memory_order_acquire)==ActionExperiment::classic && !grind_change.active() &&
@@ -1609,12 +1609,10 @@ bool claim_native_wallplant_contact(const NativeInputFrame& frame) noexcept {
     std::lock_guard lock(ollie_mutex);
     const auto now=GetTickCount64();
     if(!wallplant_execution_authorized_locked(frame,now))return false;
-    // The controller poll can accept the journaled press while collision
-    // geometry is being published. Reuse that exact observation's pending
-    // request; claiming the same press again would reject its own handoff.
-    // The collision writer still revalidates the raw contact and consumes once.
+    // Reuse only a request owned by this motion callback. A later callback or
+    // another thread must claim its own fresh journal edge after its own query.
     const auto pending=wallplant_runtime::writer_probe();
-    if(pending.input && pending.contact && pending.raw &&
+    if(pending.input && pending.contact && pending.motion && wallplant_runtime::motion_current(pending.motion,frame) &&
        wallplant_same_observation(pending.native,frame))return true;
     const auto surface=wallplant_runtime::surface(now,frame);
     const auto request=arcade_input.claim_wallplant_contact(now,frame,surface);

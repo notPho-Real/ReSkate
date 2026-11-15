@@ -266,18 +266,21 @@ bool consume_published_report(std::uintptr_t address) noexcept {
         return _InterlockedCompareExchange8(reinterpret_cast<volatile char*>(address),0,1)==1;
     } __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
 }
-bool collision_uncontested(const CollisionScope& scope) noexcept {
+bool requests_uncontested(const NoBailSkater& owner,std::uintptr_t collector) noexcept {
     namespace bail=game::build::v20260929::no_bail;
     std::array<std::uint8_t,c::collector_flag_count> flags{};
     std::uint32_t count{},impact{},animation{};
-    return scope.serial && scope.collector && pointer(scope.owner.core+c::core_causes)==scope.collector &&
-        pointer(scope.collector+c::collector_context)==scope.owner.context &&
-        read(scope.collector+c::collector_flags,flags) &&
+    return collector && pointer(owner.core+c::core_causes)==collector &&
+        pointer(collector+c::collector_context)==owner.context &&
+        read(collector+c::collector_flags,flags) &&
         std::all_of(flags.begin(),flags.end(),[](auto flag){return flag==0;}) &&
-        read(scope.collector+c::collector_count,count) && count==0 &&
-        read(scope.owner.context+bail::body_contact_context_offset,impact) &&
+        read(collector+c::collector_count,count) && count==0 &&
+        read(owner.context+bail::body_contact_context_offset,impact) &&
         !(impact&(bail::body_contact_context_mask|bail::impact_request_mask)) &&
-        read(scope.owner.context+bail::animation_request_offset,animation) && !(animation&bail::animation_request_mask);
+        read(owner.context+bail::animation_request_offset,animation) && !(animation&bail::animation_request_mask);
+}
+bool collision_uncontested(const CollisionScope& scope) noexcept {
+    return scope.serial && requests_uncontested(scope.owner,scope.collector);
 }
 bool hooked_collision(std::uintptr_t collector,float first,float second,bool mode) {
 #if defined(_MSC_VER)
@@ -588,6 +591,12 @@ bool start(std::uintptr_t base) noexcept {
 void enable(bool enabled) noexcept {
     permitted.store(enabled,std::memory_order_release);
     if(!enabled){std::lock_guard lock(mutex);latest={};latest_board={};}
+}
+bool motion_uncontested(const NoBailSkater& owner) noexcept {
+    NoBailSkater current_owner{};
+    return ready.load(std::memory_order_acquire) && permitted.load(std::memory_order_acquire) &&
+        owner.base==image && no_bail_skater(current_owner) && current_owner==owner &&
+        requests_uncontested(owner,pointer(owner.core+c::core_causes));
 }
 bool collision_current(std::uint64_t expected_serial,const NoBailSkater& owner) noexcept {
     if(!expected_serial || collision_scope.serial!=expected_serial || collision_scope.owner!=owner ||

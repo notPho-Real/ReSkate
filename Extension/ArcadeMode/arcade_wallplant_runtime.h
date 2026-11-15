@@ -7,8 +7,17 @@
 namespace dingosdk::arcade_mode::wallplant_runtime {
 void tick(std::uintptr_t base,bool gameplay) noexcept;
 void observe_physics(const NativeInputFrame&) noexcept;
-// The collision producer precedes the ordinary step listener. Keep the last
-// observed AIR frame unchanged; the collision retains its own serial and time.
+// Admission lives only on the native AIR position-preparation call stack.
+// End discards unconsumed evidence; another thread or later callback cannot
+// borrow it. A successful hold retains its own independently checked owner.
+std::uint64_t begin_motion(const NativeInputFrame&,std::uint64_t now) noexcept;
+bool motion_current(std::uint64_t,const NativeInputFrame&) noexcept;
+void end_motion(std::uint64_t) noexcept;
+void publish_motion_geometry(std::uint64_t,const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
+    const NativeInputFrame&,SurfaceGeometryVector root,SurfaceGeometryVector up,SurfaceGeometryVector velocity,
+    const SurfaceGeometrySample& ground,std::span<const SurfaceGeometryVector> supports) noexcept;
+// Kept for the native observer callback: this alternative refuses late
+// collision admission and enters exclusively through the motion scope.
 bool retain_collision_before_response(const NativeInputFrame&,std::uint64_t now) noexcept;
 // First support must be the revalidated native board part0 origin relative to
 // root; remaining entries, if any, are additional measured support positions.
@@ -36,6 +45,7 @@ bool excludes_grind(const NativeInputFrame&,std::uint64_t now) noexcept;
 struct WriterProbe {
     std::uint64_t input{},contact{},raw{};
     NativeInputFrame native{};
+    std::uint64_t motion{};
 };
 WriterProbe writer_probe() noexcept;
 // Diagnostic scope only: a retained collision can be observed before any input

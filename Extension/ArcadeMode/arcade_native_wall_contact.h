@@ -76,6 +76,9 @@ Snapshot observe(const NoBailSkater& owner,std::uint64_t now) noexcept;
 // True only inside the exact local collision predicate invocation, after the
 // native predicate ran. Neither a timer nor a cached query can create this scope.
 bool collision_current(std::uint64_t serial,const NoBailSkater&) noexcept;
+// Read-only veto before motion admission: all current collector causes and
+// independent impact/body/animation requests must be absent.
+bool motion_uncontested(const NoBailSkater&) noexcept;
 // Caller must independently validate its current local-world incarnation and
 // the same observed physics step. This only rechecks the native target handle.
 bool current(const Contact& contact,std::uintptr_t expected_world) noexcept;

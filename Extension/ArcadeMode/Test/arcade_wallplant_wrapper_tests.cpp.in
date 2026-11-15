@@ -23,7 +23,7 @@
 #include <intrin.h>
 #endif
 namespace dingosdk::arcade_mode::wallplant_runtime {
-struct WriterProbe { std::uint64_t input{},contact{},raw{}; NativeInputFrame native{}; };
+struct WriterProbe { std::uint64_t input{},contact{},raw{}; NativeInputFrame native{}; std::uint64_t motion{}; };
 inline WriterProbe writer_probe(){return {};}
 inline void writer_event(const WriterProbe&,unsigned,const char*,std::uint32_t,bool,std::uintptr_t){}
 inline WriterProbe retained;
@@ -772,6 +772,7 @@ void wallplant_update_physical_drive(WallplantDriveFrame frame,const std::array<
  source_require(!fail_physical_drive,"drive_target_failed");
  ++physical_drive_updates;
 }
+void wallplant_admit_motion(std::uintptr_t,std::uintptr_t) {}
 @wallplant_wrapper_ground@
 void reset(){
  released_value={};wallplant_released_core=0;
@@ -1725,7 +1726,92 @@ void run(){
  std::cout<<checks<<" combined production hold admission checks passed\n";
 }
 }
-void run_wallplant_wrapper_tests(){run();physical_cleanup_route::run();ground_route::run();body_observation_route::run();release_trajectory_route::run();native_query_route::run();world_trajectory_route::run();departure_authority_route::run();hold_admission_route::run();}
+
+namespace motion_admission_route {
+namespace spawn=dingosdk::game::build::v20260929::client_source_spawn;
+struct SourceLastError {SourceLastError(){}};
+using NativeFrame=dingosdk::arcade_mode::NativeInputFrame;
+using Proof=dingosdk::arcade_mode::WallplantExecutionProof;
+struct Owner {std::uintptr_t base{1},entity{2},core{3},context{4},rig{5};};
+Owner fixture_owner;
+Proof fixture_execution;
+std::vector<std::string> sequence;
+bool stock{},enabled=true,owner_valid=true,uncontested=true,authorized=true,readable=true,claim=true;
+std::uint32_t fixture_animation{};
+std::uint64_t fixture_token{7};unsigned entries{},ends{};
+std::atomic<std::uintptr_t> wallplant_hold_core{};
+bool competition_stock_physics(){return stock;}
+bool no_bail_skater(Owner& out){out=fixture_owner;return owner_valid;}
+using NoBailSkater=Owner;
+namespace game::build::v20260929::no_bail {
+constexpr std::uintptr_t animation_request_offset=0x13d4;
+constexpr std::uint32_t animation_request_mask=0x08000000,body_contact_context_mask=0x400000,impact_request_mask=0x8000;
+}
+namespace memory {bool peek(std::uintptr_t,std::uint32_t& value){value=fixture_animation;return readable;}}
+namespace arcade_mode {
+using NativeInputOwner=dingosdk::arcade_mode::NativeInputOwner;
+using dingosdk::arcade_mode::wallplant_same_observation;
+bool enabled(){return motion_admission_route::enabled;}
+Proof native_wallplant_context(const NativeInputOwner&,std::uint64_t& now){sequence.push_back("context");now=1000;return fixture_execution;}
+bool native_wallplant_execution_authorized(const NativeFrame&,std::uint64_t&){sequence.push_back("authorize");return authorized;}
+bool claim_native_wallplant_contact(const NativeFrame&){sequence.push_back("claim");return claim;}
+namespace native_wall_contact {bool motion_uncontested(const Owner&){return uncontested;}}
+namespace wallplant_runtime {
+struct Probe {std::uint64_t input{1},contact{2},raw{};NativeFrame native;std::uint64_t motion{7};} probe;
+std::uint64_t begin_motion(const NativeFrame&,std::uint64_t){sequence.push_back("begin");return fixture_token;}
+void end_motion(std::uint64_t value){check(value==7,"scope retires its actual fixture_token");sequence.push_back("end");++ends;}
+Probe writer_probe(){sequence.push_back("probe");return probe;}
+}
+}
+void query_arcade_wallplant_motion_geometry(std::uint64_t,const NativeFrame&){sequence.push_back("query");}
+struct WallplantHandoff {
+ Proof fixture_execution;arcade_mode::wallplant_runtime::Probe probe;dingosdk::arcade_mode::WallplantSelectionTicket ticket;
+ std::uint64_t intent_generation{},collision_serial{},motion_serial{};
+};
+bool arcade_wallplant_enter_hold(const WallplantHandoff& h,std::uintptr_t core){
+ check(core==fixture_owner.core && h.motion_serial==7 && h.probe.motion==7 && !h.collision_serial && !h.ticket.selected,
+       "motion entry uses its actual callback fixture_token rather than a fabricated collision or chooser ticket");
+ sequence.push_back("enter");++entries;return true;
+}
+@wallplant_wrapper_motion_admission@
+void run(){
+ for(unsigned fault=0;fault<21;++fault){
+  sequence.clear();entries=ends=0;stock=false;enabled=owner_valid=uncontested=authorized=readable=claim=true;
+  fixture_animation=0;fixture_token=7;wallplant_hold_core=0;fixture_execution={};
+  auto& f=fixture_execution.native;f.valid=f.airborne=true;f.owner={1,2,3,4,5};f.state=201;
+  f.owner_generation=1;f.physics_step=10;f.sampled_at=1000;f.airborne_episode=1;
+  auto& probe=arcade_mode::wallplant_runtime::probe;probe={};probe.native=f;
+  auto rig=fixture_owner.rig,caller=fixture_owner.base+spawn::air_position_return;
+  if(fault==1)stock=true;
+  if(fault==2)enabled=false;
+  if(fault==3)wallplant_hold_core=fixture_owner.core;
+  if(fault==4)owner_valid=false;
+  if(fault==5)++rig;
+  if(fault==6)++caller;
+  if(fault==7)uncontested=false;
+  if(fault==8)f.valid=false;
+  if(fault==9)f.state=504;
+  if(fault==10)fixture_execution.imported_contact=true;
+  if(fault==11)fixture_execution.live.words[0]=0x400000;
+  if(fault==12)fixture_execution.live.words[0]=0x8000;
+  if(fault==13)fixture_animation=0x08000000;
+  if(fault==14)readable=false;
+  if(fault==15)authorized=false;
+  if(fault==16)fixture_token=0;
+  if(fault==17)claim=false;
+  if(fault==18)++probe.motion;
+  if(fault==19)probe.raw=99;
+  if(fault==20)++probe.native.physics_step;
+  wallplant_admit_motion(rig,caller);
+  check(entries==(fault==0?1u:0u),"actual admission wrapper rejects foreign callers, faults, stale proof and missing fresh A");
+  check(ends==((fault==0 || fault>=17)?1u:0u),"every begun callback scope retires even when input or entry validation fails");
+  if(!fault)check(sequence==std::vector<std::string>{"context","authorize","begin","query","claim","probe","enter","end"},
+      "actual wrapper queries and commits synchronously before retiring evidence");
+ }
+ std::cout<<checks<<" combined production motion-admission ordering checks passed; native query and physical writer mocked\n";
+}
+}
+void run_wallplant_wrapper_tests(){run();physical_cleanup_route::run();ground_route::run();body_observation_route::run();release_trajectory_route::run();native_query_route::run();world_trajectory_route::run();departure_authority_route::run();hold_admission_route::run();motion_admission_route::run();}
 #ifdef ARCADE_WALLPLANT_WRAPPER_STANDALONE
 int main(){run_wallplant_wrapper_tests();}
 #endif

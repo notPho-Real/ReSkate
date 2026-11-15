@@ -247,6 +247,51 @@ SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi& api
         return sample;
     } catch (...) { return fail("ground_exception"); }
 }
+SurfaceGeometrySample query_motion_wall(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
+        SurfaceGeometryVector board,SurfaceGeometryVector up,SurfaceGeometryVector velocity,float seconds,
+        SurfaceGeometryTrace* trace) noexcept {
+    const auto fail=[&](const char* reason)->SurfaceGeometrySample {if(trace)trace->reason=reason;return {};};
+    if(trace)*trace={};
+    try {
+        if(!current(api,ctx,trace) || !ctx.native.airborne || ctx.native.rail_family ||
+           !finite(board) || !finite(up) || !finite(velocity) ||
+           std::abs(dot(up,up)-1.f)>.02f || up[1]<.1f ||
+           !std::isfinite(seconds) || seconds<.001f || seconds>.1f)return fail("motion_query_context");
+        auto direction=velocity;
+        if(!unit(direction))return fail("motion_query_velocity");
+        SurfaceGeometryVector right{-direction[2],0,direction[0]};
+        if(!unit(right))return fail("motion_query_vertical");
+        constexpr float height=8.1f*.0254f,extension=10.f*.0254f,extent=24.f*.0254f;
+        constexpr std::array<std::array<float,2>,5> offsets{{{0,0},{-extent,0},{extent,0},{0,-extent},{0,extent}}};
+        SurfaceGeometryVector travel{};
+        for(unsigned axis=0;axis<3;++axis)travel[axis]=velocity[axis]*seconds+direction[axis]*extension;
+        if(!finite(travel) || dot(travel,travel)>400.f)return fail("motion_query_reach");
+        SurfaceGeometrySample result;result.context=ctx;result.queried_at=api.now(api.user);
+        Exclusions excluded;std::array<SurfaceGeometryVector,5> points{};
+        for(std::size_t i=0;i<points.size();++i) {
+            SurfaceGeometrySegment segment;
+            for(unsigned axis=0;axis<3;++axis) {
+                segment.start[axis]=board[axis]+up[axis]*(height+offsets[i][1])+right[axis]*offsets[i][0];
+                segment.end[axis]=segment.start[axis]+travel[axis];
+            }
+            if(trace)trace->ray=static_cast<unsigned>(i);
+            const auto hit=cast(api,ctx,segment,excluded,trace);
+            if(!hit)return fail("motion_query_miss");
+            if(i && (hit->body!=result.body || hit->owner!=result.body_owner || hit->world_owner!=result.world_owner))
+                return fail("motion_query_seam");
+            result.body=hit->body;result.body_owner=hit->owner;result.world_owner=hit->world_owner;points[i]=hit->point;
+        }
+        auto normal=cross(sub(points[4],points[3]),sub(points[2],points[1]));
+        if(!unit(normal))return fail("motion_query_plane");
+        if(dot(normal,velocity)>0)for(auto& value:normal)value=-value;
+        if(std::abs(normal[1])>.1f)return fail("motion_query_not_wall");
+        for(const auto& point:points)
+            if(std::abs(dot(sub(point,points[0]),normal))>.005f)return fail("motion_query_nonplanar");
+        result.point=points[0];result.query_normal=normal;result.valid=true;
+        if(!exclusions_current(api,ctx,excluded,trace) || !revalidate(api,ctx,result,trace))return fail("motion_query_changed");
+        return result;
+    } catch(...) {return fail("motion_query_exception");}
+}
 SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
         SurfaceGeometryBody body,SurfaceGeometryVector point,SurfaceGeometryVector normal,
         SurfaceGeometryVector approach_velocity,float native_seconds,SurfaceGeometryTrace* trace) noexcept {
