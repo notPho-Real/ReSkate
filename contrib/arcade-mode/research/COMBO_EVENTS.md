@@ -319,3 +319,42 @@ does not change an equal file's timestamp. The local run uses production codecs,
 factory and archive readers with macOS file/hash shims; Windows integration is
 still required. The corrected asset still requires native loading and rendering
 acceptance using the existing candidate DLL before a consolidated runtime build.
+
+
+The corrected private asset was subsequently tested with the existing candidate
+runtime on the device. The launcher accepted the ordinary mod, the startup log
+confirmed the scoring widget override and mounted the merged patch, but the
+game again exited during initial level loading before a valid local skater was
+available. No fatal log, recent crash report, core dump or kernel out-of-memory
+event identified the mechanism. This is a failed native loading check, not a
+gameplay or visual pass, and does not establish that the type-reference defect
+was the only cause.
+
+Both test-owned packs were removed by exact file manifests, and the prior
+runtime, settings and install receipt were restored. All 122 rollback sets and
+stock files were verified; the session transport was revoked before the explicit
+stopped hardware handoff. No additional runtime build was started.
+
+The next isolated loading controls retain every native widget instance and
+field: an unmodified exporter round trip, followed by reflection-only label type
+import. These private controls separate general rewrite/loading problems from
+the added UI graph. Their local consistency checks cannot replace device loading
+acceptance. Private game-derived assets and captures remain outside source and
+distributable packages.
+
+
+A second independent binary comparison found metadata loss even in an unchanged
+widget round trip: its enum array retained the integer values but its EBXX
+class reference changed from the native enum type to the primitive sentinel.
+The exporter previously emitted type identities only for structure arrays.
+It now resolves both structure and enum array identities through EFIX; primitive
+arrays retain the sentinel. An authored test uses different reflection and EFIX
+indices and signed enum values. It fails on the previous exporter and passes with
+the correction, together with the five focused sanitizer checks.
+
+The failed device asset was recovered from its retained private CAS for the
+comparison. An independent EBXX reader confirms that the corrected candidate
+preserves the original enum array identity while the failed candidate does not.
+This identifies another export defect, not yet a proven complete explanation
+of the native exit. No new runtime build or successful native loading claim
+follows from the offline result.

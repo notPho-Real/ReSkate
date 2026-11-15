@@ -104,6 +104,40 @@ int main() try {
     check(copied.arrayHash == values.arrayHash, "clone lost the native array reflection hash");
     std::get<e::Value::Array>(copied.data).clear();
     check(std::get<e::Value::Array>(values.data).size() == 1, "clone shares array storage");
+    // The native loader also needs enum identity in the array descriptor.
+    // Parsed values alone cannot detect a lost class reference on export.
+    e::Document enum_arrays;
+    add(enum_arrays, "EnumHolder", "Choices", e::FieldType::enumeration,
+        e::Value{e::Value::Array{e::Value{std::int64_t{-1}, {}}, e::Value{std::int64_t{2}, {}}}, 0x11223344});
+    add(enum_arrays, "IntegerHolder", "Numbers", e::FieldType::int32,
+        e::Value{e::Value::Array{e::Value{std::int64_t{3}, {}}}, 0x55667788});
+    e::TypeDescriptor choice;
+    choice.name = "Choice"; choice.nameHash = hash(choice.name);
+    choice.guid.bytes.fill(std::byte{0x71}); choice.signature = hash(choice.name);
+    choice.fieldIndex = static_cast<std::int32_t>(enum_arrays.fields.size());
+    choice.encodedType = static_cast<std::uint16_t>(static_cast<unsigned>(e::FieldType::enumeration) << 4);
+    choice.size = 4; choice.alignment = 4;
+    enum_arrays.types.push_back(choice);
+    (void)e::ensure_fixup_type(enum_arrays, 2);
+    enum_arrays.fields[0].encodedType |= static_cast<std::uint16_t>(e::FieldCategory::array);
+    enum_arrays.fields[0].classRef = 2;
+    enum_arrays.fields[1].encodedType |= static_cast<std::uint16_t>(e::FieldCategory::array);
+    // Reflection and fixup tables may number the same type differently.
+    std::swap(enum_arrays.fixupTypeGuids[0], enum_arrays.fixupTypeGuids[2]);
+    std::swap(enum_arrays.fixupTypeSignatures[0], enum_arrays.fixupTypeSignatures[2]);
+    enum_arrays.instances[0].fixupType = 2;
+    reflection(enum_arrays);
+    const auto enum_round = e::read_document(e::write_document(enum_arrays, true));
+    check(enum_round.arrays.size() == 2, "enum array export changed the record count");
+    check(enum_round.arrays[0].classRef == 0 &&
+          enum_round.fixupTypeGuids.at(enum_round.arrays[0].classRef) == choice.guid,
+          "enum array export lost its native type identity");
+    check(enum_round.arrays[1].classRef == 0xffff,
+          "primitive array incorrectly acquired a type identity");
+    const auto& choices = std::get<e::Value::Array>(
+        enum_round.instances[0].object->find("Choices")->value.data);
+    check(choices.size() == 2 && std::get<std::int64_t>(choices[0].data) == -1 &&
+          std::get<std::int64_t>(choices[1].data) == 2, "enum array values changed");
     // Serialized type references index EFIX, whose GUID-only suffix moves
     // when an imported instance type adds a signature before it.
     e::Document references;

@@ -348,9 +348,17 @@ private:
         return 0xFFFF;
     }
 
+    std::uint16_t array_class_ref(const FieldDescriptor& field) const {
+        // Enum arrays need their type identity even though each value is an
+        // ordinary 32-bit integer. The native layout converter reads EBXX.
+        if (field.type() == FieldType::structure || field.type() == FieldType::enumeration)
+            return fixup_slot_for_descriptor(field.classRef);
+        return 0xFFFF;
+    }
+
     std::uint32_t array_hash(const FieldDescriptor& field) const {
         const auto rawType = static_cast<std::uint16_t>(field.encodedType << 1);
-        const auto classRef = field.type() == FieldType::structure ? fixup_slot_for_descriptor(field.classRef) : 0xFFFF;
+        const auto classRef = array_class_ref(field);
         const auto matching = std::ranges::find_if(document_.arrays, [&](const ArrayRecord& value) {
             return value.encodedType == rawType && value.classRef == classRef;
         });
@@ -555,9 +563,7 @@ private:
         if (!hash) hash = new_array_hash(arraysPending_[index], field);
         arrays_.push_back({checked_u32(data, "EBX array data"), checked_u32(values->size(), "EBX array count"),
                            *hash, static_cast<std::uint16_t>(field.encodedType << 1),
-                           field.type() == FieldType::structure
-                               ? fixup_slot_for_descriptor(field.classRef)
-                               : static_cast<std::uint16_t>(0xFFFF)});
+                           array_class_ref(field)});
         for (std::size_t child = firstChild; child < arraysPending_.size(); ++child) {
             if (!arraysPending_[child].emitted) emit_array(child);
         }
