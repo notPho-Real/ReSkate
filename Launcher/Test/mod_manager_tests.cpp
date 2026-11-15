@@ -524,6 +524,14 @@ int main() {
         check(invalid_name && local.size() == 1 && local.front().name == "reskate-builtin-test-local" &&
               local_notes.size() == 1 && read(local.front().directory / "layout.toc") == "local test pack",
               "Local native packs reject unsafe names, deduplicate registration and omit failed factories");
+        std::vector<std::string> described_notes;
+        const auto described = mods::describe_mod(local.front().directory, local.front().name, described_notes);
+        check(described.studio_marker && described.outdated.empty(),
+              "Generated native packs must pass the ordinary game-version admission check");
+        const auto marker_time = fs::last_write_time(local.front().directory / mods::studio_marker_file);
+        mods::prepare_local_packs(root / "local-native", local_notes);
+        check(fs::last_write_time(local.front().directory / mods::studio_marker_file) == marker_time,
+              "Regenerating equal native pack metadata preserves its cache timestamp");
         const auto target = root / L"builtin" / L"good";
         std::string issue;
         const auto good = pack({{"layout.toc", "toc"}, {"sounds/body/Body Impact 1.wav", "RIFF"}, {"decks/wide/layout.toc", "deck"}});

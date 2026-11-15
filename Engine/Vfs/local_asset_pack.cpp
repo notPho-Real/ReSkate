@@ -59,7 +59,7 @@ void make_local_ebx_pack(const std::filesystem::path& game_root, const std::file
     replacement.region = fb::write_bundle_region(std::span(&payload, 1), fb::write_binary_bundle(manifest));
     const auto layout = vfs::read_layout(game_root / L"Data" / L"layout.toc");
     const vfs::GameArchives archives(game_root / L"Data", layout.root);
-    const auto archive = detail::inside(output, std::filesystem::path(archives.directory(install_chunk)) / vfs::archive_file(1));
+    const auto archive = detail::inside(output, std::filesystem::path("Win32") / archives.directory(install_chunk) / vfs::archive_file(1));
     write_changed(archive, encoded);
     write_changed(detail::inside(output, toc_path), fb::write_patch_toc(std::span(&replacement, 1)));
     // Publish the layout last. A partial factory never becomes a catalogue entry.

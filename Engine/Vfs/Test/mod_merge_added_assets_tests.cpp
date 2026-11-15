@@ -13,6 +13,10 @@
 #include "Engine/Resource/binary_bundle.h"
 #include "Engine/Resource/cas_codec.h"
 #include "Engine/Resource/ebx_document.h"
+#include "Engine/Resource/ebx_writer.h"
+#include "Engine/Resource/ebx_carry.h"
+#include "Engine/Vfs/local_asset_pack.h"
+#include "Engine/Vfs/game_bundles.h"
 #include "Engine/Resource/toc.h"
 #include "Engine/Resource/shader_lookup.h"
 #include "Engine/Resource/texture.h"
@@ -1281,9 +1285,69 @@ void streamed_world_texture_chunk_gets_its_logical_offset() {
     }
 }
 
+// The pack must be readable through the same archive path used by the launcher.
+void local_pack_reads_through_native_archives() {
+    namespace e = fb::ebx;
+    Fixture fixture("local-pack");
+    e::Document document;
+    document.fileGuid = guid(0xa3);
+    e::TypeDescriptor type;
+    type.name = "Root"; type.fieldIndex = 0; type.fieldCount = 1;
+    type.encodedType = 0x30; type.size = 24; type.alignment = 8;
+    type.guid = guid(0xa1); type.signature = 1;
+    document.types.push_back(type);
+    e::FieldDescriptor field;
+    field.name = "Value"; field.dataOffset = 16;
+    field.encodedType = static_cast<std::uint16_t>(static_cast<unsigned>(e::FieldType::uint32) << 4);
+    field.classRef = 0xffff;
+    document.fields.push_back(field);
+    e::InstanceRecord instance;
+    instance.descriptor = 0; instance.fixupType = e::ensure_fixup_type(document, 0);
+    instance.exported = true; instance.instanceGuid = guid(0xa2);
+    instance.object = std::make_shared<e::Object>(); instance.object->descriptor = 0;
+    instance.object->fields.push_back({0, "Value", e::Value{std::uint64_t{7}, {}}});
+    document.instances.push_back(instance);
+    fb::BinaryWriter reflection;
+    reflection.u32(1); reflection.guid(type.guid); reflection.u32(type.signature);
+    reflection.u32(1); reflection.u32(0); reflection.i32(0); reflection.u16(1);
+    reflection.u16(0x60); reflection.u16(24); reflection.u16(8);
+    reflection.u32(1); reflection.u32(5); reflection.u32(16);
+    reflection.u16(static_cast<std::uint16_t>(field.encodedType << 1)); reflection.u16(0xffff);
+    reflection.u32(0); reflection.u32(0);
+    for (const char c : std::string_view("Root\0Value\0", 11)) reflection.u8(static_cast<std::uint8_t>(c));
+    document.reflectionData = reflection.take();
+    fixture.game("local.toc", {{"test/local", 0, e::write_document(document, true)}}, {});
+    const auto source_archive = fixture.catalog.data_root / "Data/Win32/pkg/cas_01.cas";
+    const auto before = read(source_archive);
+    const auto output = fixture.root / "generated/Data";
+    const std::string_view sources[]{"test/local"};
+    const auto edit = [](std::span<const e::Document> documents) {
+        auto changed = e::detail::clone_document(documents.front());
+        changed.instances[0].object->fields[0].value.data = std::uint64_t{73};
+        return changed;
+    };
+    mods::make_local_ebx_pack(fixture.catalog.data_root, output, "Win32/local.toc", bundle_name, sources, edit);
+    vfs::GameData generated(output.parent_path());
+    const auto bundle = generated.read_bundle(generated.read_toc("Win32/local.toc"), bundle_name);
+    expect(bundle && bundle->manifest.ebx.size() == 1, "local pack preserves its bundle manifest");
+    if (!bundle) return;
+    const auto bytes = generated.read(*bundle->payload(fb::AssetKind::ebx, 0));
+    const auto actual = e::read_document(bytes);
+    expect(actual.fileGuid == document.fileGuid && actual.root()->instanceGuid == instance.instanceGuid &&
+           std::get<std::uint64_t>(actual.root()->object->find("Value")->value.data) == 73,
+           "local pack round trips its edited value through the native archive reader");
+    expect(bundle->manifest.ebx[0].sha1 == mods::detail::sha1_of(bytes), "local pack hash matches its decoded payload");
+    expect(read(source_archive) == before, "local pack leaves the installed source archive unchanged");
+    const auto archive = output / "Win32/pkg/cas_01.cas";
+    const auto timestamp = fs::last_write_time(archive);
+    mods::make_local_ebx_pack(fixture.catalog.data_root, output, "Win32/local.toc", bundle_name, sources, edit);
+    expect(fs::last_write_time(archive) == timestamp, "equal local pack regeneration retains its archive timestamp");
+}
+
 } // namespace
 
 int main(int argc, char** argv) try {
+    local_pack_reads_through_native_archives();
     // Rebuilt native resources use the game's Oodle encoder. The normal suite
     // needs no game files; supplying a game root enables these archive checks.
     if (argc > 1 && *argv[1]) {

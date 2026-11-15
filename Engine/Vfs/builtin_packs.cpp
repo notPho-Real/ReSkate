@@ -3,6 +3,7 @@
 #include "mod_list.h"
 #include "Engine/Core/Platform/path_text.h"
 #include "Engine/Core/Text/ascii.h"
+#include "Engine/Game/Build/supported_build.h"
 #include <Windows.h>
 #include <miniz.h>
 #include <zstd.h>
@@ -45,6 +46,19 @@ std::vector<BuiltinPack> prepare_local_packs(const std::filesystem::path& game_r
             try {
                 const auto directory = game_root / L"Mods" / builtin_folder / pack.name;
                 pack.factory(game_root, directory);
+                // Trusted recipes use this installation's supported data. The ordinary
+                // catalogue must still validate their build stamp before admitting them.
+                const auto marker = directory / studio_marker_file;
+                const auto stamp = "ReSkate Studio native Patch v1\nskate_sha256=" +
+                    std::string(supported_build::game_sha256) + "\n";
+                std::ifstream input(marker, std::ios::binary);
+                const std::string previous{std::istreambuf_iterator<char>(input), {}};
+                input.close();
+                if (previous != stamp) {
+                    std::ofstream output(marker, std::ios::binary | std::ios::trunc);
+                    if (!output.write(stamp.data(), static_cast<std::streamsize>(stamp.size())) ||
+                        !output.flush()) throw std::runtime_error("Local asset build stamp could not be written");
+                }
                 result.push_back({"reskate-builtin-" + pack.name, directory});
             } catch (const std::exception& error) {
                 notes.push_back("Local native asset pack " + pack.name + " unavailable: " + error.what());

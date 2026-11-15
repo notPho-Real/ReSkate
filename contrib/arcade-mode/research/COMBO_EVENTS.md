@@ -289,3 +289,33 @@ These checks establish source/asset consistency only. The new text has not yet
 been rendered on hardware. Native custom-row visibility, high-count rendering,
 Arcade OFF restoration and the remaining requested rail/grab chain still need
 exact-source device acceptance before this candidate is ready for owner testing.
+
+
+### Native pack startup regression
+
+The first native test of the text candidate did not reach gameplay. The generated
+pack lacked the ordinary game-version stamp and its archive omitted the required
+Win32 directory. After correcting those two details in a temporary local mod,
+the launcher admitted the asset, but the game exited during loading. No fatal log,
+core dump or kernel out-of-memory event established the exit mechanism. The
+prior DLL, settings and receipt were restored; no successful visual claim follows
+from that attempt.
+
+Offline comparison then found a definite export defect. Adding the label's EFIX
+type inserts a signature before the GUID-only suffix. Existing type references
+kept their previous slot numbers and consequently resolved to different GUIDs.
+The exporter now moves parsed references, opaque boxed payload references and
+extra type records with that suffix. Primitive and empty references stay intact.
+The authored regression fails on the previous exporter and passes with the fix.
+The private graph check now compares resolved type identities, including boxed
+values, instead of comparing only encoded slot numbers. An independent EFIX
+reader distinguishes the failed asset and confirms preservation in the correction.
+
+Generated packs now receive the same supported-game stamp checked for ordinary
+native mods, and their archives use the same Win32 path as GameArchives::read.
+An authored pack regression reads the edited payload through GameData, checks
+its hash and identity, preserves the source archive and verifies that regeneration
+does not change an equal file's timestamp. The local run uses production codecs,
+factory and archive readers with macOS file/hash shims; Windows integration is
+still required. The corrected asset still requires native loading and rendering
+acceptance using the existing candidate DLL before a consolidated runtime build.

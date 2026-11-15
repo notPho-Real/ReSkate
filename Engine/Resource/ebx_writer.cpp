@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace dingosdk::frostbite::ebx {
 
@@ -753,6 +754,58 @@ private:
     std::map<std::pair<std::int32_t, std::size_t>, std::uint32_t> knownHashes_;   // (holder, field) -> hash
 };
 
+// EFIX stores types with signatures before GUID-only references. Inserting
+// an instance type moves that suffix, including references in opaque boxes.
+void move_type_references(Document& document, std::size_t first) {
+    const auto remap = [first](std::uint32_t encoded) {
+        if (encoded == 0 || (encoded & 0x80000000U) != 0 || (encoded >> 2) < first) return encoded;
+        return encoded + 4;
+    };
+    std::unordered_set<Object*> visited;
+    const auto visit = [&](auto&& self, Value& value) -> void {
+        if (auto* reference = std::get_if<TypeReference>(&value.data)) {
+            reference->encoded = remap(reference->encoded);
+            if (reference->encoded != 0 && !reference->primitive)
+                reference->descriptor = static_cast<std::int32_t>(reference->encoded >> 2);
+        } else if (auto* box = std::get_if<BoxedReference>(&value.data)) {
+            box->encodedType = remap(box->encodedType);
+        } else if (auto* object = std::get_if<std::shared_ptr<Object>>(&value.data)) {
+            if (*object && visited.insert(object->get()).second)
+                for (auto& field : (*object)->fields) self(self, field.value);
+        } else if (auto* array = std::get_if<Value::Array>(&value.data)) {
+            for (auto& element : *array) self(self, element);
+        }
+    };
+    auto slots = document.typeInfoOffsets;
+    std::ranges::sort(slots);
+    slots.erase(std::unique(slots.begin(), slots.end()), slots.end());
+    const auto remap_bytes = [&](std::vector<std::byte>& bytes, std::uint32_t base) {
+        for (const auto slot : slots) {
+            if (slot < base || slot - base > bytes.size() || bytes.size() - (slot - base) < 4) continue;
+            const auto offset = slot - base;
+            std::uint32_t encoded{};
+            std::memcpy(&encoded, bytes.data() + offset, sizeof(encoded));
+            encoded = remap(encoded);
+            std::memcpy(bytes.data() + offset, &encoded, sizeof(encoded));
+        }
+    };
+    for (auto& instance : document.instances) {
+        if (instance.fixupType >= first) ++instance.fixupType;
+        if (instance.object && visited.insert(instance.object.get()).second)
+            for (auto& field : instance.object->fields) visit(visit, field.value);
+        remap_bytes(instance.rawImage, instance.dataOffset);
+    }
+    const auto remap_class = [first](std::uint16_t& slot) {
+        if (slot != 0xffff && slot >= first) ++slot;
+    };
+    for (auto& array : document.arrays) remap_class(array.classRef);
+    for (auto& box : document.boxedValues) {
+        remap_class(box.classRef);
+        remap_bytes(box.rawBytes, box.offset);
+    }
+    remap_bytes(document.payload, 0);
+}
+
 }
 
 std::uint16_t ensure_fixup_type(Document& document, const std::int32_t descriptor) {
@@ -768,7 +821,9 @@ std::uint16_t ensure_fixup_type(Document& document, const std::int32_t descripto
             return static_cast<std::uint16_t>(index);
         }
     }
-    if (count >= std::numeric_limits<std::uint16_t>::max()) throw std::overflow_error("EBX type slot overflow");
+    if (document.fixupTypeGuids.size() >= std::numeric_limits<std::uint16_t>::max())
+        throw std::overflow_error("EBX type slot overflow");
+    if (count < document.fixupTypeGuids.size()) move_type_references(document, count);
     document.fixupTypeGuids.insert(document.fixupTypeGuids.begin() + static_cast<std::ptrdiff_t>(count), type.guid);
     document.fixupTypeSignatures.push_back(type.signature);
     return static_cast<std::uint16_t>(count);

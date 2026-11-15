@@ -2,6 +2,7 @@
 #include "Engine/Resource/ebx_carry.h"
 #include "Engine/Resource/ebx_writer.h"
 #include <iostream>
+#include <cstring>
 #include <map>
 #include <stdexcept>
 
@@ -103,6 +104,54 @@ int main() try {
     check(copied.arrayHash == values.arrayHash, "clone lost the native array reflection hash");
     std::get<e::Value::Array>(copied.data).clear();
     check(std::get<e::Value::Array>(values.data).size() == 1, "clone shares array storage");
+    // Serialized type references index EFIX, whose GUID-only suffix moves
+    // when an imported instance type adds a signature before it.
+    e::Document references;
+    add(references, "TypeHolder", "ReferencedType", e::FieldType::typeRef,
+        e::Value{e::TypeReference{false, {}, 2, 10}, {}});
+    add(references, "PrimitiveHolder", "PrimitiveType", e::FieldType::typeRef,
+        e::Value{e::TypeReference{true, e::FieldType::float32, -1, 0x800001a0U}, {}});
+    dingosdk::frostbite::Guid referenced_guid;
+    referenced_guid.bytes.fill(std::byte{0x7a});
+    references.fixupTypeGuids.push_back(referenced_guid);
+    reflection(references);
+    const auto source_bytes = e::write_document(references, true);
+    references = e::read_document(source_bytes);
+    auto imported_reference = e::with_imported_type(references, donor, "NativeLabel");
+    e::detail::Carrier reference_carrier(donor, imported_reference, true);
+    (void)reference_carrier.instance(1);
+    const auto read_reference = e::read_document(e::write_document(imported_reference, true));
+    const auto reference = std::get<e::TypeReference>(
+        read_reference.instances[0].object->find("ReferencedType")->value.data);
+    check(read_reference.fixupTypeGuids.at(reference.encoded >> 2) == referenced_guid,
+          "import changed the identity of an existing GUID-only type reference");
+    check(reference.encoded == 14 && reference.descriptor == 3,
+          "type reference was not renumbered with its EFIX slot");
+    const auto primitive = std::get<e::TypeReference>(
+        read_reference.instances[1].object->find("PrimitiveType")->value.data);
+    check(primitive.encoded == 0x800001a0U, "import changed a primitive type reference");
+    check(e::write_document(references, true) == source_bytes,
+          "fixup remapping mutated the original asset");
+    // Opaque boxed payloads have their own relocation slots and are not
+    // reached by the parsed field walk. Duplicate slots must move only once.
+    auto opaque = e::with_imported_type(references, donor, "NativeLabel");
+    opaque.payload.assign(16, std::byte{});
+    const std::uint32_t old_type = 10, primitive_type = 0x800001a0U;
+    std::memcpy(opaque.payload.data(), &old_type, 4);
+    std::memcpy(opaque.payload.data() + 8, &primitive_type, 4);
+    opaque.typeInfoOffsets = {0, 0, 8};
+    opaque.boxedValues = {{0, 1, 0, 0, 2, opaque.payload}};
+    opaque.arrays = {{0, 1, 0, 0, 2}, {0, 1, 0, 0, 0xffff}};
+    const auto label_descriptor = static_cast<std::int32_t>(opaque.types.size() - 1);
+    (void)e::ensure_fixup_type(opaque, label_descriptor);
+    std::uint32_t payload_type{}, boxed_type{}, unchanged_primitive{};
+    std::memcpy(&payload_type, opaque.payload.data(), 4);
+    std::memcpy(&boxed_type, opaque.boxedValues[0].rawBytes.data(), 4);
+    std::memcpy(&unchanged_primitive, opaque.payload.data() + 8, 4);
+    check(payload_type == 14 && boxed_type == 14 && unchanged_primitive == primitive_type,
+          "opaque type-reference relocation lost its identity or moved twice");
+    check(opaque.arrays[0].classRef == 3 && opaque.arrays[1].classRef == 0xffff &&
+          opaque.boxedValues[0].classRef == 3, "extra type records did not follow the moved suffix");
     std::cout << "Native type import: round trip, remapping, input preservation and refusals passed\n";
     return 0;
 } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
