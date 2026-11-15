@@ -61,6 +61,25 @@ std::size_t clone(e::Document& d,std::size_t source,unsigned id) {
     auto instance=d.instances.at(source);instance.object=e::detail::clone_object(*instance.object);
     identity(instance,id);d.instances.push_back(std::move(instance));return d.instances.size()-1;
 }
+std::size_t clone_listener(e::Document& d, std::size_t source, unsigned id) {
+    // A path identifies fields inside a supplied context; it does not bind the
+    // listener by itself. Preserve the donor's context and enable inputs.
+    auto& connections = array(object(d, 0), "PropertyConnections");
+    e::Value::Array inputs;
+    for (const auto& value : connections) {
+        const auto& connection = *std::get<std::shared_ptr<e::Object>>(value.data);
+        const auto target = std::get<e::PointerReference>(field(connection, "Target").data);
+        if (target.kind == e::PointerKind::internal && target.index == static_cast<std::int32_t>(source))
+            inputs.push_back(e::detail::clone_value(value));
+    }
+    require(!inputs.empty(), "Native listener context inputs missing");
+    const auto listener = clone(d, source, id);
+    for (auto& value : inputs) {
+        field(*std::get<std::shared_ptr<e::Object>>(value.data), "Target") = reference(listener);
+        connections.push_back(std::move(value));
+    }
+    return listener;
+}
 std::size_t model_index(const e::Document& schema,std::string_view name) {
     const auto& collections=array(object(schema,0),"FieldCollections");require(collections.size()==1,"Score schema collections differ");
     const auto& collection=*std::get<std::shared_ptr<e::Object>>(collections.front().data);
@@ -115,7 +134,7 @@ e::Document build_multiplier_label(const e::Document& multiplier,const e::Docume
     auto& siblings=array(object(result,parent),"Elements");
     const auto position=std::ranges::find_if(siblings,[&](const e::Value& v){return referred(v)==texture;});
     siblings.insert(position+1,reference(label));
-    const auto listener=clone(result,label_listener,2);
+    const auto listener=clone_listener(result,label_listener,2);
     const auto donor_listener=find(label_widget,"DataModelListenerEntityData",[](const e::Object& o){return !array(o,"ExpandedFields").empty();});
     e::detail::Carrier fields(label_widget,result,true);
     e::Value::Array text_fields;

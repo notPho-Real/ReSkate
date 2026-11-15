@@ -1,8 +1,10 @@
 # Combo event evidence
 
-Status: native HUD scoring integration is implemented. The latest performed-Ollie
-reconciliation has portable and captured-observation coverage; corrected-DLL
-hardware acceptance remains pending.
+Status: the existing candidate runtime and corrected private UI asset reach
+actual gameplay. An Ollie followed by Heelflip visibly produces x2 in the native
+circle. Longer captured play exposes two unresolved rendering defects: the circle
+is blank above x4, and custom trick names are absent despite their presence in
+the native stack. Full corrected-candidate acceptance remains pending.
 
 ## Performed Ollies and native sequence replacement
 
@@ -375,3 +377,47 @@ requires the selected test map and local skater before gameplay. Multiplier text
 custom history visibility and full combo acceptance remain unverified. The new
 Python metadata comparison can recheck retained assets without compiling or
 using hardware; its authored regressions and retained negative control pass.
+
+
+## Latest asset-only gameplay check — 2026-11-15
+
+The existing runtime at 38f8b06f was reused with the private widget generated
+from 380d9692; this was not a new integrated DLL. Native observations verified
+the actual Mega Park level and a live local skater before gameplay inputs. The
+short Ollie/Heelflip trial reached states 100, 103, 200 and 201; the captured
+native circle visibly showed x2, 75 points and a 150-point line. A visible x1
+stage was not established. No fractional multiplier was observed in this trial.
+
+The longer flatland chain reached model multipliers through x12. Its native
+trick stack contained owned Casper and Casper Flip rows alongside the original
+native rows. Actual rendered frames showed x2, x3 and x4, but the circle became
+blank at higher counts and the custom names were not visible. Model publication
+and successful controller execution are therefore not visual acceptance.
+Do not repeat loading or row-insertion discovery to investigate these failures.
+
+Offline inspection of the retained native widget declarations confirms that the
+authored comparison uses the existing A, B and A>B property ports and that the
+native label listener donor also uses an empty DataType with Expand enabled.
+These checks rule out those specific declaration mismatches; they do not prove
+runtime listener binding, label visibility or font resolution. The native trick
+row has additional label and alpha bindings, so copying its text/style alone is
+not proof that the complete row renders.
+
+The session ended after this failure. Both temporary packs were removed, the
+prior installation was restored, all 124 rollback sets were preserved, and the
+transport was revoked before the stopped hardware return. Further source and
+retained-evidence analysis takes precedence over another build or device trial.
+The remaining acceptance matrix includes higher rendered counts, custom names,
+banking/bailing, cancellation, Arcade OFF, Skatepedia and the requested combined
+flatland and rail/grab sequences on the final candidate.
+
+
+The multiplier failure now has a source-backed binding defect: the added
+listener copied its donor's path and fields but omitted both incoming property
+connections from the widget interface. The new clone preserves those inputs
+before connecting its text output. A focused authored regression rejects the
+old clone behavior, and the regenerated private asset retains all 2,569 original
+fields. An independent text-graph inspection finds zero inputs on the failed
+listener and both native inputs on the correction; the separate metadata check
+also passes. This is an offline correction awaiting rendered acceptance, not a
+new DLL or a completed Casper-name fix.
