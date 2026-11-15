@@ -158,6 +158,18 @@ void executed_scoring(){
         }
     }
     check(completed==1,"completed rendered flip scores once and returns to Manual");
+    check(player.clip && player.clip->weight(player.clip->duration())==0,
+        "the completed flip includes its rendered fade to the native pose");
+    Rig unseen;unseen.enter();unseen.hold();(void)custom_flatland_runtime::take_executions();
+    unseen.poll(0x4000);unseen.poll(0);unseen.poll(0x4000);unseen.tick();unseen.poll(0);
+    player.renders=false;
+    for(unsigned i=0;i<90;++i){
+        unseen.next();unseen.step();unseen.tick();
+        check(custom_flatland_runtime::take_executions().count==0,
+            "an elapsed but unrendered flip cannot score its endpoint");
+    }
+    check(custom_flatland_runtime::status().phase==CustomFlatland::Phase::manual,
+        "missing renderer completion expires playback ownership");
     Rig cancelled;cancelled.enter();cancelled.hold();(void)custom_flatland_runtime::take_executions();
     cancelled.poll(0x4000);cancelled.poll(0);cancelled.poll(0x4000);cancelled.tick();
     cancelled.next();cancelled.step();custom_flatland_runtime::cancel();

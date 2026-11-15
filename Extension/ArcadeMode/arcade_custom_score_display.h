@@ -23,11 +23,17 @@ public:
         }
         active_=state.combo_active;
         if(hud && hud->rows_read) {
+            for(auto& prior:seen_)if(prior.handle && std::none_of(hud->rows.begin(),hud->rows.end(),
+                [&](const auto& row){return row.handle==prior.handle;}))prior={};
             for(auto it=hud->rows.rbegin();it!=hud->rows.rend();++it) {
-                bool seen=false;
-                for(auto id:seen_)seen=seen || id==it->handle;
-                if(!it->handle || seen)continue;
-                seen_[seen_next_++ % seen_.size()]=it->handle;
+                if(!it->handle || it->name.empty())continue;
+                // The native HUD recycles its row models. A handle identifies
+                // storage, not a permanent trick occurrence.
+                auto prior=std::find_if(seen_.begin(),seen_.end(),
+                    [&](const auto& row){return row.handle==it->handle;});
+                if(prior!=seen_.end() && prior->name==it->name)continue;
+                if(prior==seen_.end())prior=seen_.begin()+(seen_next_++ % seen_.size());
+                *prior=*it;
                 if(active_)append(it->name);
             }
         }
@@ -55,7 +61,7 @@ private:
         names_.push_back(std::move(name));
     }
     std::vector<std::string> names_;
-    std::array<std::uint64_t,64> seen_{};
+    std::array<tricks::ScoreHudRow,64> seen_{};
     unsigned seen_next_{};
     std::uint64_t last_custom_{},terminal_{},banked_{},closed_until_{};
     bool active_{};

@@ -775,6 +775,11 @@ void on_animation(std::uintptr_t component) noexcept {
         std::size_t first = 0, last = 0; // [first, last) of l.pose written
         Joint board_target;
         float board_weight = 0;
+        // An owned clip can finish by fading to the native pose. A zero authored
+        // weight still needs a rendered endpoint receipt; the entry blend must
+        // have completed before that receipt can acknowledge playback.
+        const bool controlled_sample = !in_room && snap->controlled_until && snap->play &&
+            clip == snap->play->clip.get() && t >= 0 && weight >= .999f;
         if (clip && t >= 0) weight *= clip->weight(t);
         if (clip && t >= 0 && weight > 0) {
             const auto placement = world(l.pose, placement_joint);
@@ -885,7 +890,17 @@ void on_animation(std::uintptr_t component) noexcept {
             if (last > first) first = std::min<std::size_t>(first, placement_joint);
             else first = placement_joint, last = placement_joint + 1u;
         }
-        if (at_draw && last > first) {
+        if (controlled_sample && weight == 0 && last <= first) {
+            auto& p = pending();
+            std::lock_guard lock(p.mutex);
+            p.buffer = layout.buffer;
+            p.first = p.last = 0;
+            p.bones.clear();p.deltas.clear();p.replay.clear();
+            p.at = at;
+            p.sample = {snap->serial, 0, snap->play->clip, t,
+                l.base.load(std::memory_order_acquire),
+                native_pose_entity.load(std::memory_order_acquire), 0};
+        } else if (at_draw && last > first) {
             thread_local std::vector<pose_offset::Delta> deltas;
             deltas.clear();
             const bool only_deltas = std::all_of(snap->offsets.begin(), snap->offsets.end(), [](const PoseOffset& o) { return !o.place && !o.keep_children; });
@@ -931,8 +946,7 @@ void on_animation(std::uintptr_t component) noexcept {
                 p.replay.clear();
                 p.at = at;
                 p.sample = {};
-                if (!in_room && snap->controlled_until && snap->play &&
-                    clip == snap->play->clip.get() && weight >= .999f)
+                if (controlled_sample)
                     p.sample = {snap->serial, 0, snap->play->clip, t,
                         l.base.load(std::memory_order_acquire),
                         native_pose_entity.load(std::memory_order_acquire), 0};
@@ -1089,6 +1103,18 @@ void on_render(std::uintptr_t animation_interface) noexcept {
             std::lock_guard probe_lock(pr.mutex);
             ++(pr.*n);
         };
+        if (p.sample.ticket && p.bones.empty() && p.deltas.empty() && p.replay.empty() &&
+            now_seconds() - p.at <= .1) {
+            const auto layout = multiplayer::read_native_pose_layout(peek, l.base.load(std::memory_order_acquire), *holder, 512);
+            if (layout.buffer == p.buffer && layout.count == skeleton_joints) {
+                // The authored fade has ended. Acknowledge the native pose only
+                // after its draw; never overwrite its post-physics bone buffer.
+                p.drawn_sample = p.sample;
+                p.game_interface = animation_interface;
+            }
+            SetLastError(error);
+            return;
+        }
         if ((p.bones.empty() && p.deltas.empty() && p.replay.empty()) || now_seconds() - p.at > 0.1) {
             if (!p.bones.empty() || !p.deltas.empty() || !p.replay.empty()) count(&Probe::stale);
             SetLastError(error);
@@ -1176,11 +1202,12 @@ void on_drawn(std::uintptr_t animation_interface) noexcept {
     try {
         auto& p = pending();
         std::lock_guard lock(p.mutex);
-        if (!p.game.empty() && animation_interface == p.game_interface && p.drawn_sample.ticket) {
+        if (animation_interface == p.game_interface && p.drawn_sample.ticket) {
             const auto sequence = p.copied.sequence;
             p.copied = p.drawn_sample;
             p.copied.sequence = sequence == UINT64_MAX ? sequence : sequence + 1;
             p.copied_at = now_seconds();
+            p.drawn_sample = {};
         }
         if (!p.game.empty() && animation_interface == p.game_interface &&
             poke(p.game_buffer + p.game_first * sizeof(NativeBone), p.game.data(), p.game.size() * sizeof(NativeBone)))

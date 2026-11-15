@@ -46,6 +46,20 @@ int main(){
     check(line && line->tricks==std::vector<std::string>{"Kickflip","Fakie Manual","Casper","Casper Flip"},
         "native rows retain order alongside distinct custom identities");
     check(line->points==2620 && model.state().raw_points==0,"native display is passed through without manufacturing native evidence");
+    hud.rows={{2,"Pop Shove-It"},{1,"Kickflip"}};
+    const auto reused=display.update(model,score,hud,e.at+1);
+    check(reused && reused->tricks.back()=="Pop Shove-It",
+        "recycled native row updates the trick following Casper");
+    const auto repeated=display.update(model,score,hud,e.at+2);
+    check(repeated && repeated->tricks==reused->tricks,
+        "unchanged recycled row is not appended every UI tick");
+    hud.rows.clear();(void)display.update(model,score,hud,e.at+3);
+    hud.rows={{2,"Pop Shove-It"}};
+    const auto reappeared=display.update(model,score,hud,e.at+4);
+    check(reappeared && reappeared->tricks.back()=="Pop Shove-It" &&
+        reappeared->tricks.size()==score_line::most_tricks &&
+        reappeared->tricks[reappeared->tricks.size()-2]=="Pop Shove-It",
+        "a row retired then reused for the same name remains a new display occurrence");
     model.manual_airborne();model.trick(0);model.landing();model.tick(.5f);
     check(model.last_settlement().kind==SettlementKind::bank &&
         model.last_settlement().custom_points==3400,"clean landing banks bonus with continuing combo multiplier");
@@ -73,6 +87,21 @@ int main(){
     hud.rows_read=false;
     check(!rollover_display.update(rollover,rollover_score,hud,4200),"missing native history keeps original presentation visible");
     hud.rows_read=true;
+    ComboSession hop;
+    hop.step(SkatePose::manual,0,0,false,nullptr,false,true);
+    check(hop.observe_custom({owner,1,1,1,1,1000,ArcadeTrick::casper,true,0},owner,1,1000),
+        "continuing Manual episode accepts completed Casper");
+    hop.step(SkatePose::riding,0,0,false,nullptr,false,true);
+    check(hop.model().state().multiplier==2,"takeoff preparation adds no action");
+    hop.step(SkatePose::air,0,0,false,nullptr,false,true);
+    check(hop.model().state().multiplier==2 && hop.model().state().custom_points==250,
+        "native air departure preserves the Casper bonus without inventing a completed trick");
+    for(unsigned i=0;i<20;++i)hop.step(SkatePose::air,0,0,false,nullptr,false,true);
+    check(hop.model().state().multiplier==2,"continuing airborne episode cannot count every poll");
+    hop.step(SkatePose::riding,0,0);
+    hop.step(SkatePose::riding,.25f,0);hop.step(SkatePose::riding,.25f,0);
+    check(hop.model().last_settlement().custom_points==500,
+        "the same combo banks the retained bonus after landing");
     for(unsigned hz:{30u,60u,120u}) {
         Model rate_model;CustomTrickScoring rate_score;rate_model.begin_balance(BalanceKind::manual);
         CustomTrickExecution rate{owner,1,1,1,1,1000,ArcadeTrick::casper,true,0};
