@@ -6,6 +6,11 @@ on:
         type: boolean
         default: false
   workflow_dispatch:
+    inputs:
+      crash_report:
+        description: Also test native crash capture without compiling the runtime
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -25,3 +30,38 @@ jobs:
         run: cmake --build build/arcade-fast --config Release --parallel 4
       - name: Run targeted tests
         run: ctest --test-dir build/arcade-fast -C Release --output-on-failure --no-tests=error
+
+  crash-report:
+    if: github.event_name == 'workflow_dispatch' && inputs.crash_report == true
+    runs-on: windows-2022
+    timeout-minutes: 15
+    env:
+      CARGO_HOME: ${{ github.workspace }}/.ci-cargo
+      CARGO_TARGET_DIR: ${{ github.workspace }}/SpotifyHelper/target
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - name: Restore configure-time dependencies
+        uses: ./.github/actions/spotify-cache
+      - name: Fetch native dependencies required at configure time
+        run: cargo fetch --locked --manifest-path SpotifyHelper/Cargo.toml --target x86_64-pc-windows-msvc
+      - name: Configure crash regression
+        run: cmake --preset vs2022-x64 -DDINGOSDK_DEV_TOOLS=ON -DDINGOSDK_BUILD_CRASH_REPORT_TESTS=ON
+      - name: Build crash regression and its launcher
+        run: cmake --build --preset release --parallel 4 --target dingosdk_crash_report_tests
+      - name: Check native crash capture
+        run: ctest --test-dir build/vs2022-x64 -C Release -R '^crash_report$' --repeat until-fail:3 --output-on-failure --no-tests=error --output-junit crash-results.xml
+      - name: Preserve bounded capture diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: crash-report-tests-${{ github.sha }}
+          path: |
+            build/vs2022-x64/crash-results.xml
+            build/vs2022-x64/Testing/Temporary/LastTest.log
+            build/vs2022-x64/crash-report-fixtures/**/capture-diagnostic.txt
+            build/vs2022-x64/crash-report-fixtures/**/stuck-capture-diagnostic.txt
+            build/vs2022-x64/crash-report-fixtures/**/capture-status.txt
+          if-no-files-found: warn
+          retention-days: 7

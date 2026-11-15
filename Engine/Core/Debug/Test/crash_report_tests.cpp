@@ -349,6 +349,17 @@ void crash_check(const std::filesystem::path& root, Mode mode) {
         for (const auto& entry : std::filesystem::directory_iterator(queue)) if (entry.path().extension() == L".dmp") dump = entry.path();
         if (dump.empty()) std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+    if (dump.empty()) {
+        std::cerr << "Capture fixture mode=" << static_cast<unsigned>(mode) << '\n';
+        // These helper receipts distinguish a failed write from a missing request.
+        // Bound diagnostics and keep dump contents out of CI logs.
+        for (const auto* name : {L"capture-diagnostic.txt", L"capture-status.txt"}) {
+            std::ifstream file(queue / name, std::ios::binary);
+            std::array<char, 4096> diagnostic{};
+            file.read(diagnostic.data(), static_cast<std::streamsize>(diagnostic.size()));
+            std::cerr.write(diagnostic.data(), file.gcount());
+        }
+    }
     check(!dump.empty(), "No out-of-process minidump captured");
     auto bytes = read(dump);
     MINIDUMP_DIRECTORY* stream{}; void* data{}; ULONG size{};

@@ -71,7 +71,7 @@ void update_trickpedia(const Context& c,std::uint64_t now) {
             [&](std::uint32_t buttons){return controller_combo_label(buttons,controller.style);},selected_grab,binding.nollie) :
             arcade_mode::trickpedia::NativeCardGuidance{{"Arcade controls for this variation are not available yet."},"Planned"};
         std::string text;
-        for(const auto& input:guidance.inputs){if(!text.empty())text+="\n";text+=input;}
+        for(const auto& instruction:guidance.inputs){if(!text.empty())text+="\n";text+=instruction;}
         text+="\n"+guidance.status;
         Value saved{},replacement{};
         try {

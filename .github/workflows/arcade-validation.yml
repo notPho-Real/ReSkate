@@ -108,6 +108,18 @@ jobs:
       - name: Check crash capture and post-exit metadata
         if: needs.policy.outputs.full == 'true'
         run: ctest --test-dir build/vs2022-x64 -C Release -R '^crash_report$' --repeat until-fail:3 --output-on-failure --no-tests=error
+      - name: Preserve early capture diagnostics
+        if: always() && needs.policy.outputs.full == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: integration-crash-capture-${{ github.sha }}
+          path: |
+            build/vs2022-x64/Testing/Temporary/LastTest.log
+            build/vs2022-x64/crash-report-fixtures/**/capture-diagnostic.txt
+            build/vs2022-x64/crash-report-fixtures/**/stuck-capture-diagnostic.txt
+            build/vs2022-x64/crash-report-fixtures/**/capture-status.txt
+          if-no-files-found: warn
+          retention-days: 7
       - name: Build runtime and release tools
         if: needs.policy.outputs.full != 'true'
         run: cmake --build --preset release --parallel 4 --target dingosdk_runtime dingosdk_launcher dingosdk_arcade_score_assets
