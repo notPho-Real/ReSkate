@@ -1,4 +1,5 @@
 #pragma once
+#include "Engine/Game/Skater/physics_state_read.h"
 #include <cmath>
 #include <cstdint>
 namespace dingosdk::arcade_mode {
@@ -22,6 +23,16 @@ bool held_flip_continues(const Frame& before,const Frame& current,std::uint64_t 
         current.generations.action-before.generations.action==action_change &&
         current.flip.mode_generation>=before.flip.mode_generation &&
         current.flip.mode_generation-before.flip.mode_generation==mode_change;
+}
+// Shared by held-input observation and original actor ownership checks.
+template<class ReadState,class SameOwner>
+bool sample_held_flip_airborne(ReadState&& read_state,SameOwner&& same_owner,
+    game::skater::PhysicsStateRead* evidence=nullptr) noexcept {
+    // Reuse the native grab's current-read contract: only zero gets one
+    // owner-verified reread. Never carry a prior phase across this boundary.
+    const auto phase=game::skater::read_current_physics_state(read_state,same_owner);
+    if(evidence)*evidence=phase;
+    return phase.known() && (phase.state==200 || phase.state==201);
 }
 // Native reads only. Count is additional rotations: stock Double Kickflip=1.
 // Input playback cannot acknowledge an actor or manufacture this observation.

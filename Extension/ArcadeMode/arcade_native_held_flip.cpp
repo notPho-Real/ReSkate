@@ -28,6 +28,8 @@ std::atomic<bool> permitted{},ready{},tracking{};
 std::mutex mutex;
 unsigned initialization_reports{};
 unsigned other_actor_reports{};
+unsigned observation_failure_reports{};
+unsigned state_recheck_reports{};
 struct Observation {
     NoBailSkater owner{};
     std::uintptr_t block{},actor{};
@@ -67,12 +69,17 @@ bool state_bool(std::uintptr_t block,unsigned index,bool& value) noexcept {
     if (!state(block,index,raw) || raw>1) return false;
     value=raw!=0;return true;
 }
+bool owner_matches(const NoBailSkater& expected,std::uintptr_t block) noexcept {
+    NoBailSkater actual{};
+    return no_bail_skater(actual) && actual==expected && block_for(actual)==block;
+}
 bool current() noexcept {
-    const auto now=GetTickCount64();NoBailSkater owner{};std::uint32_t state{};
+    const auto now=GetTickCount64();
     return permitted.load() && observation.serial && now>=observation.sampled_at &&
-        now-observation.sampled_at<=150 && no_bail_skater(owner) && owner==observation.owner &&
-        block_for(owner)==observation.block && read(owner.context+contract::physics_state,state) &&
-        (state==200 || state==201);
+        now-observation.sampled_at<=150 && owner_matches(observation.owner,observation.block) &&
+        sample_held_flip_airborne([](std::uint32_t& phase) noexcept {
+            return read(observation.owner.context+contract::physics_state,phase);
+        },[]() noexcept {return owner_matches(observation.owner,observation.block);});
 }
 std::int32_t actor_identity(std::uintptr_t actor) noexcept {
     const auto asset=pointer(actor+contract::actor_asset);
@@ -117,13 +124,29 @@ HeldFlipObservation observe(const NoBailSkater& owner,std::uint64_t now) noexcep
     if (!permitted.load() || !ready.load()) return out;
     std::lock_guard lock(mutex);
     out.available=true;out.sampled_at=now;
-    const auto block=block_for(owner);std::uint32_t phase{};
-    if (!block || !read(owner.context+contract::physics_state,phase) || (phase!=200 && phase!=201) ||
-        !sample_held_flip_state(out,[&](unsigned index,auto& value) noexcept {
+    const auto block=block_for(owner);
+    game::skater::PhysicsStateRead phase{};
+    const bool airborne=block && sample_held_flip_airborne([&](std::uint32_t& value) noexcept {
+        return read(owner.context+contract::physics_state,value);
+    },[&]() noexcept {return owner_matches(owner,block);},&phase);
+    if(phase.rechecked && observation.serial && state_recheck_reports<8) {
+        ++state_recheck_reports;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE HELD STATE RECHECK: ms={} serial={} readable={} state={} owner_verified={} airborne={} acceptance=false.",
+            now,observation.serial,phase.readable,phase.state,phase.owner_verified,airborne);
+    }
+    if (!airborne || !sample_held_flip_state(out,[&](unsigned index,auto& value) noexcept {
             if constexpr (std::is_same_v<std::remove_reference_t<decltype(value)>,bool>)
                 return state_bool(block,index,value);
             else return state(block,index,value);
         })) {
+        if(observation.serial && observation_failure_reports<32) {
+            ++observation_failure_reports;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE NATIVE HELD OBSERVATION LOST: ms={} serial={} reason={} phase_readable={} phase_first={} phase={} phase_rechecked={} phase_recheck_owner_verified={} selected_id={} acceptance=false.",
+                now,observation.serial,!block?"block":!airborne?"phase":"flip_fields",
+                phase.readable,phase.first,phase.state,phase.rechecked,phase.owner_verified,out.id);
+        }
         tracking.store(false);observation={};return out;
     }
     out.valid=true;

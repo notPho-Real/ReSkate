@@ -8,6 +8,44 @@ using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
 void check(bool value,const char* why) {++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
+void native_phase_recheck() {
+    for(unsigned native_phase:{200u,201u}) {
+        unsigned reads{},owners{};
+        dingosdk::game::skater::PhysicsStateRead evidence{};
+        const bool air=sample_held_flip_airborne([&](std::uint32_t& phase) noexcept {
+            phase=reads++?native_phase:0;return true;
+        },[&]() noexcept {++owners;return true;},&evidence);
+        check(air && reads==2 && owners==2 && evidence.first==0 && evidence.state==native_phase,
+            "held observation rereads transient zero once with exact owner verification");
+    }
+    for(unsigned contrary:{100u,103u,300u,403u,504u}) {
+        unsigned reads{};
+        check(!sample_held_flip_airborne([&](std::uint32_t& phase) noexcept {
+            phase=reads++?contrary:0;return true;
+        },[]() noexcept {return true;}) && reads==2,
+            "zero reread preserves actual ground, preparation, rail, bail or offboard rejection");
+    }
+    for(unsigned native_phase:{200u,201u}) {
+        unsigned reads{},owners{};
+        check(sample_held_flip_airborne([&](std::uint32_t& phase) noexcept {
+            ++reads;phase=native_phase;return true;
+        },[&]() noexcept {++owners;return false;}) && reads==1 && owners==0,
+            "already qualified nonzero airborne phase retains the original one-read path");
+    }
+    for(unsigned failure=0;failure<10;++failure) {
+        unsigned reads{},owners{};
+        const bool air=sample_held_flip_airborne([&](std::uint32_t& phase) noexcept {
+            const auto index=reads++;phase=index?201u:0u;
+            if(failure==0)phase=0;
+            if(failure==1 || (failure==2 && index==1))return false;
+            if(failure>=5)phase=failure==5?100u:failure==6?300u:failure==7?504u:failure==8?103u:403u;
+            return true;
+        },[&]() noexcept {return ++owners!=(failure==3?1u:failure==4?2u:99u);});
+        check(!air,"held phase rejects persistent zero, read failure, owner or block change, ground, bail and rail");
+        check(reads<=(failure==1 || failure==3 || failure>=5?1u:2u),
+            "held phase rereads only zero once and never retries a nonzero contrary phase");
+    }
+}
 void native_boundaries() {
     for (unsigned missing:{0u,1u,2u,3u,4u}) {
         HeldFlipObservation native{};native.available=true;native.sampled_at=1000;
@@ -81,6 +119,7 @@ struct Route {
     std::int32_t requested{};std::vector<PreparedGesture> recipes;bool held_available{true},bridge_accept{true},switched{};
     InputRequest repeated_request{};
     std::uintptr_t selection_object{16};
+    bool transient_phase_zero{};
     dingosdk::NativeOrientation native_orientation{true,false};
     Route() {
         AuthoredGesture kick{2,false,GestureContext::ground,90,180,.85f,{{280,30,.5f,1,0},{90,150,.5f,1,.1f}}};
@@ -104,7 +143,11 @@ struct Route {
         admission.native_context=InputNativeContext::from_frame(frame);
         admission.pose=frame.airborne?SkatePose::air:SkatePose::riding;
         admission.flip_ready=id==-1;admission.tick=now*60/1000;
-        admission.held_flip={held_available,frame.airborne,prepare,held,actor,animation_id==-999?id:animation_id,extra,now};
+        unsigned phase_reads{};
+        const bool held_air=sample_held_flip_airborne([&](std::uint32_t& phase) noexcept {
+            phase=transient_phase_zero && phase_reads++==0?0:state;return true;
+        },[]() noexcept {return true;});
+        admission.held_flip={held_available,frame.airborne && held_air,prepare,held,actor,animation_id==-999?id:animation_id,extra,now};
         const auto out=session.poll(now,physical,0,0,admission);
         const auto& d=session.diagnostic();
         for(std::size_t i=0;i<d.dispatched;++i)
@@ -546,6 +589,21 @@ void composed_successor_negatives() {
     h->poll(1403,{},201,1,false,0,false,false,2);
     check(h->repeats==1,"same native sample polling preserves one real successor opportunity");
 }
+void transient_phase_lifetime() {
+    auto h=std::make_unique<Route>();h->first();
+    h->poll(1204,{0x4000},201,2,false);
+    check(h->repeats==1,"phase regression starts one physical held request");
+    h->poll(1237,{},201,2,false);
+    h->transient_phase_zero=true;
+    const auto out=h->poll(1332,{},201,2,false);
+    check(out.authored_playback && !out.held_input_released && !out.held_actor_acknowledged,
+        "same-owner zero then AIR cannot withdraw held preparation at128ms");
+    h->transient_phase_zero=false;
+    h->poll(1366,{},201,2,true,0,true,true);
+    const auto caught=h->poll(1400,{},201,2,true,1,true,true);
+    check(caught.held_input_released && caught.held_actor_acknowledged && h->repeats==1,
+        "rechecked phase grants no actor credit before independent held count and advancement");
+}
 void physical_repetition() {
     for(unsigned hz:{30u,60u,120u}) for(std::int16_t direction:{std::int16_t{0},std::int16_t{25000}}) {
         auto h=std::make_unique<Route>();h->first(direction);const auto id=h->requested;
@@ -634,4 +692,4 @@ void physical_repetition() {
     }
 }
 }
-int main(){preair_late_parent_readiness();late_parent_dependency_boundaries();native_boundaries();preair_successor_dependency();successor_dependency_boundaries();composed_successor_negatives();preair_queued_repetition();queued_first_repetition();physical_repetition();std::cout<<checks<<" held-flip input checks passed; native animation observations are fixtures\n";}
+int main(){transient_phase_lifetime();native_phase_recheck();preair_late_parent_readiness();late_parent_dependency_boundaries();native_boundaries();preair_successor_dependency();successor_dependency_boundaries();composed_successor_negatives();preair_queued_repetition();queued_first_repetition();physical_repetition();std::cout<<checks<<" held-flip input checks passed; native animation observations are fixtures\n";}
