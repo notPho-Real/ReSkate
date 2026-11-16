@@ -4,9 +4,10 @@ This candidate is not hardware accepted. Development stays on
 `arcade-stage-rc51-feel`; the accepted updater and historical builds are unchanged.
 
 Latest compiled checkpoint: `ae9c827ea6bd41f85dffb899c6adc6dc20ee4746`.
-All required CI gates and package verification pass. Its first native trial
-returned no physical-sample receipt after a transport timeout; retained logs
-are insufficient for gameplay acceptance. The Deck is restored and released.
+All required CI gates and package verification pass. A repaired receipt path
+returned three complete 30 Hz trials: two physical doubles and one physical
+single despite a preserved held request. Reliability remains unresolved.
+The Deck is restored and released; the failure is retained.
 
 ## Baseline and provenance
 
@@ -676,3 +677,92 @@ compaction below the existing limit. This establishes harness readiness only.
 The new west corridor and 10-second physical Manual remain untested. Next work
 is reliable receipt delivery, repeated exact-DLL input trials including the
 immediate-release pair, then the independent corridor and Manual acceptance.
+
+## ae9c827e repeated native trials with complete physical receipts
+
+The local receipt repair preserves available timeout bytes and uses an opt-in
+lossless envelope with strict size, hash and decoding checks. It changes only
+terminal serialization, with unchanged gameplay/sampling AST and 80-second
+transport bound. All 107 focused checks pass, including retained flip/video
+roundtrips and the existing maximum video size. Root and independent review
+passed before a fresh exclusive session. This repair does not establish the
+cause of the earlier timeout.
+
+The same exact DLL ran the existing immediate A-release/X pair, retaining its
+68 ms X spacing. All three new receipts returned successfully:
+
+| Trial | Measured native cadence | Complete capture | X2 to held request | Physical turns, dense / full | Result |
+| --- | --- | --- | --- | --- | --- |
+| 30 Hz immediate 1 | 30.014124 Hz | 379/379, zero drops | 232 ms | -1.991519 / -1.993671 | Double observed |
+| 30 Hz immediate 2 | 30.014124 Hz | 382/382, zero drops | 228 ms | -1.991519 / -1.993393 | Double observed |
+| 30 Hz immediate 3 | 29.971791 Hz | 382/382, zero drops | 224 ms | -0.990663 / -0.990663 | Single; reliability failure |
+
+Native and cached steps were 1/30. The two doubles had matching base/held actor
+advancement, count/release evidence and corroborated four-contact landings.
+Dense sampling found no ambiguity under its recorded bounds. Their readiness
+captures are consistent with late first-action readiness, but do not expose the
+exact adapter admission instant. A request beyond 200 ms alone cannot identify
+which dependency allowance ran. Catch and durable native banking remain separate
+unverified claims.
+
+The third trial preserved the physical repeat and issued a held request, then
+withdrew it 128 ms later with no usable matching native flip observation. No
+held actor initialized or advanced; physical motion was a single. This is an
+execution/lifecycle failure after request preservation, not a missed second X.
+The exact failing native read is not present in this build's telemetry.
+The prepared 60 Hz comparison was not executed after that failure.
+
+The independent west corridor baseline also stopped without passing. At
+9.5046 seconds, its request block disagreed with separate reads of the same
+basis/orientation fields. The row retained four stable support contacts, valid
+pose, flat board and continuous motion; adjacent request masks were normal.
+This supports a mixed observation boundary, not a demonstrated collision.
+The 15-second route and planned native brake did not complete, and the later
+OFF sample still moved at 5.6186 m/s. The 10-second Manual was withheld.
+Its acquisition capture was separately incomplete: 3092/3101 rows, nine drops.
+A separate unapplied observer proposal has 35 regressions for bounded unknown
+evidence versus coherent contrary state; it does not retroactively pass this run.
+
+Evidence is under
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-first-air-hil-ae9c827e-compressed`.
+The three `*-independent-summary.json` files preserve both physical analyses,
+native timing and limitations. `manual90_west_baseline-local-analysis.json`
+preserves the failed baseline. Both processes normally stopped, four owned
+generated files were removed, and exact prior DLL/settings/receipt restoration
+retained all 132 rollback sets. Authority is revoked.
+Returned receipt SHA-256:
+`62353084d892d8541420eb86ce733af72285fdebc861341f34748ed0cd1eaabf`.
+Restoration receipt SHA-256:
+`e068caa6d303774e496a851197d674cd61857f0cbf2239cf7522f4f8170122d7`.
+
+## Follow-up: consistent current native phase reads
+
+Source correction: `18de7d3a0faa405ef4f197aa9386409c6162e10e`.
+
+Source review found a concrete asymmetry: native grabs already use
+`read_current_physics_state`, while held-flip observation and actor ownership
+checks cancelled on a single zero phase read. Both now reuse that existing
+helper. Only zero receives one fresh reread, bracketed by exact skater and state
+block identity checks. No cached phase, waiting window, deadline extension or
+native actor substitution is introduced. Persistent zero, unreadable data,
+changed owners and nonzero ground/bail/rail phases still reject. Existing 150 ms
+observation freshness and actor/id/view/count requirements remain unchanged.
+
+The old single-read behavior, extracted into the same production test seam,
+fails the composed early-withdrawal regression. This is explicitly a
+behavior-preserving legacy seam, not an unmodified old checkout. Corrected
+ASan/UBSan and warnings-as-errors tests pass 2068 held-flip, 6517 session,
+648 takeoff, 326 jump-idle and 20740 grab checks. The regression covers both
+owner-check boundaries, failed reads, persistent zero and zero-to-ground/bail.
+Bounded observation-loss and reread diagnostics distinguish block, phase and
+flip-field failures; they do not claim acceptance or exhaust every actor-callback
+refusal. Root and independent source review passed.
+
+Receipts and exact source hashes:
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-held-phase-checks`.
+This corrects a source-proven read-consistency gap. The third trial's exact
+failure cause, Windows compilation and new-DLL native acceptance remain pending.
+
+The integrated shared sanitizer graph passes 46/46 suites in 57.69 seconds,
+including enabled/disabled wallplants and Casper. JUnit:
+`rc51-targeted/rc51-held-phase-targeted.xml` in the SSD build directory.
