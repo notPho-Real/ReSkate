@@ -15,6 +15,50 @@ struct Row { std::uint64_t producer{}, ordinal{}, checksum{}; };
 constexpr std::uint64_t checksum(std::uint64_t producer, std::uint64_t ordinal) {
     return (producer * 1000003u) ^ ordinal ^ 0xabcdef12u;
 }
+void model_settlement_rows() {
+    Model model({},1,true);
+    const auto evidence=[&](std::uint64_t now) {
+        const auto& terminal=model.last_settlement();
+        return ModelSettlementEvidence{now,terminal.sequence,terminal.points,terminal.custom_points,
+            terminal.kind,terminal.actions};
+    };
+    check(!client_telemetry_valid(evidence(1000)),"no terminal cannot become model settlement evidence");
+    model.trick(0);
+    check(model.native_score(75,2),"native-only model receives observed subtotal and actions");
+    model.landing();model.tick(.5f);
+    auto bank=evidence(1500);
+    check(client_telemetry_valid(bank) && bank.kind==SettlementKind::bank && bank.sequence==1 &&
+        bank.points==150 && bank.actions==2 && bank.custom_points==0,
+        "native-only clean model terminal retains zero custom points");
+    model.trick(0);check(model.native_score(150,3),"next native-only subtotal admitted");model.bail();
+    const auto bail=evidence(2000);
+    check(client_telemetry_valid(bail) && bail.kind==SettlementKind::bail && bail.sequence==2 &&
+        bail.points==450 && bail.actions==3 && bail.custom_points==0,
+        "bail evidence reports lost model total rather than a fabricated zero bank");
+    model.begin_balance(BalanceKind::manual);check(model.native_score(75,2),"mixed model has native subtotal");
+    check(model.custom_trick(250),"actual custom model action contributes separately");model.bank();
+    const auto mixed=evidence(2500);
+    check(client_telemetry_valid(mixed) && mixed.points==975 && mixed.custom_points==750 && mixed.actions==3,
+        "model terminal preserves combined and custom totals without relabeling native actions");
+    Model empty({},1,true);empty.trick(0);empty.bail();
+    const auto& zero=empty.last_settlement();
+    check(client_telemetry_valid(ModelSettlementEvidence{3000,zero.sequence,zero.points,zero.custom_points,zero.kind,zero.actions}),
+        "actual zero-point zero-action terminal remains distinguishable from no terminal");
+    auto invalid=bank;invalid.ms=0;check(!client_telemetry_valid(invalid),"missing observation time rejected");
+    invalid=bank;invalid.sequence=0;check(!client_telemetry_valid(invalid),"missing terminal sequence rejected");
+    invalid=bank;invalid.kind=SettlementKind::none;check(!client_telemetry_valid(invalid),"nonterminal kind rejected");
+    invalid=bank;invalid.kind=static_cast<SettlementKind>(3);check(!client_telemetry_valid(invalid),"unknown terminal kind rejected");
+    invalid=bank;invalid.custom_points=bank.points+1;check(!client_telemetry_valid(invalid),"custom total cannot exceed model total");
+    invalid=bank;invalid.actions=0;check(!client_telemetry_valid(invalid),"nonzero total cannot claim zero actions");
+    InputTelemetry telemetry;InputTelemetryLink link;link.publish(telemetry);
+    check(link.client(bank) && link.client(bail) && link.client(mixed),"existing client queue accepts distinct model terminal rows");
+    check(!link.client(invalid),"invalid model terminal is rejected before publication");
+    std::array<ClientTelemetry,4> rows{};
+    check(telemetry.client.take(rows)==3 && std::holds_alternative<ModelSettlementEvidence>(rows[0]) &&
+        std::get<ModelSettlementEvidence>(rows[1]).kind==SettlementKind::bail &&
+        std::get<ModelSettlementEvidence>(rows[2]).custom_points==750,
+        "detached worker rows retain typed outcomes and totals");
+}
 void saturation_and_recovery() {
     CustomScoreEvidence score{1000,1,7,250,0,static_cast<unsigned>(ArcadeTrick::casper),2};
     check(client_telemetry_valid(score),"performed custom score is a bounded detached row");
@@ -472,6 +516,7 @@ void schema3_footer_recovery() {
 }
 void run_controller_capture_tests();
 int main() {
+    model_settlement_rows();
     saturation_and_recovery();
     worker_scheduling();
     schema3_footer_recovery();

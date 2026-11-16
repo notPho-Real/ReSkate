@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_native_probe.h"
+#include "arcade_model.h"
 #include "arcade_controller_capture_types.h"
 #include "arcade_controller_route_observation.h"
 #include "arcade_native_trick.h"
@@ -72,6 +73,12 @@ struct ManualPhysicsEvidence {
 struct CustomScoreEvidence {
     std::uint64_t ms{}, sequence{}, step{}, points{};
     unsigned kind{}, trick{}, multiplier{}; // kind: performed, bank, bail.
+};
+// Detached model totals only. A model terminal does not attest native banking.
+struct ModelSettlementEvidence {
+    std::uint64_t ms{}, sequence{}, points{}, custom_points{};
+    SettlementKind kind{SettlementKind::none};
+    unsigned actions{};
 };
 struct BalanceSampleEvidence { std::uint64_t ms{}; unsigned kind{}; float x{}, v{}, input{}, difficulty{}; short raw_x{}, raw_y{}; };
 struct ComboEventEvidence { std::uint64_t ms{}; unsigned pose{}; bool active{}, failed{}; float fatigue{}, grind{}, manual{}; };
@@ -243,10 +250,14 @@ using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFai
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
     ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence,
-    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence, GroundWriterEvidence, camera_diagnostics::Evidence, AngularWriterEvidence, CustomScoreEvidence>;
+    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence, GroundWriterEvidence, camera_diagnostics::Evidence, AngularWriterEvidence, CustomScoreEvidence, ModelSettlementEvidence>;
 // Native UI observers use this bridge; the sink never receives native objects.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
+    if(const auto* settlement=std::get_if<ModelSettlementEvidence>(&row))
+        return settlement->ms && settlement->sequence &&
+            (settlement->kind==SettlementKind::bank || settlement->kind==SettlementKind::bail) &&
+            settlement->custom_points<=settlement->points && (settlement->actions || !settlement->points);
     if(const auto* score=std::get_if<CustomScoreEvidence>(&row))
         return score->ms && score->sequence && score->multiplier && score->kind<=2 &&
             (score->kind ? score->trick==0 && score->step==0 :

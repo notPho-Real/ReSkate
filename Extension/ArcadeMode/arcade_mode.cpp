@@ -691,6 +691,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const auto& custom_terminal=combo_session.model().last_settlement();
     if(custom_terminal.sequence!=custom_settlement_seen) {
         custom_settlement_seen=custom_terminal.sequence;
+        if(custom_terminal.kind!=SettlementKind::none)
+            input_telemetry.client(ModelSettlementEvidence{now,custom_terminal.sequence,
+                custom_terminal.points,custom_terminal.custom_points,custom_terminal.kind,custom_terminal.actions});
         if(custom_terminal.custom_points)
             input_telemetry.client(CustomScoreEvidence{now,custom_terminal.sequence,0,
                 custom_terminal.custom_points,static_cast<unsigned>(custom_terminal.kind),0,custom_terminal.actions});
@@ -895,6 +898,10 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
                 r.ms,r.kind,definition?definition->key:std::string_view{"combo"},
                 r.sequence,r.step,r.points,r.multiplier);
         }
+        else if constexpr (std::is_same_v<T, ModelSettlementEvidence>)
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE MODEL SETTLEMENT: observed_ms={} sequence={} kind={} points={} actions={} custom_points={} model_only=true native_bank_verified=false.",
+                r.ms,r.sequence,static_cast<unsigned>(r.kind),r.points,r.actions,r.custom_points);
         else if constexpr (std::is_same_v<T, RevertLinkEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE REVERT LINK: ms={} sequence={} labels={} accepted={} remaining_ms={}.",
