@@ -3,9 +3,11 @@
 This candidate is not hardware accepted. Development stays on
 `arcade-stage-rc51-feel`; the accepted updater and historical builds are unchanged.
 
-Latest compiled checkpoint: `f0025f3ed25d2d4912ab90b66c36826af1a1490b`, including
-the queued-grab handoff and held-Y rail-pop grab corrections. All nine required
-CI gates and strict package verification pass; native acceptance is pending.
+Latest compiled checkpoint: `5ae5778627a7dbe0bf3153eb7b36b471bdd5aa1b`, including
+the owner-reported Manual lifetime/endpoints, Casper support and static wall
+ownership corrections. All nine required CI gates and strict package verification
+pass; exact-candidate native acceptance is pending. The Deck remains on the
+owner's f002 playtest installation until a fresh exclusive handoff.
 The preceding
 exact `986fb8c0` DLL completed five scoped physical doubles at 30 Hz and one at
 60 Hz, including native airborne release and supported landing. Its zero-phase
@@ -30,11 +32,11 @@ Current feedback and source work:
 
 | Feature | State | Evidence | Next action |
 | --- | --- | --- | --- |
-| Casper stance/support | Implemented in working source | Native admitted Manual/Nose support now matches its actual wheel contact; seed and active playback remain bound to owner, episode and stance | Combined Windows compilation and exact-candidate native stance trials |
-| Manual endpoints | Implemented in working source | Regular backward lean bails; forward puts down; Nose reverses. Typed HUD label is independent of endpoint direction. Old regression fails, focused sanitizer suites pass | Verify actual native falling, not just a queued bail |
-| Manual after plain landing | Implemented in working source | Production-composed short-flight landing regression fails before correction; airborne retention no longer grants timeless old pressure on four-wheel landing | Full composed regression and owner replay |
-| Manual without meter | Implemented in working source | Fresh independent native history/contact can readmit after proved physical exit. Old production-composed cases fail; stale labels, same failed section, owner change and duplicate frames remain rejected | Full composed regression and owner replay |
-| Main-map Casper/wallplants | Static entity wall routing implemented; native cause remains unverified | No map-name allowlist found. Geometry1631/static-owner48 checks pass; independent static/allocation/entity proof and self exclusion retained | Windows compilation; verify San Vansterdam free skate with exact candidate |
+| Casper stance/support | Implemented and compiled; native pending | Native admitted Manual/Nose support now matches its actual wheel contact; seed and active playback remain bound to owner, episode and stance | Exact-candidate native stance trials |
+| Manual endpoints | Implemented and compiled; native pending | Regular backward lean bails; forward puts down; Nose reverses. Typed HUD label is independent of endpoint direction. Old regression fails, focused sanitizer suites pass | Verify actual native falling, not just a queued bail |
+| Manual after plain landing | Implemented and compiled; native pending | Production-composed short-flight landing regression fails before correction; airborne retention no longer grants timeless old pressure on four-wheel landing | Owner replay with physical and HUD evidence |
+| Manual without meter | Implemented and compiled; native pending | Fresh independent native history/contact can readmit after proved physical exit. Old production-composed cases fail; stale labels, same failed section, owner change and duplicate frames remain rejected | Replay trick-to-Manual landing with exact DLL |
+| Main-map Casper/wallplants | Static entity wall routing compiled; native cause remains unverified | No map-name allowlist found. Geometry1631/static-owner48 checks pass; independent static/allocation/entity proof and self exclusion retained | Verify San Vansterdam free skate with exact candidate |
 | Manual acceptance duration | Updated to two seconds |173 offline checks; entry and exit gates, freshness, owner/contact/stance, scoring and landing requirements retained | Use the new inactive recipe at the next authorized native session |
 
 The new native Manual hold threshold is **two qualified seconds**, superseding
@@ -47,12 +49,12 @@ landing and banking. Proposal provenance:
 A read-only look at the current owner session log sent no gameplay input or
 console commands and did not change the installation. It contained no relevant
 wallplant/flatland failure diagnostics; main-map causality remains unverified.
-Do not claim this correction set is compiled or hardware accepted until its
-own exact-source gates pass.
+The correction set now passes its exact-source Windows and package gates below.
+Hardware acceptance remains pending.
 
 Final readmission review also reproduced stale neutral-release suppression after an owned Manual ended. New independently proved native episodes now clear that old release step; the production-composed regression verifies both a visible bar and current actuation eligibility without inventing a new RS request.
 
-Combined offline validation:46/46 shared targeted tests,21/21 production-composed lifecycle/HUD tests,12/12 native-input consumer tests,7,010 standalone rendered HUD checks and285 balance lifecycle checks pass. The clarified trick-to-Manual landing adds48 cases/792 checks covering both prior/current support types, immediate/delayed history and stale-history rejection. New source remains uncompiled on Windows until CI below is recorded. Test-only clarification was compiled separately after the21-test checkpoint.
+Combined offline validation:46/46 shared targeted tests,21/21 production-composed lifecycle/HUD tests,12/12 native-input consumer tests,7,010 standalone rendered HUD checks and285 balance lifecycle checks pass. The clarified trick-to-Manual landing adds48 cases/792 checks covering both prior/current support types, immediate/delayed history and stale-history rejection. These checks preceded the final Windows checkpoint below. Test-only clarification was compiled separately after the21-test checkpoint.
 
 The first combined Windows checkpoint, source `727ef18c664f1b42adccdd08825f185a7f6aa8eb`,
 failed [CI43927214085](https://github.com/notPho-Real/ReSkate/actions/runs/43927214085)
@@ -103,6 +105,48 @@ also passed. Runtime log SHA-256:
 This supplies compilation evidence for the gameplay changes, but cannot override
 that run's failed preflight or verify a later candidate package.
 
+
+## Verified owner-feedback package: 5ae57786
+
+Exact source `5ae5778627a7dbe0bf3153eb7b36b471bdd5aa1b` passes
+[CI 43934608600](https://github.com/notPho-Real/ReSkate/actions/runs/43934608600):
+all nine required gates, 140 Windows preflight tests, clean Windows compilation,
+and 132 full integration tests. The repeated early crash-capture gate also
+passes. Previous failures remain preserved above; their cause or outcome is not
+rewritten by this later success. Accepted-channel publication was skipped.
+
+[Experimental Deck installer](https://github.com/notPho-Real/ReSkate/actions/runs/43934608600/artifacts/14262183361),
+[runtime](https://github.com/notPho-Real/ReSkate/actions/runs/43934608600/artifacts/14261363726),
+[integration results](https://github.com/notPho-Real/ReSkate/actions/runs/43934608600/artifacts/14262353210).
+Strict archive, PE, source provenance, test-result and embedded-installer checks
+pass. DLL size: 45,612,544 bytes. DLL SHA-256:
+`af4ca57f79139b2bb520d01222293ba3baf626e99e050141c87e7fcd44435063`.
+Installer SHA-256:
+`680178756e3eaf0dab6fea8185dca514288bb4a80844cc02864cb09088127847`.
+Verification receipt SHA-256:
+`d4cff5287038ecc7730002a001731d86189e10525c7314bbb0b79384e7212d73`.
+Local verified package: `artifacts/rc51-owner-feedback-ready-5ae57786`.
+
+This is implemented, compiled and installable, not native observed, repeatable
+or accepted. The owner still has f002 installed with all 137 rollback sets;
+a fresh exclusive handoff is pending. The inactive update procedure passes
+73 offline checks and preserves existing generated HUD files as well as the
+prior DLL, settings and installation receipt. No hardware authority is granted
+by those checks.
+
+After an authorized update, rollback requires both game and launcher stopped,
+then restoring the exact prior DLL/settings/receipt from the newly verified
+`.arcade-rc51-rollback-f0025f3e-before-5ae57786-owner-playtest` backup. Confirm the
+recorded hashes and preserve all older rollback sets and the stock backup.
+That new backup is planned, not yet created; installation must first verify
+the current device, game, files and rollback inventory.
+
+Remaining independent acceptance work: two-second Manual lifetime and
+trick-to-Manual meter acquisition, directional native bails/putdowns, all
+supported Casper stance/support combinations, and physical wallplant rebound
+in San Vansterdam free skate and Mega Park. Main-map causality and durable
+native banking remain unverified. The other RC5.1 acceptance gaps below remain
+separate from this correction set.
 
 ## Baseline and provenance
 

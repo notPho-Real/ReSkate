@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "branch": "arcade-stage-rc51-feel",
-  "milestone": "RC5.1 held-Y rail-grab compiled checkpoint; Manual observer correction ready for native validation; full acceptance pending",
+  "milestone": "RC5.1 owner-feedback corrections compiled and packaged; exact-candidate native acceptance pending",
   "game_build": 20260929,
   "accepted": false,
   "sources": {
@@ -60,7 +60,7 @@
       "Entity-owned static wall identity retained through geometry and native admission"
     ],
     "main_map_failure": "Owner confirmed San Vansterdam free skate; native cause unverified. Entity-owned static wall route corrected without bypassing static/current-owner proof.",
-    "compiled": false,
+    "compiled": true,
     "native_accepted": false,
     "offline_tests": {
       "targeted": 46,
@@ -68,6 +68,11 @@
       "consumer": 12,
       "trick_landing_cases": 48,
       "manual_hold_proposal_checks": 173
-    }
+    },
+    "compiled_source": "5ae5778627a7dbe0bf3153eb7b36b471bdd5aa1b",
+    "ci_run": 43934608600,
+    "dll_sha256": "af4ca57f79139b2bb520d01222293ba3baf626e99e050141c87e7fcd44435063",
+    "package_verified": true,
+    "verification_sha256": "d4cff5287038ecc7730002a001731d86189e10525c7314bbb0b79384e7212d73"
   }
 }
