@@ -299,6 +299,9 @@ private:
               (native.flip.id==request.waiting_flip.id || native.flip.id==-1) &&
               (native.airborne || request.pop_release_at==released_jump)));
     }
+public:
+    // Prefix recognition uses the same lifetime gate as dispatch; waiting
+    // grants no actuator or native execution permission.
     static InputDisposition eligibility(const InputRequest& request, std::uint64_t now,
                                         std::uint64_t session, InputContext context, InputNativeContext native, const InputAirTables& tables, std::uint64_t released_jump) noexcept {
         if (request.pop_release_at && request.pop_release_at != released_jump) return InputDisposition::cancelled;
@@ -330,6 +333,7 @@ private:
         if (!request.unbounded && (request.inclusive_deadline ? now > request.deadline : now >= request.deadline)) return InputDisposition::expired;
         return InputDisposition::waiting;
     }
+private:
     void pop() noexcept { slots_[1 + front_] = {}; front_ = (front_ + 1) % capacity; --size_; }
     std::array<InputRequest, capacity + 2> slots_{};
     std::size_t front_{}, size_{}, reserved_{};
@@ -913,6 +917,11 @@ private:
                 }
             }
         }
+        if(environment.policy.bounded_handoff && presses==2 &&
+            ((action==InputAction::grab && form==InputForm::ordinary && environment.native_grab_transition && !environment.deferred_grabs) ||
+             (action==InputAction::flip && form==InputForm::held_repeat)))
+            request.deadline=request.physical_pressed_at>limit-InputTiming::readiness_ms?
+                limit:request.physical_pressed_at+InputTiming::readiness_ms;
         if (contextual) {
             request.form = InputForm::contextual;
             request.unbounded = true; // Original installed-table lifetime is the cancellation clock.
@@ -1107,21 +1116,24 @@ private:
         auto repeat_source=grab_source_;
         auto repeat_generations=grab_generations_;
         auto repeat_native=grab_native_;
+        bool queued_repeat=false;
         // A second physical B may arrive before the first native grab is
         // ready. Use that still-valid queued prefix for recognition without
-        // granting it an actor or changing either request's admission deadline.
+        // granting it an actor. The repeated request keeps its physical edge
+        // and a bounded handoff; the first retains its original policy.
         if(environment.native_grab_transition && !environment.deferred_grabs)
             for(const auto& request:pending_.slots()) {
                 if(request.action!=InputAction::grab || request.form!=InputForm::ordinary ||
                     !request.named_binding || request.modifier || !request.direction ||
                     request.session!=session_ || request.context!=environment.context ||
-                    now>=request.deadline || (repeat_available && request.physical_pressed_at<repeat_at) ||
+                    (!request.unbounded && now>=request.deadline) || (repeat_available && request.physical_pressed_at<repeat_at) ||
                     !environment.native_context.correlates_action(request.generations) ||
                     request.air_episode!=environment.native_context.air_episode())continue;
                 repeat_available=true;repeat_count=request.presses;
                 repeat_at=request.physical_pressed_at;repeat_direction=request.direction;
                 repeat_source=request.direction_source;repeat_generations=request.generations;
                 repeat_native=environment.native_context;
+                queued_repeat=true;
             }
         auto selected = now >= direction_at_ && now - direction_at_ <= InputTiming::direction_ms ? direction_ : std::int16_t{0};
         const InputToken face{InputSource::buttons,TrickControls::grab,InputEdge::press};
@@ -1245,8 +1257,10 @@ private:
         if (native_owner || unsupported_prefix_retired)
             lineage = &environment.native_context.generations;
         const auto readiness=historical_repeat?InputTiming::readiness_ms-(now-match.last_at):InputTiming::readiness_ms;
+        auto selected_environment=environment;
+        if(historical_repeat || (extra && queued_repeat))selected_environment.policy.bounded_handoff=true;
         enqueue(InputAction::grab, now, readiness + (environment.deferred_grabs ? 180u : 0u),
-            environment, presses, 0, environment.deferred_grabs ? 180u : 0u, extended?1u:0u,
+            selected_environment, presses, 0, environment.deferred_grabs ? 180u : 0u, extended?1u:0u,
             extra ? InputToken{repeat_source,repeat_direction,InputEdge::press} : InputToken{}, &match,form,extra ? std::int16_t{0} : selected,
             InputFootprintKind::unknown, lineage);
     }
@@ -1257,13 +1271,30 @@ private:
         const InputToken face{InputSource::buttons,TrickControls::flip,InputEdge::press};
         InputMatch match{}; unsigned presses = 1;
         InputForm form{}; std::int16_t defined_direction{};
+        const InputRequest* queued_prefix=nullptr;
+        if(environment.native_held_flip && !active_flip_ && environment.native_context.required && environment.context==InputContext::air)
+            for(const auto& request:pending_.slots()) {
+                if(request.action!=InputAction::flip || request.presses!=1 || request.nollie ||
+                    (request.form!=InputForm::ordinary && request.form!=InputForm::neutral_press && request.form!=InputForm::neutral_release) ||
+                    (request.air.trick!=ArcadeTrick::kickflip && request.air.trick!=ArcadeTrick::heelflip) ||
+                    now<request.physical_pressed_at ||
+                    now-request.physical_pressed_at>InputTiming::extra_press_ms ||
+                    InputRequestQueue::eligibility(request,now,session_,environment.context,
+                        environment.native_context,air_tables_,takeoff_release_at_)!=InputDisposition::waiting)continue;
+                // Recognize the second edge while the first still waits. The
+                // FIFO and held adapter must later prove the original flip,
+                // native preparation window and actor; this prefix owns none.
+                if(!queued_prefix || request.physical_pressed_at>queued_prefix->physical_pressed_at)
+                    queued_prefix=&request;
+            }
+        const auto held_started=queued_prefix?queued_prefix->physical_pressed_at:flip_started_;
         const bool held_child=environment.native_held_flip && active_flip_ && active_flip_count_==1 &&
             !flip_nollie_ && (flip_direction_==0 || flip_direction_==4 || flip_direction_==6) &&
             now>=flip_started_ && now-flip_started_<=InputTiming::extra_press_ms;
-        if (held_child) {
+        if (held_child || queued_prefix) {
             const std::array tokens{face};
             match=events_.history().match({tokens,InputTiming::extra_press_ms,ordinary_reject},now);
-            if (match && match.first_at>flip_started_) {presses=2;form=InputForm::held_repeat;}
+            if (match && match.first_at>held_started) {presses=2;form=InputForm::held_repeat;}
             else match={};
         }
         const bool child = active_flip_count_ == 1 || (active_flip_count_ == 2 &&
@@ -1309,10 +1340,13 @@ private:
         if (!match || !air_face_eligible(match,14,true) || !events_.history().consume(match, presses > 1 ? branch_owner : InputConsumption::regular,
             ordinary_reject)) return false;
         auto selected = environment;
-        if (presses > 1) selected.nollie = flip_nollie_;
+        if (presses > 1) selected.nollie = queued_prefix?queued_prefix->nollie:flip_nollie_;
+        if(queued_prefix && form==InputForm::held_repeat)selected.policy.bounded_handoff=true;
+        const auto inherited=queued_prefix?InputToken{queued_prefix->direction?queued_prefix->direction_source:InputSource::direction,queued_prefix->direction,InputEdge::press}:
+            InputToken{flip_source_,flip_direction_,InputEdge::press};
         enqueue(InputAction::flip, now, InputTiming::readiness_ms, selected, presses, 0, 0, 0,
-            presses > 1 ? InputToken{flip_source_,flip_direction_,InputEdge::press} : InputToken{}, &match,form,defined_direction,
-            InputFootprintKind::unknown, presses > 1 ? &flip_generations_ : nullptr);
+            presses > 1 ? inherited : InputToken{}, &match,form,defined_direction,
+            InputFootprintKind::unknown, presses > 1 ? queued_prefix?&queued_prefix->generations:&flip_generations_ : nullptr);
         direction_ = 0; return true;
     }
     void recognize_surface(std::uint64_t now, InputEnvironment environment) noexcept {

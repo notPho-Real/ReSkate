@@ -842,6 +842,23 @@ void repeated_grab_before_client_readiness() {
               "released-pop recognition cannot replay an older unmatched B after the latest pair");
     }
 }
+void repeated_grab_wait_deadlines() {
+    for(bool historical:{false,true})for(unsigned delay:{199u,200u}) {
+        auto r=std::make_unique<Route>();r->poll(1000,0,201,1);
+        r->client_action_ready=!historical;r->accept=false;
+        r->poll(1017,0x2004,201,1);r->poll(1034,4,201,1);r->poll(1051,0x2004,201,1);
+        r->client_action_ready=true;r->poll(1068,0x2004,201,1);
+        for(unsigned at:{1100u,1150u,1200u})r->poll(at,0x2004,201,1);
+        check(r->requests.empty(),"native admission remains unavailable while the repeated-B deadline approaches");
+        r->accept=!historical;r->poll(1249,0x2004,201,1);
+        r->accept=true;r->poll(1051+delay,0x2004,201,1);r->poll(1068+delay,0x2004,201,1);
+        check(r->requests.size()==(historical?0u:1u)+(delay==199?1u:0u),
+              "fresh native observations cannot renew a repeated B at its original second-edge plus200ms deadline");
+        if(!historical)check(r->tricks.front()==ArcadeTrick::melon && r->requests.front().unbounded &&
+                            r->requests.front().physical_pressed_at==1017,
+              "bounding the queued repeat preserves the original ordinary first-grab policy");
+    }
+}
 void repeated_grab_after_native_jump_retirement() {
     for (unsigned hz:{30u,60u,120u}) {
         const auto dt=(1000u+hz-1)/hz;
@@ -958,4 +975,4 @@ void repeated_grab_after_clock_reset() {
           "reset prefix timestamp cannot suppress a new queued repeat after clock rollback");
 }
 
-int main(){repeated_grab_after_clock_reset();queued_grab_retirement_requires_native_owner();native_family_change_waits_for_exit();native_footer_exit_contract();current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();repeated_grab_before_native_admission();input_order_and_launch();native_air_before_client_readiness();repeated_grab_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){repeated_grab_after_clock_reset();queued_grab_retirement_requires_native_owner();native_family_change_waits_for_exit();native_footer_exit_contract();current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();repeated_grab_before_native_admission();input_order_and_launch();native_air_before_client_readiness();repeated_grab_before_client_readiness();repeated_grab_wait_deadlines();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}

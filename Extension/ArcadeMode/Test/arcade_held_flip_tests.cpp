@@ -78,7 +78,9 @@ void native_boundaries() {
 struct Route {
     InputSession session;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
     InputAdmission admission{};NativeInputFrame frame{};unsigned bridge_calls{},repeats{};
-    std::int32_t requested{};std::vector<PreparedGesture> recipes;bool held_available{true};
+    std::int32_t requested{};std::vector<PreparedGesture> recipes;bool held_available{true},bridge_accept{true},switched{};
+    InputRequest repeated_request{};
+    std::uintptr_t selection_object{16};
     Route() {
         AuthoredGesture kick{2,false,GestureContext::ground,90,180,.85f,{{280,30,.5f,1,0},{90,150,.5f,1,.1f}}};
         AuthoredGesture heel{3,false,GestureContext::ground,180,270,.85f,{{330,80,.5f,1,0},{210,270,.5f,1,.1f}}};
@@ -88,14 +90,16 @@ struct Route {
         admission.may_start=admission.inspected_stance=true;admission.action_mode=ActionExperiment::classic;
         admission.catalog=recipes;admission.held_flip.available=true;
         admission.normal_flip={this,[](void* p,std::int32_t id) noexcept {
-            auto& self=*static_cast<Route*>(p);++self.bridge_calls;self.requested=id;return true;
+            auto& self=*static_cast<Route*>(p);if(!self.bridge_accept)return false;
+            ++self.bridge_calls;self.requested=id;return true;
         }};
     }
     NativeGesture::Output poll(std::uint64_t now,PhysicalInputSample physical={},std::uint32_t state=201,std::int32_t id=2,
                                bool prepare=true,float extra=0,bool held=false,bool actor=false,int animation_id=-999) {
-        NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=state==100?1:state==200?0:2;
+        NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=state==100?1:(state==200 || state==103)?0:2;
         sample.words[1]=state==100?0xc000u:0;
-        frame=producer.observe(now,owner,sample,{true,id,16});
+        sample.words[0]=switched?0x20u:0;
+        frame=producer.observe(now,owner,sample,{true,id,selection_object});
         admission.native_context=InputNativeContext::from_frame(frame);
         admission.pose=frame.airborne?SkatePose::air:SkatePose::riding;
         admission.flip_ready=id==-1;admission.tick=now*60/1000;
@@ -103,7 +107,9 @@ struct Route {
         const auto out=session.poll(now,physical,0,0,admission);
         const auto& d=session.diagnostic();
         for(std::size_t i=0;i<d.dispatched;++i)
-            repeats+=d.dispatch[i].request.form==InputForm::held_repeat && d.dispatch[i].disposition==InputDisposition::started;
+            if(d.dispatch[i].request.form==InputForm::held_repeat && d.dispatch[i].disposition==InputDisposition::started) {
+                ++repeats;repeated_request=d.dispatch[i].request;
+            }
         return out;
     }
     void first(std::int16_t direction=0) {
@@ -114,6 +120,76 @@ struct Route {
         poll(1170,{},201,requested,false);
     }
 };
+void queued_first_repetition() {
+    for(unsigned hz:{30u,60u,120u}) for(std::int16_t direction:{std::int16_t{0},std::int16_t{-25000},std::int16_t{25000}})
+    for(bool switched:{false,true}) for(bool physics_retired:{false,true})
+    for(unsigned first_phase:{103u,200u,201u}) for(bool idle_retired:{false,true}) {
+        auto h=std::make_unique<Route>();const auto dt=(1000u+hz-1)/hz;
+        h->switched=switched;h->bridge_accept=false;
+        h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
+        h->poll(1051,{0x1000},100,1);h->poll(1085,{},100,1);
+        h->poll(1102,{},first_phase==103?103:200,1);h->poll(1119,{},first_phase,1,false);
+        h->poll(1119+dt,{0x4000,direction,0},first_phase,1,false);
+        const auto queued_selection=idle_retired?-1:1;
+        h->poll(1119+2*dt,{},201,queued_selection,false);
+        const auto second=1119+3*dt;
+        h->poll(second,{0x4000,static_cast<std::int16_t>(direction?0:25000),0},201,queued_selection,false);
+        h->poll(1119+4*dt,{},201,queued_selection,false);
+        check(!h->bridge_calls && !h->repeats,"queued physical X pair cannot bypass the first native flip admission");
+        h->bridge_accept=true;h->poll(1119+5*dt,{},201,queued_selection,false);
+        const auto id=direction>0?3:2;
+        check(h->bridge_calls==1 && h->requested==id && !h->repeats,
+              "waiting pair first admits exactly the requested original single flip");
+        const auto physics_id=physics_retired?id:queued_selection;
+        const auto out=h->poll(1119+6*dt,{},201,physics_id,false,0,false,false,id);
+        check(h->repeats==1 && out.authored_playback && h->bridge_calls==1,
+              "second physical X before first admission prepares the matching held native flip");
+        check(h->repeated_request.physical_pressed_at==second &&
+              h->repeated_request.physical_released_at==0 &&
+              h->repeated_request.deadline==second+InputTiming::readiness_ms && !h->repeated_request.unbounded,
+              "queued held repeat retains its recognition-edge timestamp and immutable deadline");
+        h->poll(1119+7*dt,{},201,physics_id,true,0,true,true,id);
+        const auto caught=h->poll(1119+8*dt,{},201,physics_id,true,1,true,true,id);
+        check(caught.held_input_released && caught.held_actor_acknowledged && !caught.authored_playback,
+              "queued repetition releases only at independently supplied held actor and extra rotation");
+        h->poll(1119+9*dt,{},201,physics_id,false,1,false,false,id);
+        check(h->bridge_calls==1 && h->repeats==1,"queued pair never replays another pop, flip or held request");
+    }
+    for(unsigned hz:{30u,60u,120u})for(unsigned fault=0;fault<10;++fault) {
+        auto h=std::make_unique<Route>();const auto dt=(1000u+hz-1)/hz;
+        h->bridge_accept=false;
+        h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
+        h->poll(1051,{0x1000},100,1);h->poll(1085,{},100,1);
+        h->poll(1102,{},200,1);h->poll(1119,{},201,1,false);
+        h->poll(1119+dt,{0x4000},201,1,false);h->poll(1119+2*dt,{},201,1,false);
+        h->poll(1119+3*dt,{0x4000},201,1,false);
+        if(fault==0)++h->owner.rig;
+        if(fault==1)h->admission.external_owner=true;
+        if(fault==2)h->admission.gameplay=false;
+        if(fault==5)h->switched=true;
+        if(fault==6)h->selection_object=32;
+        if(fault==7)h->held_available=false;
+        h->poll(1119+4*dt,{},fault==3?100:fault==4?300:201,1,false);
+        h->bridge_accept=true;h->poll(1119+5*dt,{},201,1,false);
+        for(unsigned n=6;n<12;++n)h->poll(1119+n*dt,{},201,1,fault==8,0,false,false,fault==9?3:2);
+        check(!h->repeats,
+              "queued repeat rejects owner, conflict, focus, landing, bail, stance, selector, missing observer, late Prepare or wrong actor");
+    }
+    for(bool late_first:{false,true})for(unsigned delay:{199u,200u}) {
+        auto h=std::make_unique<Route>();h->bridge_accept=false;
+        h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
+        h->poll(1051,{0x1000},100,1);h->poll(1085,{},100,1);
+        h->poll(1102,{},200,1);h->poll(1119,{},201,1,false);
+        h->poll(1136,{0x4000},201,1,false);h->poll(1153,{},201,1,false);
+        h->poll(1170,{0x4000},201,1,false);h->poll(1187,{},201,1,false);
+        if(!late_first)h->bridge_accept=true;
+        h->poll(1204,{},201,1,false);h->poll(1250,{},201,1,false);
+        h->poll(1300,{},201,1,false);h->bridge_accept=true;
+        h->poll(1336,{},201,1,false);h->poll(1170+delay,{},201,1,false,0,false,false,2);
+        check(h->repeats==(delay==199?1u:0u) && h->bridge_calls==1,
+              "first admission retains its ordinary policy without renewing the queued repeat's original deadline");
+    }
+}
 void physical_repetition() {
     for(unsigned hz:{30u,60u,120u}) for(std::int16_t direction:{std::int16_t{0},std::int16_t{25000}}) {
         auto h=std::make_unique<Route>();h->first(direction);const auto id=h->requested;
@@ -202,4 +278,4 @@ void physical_repetition() {
     }
 }
 }
-int main(){native_boundaries();physical_repetition();std::cout<<checks<<" held-flip input checks passed; native animation observations are fixtures\n";}
+int main(){native_boundaries();queued_first_repetition();physical_repetition();std::cout<<checks<<" held-flip input checks passed; native animation observations are fixtures\n";}
