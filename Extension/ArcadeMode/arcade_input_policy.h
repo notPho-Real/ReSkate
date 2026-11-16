@@ -35,6 +35,9 @@ struct InputNativeContext {
     std::uint64_t airborne_episode{}, air_departure{};
     InputFlipObservation flip{};
     NativeOrientation orientation{};
+    // Original physics departure time, never refreshed by client polling.
+    std::uint64_t airborne_started_at{};
+    bool airborne_started_known{};
     InputAirEpisode air_episode() const noexcept { return {airborne_episode,air_departure}; }
     bool operator==(const InputNativeContext&) const = default;
     bool fresh(std::uint64_t now) const noexcept {
@@ -153,6 +156,10 @@ struct InputNativeContext {
             context.air_departure = frame.air_departure;
         }
         if constexpr (requires { frame.orientation; }) context.orientation=frame.orientation;
+        if constexpr (requires { frame.airborne_started_at; frame.airborne_started_known; }) {
+            context.airborne_started_at=frame.airborne_started_at;
+            context.airborne_started_known=frame.airborne_started_known;
+        }
         if constexpr (requires { frame.flip_known; frame.flip_id; frame.selection_object;
                                  frame.state; frame.mode; frame.stance_and_push; }) {
             context.flip = {frame.flip_known,frame.flip_id,frame.selection_object,

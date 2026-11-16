@@ -196,8 +196,8 @@ public:
             const bool dependent=dependency_matches(request);
             bool successor_admission{};
             if(gate==InputDisposition::expired && dependent) {
-                // A first flip accepted just before the physical deadline can
-                // only expose its native actor on the next physics sample.
+                // A qualified first flip can only expose its native actor on
+                // the next physics sample. The original deadline stays intact.
                 // Same-sample polls wait without admitting or renewing input.
                 if(native.physics_step==held_dependency_.native.physics_step)break;
                 gate=InputDisposition::waiting;successor_admission=true;
@@ -289,7 +289,14 @@ private:
     } held_dependency_{};
     bool dependency_current(std::uint64_t now,const InputNativeContext& native) const noexcept {
         const auto& before=held_dependency_.native;
-        return now>=held_dependency_.accepted_at && held_dependency_.accepted_at<held_dependency_.deadline &&
+        // A late first admission borrows only the original physical AIR lease.
+        // Neither acceptance nor a newer sample can move that fixed endpoint.
+        const bool timely=held_dependency_.accepted_at<held_dependency_.deadline;
+        const bool late=before.airborne_started_known && native.airborne_started_known &&
+            before.airborne_started_at==native.airborne_started_at &&
+            before.airborne_started_at<=before.sampled_at && before.sampled_at<=held_dependency_.accepted_at &&
+            now>=before.airborne_started_at && now-before.airborne_started_at<InputTiming::native_sample_lease_ms;
+        return now>=held_dependency_.accepted_at && (timely || late) &&
             native.follows(before) && native.physics_step-before.physics_step<=1 &&
             before.orientation.valid && native.orientation==before.orientation &&
             held_flip_continues(before,native,now,held_dependency_.id);
@@ -301,6 +308,18 @@ private:
             request.action==InputAction::flip && request.form==InputForm::held_repeat && request.presses==2 &&
             !request.nollie && !request.unbounded && request.context==InputContext::ground &&
             static_cast<std::int32_t>(held_flip_base(request.air.trick))==held_dependency_.id;
+    }
+    static bool late_parent_window(const InputRequest& parent,const InputRequest& child,
+                                   std::uint64_t now,const InputNativeContext& native) noexcept {
+        // The pair was physically prepared on this released pop before AIR.
+        // Preserve it through the existing finite takeoff/readiness corridor,
+        // without changing either physical edge or the ordinary 200ms deadline.
+        const auto start=native.airborne_started_at;
+        return native.airborne_started_known && start>=parent.pop_release_at &&
+            start-parent.pop_release_at<InputTiming::direction_ms && start<=native.sampled_at &&
+            native.sampled_at<=now && now-start<InputTiming::native_sample_lease_ms &&
+            parent.physical_pressed_at>=parent.pop_release_at && parent.physical_pressed_at<=start &&
+            child.physical_pressed_at>=parent.pop_release_at && child.physical_pressed_at<=start;
     }
     InputRequest dependency_candidate(const InputRequest& parent,std::uint64_t now,std::uint64_t session,
         InputContext context,InputNativeContext native,const InputAirTables& tables,std::uint64_t released_jump) const noexcept {
@@ -315,10 +334,11 @@ private:
                 child.form!=InputForm::held_repeat || child.presses!=2 || child.nollie || child.unbounded ||
                 child.context!=InputContext::ground || child.pop_release_at!=parent.pop_release_at ||
                 child.session!=parent.session || child.generations.owner!=parent.generations.owner ||
-                child.physical_pressed_at<=parent.physical_pressed_at || now>=child.deadline ||
-                held_flip_base(child.air.trick)!=(parent.air.trick==ArcadeTrick::kickflip?2u:3u) ||
-                eligibility(child,now,session,context,native,tables,released_jump)!=InputDisposition::waiting)continue;
-            return child;
+                child.physical_pressed_at<=parent.physical_pressed_at ||
+                held_flip_base(child.air.trick)!=(parent.air.trick==ArcadeTrick::kickflip?2u:3u))continue;
+            const auto gate=eligibility(child,now,session,context,native,tables,released_jump);
+            if((gate==InputDisposition::waiting && now<child.deadline) ||
+                (gate==InputDisposition::expired && late_parent_window(parent,child,now,native)))return child;
         }
         return {};
     }

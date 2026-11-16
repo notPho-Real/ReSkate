@@ -285,12 +285,33 @@ void preair_successor_dependency() {
           "dependency admission retains original edge deadline and grants no native completion");
 }
 
+void preair_late_parent_readiness() {
+    auto h=std::make_unique<Route>();h->bridge_accept=false;
+    h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
+    h->poll(1051,{0x1000},100,1);h->poll(1085,{},100,1);
+    h->poll(1102,{0x4000},103,1,false);h->poll(1136,{},103,1,false);
+    h->poll(1170,{0x4000},103,1,false);h->poll(1204,{},103,1,false);
+    h->admission.action_fresh=false;
+    h->poll(1304,{},103,1,false);h->poll(1324,{},200,1,false);
+    h->poll(1358,{},201,1,false);
+    check(!h->bridge_calls && !h->repeats,"physical pair waits for independently fresh first-flip readiness");
+    h->admission.action_fresh=true;h->bridge_accept=true;
+    h->poll(1381,{},201,1,false);
+    check(h->bridge_calls==1 && !h->repeats,"late first native readiness admits only the matching base");
+    const auto out=h->poll(1415,{},201,1,false,0.0f,false,false,2);
+    check(h->repeats==1 && out.authored_playback,
+          "pre-AIR pair survives first native readiness after the physical repeat deadline");
+    check(h->repeated_request.physical_pressed_at==1170 && h->repeated_request.deadline==1370 &&
+          !h->repeated_request.unbounded && !out.held_actor_acknowledged,
+          "fixed first-AIR dependency retains physical deadline and grants no completion");
+}
+
 struct DependencyQueue {
     InputRequestQueue queue;
     InputRequest parent{},child{};
     InputNativeContext native{};
     unsigned bases{},repeats{},waiting{},expired{},mutation{};
-    bool wait_child{};
+    bool wait_child{},wait_parent{};
     DependencyQueue() {
         native.required=native.valid=native.airborne=true;
         native.generations={1,2,3};native.physics_step=10;native.sampled_at=1360;
@@ -309,6 +330,7 @@ struct DependencyQueue {
         queue.dispatch(now,1,InputContext::air,{this,[](void* p,const InputRequest& r) noexcept {
             auto& q=*static_cast<DependencyQueue*>(p);
             if(r.presses==1) {
+                if(q.wait_parent)return InputDisposition::waiting;
                 ++q.bases;
                 if(q.mutation==1)q.queue.cancel(InputAction::flip);
                 if(q.mutation==2)q.queue.clear_ordinary();
@@ -327,6 +349,86 @@ struct DependencyQueue {
     }
     void next(std::uint64_t now) {++native.physics_step;++native.flip.step;native.sampled_at=now;}
 };
+void late_parent_dependency_boundaries() {
+    const auto prepare=[](DependencyQueue& q,std::uint64_t start=1324) {
+        q.native.airborne_started_known=true;q.native.airborne_started_at=start;
+        q.native.sampled_at=1381;
+    };
+    for(unsigned age:{149u,150u,151u}) {
+        DependencyQueue q;prepare(q);q.native.sampled_at=1324+age;q.enqueue();q.dispatch(1324+age);
+        q.next(1324+age);q.dispatch(1324+age);
+        check(q.repeats==(age==149?1u:0u),"late parent first-AIR lease is half-open150ms at acceptance and successor");
+    }
+    for(unsigned gap:{499u,500u}) {
+        DependencyQueue q;prepare(q,1085+gap);q.native.sampled_at=1135+gap;q.enqueue();q.dispatch(1135+gap);
+        q.next(1169+gap);q.dispatch(1169+gap);
+        check(q.repeats==(gap==499?1u:0u),"late parent requires first AIR inside original500ms released-pop corridor");
+    }
+    for(unsigned successor:{1473u,1474u}) {
+        DependencyQueue q;prepare(q);q.enqueue();q.dispatch(1381);
+        for(unsigned now:{1382u,1400u,1440u})q.dispatch(now);
+        check(!q.repeats,"same-step polling never admits or renews late dependency");
+        q.next(successor);q.dispatch(successor);
+        check(q.repeats==(successor==1473?1u:0u),"successor is capped by original first AIR rather than parent acceptance");
+    }
+    for(unsigned fault=0;fault<32;++fault) {
+        DependencyQueue q;prepare(q);
+        if(fault==0)q.native.airborne_started_known=false;
+        if(fault==1)q.native.airborne_started_at=1382;
+        if(fault==2)q.native.airborne_started_at=1084;
+        if(fault==3)q.parent.physical_pressed_at=1084;
+        if(fault==4)q.child.physical_pressed_at=1325;
+        if(fault==5)q.child.parent_input_sequence=11;
+        if(fault==6)q.child.session=2;
+        if(fault==7)q.child.pop_release_at=1086;
+        if(fault==8)q.child.generations.owner=2;
+        if(fault==9)q.child.air_episode={2,0};
+        if(fault==10)q.child.context=InputContext::air;
+        if(fault==11)q.parent.context=InputContext::air;
+        if(fault==12)q.native.orientation.valid=false;
+        if(fault==13)q.native.airborne_started_at=0;
+        if(fault==14)q.native.sampled_at=1323;
+        q.enqueue(fault!=15);q.dispatch(1381);q.next(1415);
+        if(fault==16)q.native.airborne_started_at=1358;
+        if(fault==17)q.native.airborne_started_at=1300;
+        if(fault==18)q.native.airborne_started_known=false;
+        if(fault==19)++q.native.physics_step;
+        if(fault==20)++q.native.generations.owner;
+        if(fault==21)++q.native.airborne_episode;
+        if(fault==22)++q.native.air_departure;
+        if(fault==23)q.native.flip.object=32;
+        if(fault==24)q.native.flip.stance=0x20;
+        if(fault==25)q.native.orientation.fakie=true;
+        if(fault==26)q.native.sampled_at=1380;
+        if(fault==27)q.native.flip.state=300;
+        if(fault==28)q.native.airborne=false;
+        if(fault==29)q.native.flip.id=3;
+        if(fault==30)q.native.valid=false;
+        if(fault==31)q.native.orientation.valid=false;
+        q.dispatch(1415);
+        check(!q.repeats,"late parent rejects missing/changed timing, cancellation and foreign native ownership");
+    }
+    {
+        DependencyQueue q;prepare(q);q.enqueue();q.wait_parent=true;q.dispatch(1381);
+        q.next(1474);q.wait_parent=false;q.dispatch(1474);q.next(1508);q.dispatch(1508);
+        check(q.bases==1 && !q.repeats,"waiting parent cannot reserve or renew the first-AIR lease");
+    }
+    {
+        DependencyQueue q;prepare(q);q.enqueue();q.dispatch(1381);q.wait_child=true;q.next(1415);q.dispatch(1415);
+        q.wait_child=false;q.next(1449);q.dispatch(1449);
+        check(q.waiting==1 && q.expired==1 && !q.repeats,"late-parent successor waiting consumes the only chance");
+    }
+    {
+        DependencyQueue q;prepare(q);q.enqueue();q.dispatch(1381);q.dispatch(1380);q.next(1415);q.dispatch(1415);
+        check(!q.repeats,"late dependency retires on clock rollback without recovery replay");
+    }
+    for(unsigned mutation:{1u,2u,3u,4u,5u}) {
+        DependencyQueue q;prepare(q);q.mutation=mutation;q.enqueue(mutation!=4);q.dispatch(1381);
+        q.next(1415);q.dispatch(1415);
+        check(!q.repeats,"late parent cannot grant from reentrant insert or cancellation");
+    }
+}
+
 void successor_dependency_boundaries() {
     for(unsigned first_age:{190u,196u,199u})for(unsigned dt:{9u,17u,34u}) {
         DependencyQueue q;q.enqueue();q.native.sampled_at=1170+first_age;q.dispatch(1170+first_age);
@@ -403,13 +505,21 @@ void successor_dependency_boundaries() {
     }
 }
 void composed_successor_negatives() {
-    for(unsigned fault=0;fault<15;++fault) {
+    for(bool late:{false,true})for(unsigned fault=0;fault<15;++fault) {
         auto h=std::make_unique<Route>();h->bridge_accept=false;
         h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);h->poll(1051,{0x1000},100,1);
         h->poll(1085,{},100,1);h->poll(1102,{0x4000},103,1,false);h->poll(1136,{},103,1,false);
-        h->poll(1170,{0x4000},103,1,false);h->poll(1204,{},200,1,false);
-        h->poll(1238,{},201,1,false);h->poll(1272,{},201,1,false);h->poll(1304,{},201,1,false);
-        h->poll(1336,{},201,1,false);h->bridge_accept=true;h->poll(1360,{},201,1,false);
+        h->poll(1170,{0x4000},103,1,false);
+        if(late) {
+            h->poll(1204,{},103,1,false);h->admission.action_fresh=false;
+            h->poll(1304,{},103,1,false);h->poll(1324,{},200,1,false);h->poll(1358,{},201,1,false);
+            h->admission.action_fresh=true;h->bridge_accept=true;h->poll(1381,{},201,1,false);
+        } else {
+            h->poll(1204,{},200,1,false);h->poll(1238,{},201,1,false);
+            h->poll(1272,{},201,1,false);h->poll(1304,{},201,1,false);
+            h->poll(1336,{},201,1,false);h->bridge_accept=true;h->poll(1360,{},201,1,false);
+        }
+        const auto successor=late?1415u:1394u;
         if(fault==0)++h->owner.rig;
         if(fault==1)h->admission.external_owner=true;
         if(fault==2)h->admission.gameplay=false;
@@ -419,10 +529,10 @@ void composed_successor_negatives() {
         if(fault==13)h->native_orientation.fakie=true;
         if(fault==14)h->native_orientation.valid=false;
         PhysicalInputSample input{};if(fault==11)input.lt=255;if(fault==12)input.buttons=0x8000;
-        const auto out=h->poll(1394,input,fault==3?100:fault==4?300:201,1,fault==8,fault==10?1.0f:0.0f,false,false,fault==9?3:2);
+        const auto out=h->poll(successor,input,fault==3?100:fault==4?300:201,1,fault==8,fault==10?1.0f:0.0f,false,false,fault==9?3:2);
         check(!h->repeats && !out.held_actor_acknowledged,
               "successor still rejects foreign owner, focus, conflict, landing, bail, stance, object, missing observer, Prepare, wrong actor, count and buttons");
-        h->poll(1428,{},201,1,false,0,false,false,2);
+        h->poll(successor+34,{},201,1,false,0.0f,false,false,2);
         check(!h->repeats,"failed successor opportunity cannot replay on recovery");
     }
     auto h=std::make_unique<Route>();h->bridge_accept=false;
@@ -524,4 +634,4 @@ void physical_repetition() {
     }
 }
 }
-int main(){native_boundaries();preair_successor_dependency();successor_dependency_boundaries();composed_successor_negatives();preair_queued_repetition();queued_first_repetition();physical_repetition();std::cout<<checks<<" held-flip input checks passed; native animation observations are fixtures\n";}
+int main(){preair_late_parent_readiness();late_parent_dependency_boundaries();native_boundaries();preair_successor_dependency();successor_dependency_boundaries();composed_successor_negatives();preair_queued_repetition();queued_first_repetition();physical_repetition();std::cout<<checks<<" held-flip input checks passed; native animation observations are fixtures\n";}
