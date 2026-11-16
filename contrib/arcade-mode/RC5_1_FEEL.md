@@ -431,3 +431,12 @@ binding publication time advances. It passes 2,656 controller-capture checks,
 4,222 telemetry checks and 188 schema-4 checks with warnings-as-errors and
 address/undefined sanitizers. An isolated old-cap header compiles and fails the
 347-record retention assertion.
+
+Windows targeted compilation in
+[CI 43816063989](https://github.com/notPho-Real/ReSkate/actions/runs/43816063989)
+rejected checkpoint `576fa623` with C4459: a dependency-loop local named
+`pending` hides a wallplant translation-unit variable during template
+instantiation. The local is renamed `queued_child`; warning and test policies
+remain unchanged. Cancellation of the remaining obsolete jobs was requested after
+the failure was preserved. The two directly affected local sanitizer suites pass
+again. This run supplies no installable or native-accepted checkpoint.

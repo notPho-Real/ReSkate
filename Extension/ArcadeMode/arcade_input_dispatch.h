@@ -230,7 +230,7 @@ public:
                 table_cancellation==table_cancellations_[static_cast<std::size_t>(request.selection.table)]) {
                 // Snapshot before the adapter call: a reentrant insertion is
                 // never evidence that this parent already had a queued child.
-                for(const auto& pending:slots_)if(pending==child) {
+                for(const auto& queued_child:slots_)if(queued_child==child) {
                     held_dependency_={native,child.input_sequence,child.parent_input_sequence,
                         child.session,child.pop_release_at,child.deadline,now,
                         static_cast<std::int32_t>(held_flip_base(child.air.trick))};
