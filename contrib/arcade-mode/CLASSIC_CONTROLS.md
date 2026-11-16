@@ -95,7 +95,7 @@ exists. A dash means this contract assigns no variant to that combination.
 
 | Direction | X | X,X | X,X,X |
 | --- | --- | --- | --- |
-| Neutral release | Kickflip | — | — |
+| Neutral X | Kickflip | Double Kickflip | — |
 | Left | Kickflip | Double Kickflip | Triple Kickflip |
 | Up | Impossible | Double Impossible | Triple Impossible |
 | Right | Heelflip | Double Heelflip | Triple Heelflip |

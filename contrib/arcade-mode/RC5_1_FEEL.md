@@ -29,14 +29,14 @@ explicitly tied to this candidate's exact DLL.
 
 | Priority / feature | Current implementation and evidence | Defect / expected improvement | Effort | Dependencies / acceptance | State / next action |
 | --- | --- | --- | --- | --- | --- |
-| 0: CI admission | Required Windows/Linux source contract | YAML reader aborts before packaging; retain all assertions with block syntax | XS | Required preflight and packaging gates | Existing RC5 fixes reused; exact 2427231d passes 140 preflight and 132 upstream integration tests, compilation and package verification |
-| 0: Windows compilation | Integrated contact contract included before platform headers | Four masks require undeclared Windows `LONG`; make their existing signed 32-bit type explicit | XS | Header-first compilation and contact-response regression | Reuse RC5 `e9872dc3` as `9345cc0a`; Windows build and package pass at 2427231d |
+| 0: CI admission | Required Windows/Linux source contract | YAML reader aborts before packaging; retain all assertions with block syntax | XS | Required preflight and packaging gates | Existing RC5 fixes reused; exact 7b23ea2f passes 140 preflight and 132 upstream integration tests, compilation and package verification |
+| 0: Windows compilation | Integrated contact contract included before platform headers | Four masks require undeclared Windows `LONG`; make their existing signed 32-bit type explicit | XS | Header-first compilation and contact-response regression | Reuse RC5 `e9872dc3` as `9345cc0a`; Windows build and package pass at 7b23ea2f |
 | 1: Rotation/prewind | Existing native LS spin, flight owner and ground chord; RC3 native rotation observations | Short prewind suppresses initial AIR rotation until ground chord interval expires | S | Proved native flight; both shoulders/cadences, no ground yaw, release and switch landing | Implemented; 32535ec4 short-window LB/RB native response observed; repeated switch acceptance pending |
 | 2: Input responsiveness / grabs | Existing directional/repeated-B registry and native grab adapter | Second B before first grab admission loses repeated variant; retain physical prefix independently of native readiness | S | Same owner/action/flight, original edge window and deadlines; actual actor/exit/landing | Queued-prefix correction implemented; old-source regression fails; HIL pending |
 | 2: Delayed grab recognition | Existing physical journal and native-air cutoffs | Two B edges before client readiness replay singles in reverse order; recognize the pair once | S | Both original edges, 250 ms repeat limit, second-edge +200 ms deadline, no stale replay | Implemented; 32535ec4 Method actor advancement/release/physical landing observed once |
 | 2: Repeated-input expiry | Existing request policy and deadline gate | `39ef1c70` stores a repeat deadline but inherits an unbounded ordinary policy; enforce the new repeat's physical-edge window | S | Fresh native observations and unavailable admission through exact second-edge +200 ms | Negative regression reproduces the defect; new repeated paths bounded; ordinary first-request policy preserved |
-| 2: Pre-AIR repeated X | The32535ec4 native pair records both edges during released-pop preparation | Two qualified edges become separate singles; retain the original flip prefix | S | Exact released pop and owner, existing160ms preload and second-edge+200ms expiry; actual held actor | Implemented and peer-reviewed; exact 2427231d has two observed physical doubles at 60Hz with incomplete capture; 30Hz held actor observed but physical turn count inconclusive |
-| 2: Queued double flip | Existing held-flip adapter and queue eligibility | Second X before first admission becomes another single and can be discarded | S | Kickflip/Heelflip actor, native preparation window, same flight and original physical deadline | Queued-prefix correction implemented; exact 2427231d doubles observed in the tested pre-AIR neutral case; complete timing/stance/control acceptance pending; triples deferred |
+| 2: Pre-AIR repeated X | The32535ec4 native pair records both edges during released-pop preparation | Two qualified edges become separate singles; retain the original flip prefix | S | Exact released pop and owner, existing160ms preload and second-edge+200ms expiry; actual held actor | Implemented; exact 7b23ea2f has complete captures and physical doubles in 2/2 trials at 60Hz and 2/3 at 30Hz; the retained 30Hz single exposes late first-action readiness |
+| 2: Queued double flip | Existing held-flip adapter and queue eligibility | Second X before first admission becomes another single and can be discarded | S | Kickflip/Heelflip actor, native preparation window, same flight and original physical deadline | Queued-prefix correction implemented; 7b23ea2f repeats observed below the original deadline, but late first-action readiness still loses the child; broader timing/stance/control acceptance pending |
 | 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S verification; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | Existing model regressions; no speculative physical change |
 | 4: Camera | Shortest yaw, rigid orbit, native pivot, elapsed duplicate sampling and restoration already fixed | Reverse restart remains inconclusive; exact candidate switch/revert follow pending | S verification | Sequence C and OFF, root/motion unchanged | Exact 2427231d right/up orbit and neutral recenter observed with complete camera captures and stable body heading; switch/revert follow and OFF restoration remain pending |
 | 5: Ollie/movement | Native release, charge, launch descriptors and bounded push budget already implemented | No new source-proved tuning defect; short/held jumps and momentum need comparative evidence | S verification / M tuning | Native cadence, trajectory, catch/contact, collision/bail controls | Preserve coherent current parameters; measure before tuning |
@@ -444,3 +444,105 @@ an integer conditional was passed to a float count parameter. The fixture now
 uses explicit float literals, preserving its exact 0/1 cases. Both findings are
 corrected before another push. This run supplies no installable or
 native-accepted checkpoint.
+
+## Compiled and native-observed checkpoint: 7b23ea2f
+
+Exact source `7b23ea2fa5f972e0060d21b2cb662e79bccff399` passes
+[CI 43817475375](https://github.com/notPho-Real/ReSkate/actions/runs/43817475375):
+all required jobs, 140 Windows preflight tests, 132 upstream integration tests,
+runtime compilation, packaging and provenance. Publication was skipped.
+The [experimental Deck artifact](https://github.com/notPho-Real/ReSkate/actions/runs/43817475375/artifacts/14204627935)
+and [runtime artifact](https://github.com/notPho-Real/ReSkate/actions/runs/43817475375/artifacts/14204602392)
+contain the same 45,605,888-byte DLL, SHA-256
+`00a7e69cc494dfbbee12d2c340e9fec50f3a833286f4c2df64570b45975ca6c9`.
+The installer embedding, source scripts, archive hashes, PE and test XML were
+independently checked. Local package:
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-successor-ready-7b23ea2f`;
+`verification.json` SHA-256
+`d8afaf1b23f39ab9726ecd8d66b2df13aeeb87f872f5abc1a460d4e998a99dd2`.
+
+The exact loaded DLL and native MegaPark descriptor were verified during a
+bounded exclusive Deck session. Original receipts and independent analyses are
+retained in `/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-successor-hil-7b23ea2f`.
+
+| Trial | Actual cadence / native and physical result | Capture and limitation |
+| --- | --- | --- |
+| `flip30_pair1` | 30.0107Hz; matching base/held actors, extra count1, approximately1.992 dense physical turns, grounded contact | Complete379/379; held input196ms after second X |
+| `flip30_pair2` | 30.0141Hz; matching base/held actors, extra count1, approximately1.991 dense physical turns, grounded contact | Complete377/377; held input188ms after second X |
+| `flip30_pair3` | 29.9718Hz; base actor only, approximately0.992 dense physical turns, no held input/actor/count | Complete377/377; intended double failed |
+| `flip60_pair1` | 59.3220Hz; matching actors, extra count1, approximately1.991 dense physical turns, grounded contact | Complete720/720;346 selected-poll rows; held input160ms after second X |
+| `flip60_pair2` | 59.2829Hz; matching actors, extra count1, approximately1.995 dense physical turns, grounded contact | Complete717/717;343 selected-poll rows; held input172ms after second X |
+
+Each input trial retained one sampled owner, native/cache steps matching its
+configured cadence, no observer error, and no sampled bail/offboard phase.
+Dense physical sampling had maximum gaps of about10.6–14.2ms; its independent
+turn counts agree with the original observer. External observations remain
+non-atomic. These results do not independently prove native catch, durable
+banking, other stances, or full sequence acceptance.
+
+**30Hz reliability remains failed: two observed doubles and one actual single.**
+All successful held admissions occurred before the original200ms deadline.
+None establishes native use of the new successor-frame allowance.
+For the failed trial, second X was at1558355075 and its deadline at5275.
+Complete predeadline records lacked action readiness; the first ready records
+appeared at5286/5287. The current allowance requires a timely admitted parent,
+so this evidence supports a late-first-readiness gap. Exact parent adapter
+submission was not directly logged; do not substitute an inferred timestamp.
+The next correction needs one explicit, nonrenewable same-pop contract and
+combined timely/late regressions, not a renewed general repeat deadline.
+
+The finite384 cap now has repeated native completeness evidence: the two60Hz
+captures retain119–122 selected-poll rows beyond the old224 cap with no recorded
+loss. This verifies retention for these trials, not every logging-overhead case
+or gameplay acceptance. Original incomplete242 captures remain incomplete.
+
+### Manual-path evidence and test-harness limitations
+
+The first baseline attempt was rejected locally before SSH because its generated
+loader exceeded65,536 bytes. No controller input was sent. A separately named
+attempt used AST-equivalent source compaction, with the transport limit unchanged;
+44 offline checks preserve existing eligible payloads and identical executable
+syntax. The original failed payload/start receipt is retained.
+
+`manual90_baseline2` recorded11.09s of ordinary forward movement from the
+historical+X start, one owner and stable stance, with native/cache steps1/60.
+It stopped at an ambiguous contact boundary: row state100, all four selected
+contacts present, but contact state-after0. The observer classified that unknown
+phase as contrary support. This is not proof of collision or physical contact
+loss. The planned braking segment did not execute; later video shows approach
+toward the perimeter wall. The15-second route and stopping room remain unverified.
+The10-second Manual was not attempted. Its acquisition capture also remains
+incomplete (3060/3101,41 dropped), independently of the sampled motion evidence.
+
+A separate, unapplied observer correction treats unknown0 as unavailable evidence,
+never qualified contact. Real contrary phases and the150ms qualification limit
+remain enforced;29 offline checks pass. A fresh complete baseline is still
+required before the Manual hold. No success is retroactively assigned.
+
+### Restoration and remaining work
+
+Both game and launcher normally closed. The session removed only four exact-hash
+generated score-pack files absent before installation, restored prior
+`971c16b00ff807725ef6fffe64718394da2742ef` DLL/settings/receipt exactly, and
+preserved the stock/game hashes and all131 rollback sets. Transport is revoked
+with no pending hardware action.
+Returned receipt SHA-256:
+`016728671f3d1f324f5e22780dc0f18a39747053afa0fef26ed42e763d8cdf97`.
+Restoration receipt SHA-256:
+`6cc5bb5b362d4ad72e6cc9d8291a21bf622c30b4f28fae09faee2a9ca30fff53`.
+
+The installable package remains experimental and not accepted for owner gameplay.
+Use the same-run installer only with the existing stopped-state preflight and
+rollback procedure; the accepted updater is unchanged. The preserved prior
+installation is the rollback target, not a speculative replacement from another
+branch.
+
+Immediate work is the source-proven late-first-readiness gap, conservative
+observer correction, and distinct model-terminal diagnostics. CurrentLine is
+sequence history, not bank authority; native-only model terminal events are
+missing from the custom-only log. Exposing those events must not change scoring
+or claim durable native banking. Remaining independent acceptance includes
+Manual/revert lifetime and chains, immediate single grabs and rail followups,
+full grab lifecycle/scoring, camera switch/revert/OFF restoration, wallplant
+continuation and full flatland sequences. Broader environmental mechanics remain
+behind those foundational gates.
