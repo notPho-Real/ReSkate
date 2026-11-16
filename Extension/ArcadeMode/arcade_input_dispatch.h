@@ -169,14 +169,25 @@ public:
     }
     template<class Report>
     void dispatch(std::uint64_t now, std::uint64_t session, InputContext context,
-                  InputAdapter adapter, Report report, InputNativeContext native = {}, bool rail_ready = false, InputAirTables tables = {}, std::uint64_t released_jump = 0) noexcept {
+                  InputAdapter adapter, Report report, InputNativeContext native = {}, bool rail_ready = false, InputAirTables tables = {}, std::uint64_t released_jump = 0,
+                  void* grab_context = nullptr, bool (*grab_continues)(void*,InputGenerations,InputAirEpisode) noexcept = nullptr) noexcept {
         bool started{};
         // Installed extras precede the ordinary FIFO; each retains insertion
         // order. Manual keeps its independent replaceable slot.
         for (std::size_t visited = 0; visited < capacity && size_; ++visited) {
             auto& slot = slots_[1 + front_];
             if (slot.action == InputAction::none) { pop(); continue; }
-            const auto request = slot;
+            auto request = slot;
+            // The first queued B may acquire the native grab before the
+            // second reaches this FIFO. Its exact lease can qualify that
+            // already-recognized repeat across the resulting action change.
+            if(request.action==InputAction::grab && request.form==InputForm::ordinary &&
+                request.named_binding && !request.modifier && request.presses==2 &&
+                native.required && native.fresh(now) && native.airborne &&
+                request.generations.owner==native.generations.owner &&
+                request.air_episode==native.air_episode() && grab_continues &&
+                grab_continues(grab_context,request.generations,request.air_episode))
+                request.generations=native.generations;
             const auto gate = eligibility(request, now, session, context, native, tables, released_jump);
             if (gate != InputDisposition::waiting) { pop(); report(InputDispatchEvent{request, gate}); continue; }
             if (started || now < request.ready_at) break;
@@ -711,7 +722,8 @@ public:
                 wallplant_edge_={};
             record_dispatch(event);
         }, native, environment.context == InputContext::rail && environment.rail.fresh && environment.rail.ready &&
-            environment.rail.geometry_known && environment.rail.generation, air_tables_,takeoff);
+            environment.rail.geometry_known && environment.rail.generation, air_tables_,takeoff,
+            environment.native_grab_context,environment.native_grab_continues);
         diagnostic_.session = session_;
         diagnostic_.journal_overflows = events_.history().overflows();
     }
@@ -1085,6 +1097,29 @@ private:
     }
     void recognize_grab(std::uint64_t now, InputEnvironment environment) noexcept {
         unsigned presses = 1;
+        auto repeat_available=grab_repeat_available_;
+        auto repeat_count=active_grab_count_;
+        auto repeat_at=grab_pressed_at_;
+        auto repeat_direction=grab_direction_;
+        auto repeat_source=grab_source_;
+        auto repeat_generations=grab_generations_;
+        auto repeat_native=grab_native_;
+        // A second physical B may arrive before the first native grab is
+        // ready. Use that still-valid queued prefix for recognition without
+        // granting it an actor or changing either request's admission deadline.
+        if(environment.native_grab_transition && !environment.deferred_grabs)
+            for(const auto& request:pending_.slots()) {
+                if(request.action!=InputAction::grab || request.form!=InputForm::ordinary ||
+                    !request.named_binding || request.modifier || !request.direction ||
+                    request.session!=session_ || request.context!=environment.context ||
+                    now>=request.deadline || (repeat_available && request.physical_pressed_at<repeat_at) ||
+                    !environment.native_context.correlates_action(request.generations) ||
+                    request.air_episode!=environment.native_context.air_episode())continue;
+                repeat_available=true;repeat_count=request.presses;
+                repeat_at=request.physical_pressed_at;repeat_direction=request.direction;
+                repeat_source=request.direction_source;repeat_generations=request.generations;
+                repeat_native=environment.native_context;
+            }
         auto selected = now >= direction_at_ && now - direction_at_ <= InputTiming::direction_ms ? direction_ : std::int16_t{0};
         const InputToken face{InputSource::buttons,TrickControls::grab,InputEdge::press};
         const std::array face_tokens{face};
@@ -1103,14 +1138,14 @@ private:
         if(extended) {
             match=physical_press;
         }
-        if (!extended && !environment.deferred_grabs && grab_repeat_available_ && active_grab_count_ == 1 && grab_direction_) {
-            const auto definition = air_selection(TrickFamily::grab,grab_direction_,2);
+        if (!extended && !environment.deferred_grabs && repeat_available && repeat_count == 1 && repeat_direction) {
+            const auto definition = air_selection(TrickFamily::grab,repeat_direction,2);
             const std::array tokens{face};
             match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);
             // Native admission may wait after recognition. Repetition belongs
             // to the two physical B edges, never to either dispatch timestamp.
-            if (match && (match.last_at < grab_pressed_at_ || match.last_at-grab_pressed_at_ > grab_repeat_ms)) match = {};
-            if (match) presses = active_grab_count_ < std::numeric_limits<unsigned>::max() ? active_grab_count_ + 1 : active_grab_count_;
+            if (match && (match.last_at < repeat_at || match.last_at-repeat_at > grab_repeat_ms)) match = {};
+            if (match) presses = repeat_count + 1;
         }
         if (!match && !environment.deferred_grabs) {
             match = directional_prefix(InputAction::grab,environment.context,now,selected);
@@ -1128,7 +1163,7 @@ private:
                 // remains buffered for a genuine direction; never relabel it.
                 // A rejected directional prefix must not consume the same B
                 // as a neutral grab (for example after an intervening press).
-                if (!match && !directional && (!grab_repeat_available_ || !grab_direction_)) {
+                if (!match && !directional && (!repeat_available || !repeat_direction)) {
                     const std::array tokens{face};
                     match=events_.history().match({tokens,500,ordinary_reject},now);
                 }
@@ -1151,27 +1186,27 @@ private:
         // only through the grab adapter's same-request/owner/episode proof and
         // independently observed native BS-grab state. Flip observations never
         // grant grab continuity. The unchanged queue still rejects other owners.
-        const auto* lineage = extra ? &grab_generations_ : nullptr;
+        const auto* lineage = extra ? &repeat_generations : nullptr;
         const bool native_owner = extra && environment.native_grab_continues &&
-            environment.native_context.air_episode()==grab_native_.air_episode() &&
-            environment.native_context.generations.owner==grab_generations_.owner &&
-            environment.native_grab_continues(environment.native_grab_context,grab_generations_,grab_native_.air_episode());
+            environment.native_context.air_episode()==repeat_native.air_episode() &&
+            environment.native_context.generations.owner==repeat_generations.owner &&
+            environment.native_grab_continues(environment.native_grab_context,repeat_generations,repeat_native.air_episode());
         const bool retired = environment.native_context.jump_selection_retired(
-            grab_generations_,grab_native_.air_episode(),grab_native_.flip);
+            repeat_generations,repeat_native.air_episode(),repeat_native.flip);
         if (recognition_capture_) diagnostic_.grab_repeat = {true,extra,environment.native_grab_transition,
-            retired,native_owner,grab_generations_,grab_native_,environment.native_context};
+            retired,native_owner,repeat_generations,repeat_native,environment.native_context};
         // An unsupported first name (Madonna) never acquired a grab owner.
         // Its physical second press (Judo) can still follow the independently
         // observed Ollie-to-idle retirement in this exact flight. Supported
         // first grabs must keep using their own native ownership proof.
         const bool unsupported_prefix_retired = extra && retired &&
-            !native_grab::pilot(air_selection(TrickFamily::grab,grab_direction_,1).trick) &&
-            native_grab::pilot(air_selection(TrickFamily::grab,grab_direction_,2).trick);
+            !native_grab::pilot(air_selection(TrickFamily::grab,repeat_direction,1).trick) &&
+            native_grab::pilot(air_selection(TrickFamily::grab,repeat_direction,2).trick);
         if (native_owner || unsupported_prefix_retired)
             lineage = &environment.native_context.generations;
         enqueue(InputAction::grab, now, InputTiming::readiness_ms + (environment.deferred_grabs ? 180u : 0u),
             environment, presses, 0, environment.deferred_grabs ? 180u : 0u, extended?1u:0u,
-            extra ? InputToken{grab_source_,grab_direction_,InputEdge::press} : InputToken{}, &match,form,extra ? std::int16_t{0} : selected,
+            extra ? InputToken{repeat_source,repeat_direction,InputEdge::press} : InputToken{}, &match,form,extra ? std::int16_t{0} : selected,
             InputFootprintKind::unknown, lineage);
     }
     bool recognize_flip(std::uint64_t now, InputEnvironment environment, std::uint64_t release) noexcept {
