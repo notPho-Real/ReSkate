@@ -381,6 +381,7 @@ public:
         diagnostic_.recognition = {}; diagnostic_.recognition_count = diagnostic_.recognition_omitted = 0;
         active_flip_ = grab_repeat_available_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = air_flip_after_ = native_grab_after_ = 0; clocked_ = false; manual_unknown_ = false;
         takeoff_release_at_=0;
+        native_grab_recognized_after_=0;
         wallplant_edge_={};
         grab_choice_event_=0;grab_choice_=ArcadeTrick::double_grab;
     }
@@ -903,6 +904,7 @@ private:
                     static_cast<std::int16_t>(action == InputAction::flip ? 14 : 13),InputEdge::press}) continue;
                 for (std::size_t i=0;i<footprint->count;++i) if (footprint->events[i]==event.sequence) {
                     request.physical_pressed_at=event.at;
+                    request.physical_released_at=0;
                     for (const auto& release : events_.history().events())
                         if (release.sequence>event.sequence && release.token.source==event.token.source &&
                             release.token.code==event.token.code && release.token.edge==InputEdge::release) {
@@ -1089,7 +1091,8 @@ private:
                            bool native_grab = false) const noexcept {
         const auto after = ordinary_flip ? air_flip_after_ : native_grab ? native_grab_after_ : air_face_after_;
         for (const auto& event : events_.history().events())
-            if ((event.sequence > after || ((ordinary_flip || native_grab) && takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
+            if ((!native_grab || event.sequence>native_grab_recognized_after_) &&
+                (event.sequence > after || ((ordinary_flip || native_grab) && takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
                 (!ordinary_flip || previous_context_==InputContext::air || (takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
                 event.token == InputToken{InputSource::buttons,code,InputEdge::press})
                 for (std::size_t i = 0; i < match.count; ++i) if (match.events[i] == event.sequence) return true;
@@ -1135,10 +1138,43 @@ private:
         }
         InputMatch match{};
         InputForm form{};
+        bool historical_repeat=false;
         if(extended) {
             match=physical_press;
         }
-        if (!extended && !environment.deferred_grabs && repeat_available && repeat_count == 1 && repeat_direction) {
+        if(!extended && !repeat_available && environment.native_grab_transition &&
+            !environment.deferred_grabs && environment.named_grabs) {
+            const std::array pair{face,InputToken{face.source,face.code,InputEdge::release},face};
+            const auto candidate=events_.history().match({pair,grab_repeat_ms+InputTiming::readiness_ms,ordinary_reject},now);
+            const InputEvent* first{};const InputEvent* second{};
+            if(candidate)for(const auto& event:events_.history().events()) {
+                if(event.sequence==candidate.events[0])first=&event;
+                if(event.sequence==candidate.events[2])second=&event;
+            }
+            // Both edges can precede client readiness. Recognize the actual
+            // pair once; do not execute the newest single then replay the old
+            // one. Each edge must belong to the current native-air history.
+            bool conflict=false;
+            if(first && second)for(const auto& event:events_.history().events())
+                if(event.sequence>first->sequence && event.token.edge==InputEdge::press &&
+                    (event.token.source==InputSource::triggers ||
+                     (event.token.source==InputSource::buttons && event.token.code>=4 &&
+                      event.token.code!=TrickControls::grab && event.token.code!=8 && event.token.code!=9)))conflict=true;
+            if(first && second && !conflict && first->physical_direction &&
+                !(first->physical_buttons&TrickControls::mask(TrickControls::grab_layer)) &&
+                !(second->physical_buttons&TrickControls::mask(TrickControls::grab_layer)) &&
+                second->at-first->at<=grab_repeat_ms &&
+                now-second->at<InputTiming::readiness_ms &&
+                air_face_eligible(InputMatch::single(*first),13,false,true) &&
+                air_face_eligible(InputMatch::single(*second),13,false,true) &&
+                native_grab::pilot(air_selection(TrickFamily::grab,first->physical_direction,2).trick)) {
+                match=candidate;presses=2;historical_repeat=true;
+                repeat_direction=first->physical_direction;repeat_source=InputSource::direction;
+                repeat_generations=environment.native_context.generations;
+                repeat_native=environment.native_context;
+            }
+        }
+        if (!match && !extended && !environment.deferred_grabs && repeat_available && repeat_count == 1 && repeat_direction) {
             const auto definition = air_selection(TrickFamily::grab,repeat_direction,2);
             const std::array tokens{face};
             match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);
@@ -1181,6 +1217,10 @@ private:
         }
         const bool extra = presses > 1 && !environment.deferred_grabs;
         if (!events_.history().consume(match, extra ? branch_owner : InputConsumption::regular, ordinary_reject)) return;
+        if(environment.native_grab_transition)for(const auto& event:events_.history().events())
+            if(event.token==face)for(std::size_t i=0;i<match.count;++i)
+                if(event.sequence==match.events[i] && event.sequence>native_grab_recognized_after_)
+                    native_grab_recognized_after_=event.sequence;
         // This is a new physical press, inheriting only the first grab's direction.
         // Native grab entry can invalidate the flip selector entirely. Rebind
         // only through the grab adapter's same-request/owner/episode proof and
@@ -1204,7 +1244,8 @@ private:
             native_grab::pilot(air_selection(TrickFamily::grab,repeat_direction,2).trick);
         if (native_owner || unsupported_prefix_retired)
             lineage = &environment.native_context.generations;
-        enqueue(InputAction::grab, now, InputTiming::readiness_ms + (environment.deferred_grabs ? 180u : 0u),
+        const auto readiness=historical_repeat?InputTiming::readiness_ms-(now-match.last_at):InputTiming::readiness_ms;
+        enqueue(InputAction::grab, now, readiness + (environment.deferred_grabs ? 180u : 0u),
             environment, presses, 0, environment.deferred_grabs ? 180u : 0u, extended?1u:0u,
             extra ? InputToken{repeat_source,repeat_direction,InputEdge::press} : InputToken{}, &match,form,extra ? std::int16_t{0} : selected,
             InputFootprintKind::unknown, lineage);
@@ -1624,6 +1665,7 @@ private:
     bool recognition_capture_{};
     bool surface_clocked_{}, lip_clocked_{}, lip_had_input_{}, lip_defaulted_{};
     std::uint64_t lip_generation_{}, manual_after_{}, air_face_after_{}, air_flip_after_{}, native_grab_after_{};
+    std::uint64_t native_grab_recognized_after_{};
     std::uint64_t surface_generation_{}, surface_step_{}, crouch_at_{};
     std::uint64_t session_{1}, last_{}, last_event_{}, direction_at_{}, flip_started_{}, grab_pressed_at_{};
     std::uint64_t grab_choice_event_{};

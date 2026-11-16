@@ -777,6 +777,71 @@ void native_air_before_client_readiness() {
         check(r->requests.empty(),"delayed client readiness cannot renew an expired physical B edge");
     }
 }
+void repeated_grab_before_client_readiness() {
+    for(unsigned hz:{30u,60u,120u}) for(bool held:{false,true}) for(bool switched:{false,true}) {
+        auto r=std::make_unique<Route>();const auto dt=(1000u+hz-1)/hz;
+        r->switched=switched;r->poll(1000,0,100);r->client_action_ready=false;
+        r->poll(1000+dt,0x2004,200,1);
+        r->poll(1000+2*dt,4,201,1);
+        r->poll(1000+3*dt,0x2004,201,1);
+        r->poll(1000+4*dt,held?0x2004:4,201,1);
+        check(r->requests.empty(),"historical double B cannot bypass client readiness");
+        r->client_action_ready=true;
+        r->poll(1000+5*dt,held?0x2004:4,201,1);
+        check(r->requests.size()==1 && r->tricks.front()==ArcadeTrick::method &&
+              r->requests.front().presses==2,
+              "both historical B edges select one Method without replaying a single Melon");
+        const auto& request=r->requests.front();
+        check(request.physical_pressed_at==1000+3*dt &&
+              request.physical_released_at==(held?0:1000+4*dt),
+              "historical repeat retains its final press and actual release");
+        check(request.deadline==1000+3*dt+InputTiming::readiness_ms,
+              "delayed pair recognition cannot renew the final physical edge's readiness window");
+        for(unsigned n=6;n<10;++n)r->poll(1000+n*dt,held?0x2004:4,201,1);
+        check(r->requests.size()==1,"older B cannot replay after a delayed pair or held polling");
+    }
+    for(unsigned interval:{250u,251u}) {
+        auto r=std::make_unique<Route>();r->poll(1000,0,100);r->client_action_ready=false;
+        r->poll(1017,0x2004,200,1);r->poll(1034,4,201,1);
+        for(unsigned at=1084;at<1017+interval;at+=50)r->poll(at,4,201,1);
+        const auto second=1017+interval;
+        r->poll(second,0x2004,201,1);r->poll(second+50,0x2004,201,1);
+        r->client_action_ready=true;r->poll(second+100,0x2004,201,1);
+        check(r->requests.size()==1 && (r->tricks.front()==ArcadeTrick::method)==(interval==250),
+              "physical repeat boundary is independent of later client readiness");
+        r->poll(second+117,0x2004,201,1);
+        check(r->requests.size()==1,"an expired older prefix cannot replay after the latest B is consumed");
+    }
+    for(unsigned hz:{30u,60u,120u}) for(unsigned fault=0;fault<10;++fault) {
+        auto r=std::make_unique<Route>();const auto dt=(1000u+hz-1)/hz;
+        r->poll(1000,0,100);r->client_action_ready=false;
+        r->poll(1000+dt,fault==7?0x2084:0x2004,fault==0?100:200,1);
+        if(fault==1)++r->owner.entity;
+        if(fault==2)r->selection_object=32;
+        if(fault==3)r->switched=true;
+        r->poll(1000+2*dt,fault==8?0x4004:4,fault==4?100:201,fault==5?5:1,fault!=6);
+        r->poll(1000+3*dt,fault==9?0x2084:0x2004,201,1);
+        r->client_action_ready=true;
+        for(unsigned n=4;n<8;++n)r->poll(1000+n*dt,4,201,1);
+        for(const auto trick:r->tricks)check(trick!=ArcadeTrick::method,
+              "ground prefix, owner, selector, stance, landing, action, focus, modifier or competing flip cannot create historical Method");
+    }
+    // Latest complete matching is intentional, but an older unmatched press
+    // must not become a new single on a later poll, even with released-pop proof.
+    {
+        auto r=std::make_unique<Route>();r->poll(1000,0,100);
+        r->poll(1017,0x1000,100);r->poll(1034,0,103,1);
+        for(unsigned at=1051;at<1600;at+=17)r->poll(at,0,103,1);
+        r->client_action_ready=false;
+        r->poll(1600,0x2004,200,1);r->poll(1617,4,201,1);
+        r->poll(1634,0x2004,201,1);r->poll(1651,4,201,1);
+        r->poll(1668,0x2004,201,1);r->client_action_ready=true;
+        for(unsigned at=1685;at<1800;at+=17)r->poll(at,0x2004,201,1);
+        check(r->requests.size()==1 && r->tricks.front()==ArcadeTrick::method &&
+              r->requests.front().physical_pressed_at==1668,
+              "released-pop recognition cannot replay an older unmatched B after the latest pair");
+    }
+}
 void repeated_grab_after_native_jump_retirement() {
     for (unsigned hz:{30u,60u,120u}) {
         const auto dt=(1000u+hz-1)/hz;
@@ -893,4 +958,4 @@ void repeated_grab_after_clock_reset() {
           "reset prefix timestamp cannot suppress a new queued repeat after clock rollback");
 }
 
-int main(){repeated_grab_after_clock_reset();queued_grab_retirement_requires_native_owner();native_family_change_waits_for_exit();native_footer_exit_contract();current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();repeated_grab_before_native_admission();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){repeated_grab_after_clock_reset();queued_grab_retirement_requires_native_owner();native_family_change_waits_for_exit();native_footer_exit_contract();current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();repeated_grab_before_native_admission();input_order_and_launch();native_air_before_client_readiness();repeated_grab_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
