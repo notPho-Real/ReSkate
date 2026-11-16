@@ -66,6 +66,7 @@ bool cleanup(const SurfaceGeometryNativeApi& api, editor::NativeSurfaceResult& r
 struct Hit {
     SurfaceGeometryVector point; SurfaceGeometryBody body; std::uint64_t owner;
     SurfaceGeometryWorldOwner world_owner; bool local_component{};
+    SurfaceGeometryVector normal{};
 };
 struct Exclusions {
     std::array<SurfaceGeometryBody,8> bodies{};
@@ -91,7 +92,7 @@ bool exclusions_current(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
 }
 std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContext& ctx,
                        const SurfaceGeometrySegment& segment, Exclusions& excluded, SurfaceGeometryTrace* trace = nullptr,
-                       bool* clear = nullptr) {
+                       bool* clear = nullptr, bool measure_contact = false) {
     if(clear)*clear=false;
     const auto fail = [&](const char* reason) -> std::optional<Hit> {if(trace)trace->reason=reason;return {};};
     if(trace){trace->start=segment.start;trace->end=segment.end;}
@@ -171,7 +172,20 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
                 for (std::size_t i = 0; i < 3; ++i) point[i] = segment.start[i]+(segment.end[i]-segment.start[i])*closest;
                 if(trace)trace->point=point;
                 if (!finite(point)) return fail("point_invalid");
-                return Hit{point,body,owner,world_owner,local_component};
+                Hit found{point,body,owner,world_owner,local_component};
+                if(measure_contact) {
+                    body_contact_read::Vectors vectors;
+                    const auto read_vector=[&]<class T>(std::uintptr_t at,T& value) {
+                        return read(api,at,value);
+                    };
+                    // Reuse the counted world-probe reader while this result
+                    // still owns its native point and normal arrays.
+                    if(!api.surface.contact_ready ||
+                       !body_contact_read::vectors(result.data,selected,point,segment.start,segment.end,
+                                                   vectors,read_vector))return fail("motion_hit_vectors");
+                    found.point=vectors.position;found.normal=vectors.normal;
+                }
+                return found;
             };
             try { hit = inspect(); } catch (...) { hit = fail("query_exception"); }
         }
@@ -261,34 +275,28 @@ SurfaceGeometrySample query_motion_wall(const SurfaceGeometryNativeApi& api,cons
         if(!unit(direction))return fail("motion_query_velocity");
         SurfaceGeometryVector right{-direction[2],0,direction[0]};
         if(!unit(right))return fail("motion_query_vertical");
-        constexpr float height=8.1f*.0254f,extension=10.f*.0254f,extent=24.f*.0254f;
-        constexpr std::array<std::array<float,2>,5> offsets{{{0,0},{-extent,0},{extent,0},{0,-extent},{0,extent}}};
+        constexpr float height=8.1f*.0254f,extension=10.f*.0254f;
         SurfaceGeometryVector travel{};
         for(unsigned axis=0;axis<3;++axis)travel[axis]=velocity[axis]*seconds+direction[axis]*extension;
         if(!finite(travel) || dot(travel,travel)>400.f)return fail("motion_query_reach");
-        SurfaceGeometrySample result;result.context=ctx;result.queried_at=api.now(api.user);
-        Exclusions excluded;std::array<SurfaceGeometryVector,5> points{};
-        for(std::size_t i=0;i<points.size();++i) {
-            SurfaceGeometrySegment segment;
-            for(unsigned axis=0;axis<3;++axis) {
-                segment.start[axis]=board[axis]+up[axis]*(height+offsets[i][1])+right[axis]*offsets[i][0];
-                segment.end[axis]=segment.start[axis]+travel[axis];
-            }
-            if(trace)trace->ray=static_cast<unsigned>(i);
-            const auto hit=cast(api,ctx,segment,excluded,trace);
-            if(!hit)return fail("motion_query_miss");
-            if(i && (hit->body!=result.body || hit->owner!=result.body_owner || hit->world_owner!=result.world_owner))
-                return fail("motion_query_seam");
-            result.body=hit->body;result.body_owner=hit->owner;result.world_owner=hit->world_owner;points[i]=hit->point;
+        const auto queried_at=api.now(api.user);
+        Exclusions excluded;
+        SurfaceGeometrySegment segment;
+        for(unsigned axis=0;axis<3;++axis) {
+            segment.start[axis]=board[axis]+up[axis]*height;
+            segment.end[axis]=segment.start[axis]+travel[axis];
         }
-        auto normal=cross(sub(points[4],points[3]),sub(points[2],points[1]));
-        if(!unit(normal))return fail("motion_query_plane");
-        if(dot(normal,velocity)>0)for(auto& value:normal)value=-value;
-        if(std::abs(normal[1])>.1f)return fail("motion_query_not_wall");
-        for(const auto& point:points)
-            if(std::abs(dot(sub(point,points[0]),normal))>.005f)return fail("motion_query_nonplanar");
-        result.point=points[0];result.query_normal=normal;result.valid=true;
-        if(!exclusions_current(api,ctx,excluded,trace) || !revalidate(api,ctx,result,trace))return fail("motion_query_changed");
+        const auto hit=cast(api,ctx,segment,excluded,trace,nullptr,true);
+        if(!hit)return fail("motion_query_miss");
+        // Travel-aligned side rays change their distance to an oblique wall.
+        // First find the wall with the unchanged bounded motion ray, then
+        // corroborate its full patch in the measured wall plane.
+        auto result=query_wall_geometry(api,ctx,hit->body,hit->point,hit->normal,velocity,seconds,trace);
+        if(!result.valid || result.body_owner!=hit->owner || result.world_owner!=hit->world_owner)
+            return fail("motion_query_patch");
+        result.queried_at=queried_at;
+        if(!exclusions_current(api,ctx,excluded,trace) || !revalidate(api,ctx,result,trace))
+            return fail("motion_query_changed");
         return result;
     } catch(...) {return fail("motion_query_exception");}
 }

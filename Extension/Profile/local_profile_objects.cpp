@@ -409,7 +409,9 @@ static void update_arcade_surface_geometry(std::uintptr_t client,bool collision_
   if(!no_bail_skater(owner)||frame.owner!=NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig}||owner.base!=local.base){note(4,"native_owner");return;}
   if(collision_response&&!native_wall_contact::collision_current(probe.raw,owner)){note(17,"collision_scope");return;}
   static std::uintptr_t validated_base{};static bool self_ready{};
+  static editor::NativeSurfaceApi motion_surface_api{};
   if(validated_base!=local.base){
+   motion_surface_api=editor::surface_api(local.base,true);
    validated_base=local.base;self_ready=std::all_of(surface_self_contracts.begin(),surface_self_contracts.end(),[&](const auto& contract){
     std::array<unsigned char,32> bytes{};return memory::read_bytes(local.base+contract.rva,bytes.data(),bytes.size())&&bytes==contract.bytes;});
   }
@@ -446,6 +448,10 @@ static void update_arcade_surface_geometry(std::uintptr_t client,bool collision_
   if(sample.valid&&!revalidate_surface_geometry(api,origin,sample))sample={};
   if(!admission.wallplant_only&&!collision_response)publish_surface_geometry(sample);
   auto wallplant_api=api;wallplant_api.current=&wallplant_surface_callback_current;
+  if(motion) {
+   if(!motion_surface_api.contact_ready){note(19,"motion_contact_contracts");return;}
+   wallplant_api.surface=motion_surface_api;
+  }
   const SurfaceGeometryVector root{pose[8],pose[9],pose[10]};
   std::array<SurfaceGeometryVector,1> board_offsets{};
   std::span<const SurfaceGeometryVector> supports;

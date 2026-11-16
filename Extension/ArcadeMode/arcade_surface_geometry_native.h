@@ -52,13 +52,15 @@ struct SurfaceGeometryTrace {
 };
 SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
                                              const SurfaceGeometryRequest&, SurfaceGeometryTrace* = nullptr) noexcept;
-// Bounded forward travel at a native motion-preparation boundary. A hit is
-// query evidence, not a fabricated rigid-body contact or collision response.
+// Bounded forward travel at a native motion-preparation boundary, followed by
+// broad-wall corroboration around the same hit in its measured plane. Requires
+// the existing contact-vector fingerprints. Query evidence is not a fabricated
+// rigid-body contact or collision response.
 SurfaceGeometrySample query_motion_wall(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
     SurfaceGeometryVector board,SurfaceGeometryVector up,SurfaceGeometryVector velocity,float seconds,
     SurfaceGeometryTrace* = nullptr) noexcept;
-// Corroborates the broad vertical face around an independently recorded real
-// collision. This is geometry only; it must never create a wall-contact event.
+// Corroborates the broad vertical face around a qualified collision or native
+// ray hit. This is geometry only; it must never create a wall-contact event.
 // Motion must come from that retained collision's validated original step.
 // It bounds the first ray's inward search, never predicts or moves a contact.
 SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,

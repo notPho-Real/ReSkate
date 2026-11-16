@@ -88,7 +88,9 @@ struct Fixture {
         throw_pop{}, throw_free{};
     std::uint32_t generation{9};
     std::array<float,8> fractions{};
-    std::array<std::uintptr_t,2> data{};
+    std::array<std::uintptr_t,5> data{};
+    std::array<std::array<float,4>,8> hit_positions{},hit_normals{};
+    bool contact_ready{true},missing_normal{},bad_normal{},reversed_normal{},bad_position{};
     std::array<std::uintptr_t,2> table{};
     std::uintptr_t allocator{};
     float last_x{};
@@ -209,6 +211,17 @@ struct Fixture {
             f.fractions[0]=f.bad_fraction?std::numeric_limits<float>::quiet_NaN():.5f;
             if(!result->count)f.data[1]=0; // Native empty-vector storage may be null.
         }
+        if(f.wall && result->count) {
+            for(unsigned axis=0;axis<3;++axis) {
+                f.hit_positions[f.first][axis]=ray_value->start[axis]+
+                    (ray_value->end[axis]-ray_value->start[axis])*f.fractions[f.first];
+                f.hit_normals[f.first][axis]=f.wall_normal[axis]*(f.reversed_normal?-1.f:1.f);
+            }
+            if(f.bad_position)f.hit_positions[f.first][0]+=.1f;
+            if(f.bad_normal)f.hit_normals[f.first][0]=std::numeric_limits<float>::quiet_NaN();
+        }
+        f.data[3]=reinterpret_cast<std::uintptr_t>(f.hit_positions.data());
+        f.data[4]=f.missing_normal?0:reinterpret_cast<std::uintptr_t>(f.hit_normals.data());
         if (f.changed_context) ++f.live.world_generation;
         if (f.throw_query) throw std::runtime_error("partial result");
         return result;
@@ -217,6 +230,7 @@ struct Fixture {
         SurfaceGeometryNativeApi api;
         api.base=live.owner[0];
         api.surface={&world,&ray,[]() -> std::uintptr_t {return reinterpret_cast<std::uintptr_t>(&running->allocator);},&release,true};
+        api.surface.contact_ready=contact_ready;
         api.picking.hit_body=&hit_body; api.picking.body_valid=&valid; api.picking.body_entity=&entity; api.picking.ready=true;
         api.user=this; api.now=&now; api.current=&current; api.read_bytes=&surface_geometry_test_read;
         if(allow_world_owner)api.static_world_owner=&static_owner;
@@ -279,16 +293,36 @@ bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) no
         std::memcpy(out,reinterpret_cast<const void*>(at),size); return true;
     };
     return copy(f->fractions.data(),sizeof f->fractions) || copy(f->data.data(),sizeof f->data) ||
+        copy(f->hit_positions.data(),sizeof f->hit_positions) || copy(f->hit_normals.data(),sizeof f->hit_normals) ||
         copy(f->table.data(),sizeof f->table) || copy(&f->allocator,sizeof f->allocator);
 }
 }
 int main() {
     {
         Fixture f;const auto hit=f.query_motion();
-        check(hit.valid && f.calls==5,"motion query finds a wall without a physics contact record");
+        check(hit.valid,"motion query finds and corroborates a wall without a physics contact record");
         check(hit.query_normal[2]>.9999f && std::abs(hit.point[2])<.00001f,"motion query measures the wall plane");
         check(std::abs(f.wall_segments[0].end[2]-(.4f-10.f/30.f-.254f))<.00001f,
               "motion ray reach is observed step motion plus ten inches");
+    }
+    // An infinite broad wall must remain eligible at an oblique approach.
+    // The former travel-aligned 24-inch offsets put one ray too far from the
+    // wall to reach it during the bounded center-ray travel.
+    for(float sideways:{-10.f,-5.f,5.f,10.f}) {
+        Fixture f;const auto hit=f.query_motion({sideways,0,-10});
+        check(hit.valid,"angled broad wall qualifies when the bounded center ray reaches it");
+        check(hit.query_normal[2]>.9999f && std::abs(hit.point[2])<.00001f,
+              "angled admission retains the measured wall plane, not the approach direction");
+    }
+    for(unsigned fault=0;fault<5;++fault) {
+        Fixture f;
+        if(fault==0)f.contact_ready=false;
+        if(fault==1)f.missing_normal=true;
+        if(fault==2)f.bad_normal=true;
+        if(fault==3)f.reversed_normal=true;
+        if(fault==4)f.bad_position=true;
+        check(!f.query_motion({-5,0,-10}).valid,
+              "motion admission requires fingerprinted, finite, facing, matching native hit vectors");
     }
     for(unsigned fault=0;fault<9;++fault) {
         Fixture f;

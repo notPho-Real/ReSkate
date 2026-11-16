@@ -1,3 +1,49 @@
+## Angled motion admission uses the measured wall plane
+
+Native candidate `663ce2819529b20eec3f2d4d53a49add01aa541e` completed
+a straight 170 ms hold, one release and a clean sampled return to riding.
+Requested exit `(-0.005132321, 12.7, 5.2930417)` m/s independently matches
+horizontal reflection, scalar damping and the minimum-speed rule.
+Samples taken after the host observed the release log show same-owner AIR,
+consumed root/body8 velocity and upward/outward motion. Integrated velocities
+differ from submitted velocities; external reads remain non-atomic.
+
+The subsequent 25.23-degree approach entered no hold and reached native504.
+The native input stream observed fresh airborne A at1531065095 ms, before the
+motion query at1531065112 ms. That query hit its center ray but missed lateral
+ray1. The old five-ray footprint was aligned to velocity. At an oblique wall,
+its 24-inch lateral offsets also change distance to the wall; the bounded rays
+need not all reach the same broad face before physical contact.
+
+The focused planar regression reproduces this geometry defect in the old
+production query. The correction retains the center ray's observed-step plus
+10-inch reach, reads its point/normal through the existing fingerprinted
+`body_contact_read::vectors` used by counted world probes, and calls the
+existing `query_wall_geometry` around that same shape in the measured plane.
+It preserves the original query timestamp and revalidates ownership after the
+broad check. Missing/invalid normals, narrow faces, shape seams, changed owners
+and missing reach still refuse admission. No bail request or offboard guard
+changes. Contact-vector fingerprints are requested only for the motion path;
+ordinary surface callers retain their existing query behavior.
+
+Local evidence: `angle-plane-before.json` compiles and fails the new oblique
+broad-wall case; `angle-plane-final.json` checks the corrected production
+query against mocked native result storage. A center-hit-only mutant is
+rejected by the narrow-face/owner-data controls. These are native C++ tests
+with mocked query I/O, not original Skate execution or a gameplay replay.
+Strict local Windows-shim syntax checks cover both changed production units.
+Fresh exact-source Windows CI and controlled straight/angled/trick/negative
+native tests remain required. This correction is not yet ready for testing.
+
+Captures and stopped return are under
+`artifacts/wall-plant-alt/663ce2819529b20eec3f2d4d53a49add01aa541e`
+in the SSD workspace. Straight compressed capture SHA256:
+`1b64f782ed1ff572d468f8f5962c1ccc5715ce0d52037c4248695054bba8c46c`.
+Angled compressed capture SHA256:
+`93dc4fa80acf3c4cb93a8aa7e7fad3e971bbcb732700adea010515a00226b825`.
+Prior971c16b0 was restored exactly with125 rollback sets; stopped return SHA256:
+`873139633ec93013381fae21a60b9762da8991088f8bae48b09b3fe75289fb4d`.
+
 ## Fixed AIR reference motion reserve
 
 The 386ed161 native trial entered AIR201 hold, retained it for 160 ms, then
