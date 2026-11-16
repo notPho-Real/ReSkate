@@ -29,16 +29,16 @@ explicitly tied to this candidate's exact DLL.
 
 | Priority / feature | Current implementation and evidence | Defect / expected improvement | Effort | Dependencies / acceptance | State / next action |
 | --- | --- | --- | --- | --- | --- |
-| 0: CI admission | Required Windows/Linux source contract | YAML reader aborts before packaging; retain all assertions with block syntax | XS | Required preflight and packaging gates | Existing RC5 fixes reused; 32535ec4 full CI passes |
-| 0: Windows compilation | Integrated contact contract included before platform headers | Four masks require undeclared Windows `LONG`; make their existing signed 32-bit type explicit | XS | Header-first compilation and contact-response regression | Reuse RC5 `e9872dc3` as `9345cc0a`; Windows build and package pass at 32535ec4 |
+| 0: CI admission | Required Windows/Linux source contract | YAML reader aborts before packaging; retain all assertions with block syntax | XS | Required preflight and packaging gates | Existing RC5 fixes reused; exact 2427231d passes 140 preflight and 132 upstream integration tests, compilation and package verification |
+| 0: Windows compilation | Integrated contact contract included before platform headers | Four masks require undeclared Windows `LONG`; make their existing signed 32-bit type explicit | XS | Header-first compilation and contact-response regression | Reuse RC5 `e9872dc3` as `9345cc0a`; Windows build and package pass at 2427231d |
 | 1: Rotation/prewind | Existing native LS spin, flight owner and ground chord; RC3 native rotation observations | Short prewind suppresses initial AIR rotation until ground chord interval expires | S | Proved native flight; both shoulders/cadences, no ground yaw, release and switch landing | Implemented; 32535ec4 short-window LB/RB native response observed; repeated switch acceptance pending |
 | 2: Input responsiveness / grabs | Existing directional/repeated-B registry and native grab adapter | Second B before first grab admission loses repeated variant; retain physical prefix independently of native readiness | S | Same owner/action/flight, original edge window and deadlines; actual actor/exit/landing | Queued-prefix correction implemented; old-source regression fails; HIL pending |
 | 2: Delayed grab recognition | Existing physical journal and native-air cutoffs | Two B edges before client readiness replay singles in reverse order; recognize the pair once | S | Both original edges, 250 ms repeat limit, second-edge +200 ms deadline, no stale replay | Implemented; 32535ec4 Method actor advancement/release/physical landing observed once |
 | 2: Repeated-input expiry | Existing request policy and deadline gate | `39ef1c70` stores a repeat deadline but inherits an unbounded ordinary policy; enforce the new repeat's physical-edge window | S | Fresh native observations and unavailable admission through exact second-edge +200 ms | Negative regression reproduces the defect; new repeated paths bounded; ordinary first-request policy preserved |
-| 2: Pre-AIR repeated X | The32535ec4 native pair records both edges during released-pop preparation | Two qualified edges become separate singles; retain the original flip prefix | S | Exact released pop and owner, existing160ms preload and second-edge+200ms expiry; actual held actor | Implemented and peer-reviewed; old-source failure and focused sanitizer regressions pass; native double pending |
-| 2: Queued double flip | Existing held-flip adapter and queue eligibility | Second X before first admission becomes another single and can be discarded | S | Kickflip/Heelflip actor, native preparation window, same flight and original physical deadline | Queued-prefix correction implemented; triples remain deferred; exact-source HIL pending |
+| 2: Pre-AIR repeated X | The32535ec4 native pair records both edges during released-pop preparation | Two qualified edges become separate singles; retain the original flip prefix | S | Exact released pop and owner, existing160ms preload and second-edge+200ms expiry; actual held actor | Implemented and peer-reviewed; exact 2427231d has two observed physical doubles at 60Hz with incomplete capture; 30Hz held actor observed but physical turn count inconclusive |
+| 2: Queued double flip | Existing held-flip adapter and queue eligibility | Second X before first admission becomes another single and can be discarded | S | Kickflip/Heelflip actor, native preparation window, same flight and original physical deadline | Queued-prefix correction implemented; exact 2427231d doubles observed in the tested pre-AIR neutral case; complete timing/stance/control acceptance pending; triples deferred |
 | 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S verification; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | Existing model regressions; no speculative physical change |
-| 4: Camera | Shortest yaw, rigid orbit, native pivot, elapsed duplicate sampling and restoration already fixed | Reverse restart remains inconclusive; exact candidate switch/revert follow pending | S verification | Sequence C and OFF, root/motion unchanged | Focused production suites pass; native walkthrough pending |
+| 4: Camera | Shortest yaw, rigid orbit, native pivot, elapsed duplicate sampling and restoration already fixed | Reverse restart remains inconclusive; exact candidate switch/revert follow pending | S verification | Sequence C and OFF, root/motion unchanged | Exact 2427231d right/up orbit and neutral recenter observed with complete camera captures and stable body heading; switch/revert follow and OFF restoration remain pending |
 | 5: Ollie/movement | Native release, charge, launch descriptors and bounded push budget already implemented | No new source-proved tuning defect; short/held jumps and momentum need comparative evidence | S verification / M tuning | Native cadence, trajectory, catch/contact, collision/bail controls | Preserve coherent current parameters; measure before tuning |
 | 6: HUD/scoring | Native-plus-custom combo model, integer ring and retained native stack entries | 39ef1c70 rendered Casper/Casper Flip names and x10 in the separate RC5 HUD session | S verification / M if binding defect remains | Sequence F, actual rendered names, banking/bail/OFF; RC5 chat owns HUD investigation | Native rendered names and OFF cleanup observed on 39ef1c70; integrated 32535ec4 full chain pending |
 | 7: Flips | Canonical directional/repeated-X selectors; native early/double flip observations | Complete catalog identity, triples and rail followups not accepted | S verified bindings / M unverified actors | Actual actor, board rotation, catch, land and score; sequences D/G | Existing early Ollie/Nollie/Quick Ollie routes retained; expand only from evidence |
@@ -246,5 +246,134 @@ Correction commit `c0093d513bf7949e1482dfd05c24df71cedc43ab` also passes
 46/46 rebuilt targeted sanitizer suites (57.69 seconds), including shared input,
 Manual, spin, rail, wallplant enabled/disabled and Casper consumers. JUnit receipt:
 `/Volumes/ReSkateSSD/ReSkateWork/builds/worktrees-rc4-work/rc51-targeted/rc51-preair-targeted.xml`.
-The next runtime build is necessary to test native held-flip execution through
-the corrected ground-preparation grammar; existing DLLs contain the known defect.
+The subsequent 2427231d runtime build below tests the corrected grammar;
+earlier DLLs retain the known recognition defect.
+
+
+## Compiled and native-observed checkpoint: 2427231d
+
+Exact source `2427231d4b562711e8b6aa5cc22df911bdf85401` includes the qualified
+ground-preparation repeat correction above. It passed
+[CI 43805397400](https://github.com/notPho-Real/ReSkate/actions/runs/43805397400):
+140/140 Windows preflight tests, 132/132 upstream integration tests, Windows
+runtime compilation, packaging and provenance verification. The same-run
+[experimental Deck package](https://github.com/notPho-Real/ReSkate/actions/runs/43805397400/artifacts/14199965915)
+and [runtime artifact](https://github.com/notPho-Real/ReSkate/actions/runs/43805397400/artifacts/14199881665)
+contain DLL SHA-256
+`e97489337e2a6a1195932f2614ceb1b9d8d7dc53f96bf944c9ae2c8df742bd50`
+(45,599,232 bytes). Package verification is retained at
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-preair-ready-2427231d/verification.json`.
+The artifact is experimental; release eligibility remains false and the accepted
+update channel is unchanged.
+
+**Session status: restored and returned.** Exact-DLL trials used the pinned game
+build and native-verified `skate3_megapark`. Both game and launcher were normally
+stopped. The exact prior `971c16b00ff807725ef6fffe64718394da2742ef` DLL, settings
+and install receipt were restored; all 130 rollback sets were preserved. Only
+the four exact-hash generated score-pack files absent before this session were
+removed. Transport authority is revoked with no pending hardware actions.
+`hardware-returned.json` SHA-256 is
+`a92c5af06f10cb304e4fa8f0b787ec7e2c5a7e0c22d5c602113c5e7834b2687b`;
+`restore_prior.json` SHA-256 is
+`11dedd0d66bfa9f9f241dd7fa2c3ceb92cf44f8e56d3f5fe9cc8ee780519a8d6`.
+Evidence is retained at
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-preair-hil-2427231d`.
+
+| Trial | Physical/native evidence | Classification and limitation |
+| --- | --- | --- |
+| `flip60_pair1` cold trial | Controller binding revoked with failure 13 (`captured`) before replay; sampled state stayed 100 and no Ollie or flip actor executed | Retained failed harness trial, not a failed native held-flip admission. Reopening Console after binding caused the captured-route withdrawal; see `flip60_pair1-route-failure.json` |
+| `flip60_pair2` after helper correction | Approximately −1.994812 physical board turns; matching native base 2 and held 2 actor initialization/positive advancement, extra count 1, release and ground100 return | Physical double observed; one sampled owner, no sampled bail, four selected contact flags at landing. Global capture incomplete: expected 723, drained 600, dropped 123 |
+| `flip60_pair3` independent repeat | Approximately −1.989403 physical board turns with the same matching actor, extra-count, release and landing evidence | Second physical double observed under the tested conditions; one sampled owner, no sampled bail, four selected contact flags. Global capture incomplete: expected 717, drained 596, dropped 121 |
+
+The local helper correction removes the early controller arm and combines the
+controller rearm with capture in the final Console interval immediately before
+replay, after warmup. Its SHA-256 is
+`263ff80c1a145c7477ae6fc736b8e3bbea8f614f44c3af3627844cba99484904`;
+20 focused offline generator checks passed. This is an external HIL helper hash,
+not a source commit or gameplay change. The original failed trial is preserved.
+
+Both corrected trials retain the original 200ms second-edge admission boundary:
+the native held-input request followed the second Windows input edge by 168ms
+and 172ms, respectively. Independent physical-axis sampling and actual actor
+advancement support the two observed doubles. The source-7 capture reached its
+224-row cap in each trial; gaps occur after input admission but before held-loop
+and landing evidence. Neither receipt is complete, and successful repeated
+execution does not establish full timing, stance, scoring or A–H acceptance.
+Selected contact reads are not atomic physics snapshots. Native sequence scores
+and HUD totals are retained in the evaluations, but authoritative banking remains
+unverified. See `flip60_pair2-evaluation.json` and `flip60_pair3-evaluation.json`;
+input requests, labels or scalar scores alone do not pass these criteria.
+
+The paired-trial summary is `flip60-pairs2-3-native-summary.json`. A separate
+`flip30_pair1-native-summary.json` records 29.99294Hz native cadence, complete
+380/380 input capture and held-input admission 196ms after the second edge.
+Matching held actor initialization/advancement and extra count 1 were observed.
+Its physical board-axis unwrap remains inconclusive: a 74.195ms sampling gap can
+alias a complete turn. Do not classify that result as a proven single, invent
+the missing turn, or claim a physically verified 30Hz double.
+
+A separate repeat, `flip30_light1`, confirms a physical single at 29.99294Hz:
+441 additional bounded body-axis reads include 94 flight samples, approximately
+−0.991508 turns and a maximum flight gap of 10.861ms. The original full observer
+agrees. The base actor advanced, but no held actor ran and the extra count stayed
+zero. Input capture is complete (378/378). Both physical X edges were recognized;
+the next native dispatch opportunities straddled the unchanged second-edge plus
+200ms deadline (190ms then 224ms). Readiness/FIFO expiry is a source-backed
+explanation, not an explicit native cancellation receipt. This failure remains
+part of the candidate record. Extra observer scheduling cost was not independently
+measured. See `flip30_light1-native-summary.json`; no missing turn is inferred.
+
+The opt-in lightweight observer uses existing validated body pointers, checks
+owner/body identity before and after each read, runs for at most four seconds
+and caps at 600 rows. Its helper SHA-256 is
+`a356a45feee8930d96ca8bba94eba2f904b73b3f3ee182b2e9ddf9cf8d2dd30c`.
+Seventeen offline generation/guard checks passed, recorded in
+`light-basis-generator-test-results.json`; default payload output is unchanged.
+
+`grab60_pair1` records one history-pair Method request 124ms after the second B
+edge. The exact native Method actor initialized and advanced; native airborne
+release was acknowledged, followed by ground100 and four selected contacts with
+one sampled owner and no sampled bail. Measured input cadence was 59.316Hz.
+Its 730-record capture drained 601 and dropped 129 after admission; full capture,
+Into/Exit identity and authoritative banking remain unverified. Native previous
+sequence 30 and HUD 60/x2 are retained as distinct score observations in
+`grab60_pair1-native-summary.json`, not treated as bank proof.
+
+Exact-242 camera trials `camera242_right1.json` and `camera242_up1.json` each
+retain complete 178/178 camera captures, with no loss, uninspected receipts,
+nesting, truncation, late rows or changed client-drop counters. Right-stick
+horizontal input produced about −126.850 degrees of yaw relative to follow,
+then returned monotonically to −0.081 degrees after neutral. Up input produced
+about −21.559 degrees of pitch, then returned to −0.043 degrees. Each trial
+retained one observed input owner/route; all 169/167 qualified Arcade transform
+operations returned and the requested orbit matched the published selected
+camera pose. No other known writer was recorded during those captures.
+
+Independent body samples show one owner and ground100 throughout both camera
+trials, roughly 24.43m/24.12m of travel, and maximum heading change only
+0.0122/0.0103 degrees. This supports orbit without appreciable body yaw in these
+trials; no matched neutral-input comparison establishes every motion component
+unchanged. Three extracted video frames per trial show the orbit/pitch and return
+while the skater remains visible. They are not continuous playback review or an
+atomic native-pose/render join. Both captures end before cleanup OFF/ON, so they
+provide no OFF-restoration acceptance. Detailed evidence is retained in
+`camera242_right1-native-analysis.json` and `camera242_up1-native-analysis.json`.
+
+The accompanying [controls documentation](CLASSIC_CONTROLS.md) now describes
+immediate neutral-X press recognition, existing directional/repeated-B and R3
+bindings, and their native-admission limits. Unsupported named grabs are explicit.
+This corrects stale documentation; it adds no actor or control binding and does
+not promote historical grab evidence to current lifecycle acceptance.
+
+The next source priority is the measured 30Hz dependent-flip deadline boundary,
+with a failing regression before any bounded continuation change. Remaining
+independent work includes complete capture coverage and control trials,
+additional native cadence/stance coverage,
+Manual/revert and rail chains, current grab lifecycle/scoring, camera and OFF
+restoration, wallplant continuation and full flatland acceptance. The verified
+package makes this correction playable; the broader RC5.1 acceptance gate remains
+open. The ten-second Manual trial was withheld because the current −Z corridor
+stops/reverses near Z −136 after approximately 36m; historical successful Manual
+routes run elsewhere. Qualify a clear corridor before that acceptance test.
+Follow the installation/rollback procedure above; this session's exact restore
+and returned-slot evidence is preserved.

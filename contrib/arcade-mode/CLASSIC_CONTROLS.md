@@ -29,20 +29,28 @@ speed require them. The player does not need to repeatedly press a push button.
 The physical right stick always belongs to the camera; any synthetic gesture used
 inside a native adapter is an implementation detail, not another player control.
 
-X and B require independently observed airtime and a fresh press. Ground X
-does not start a jump; ground B retains native braking. Neither command requires
-A to remain held. Landing, bail, menus and Arcade OFF release synthetic ownership.
-In production, a neutral airborne X tap commits the basic Kickflip request on
-release. A direction matched before that release takes precedence; a direction
-arriving after the committed release cannot replace it. Holding X still permits
-the existing face-before-direction match. The separate compatibility policy
-retains released-face matching for500ms; production does not delay the neutral
-default for that window. Native readiness and exact result checks still apply.
+X and B execution requires independently observed airtime and a fresh press.
+Ground X does not start a jump; ground B retains native braking. Neither command
+requires A to remain held. Landing, bail, menus and Arcade OFF release synthetic
+ownership.
+In production, a neutral airborne X press immediately recognizes a basic
+Kickflip request without waiting for release. A valid direction matched before
+or with that press takes precedence; a direction arriving after recognition
+cannot replace the request, even while X remains held. Release cannot repeat it.
+A fresh neutral X after an admitted Ollie release can also be recognized during
+the existing 160ms takeoff preload, before AIR is observed. This belongs to that
+released pop; unrelated ground input cannot borrow it. Native readiness and
+exact result checks still gate execution. The separate compatibility policy
+retains the delayed held/released-face directional query for500ms; production
+does not delay its neutral default for that window.
 Direction edges can match a later airborne X/B press for500ms, with held
 directions remaining valid. Consumed released directions do not repeat. Extra
-air trick face presses use300ms; normal B remains the verified basic grab.
-X/B readiness handoffs retain a request for at most200ms within the same jump.
-These windows start at input edges, never at takeoff; they add no fixed wait.
+air trick face presses use300ms; named grab repeats use 250ms. Neutral B requests
+BS Grab.
+Repeated-X/B readiness handoffs expire 200ms after the second physical edge.
+A qualified ordinary first flip can instead follow its exact admitted pop through
+native setup; owner, pop withdrawal and landing checks still cancel it. These
+windows add no fixed wait and do not establish native trick completion.
 
 Manual pairs accept direct reversal or a neutral gap within220ms on the ground
 or400ms in the air. Ground matching has an explicit55ms usability/sampling
@@ -109,23 +117,44 @@ candidates and require independent native identity checks.
 
 ## Grab table — B
 
-A single B press during native airtime requests the verified basic BS Grab in
-the inspected stance. A held direction or movement stick keeps that basic action
-available and preserves steering. This first playable grab control reports its
-actual basic identity. The named directional rows below remain the target for
-future verified modifiers; the explicit lab selector retains their candidates.
-A basic BS Grab must never be reported as a successful Melon or other modifier.
+A neutral B press during native airtime requests BS Grab. A matched directional
+input selects the named grab below. Release and press B again within 250ms to
+request the second variant, retaining the first grab's direction. Holding B is
+not a second press. Native readiness and same-flight ownership still govern
+admission; neither a request nor its label proves execution.
+
+These bindings are implemented except the explicitly unsupported entries. The
+Indy control slot uses the native FS Grab identity and displays that name.
 
 | Direction | B | B,B |
 | --- | --- | --- |
 | Left | Melon | Method |
 | Up | Nosegrab | Rocket Air |
-| Right | Indy | Stiffy |
+| Right | FS Grab | Stiffy |
 | Down | Tailgrab | One Foot Tailgrab |
-| Up-Left | Japan | One Foot Japan |
-| Up-Right | Madonna | Judo |
-| Down-Left | Benihana | Sacktap |
+| Up-Left | Japan | Unsupported: One Foot Japan |
+| Up-Right | Unsupported: Madonna | Judo |
+| Down-Left | Benihana | Unsupported: Sacktap |
 | Down-Right | Airwalk | Christ Air |
+
+Holding R3 with a direction and pressing B uses the existing extended bindings:
+
+| Direction | R3 + B |
+| --- | --- |
+| Left / Right | Double Grab Left / Right |
+| Up / Down | Double Grab Front / Back |
+| Up-Left / Up-Right | Crossbone / FS Nosebone |
+| Down-Left / Down-Right | FS Tailbone / Tuck Knee |
+
+Neutral R3 + B retains the diagnostic selector's chosen profile. The selector
+also exposes additional native profiles without assigning them new common bindings.
+
+The [retained native actor pass](research/rc3-native-grab-catalog-pass.md) observed
+initialization and advancement for 44 ordinary profiles on its exact historical
+build. It does not establish current-build acceptance of every control, extended
+hold, stance, exact Exit actor or numerical scoring. One-footers have separate,
+incomplete lifecycle evidence. Preserve those limits when reporting a grab as
+observed or accepted; never substitute a basic grab for an unavailable named one.
 
 ## Grind / lip table — Y
 
