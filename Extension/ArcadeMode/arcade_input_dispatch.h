@@ -861,11 +861,12 @@ private:
         request.form = form;
         if(action==InputAction::flip && environment.context==InputContext::ground) {
             request.pop_release_at=takeoff_release_at_;request.air_episode={};
-            // This request belongs to an admitted released pop. Native setup
+            // An ordinary first flip belongs to an admitted released pop. Native setup
             // can outlast the generic AIR readiness deadline (observed 220ms).
             // Its exact release/owner/forward-phase proof above cancels it on
-            // withdrawal or landing; do not expire it before genuine takeoff.
-            request.unbounded=environment.native_pop_transition && request.pop_release_at!=0;
+            // withdrawal or landing. Only that first flip waits through setup;
+            // a held repeat retains its original second-edge deadline.
+            request.unbounded=form!=InputForm::held_repeat && environment.native_pop_transition && request.pop_release_at!=0;
         }
         if (action == InputAction::ground_turn) {
             for(const auto row:air_direction_rows)if(row.direction==trick_definition(ArcadeTrick::ground_half_turn)->bindings[0].direction)request.direction=row.code;
@@ -1272,11 +1273,16 @@ private:
         InputMatch match{}; unsigned presses = 1;
         InputForm form{}; std::int16_t defined_direction{};
         const InputRequest* queued_prefix=nullptr;
-        if(environment.native_held_flip && !active_flip_ && environment.native_context.required && environment.context==InputContext::air)
+        const bool preload=takeoff_release_at_ && now>=takeoff_release_at_ &&
+            now-takeoff_release_at_<=InputTiming::takeoff_preload_ms;
+        const bool preair=environment.context==InputContext::ground && preload && environment.native_pop_transition;
+        if(environment.native_held_flip && !active_flip_ && environment.native_context.required &&
+            (environment.context==InputContext::air || preair))
             for(const auto& request:pending_.slots()) {
                 if(request.action!=InputAction::flip || request.presses!=1 || request.nollie ||
                     (request.form!=InputForm::ordinary && request.form!=InputForm::neutral_press && request.form!=InputForm::neutral_release) ||
                     (request.air.trick!=ArcadeTrick::kickflip && request.air.trick!=ArcadeTrick::heelflip) ||
+                    (preair && (request.pop_release_at!=takeoff_release_at_ || request.physical_pressed_at<takeoff_release_at_)) ||
                     now<request.physical_pressed_at ||
                     now-request.physical_pressed_at>InputTiming::extra_press_ms ||
                     InputRequestQueue::eligibility(request,now,session_,environment.context,
@@ -1284,6 +1290,8 @@ private:
                 // Recognize the second edge while the first still waits. The
                 // FIFO and held adapter must later prove the original flip,
                 // native preparation window and actor; this prefix owns none.
+                // Ground preparation belongs only to the exact released pop;
+                // its second edge keeps the same bounded AIR admission window.
                 if(!queued_prefix || request.physical_pressed_at>queued_prefix->physical_pressed_at)
                     queued_prefix=&request;
             }
@@ -1316,8 +1324,6 @@ private:
         // A physical airborne X press means a basic flip immediately. Recognition
         // does not wait for the RS actor or for release; the existing queue and
         // native handoff still gate execution and retain the original edge time.
-        const bool preload=takeoff_release_at_ && now>=takeoff_release_at_ &&
-            now-takeoff_release_at_<=InputTiming::takeoff_preload_ms;
         if (!match && environment.policy.neutral_flip_on_release &&
             (environment.context==InputContext::air || preload) && !events_.held_direction()) {
             const std::array tokens{face};

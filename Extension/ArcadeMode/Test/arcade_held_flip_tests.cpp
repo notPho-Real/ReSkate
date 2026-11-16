@@ -190,6 +190,82 @@ void queued_first_repetition() {
               "first admission retains its ordinary policy without renewing the queued repeat's original deadline");
     }
 }
+void preair_queued_repetition() {
+    for(unsigned hz:{30u,60u,120u})for(unsigned phase:{100u,103u})
+    for(std::int16_t direction:{std::int16_t{0},std::int16_t{-25000},std::int16_t{25000}})
+    for(bool switched:{false,true}) {
+        auto h=std::make_unique<Route>();h->bridge_accept=false;h->switched=switched;
+        const auto dt=(1000u+hz-1)/hz;
+        h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
+        h->poll(1051,{0x1000},100,1);h->poll(1085,{},100,1);
+        h->poll(1085+dt,{0x4000,direction,0},phase,1,false);
+        h->poll(1085+2*dt,{},phase,1,false);
+        const auto second=1085+3*dt;
+        h->poll(second,{0x4000},phase,1,false);
+        check(!h->bridge_calls && !h->repeats,"pre-AIR pair cannot execute before native takeoff");
+        h->poll(second+dt,{},200,1,false);h->bridge_accept=true;
+        h->poll(second+2*dt,{},201,1,false);
+        const auto id=direction>0?3:2;
+        const auto out=h->poll(second+3*dt,{},201,1,false,0,false,false,id);
+        check(h->bridge_calls==1 && h->requested==id && h->repeats==1 && out.authored_playback,
+              "two pre-AIR X edges on the same released pop prepare the original held flip after takeoff");
+        check(h->repeated_request.pop_release_at==1085 &&
+              h->repeated_request.physical_pressed_at==second && !h->repeated_request.unbounded &&
+              h->repeated_request.deadline==second+InputTiming::readiness_ms,
+              "pre-AIR repeat keeps exact pop ownership and second-edge deadline");
+        h->poll(second+4*dt,{},201,1,true,0,true,true,id);
+        const auto caught=h->poll(second+5*dt,{},201,1,true,1,true,true,id);
+        check(caught.held_actor_acknowledged && caught.held_input_released,
+              "pre-AIR repeat completion still requires independent native held actor and rotation evidence");
+    }
+    for(unsigned delay:{199u,200u,222u}) {
+        auto h=std::make_unique<Route>();h->bridge_accept=false;
+        h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
+        h->poll(1051,{0x1000},100,1);h->poll(1085,{},100,1);
+        h->poll(1102,{0x4000},103,1,false);h->poll(1136,{},103,1,false);
+        const auto second=1170u;h->poll(second,{0x4000},103,1,false);
+        h->poll(1204,{},200,1,false);h->bridge_accept=true;
+        h->poll(1238,{},201,1,false);h->poll(1288,{},201,1,false);
+        h->poll(1338,{},201,1,false);
+        h->poll(second+delay,{},201,1,false,0,false,false,2);
+        check(h->bridge_calls==1 && h->repeats==(delay==199?1u:0u),
+              "ground preload cannot renew the repeat at200ms or a longer222ms native base delay");
+    }
+    for(unsigned hz:{30u,60u,120u})for(unsigned fault=0;fault<11;++fault) {
+        auto h=std::make_unique<Route>();h->bridge_accept=false;
+        const auto dt=(1000u+hz-1)/hz;
+        h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
+        h->poll(1051,{0x1000},100,1);h->poll(1085,{},100,1);
+        h->poll(1085+dt,{0x4000},103,1,false);
+        h->poll(1085+2*dt,{},103,1,false);
+        const auto second=1085+3*dt;h->poll(second,{0x4000},103,1,false);
+        if(fault==0)++h->owner.rig;
+        if(fault==1)h->admission.gameplay=false;
+        if(fault==2)h->admission.external_owner=true;
+        if(fault==3)h->switched=true;
+        if(fault==4)h->selection_object=32;
+        if(fault==5)h->held_available=false;
+        h->poll(second+dt,{},200,1,false);
+        h->poll(second+2*dt,fault==8?PhysicalInputSample{0x1000}:PhysicalInputSample{},
+                (fault==6 || fault==8)?100:fault==7?300:201,1,false);
+        h->bridge_accept=true;
+        h->poll(second+3*dt,{},201,1,fault==9);
+        for(unsigned n=4;n<9;++n)h->poll(second+n*dt,{},201,1,fault==9,0,false,false,fault==10?3:2);
+        check(!h->repeats,
+              "pre-AIR repeat rejects owner, focus, conflict, stance, selection, observer, landing, bail, new pop, late Prepare and wrong actor");
+    }
+    {
+        auto h=std::make_unique<Route>();h->bridge_accept=false;
+        h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
+        h->poll(1051,{0x1000},100,1);
+        // A remains held throughout: the X taps cannot invent its release.
+        h->poll(1102,{0x5000},103,1,false);h->poll(1119,{0x1000},103,1,false);
+        h->poll(1136,{0x5000},103,1,false);h->poll(1153,{0x1000},200,1,false);
+        h->bridge_accept=true;h->poll(1170,{0x1000},201,1,false);
+        h->poll(1187,{0x1000},201,1,false,0,false,false,2);
+        check(!h->repeats,"ground X pair cannot invent a qualified pop release");
+    }
+}
 void physical_repetition() {
     for(unsigned hz:{30u,60u,120u}) for(std::int16_t direction:{std::int16_t{0},std::int16_t{25000}}) {
         auto h=std::make_unique<Route>();h->first(direction);const auto id=h->requested;
@@ -278,4 +354,4 @@ void physical_repetition() {
     }
 }
 }
-int main(){native_boundaries();queued_first_repetition();physical_repetition();std::cout<<checks<<" held-flip input checks passed; native animation observations are fixtures\n";}
+int main(){native_boundaries();preair_queued_repetition();queued_first_repetition();physical_repetition();std::cout<<checks<<" held-flip input checks passed; native animation observations are fixtures\n";}
