@@ -72,6 +72,37 @@ selection/crouch fields. CMake also tracks the transitive episode and score
 fixture inputs. Gameplay source and required assertions are unchanged by this
 CI correction; replacement Windows compilation remains required.
 
+Replacement source `d0cbb854b751594fdf234fb5b9950eb5554c9f0f` compiled the full
+Windows preflight and passed139/140 tests in
+[CI43930516537](https://github.com/notPho-Real/ReSkate/actions/runs/43930516537).
+The remaining `arcade_mode` regression assumed neutral drift toward the regular
+Manual's positive endpoint must bail; that endpoint is now the owner's requested
+safe putdown direction. Its pending-meter test must explicitly drive the failing
+direction and retain the physical-exit assertions. Failed preflight log SHA-256:
+`19501726b57a8b7bd51ef00a908274865f2ddbba77c7341fb1e740988ceaa2c0`.
+
+The same run independently failed its required early crash-report capture test:
+direct capture, source0/write, `0x8007012b` partial-copy error, with no minidump.
+This batch does not change crash-report code. Existing bounded retries still
+reported failure; a transient cause is not established. Diagnostic archive
+SHA-256 `1e7f7016bf00ef64809fa9d617c9730cc4bb4e1f9bdb4b7605caeb4329abc284`.
+Neither failure is waived, and this run supplies no accepted package.
+
+The model regression correction explicitly covers Manual/Nose Manual, both
+endpoint directions and30/60/120Hz while retaining pending-meter and physical
+exit checks. It also corrects a second old positive-lean bail assumption.
+The exact13-source combined model suite passes45,793 checks with strict warnings
+and ASan/UBSan; the changed model alone passes34,226 checks with additional
+conversion warnings. Both original endpoint failures are retained. No gameplay
+code or required CI assertion is weakened by this correction.
+
+The earlier727 runtime job completed clean Windows compilation under the upstream
+warning policy and132/132 full integration tests. Its early crash-capture test
+also passed. Runtime log SHA-256:
+`0fb11aa21db622deb5936deb19fbb098a3a08b7b01eeb0b7363d617bc31c068f`.
+This supplies compilation evidence for the gameplay changes, but cannot override
+that run's failed preflight or verify a later candidate package.
+
 
 ## Baseline and provenance
 

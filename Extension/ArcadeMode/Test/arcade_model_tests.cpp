@@ -195,21 +195,43 @@ using namespace dingosdk::arcade_mode::baseline;
               "a100ms manual correction tap creates useful persistent drift instead of requiring a long hold");
         check(std::abs(grind.state().balance_velocity) < .15f,
               "manual response tuning leaves the accepted grind damping unchanged");
-        ComboSession session;
-        session.step(SkatePose::manual, 0, 0);
-        bool failed = false;
-        for (unsigned frame = 0; frame < 1200 && !failed; ++frame)
-            failed = session.step(SkatePose::manual, 1.0f/60, 0);
-        check(failed && !session.model().state().combo_active &&
-              balance_meter(session.balance_display_state()).visible &&
-              std::abs(session.balance_display_state().balance) == 1,
-              "failed native manual retains an edge meter while native exit or bail is pending");
-        session.step(SkatePose::manual, 1.0f/60, 0);
-        check(!session.model().state().combo_active && balance_meter(session.balance_display_state()).visible,
-              "pending physical manual cannot restart the failed model or lose its failure display");
-        session.step(SkatePose::riding, 1.0f/60, 0);
-        check(!balance_meter(session.balance_display_state()).visible,
-              "native manual exit clears the failed meter immediately");
+        for (const auto pose : {SkatePose::manual, SkatePose::nose_manual})
+        for (const float lean : {-1.f, 1.f})
+        for (const float dt : {1.f/30, 1.f/60, 1.f/120}) {
+            ComboSession session;
+            session.step(pose, 0, 0);
+            // Drive the selected endpoint explicitly. Neutral drift chooses a
+            // direction, but does not imply that direction is a failing edge.
+            const bool expect_bail = pose == SkatePose::manual ? lean < 0 : lean > 0;
+            bool failed = false;
+            for (unsigned frame = 0; frame < 1200 && !failed && !session.manual_putdown(); ++frame)
+                failed = session.step(pose, dt, lean);
+            check(failed == expect_bail && session.failed_section() == expect_bail &&
+                  session.manual_putdown() == !expect_bail &&
+                  session.model().balance_exit() == (expect_bail ? BalanceExit::bail : BalanceExit::putdown),
+                  "Manual and Nose Manual have opposite bail and putdown endpoints at each cadence");
+            if (expect_bail) {
+                check(!session.model().state().combo_active &&
+                      balance_meter(session.balance_display_state()).visible &&
+                      session.balance_display_state().balance == lean,
+                      "failed native manual retains the actual edge meter while native exit or bail is pending");
+            } else {
+                check(session.model().state().combo_active && session.model().state().landing_grace &&
+                      session.model().state().balance_kind == BalanceKind::none &&
+                      !balance_meter(session.balance_display_state()).visible,
+                      "safe endpoint starts landing grace without a bail or failed edge meter");
+            }
+            session.step(pose, dt, 0);
+            check(session.failed_section() == expect_bail && session.manual_putdown() == !expect_bail &&
+                  session.model().state().combo_active == !expect_bail &&
+                  session.model().state().balance_kind == BalanceKind::none &&
+                  balance_meter(session.balance_display_state()).visible == expect_bail,
+                  "pending physical manual cannot restart balance or lose its pending failure display");
+            session.step(SkatePose::riding, dt, 0);
+            check(!session.failed_section() && !session.manual_putdown() &&
+                  !balance_meter(session.balance_display_state()).visible,
+                  "native manual exit clears the endpoint latch and failed meter immediately");
+        }
     }
 #ifdef ARCADE_SCORE_SETTLEMENT_COMBINED_TESTS
     run_arcade_score_settlement_tests();
@@ -1314,7 +1336,7 @@ using namespace dingosdk::arcade_mode::baseline;
             session.step(SkatePose::grind, 0, 0);
             session.step(transition, 0.1f, 0);
             session.step(end, 0.1f, 0);
-            check(!session.model().state().combo_active && !session.model().state().grind_fatigue,
+            check(!session.model().state().combo_active && session.model().state().grind_fatigue == 0,
                   "lost observation, bail or expired handoff clears combo and fatigue");
         }
     }
@@ -1355,7 +1377,7 @@ using namespace dingosdk::arcade_mode::baseline;
         for (int i = 0; i < 30; ++i) session.step(SkatePose::manual, 1.0f / 60, 0);
         check(session.model().state().multiplier == multiplier, "continuous observed manual cannot farm multiplier");
         bool failure = false;
-        for (int i = 0; i < 1200 && !failure; ++i) failure = session.step(SkatePose::manual, 1.0f / 60, 1);
+        for (int i = 0; i < 1200 && !failure; ++i) failure = session.step(SkatePose::manual, 1.0f / 60, -1);
         check(failure && session.failed_section(), "balance failure latches native section");
         for (int i = 0; i < 60; ++i) session.step(SkatePose::manual, 1.0f / 60, 0);
         check(!session.model().state().combo_active, "failed native section cannot restart combo every frame");
