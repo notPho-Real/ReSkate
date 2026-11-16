@@ -88,7 +88,7 @@ public:
         ground_turn_ = {}; // Keep the serial watermark across resets.
         rail_release_.reset(); takeoff_release_at_=0; takeoff_native_={}; takeoff_jump_observed_=false; takeoff_from_rail_=false;
         revert_link_={}; revert_trigger_owned_=false;
-        flatland_y_held_=flatland_y_accepted_=false;
+        flatland_y_held_=flatland_y_accepted_=false;retired_rail_y_={};
     }
     // A requested RT from verified manual ownership, followed by original native
     // 101->100 observations and a native fakie change permit renewed ownership.
@@ -151,6 +151,7 @@ public:
         held_flip_used_=false;held_flip_lineage_={};air_action_=native_followup_=false;
         air_followup_id_=0;air_actor_episode_={};grab_actor_=false;grab_actor_episode_={};grab_hold_button_=0;
         rail_release_.reset();takeoff_release_at_=0;takeoff_native_={};takeoff_jump_observed_=takeoff_from_rail_=false;
+        retired_rail_y_={};
         return true;
     }
     void resume_manual_episode(const ManualInputDiagnostic& command,const InputNativeContext& native) noexcept {
@@ -175,6 +176,21 @@ public:
             frame.generations.owner==takeoff_native_.generations.owner &&
             ((takeoff_release_at_ && now>=takeoff_release_at_ && now-takeoff_release_at_<=2500) ||
              (native_followup_ && air_action_ && frame.airborne && frame.air_episode()==air_actor_episode_));
+    }
+    // Only the Y level consumed by this actual rail setup may accompany its
+    // grab. A release/repress is a fresh rail command. After native grab entry
+    // retires the pop selector, the original grab lease must prove continuity.
+    bool retired_rail_y(std::uint64_t now,const InputNativeContext& frame,std::uint16_t buttons,
+            void* grab_context=nullptr,
+            bool (*grab_continues)(void*,InputGenerations,InputAirEpisode) noexcept=nullptr) const noexcept {
+        const auto& retired=retired_rail_y_;
+        if(!retired.held || !retired.release || !(buttons&0x8000u) || (buttons&classic_a) ||
+            !frame.required || !frame.fresh(now) || !frame.airborne || frame.rail_family || rail_ ||
+            now<retired.release || now-retired.release>2500 ||
+            frame.generations.owner!=takeoff_native_.generations.owner)return false;
+        return (takeoff_from_rail_ && released_pop_active(now,frame)) ||
+            (retired.grab.owner && frame.air_episode()==retired.air && grab_continues &&
+             grab_continues(grab_context,retired.grab,retired.air));
     }
     bool initial_ground_acquisition(std::uint64_t now,const InputNativeContext& current) const noexcept {
         return native_.required && current.required && native_.fresh(now) && current.fresh(now) &&
@@ -257,6 +273,9 @@ public:
             revert_context(admission,now))
             admission.action_fresh=true;
         if (clocked_ && (admission.input_policy != policy_ || admission.board_binding != board_binding_ || admission.offboard != offboard_ || admission.export_rail_requests != export_rail_)) reset();
+        if(!(physical.buttons&0x8000u) || (retired_rail_y_.release && (physical.buttons&classic_a)) ||
+            admission.external_owner || admission.offboard || admission.action_mode!=ActionExperiment::classic)
+            retired_rail_y_={};
         offboard_ = admission.offboard; board_binding_ = admission.board_binding; export_rail_ = admission.export_rail_requests;
         policy_ = admission.input_policy;
         if (clocked_ && admission.action_mode != mode_) {
@@ -303,6 +322,7 @@ public:
             if (rail_release_.confirmed(now)) {
                 takeoff_release_at_=rail_release_.released_at;takeoff_native_=rail_release_.native;
                 takeoff_jump_observed_=takeoff_from_rail_=true;
+                if(retired_rail_y_.held)retired_rail_y_.release=rail_release_.released_at;
                 rail_release_.reset();
             }
         }
@@ -552,6 +572,7 @@ public:
             native.flip.valid && native.flip.object) {
             takeoff_release_at_=output.jump.released_at;takeoff_native_=native;
             takeoff_jump_observed_=rail_pop_jump(native.flip.id);takeoff_from_rail_=true;rail_release_.reset();
+            if(retired_rail_y_.held)retired_rail_y_.release=output.jump.released_at;
         }
         const auto authored = authored_.sample(admission.tick, now);
         if (authored.owns_stick) {
@@ -750,7 +771,10 @@ private:
                 // Retire its semantic owner as well as the adapter channel so
                 // a still-held Y cannot block later AIR actions or resume the
                 // old rail request. A missing recipe leaves that owner intact.
-                if (launch_context_==GestureContext::from_grind) { rail_=false; rail_request_={}; }
+                retired_rail_y_={};
+                if (launch_context_==GestureContext::from_grind) {
+                    rail_=false;rail_request_={};retired_rail_y_.held=(physical_.buttons&0x8000u)!=0;
+                }
                 jump_pressed_at_ = request.physical_pressed_at; jump_nollie_ = request.nollie; jump_launch_ = admission.launch;
                 if(launch_context_==GestureContext::from_grind) {
                     jump_launch_.context=LaunchContext::rail;
@@ -1014,15 +1038,20 @@ private:
                 // identities. A callback receipt only acknowledges queuing.
                 const auto& native=admission.native_context;
                 const auto* profile=native_grab::pilot(out.trick);
+                const bool retired_y=retired_rail_y(now_,native,physical_.buttons,
+                    admission.normal_grab.context,admission.normal_grab.continues);
                 if (!profile || ((profile->control().selector() || profile->one_footer) && !admission.normal_grab.controls) || request.nollie || admission.nollie ||
                     !native.required || !native.fresh(now_) || !native.correlates_action(request.generations) ||
                     !admission.inspected_stance || admission.external_owner || physical_.lt>30 || physical_.rt>30 ||
-                    (physical_.buttons & (classic_a | 0x8000u | 0x0010u))) {
+                    (physical_.buttons & (classic_a | (retired_y?0u:0x8000u) | 0x0010u))) {
                     out.result=DispatchResult::unavailable;current_->unsupported=true;return InputDisposition::unsupported;
                 }
                 const bool held=request.control && (physical_.buttons & request.control);
                 if (!admission.normal_grab.submit(admission.normal_grab.context,request,out.trick,held)) {
                     out.result=DispatchResult::busy;return InputDisposition::waiting;
+                }
+                if(retired_y) {
+                    retired_rail_y_.grab=request.generations;retired_rail_y_.air=request.air_episode;
                 }
                 out.result=DispatchResult::started;return InputDisposition::started;
             }
@@ -1117,6 +1146,8 @@ private:
     RailPopReleaseProof rail_release_{};
     std::uint64_t takeoff_release_at_{};
     bool takeoff_jump_observed_{}, takeoff_from_rail_{};
+    struct RetiredRailY {bool held{};std::uint64_t release{};InputGenerations grab{};InputAirEpisode air{};};
+    RetiredRailY retired_rail_y_{};
     InputAirEpisode air_actor_episode_{}, grab_actor_episode_{}, manual_air_episode_{};
     bool grab_actor_{};
     bool native_required_{};

@@ -2531,9 +2531,15 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         }};
         struct GrabRequestContext {NoBailSkater owner;std::uint64_t episode,tick;};
         GrabRequestContext grab_context{native_flip_owner,arcade_input.native_context(now).airborne_episode,tick};
+        const auto grab_continues=[](void* context,InputGenerations origin,InputAirEpisode air) noexcept {
+            const auto& grab=*static_cast<GrabRequestContext*>(context);
+            return native_grab::continues(grab.owner,grab.episode,origin,air);
+        };
+        const bool retired_rail_y=arcade_input.retired_rail_y(now,arcade_input.native_context(now),
+            physical_buttons,&grab_context,grab_continues);
         const bool grab_permitted=game_input && action_safe && action_experiment==ActionExperiment::classic &&
             !offboard && observed==SkatePose::air && left_trigger<=30 && right_trigger<=30 &&
-            !(physical_buttons & (classic_a | 0x8000u | 0x0030u));
+            !(physical_buttons & (classic_a | (retired_rail_y?0u:0x8000u) | 0x0030u));
         native_grab::refresh(grab_context.owner,grab_context.episode,(physical_buttons&0x2000u)!=0,grab_permitted);
         NativeGrabRequest normal_grab{};
         if (grab_permitted && native_grab::available()) normal_grab={&grab_context,
@@ -2543,10 +2549,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             },[](void* context) noexcept {
                 const auto& grab=*static_cast<GrabRequestContext*>(context);
                 return native_grab::right_hand_input(grab.owner,grab.episode);
-            },[](void* context,InputGenerations origin,InputAirEpisode air) noexcept {
-                const auto& grab=*static_cast<GrabRequestContext*>(context);
-                return native_grab::continues(grab.owner,grab.episode,origin,air);
-            },[](void* context) noexcept {
+            },grab_continues,[](void* context) noexcept {
                 const auto& grab=*static_cast<GrabRequestContext*>(context);
                 return native_grab::hand_inputs(grab.owner,grab.episode);
             },[](void* context) noexcept {

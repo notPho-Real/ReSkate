@@ -17,6 +17,21 @@ struct Pipeline {
     NativeInputFrame frame{};
     RailAdapterPad rail_pad{};
     NativeFlipRequest bridge{};
+    bool native_grab_enabled{},grab_continuity{};
+    unsigned grabs{};
+    InputGenerations grab_lineage{};InputAirEpisode grab_air{};NativeInputOwner grab_owner{};
+    static bool submit_grab(void* context,const InputRequest& request,ArcadeTrick,bool) noexcept {
+        auto& p=*static_cast<Pipeline*>(context);++p.grabs;p.grab_lineage=request.generations;
+        p.grab_air=request.air_episode;p.grab_owner=p.owner;return true;
+    }
+    static bool continues_grab(void* context,InputGenerations origin,InputAirEpisode air) noexcept {
+        const auto& p=*static_cast<Pipeline*>(context);
+        return p.grab_continuity && origin==p.grab_lineage && air==p.grab_air &&
+            p.owner==p.grab_owner && InputNativeContext::from_frame(p.frame).air_episode()==air;
+    }
+    bool retired_y(std::uint64_t now,std::uint16_t buttons=classic_y) const noexcept {
+        return input.retired_rail_y(now,frame,buttons,const_cast<Pipeline*>(this),continues_grab);
+    }
     AuthoredTickClock clock;
     std::uint64_t tick{};
     // Distinct ground/rail vectors expose any accidental ground fallback.
@@ -32,14 +47,94 @@ struct Pipeline {
         tick=clock.advance(hz);
     }
     NativeGesture::Output poll(std::uint64_t now, std::uint16_t buttons, bool gameplay=true, bool may_start=true) {
+        // Mirror the production callback permission and refresh gate. Retiring
+        // the old rail command alone does not authorize an ordinary Y+B chord.
+        const bool grab_permitted=gameplay && frame.airborne &&
+            !(buttons&(classic_a | (retired_y(now,buttons)?0u:classic_y) | 0x0030u));
+        const auto grab=native_grab_enabled && grab_permitted ?
+            NativeGrabRequest{this,submit_grab,nullptr,continues_grab}:NativeGrabRequest{};
         auto out=input.poll(0,now,buttons,0,0,0,0,gameplay,may_start,false,0,false,false,true,tick,false,catalog,
-            false,false,SkatePose::grind,false,false,false,false,false,false,0,0,ActionExperiment::classic,true,true,false,bridge);
+            false,false,native_grab_enabled&&frame.airborne?SkatePose::air:SkatePose::grind,
+            false,false,false,false,false,false,0,0,ActionExperiment::classic,true,true,false,bridge,grab);
         rail_pad=input.sample_native_rail(out.rail,now,gameplay && !out.action.owned);
         return out;
     }
 };
+void setup_held_y_pop(Pipeline& p,unsigned hz,bool held=true) {
+    p.native_grab_enabled=true;
+    p.bridge={nullptr,[](void*,std::int32_t) noexcept {return true;}};
+    const auto dt=(1000u+hz-1)/hz;
+    p.step(1000,200,hz);p.poll(1000,0);
+    p.step(1000+dt,200,hz);p.poll(1000+dt,held?classic_y:0);
+    p.step(1000+2*dt,401,hz,1);p.poll(1000+2*dt,held?classic_y:0);
+    p.step(1000+3*dt,401,hz,1);check(p.poll(1000+3*dt,classic_a|(held?classic_y:0)).jump.setup_started,"fixture admits exact rail setup");
+    p.step(1000+4*dt,403,hz,1);check(p.poll(1000+4*dt,held?classic_y:0).jump.released,"fixture releases exact rail pop");
+    for(unsigned i=5;i<34;++i){const auto at=1000+i*dt;p.step(at,i==5?701:i<8?200:201,hz,1,16,2);p.poll(at,held?classic_y:0);}
+}
+void retired_initiating_y_grab() {
+    for(unsigned hz:{30u,60u,120u}) {
+        const auto dt=(1000u+hz-1)/hz;const auto at=1000+34*dt;
+        Pipeline p;setup_held_y_pop(p,hz);
+        p.step(at,201,hz,1,16,2);
+        check(p.input.rail_followup_active(at,p.frame),"grab begins with actual qualified released rail lease");
+        check(p.retired_y(at),"only initiating held Y is retired for this pop");
+        const auto out=p.poll(at,classic_y|0x2000u);
+        check(p.grabs==1 && out.action.result==DispatchResult::started && !out.authored_playback,
+            "retired initiating Y permits the native grab without another rail pop");
+        p.grab_continuity=true;
+        // Native grab entry can remove flip selection. Only the independently
+        // supplied exact native grab occurrence can retain the retired Y level.
+        p.step(at+dt,201,hz,9,16,2);
+        check(!p.input.rail_followup_active(at+dt,p.frame) && p.retired_y(at+dt),
+            "actual native grab lease can continue after pop selector retirement");
+        p.poll(at+dt,classic_y|0x2000u);
+        check(p.grabs==1,"held B and retired Y never synthesize another request");
+        p.grab_continuity=false;
+        check(!p.retired_y(at+dt),"missing native occurrence cannot inherit retired pop selector");
+    }
+    for(unsigned fault=0;fault<12;++fault) {
+        Pipeline p;setup_held_y_pop(p,60,fault!=0);const auto at=1578u;
+        if(fault==1)p.poll(at-17,0); // A new Y is a new command, even in the same flight.
+        if(fault==2)++p.owner.entity;
+        const auto state=fault==3?100u:fault==4?300u:201u;
+        p.step(at,state,60,fault==5?2:1,16,2);
+        if(fault==6)p.input.enable(false);
+        if(fault==7)p.poll(at,classic_y|classic_a);
+        if(fault==8)p.poll(at,classic_y,false);
+        if(fault==9)p.frame.sampled_at=at-151;
+        if(fault==10)p.input.cancel_commands();
+        const auto query=fault==11?4000u:at;
+        check(!p.retired_y(query),"fresh Y, owner, landing, bail, different actor, OFF, new A, focus, stale, reset and expiry reject exception");
+        p.poll(query,classic_y|0x2000u,fault!=8);
+        check(!p.grabs,"invalid rail provenance cannot authorize native Y+B");
+    }
+    {
+        Pipeline p;setup_held_y_pop(p,60);const auto at=1578u;p.step(at,201,60,1,16,2);p.poll(at,classic_y|0x2000u);
+        p.grab_continuity=true;p.step(at+17,201,60,9,16,2);check(p.retired_y(at+17),"fixture has observed continuation");
+        p.poll(at+17,0x2000u);check(!p.retired_y(at+17),"Y release permanently clears retired hold metadata");
+        p.step(at+34,201,60,9,16,2);check(!p.retired_y(at+34),"Y repress cannot borrow earlier native grab occurrence");
+    }
+    for(bool native_continuation:{false,true}) {
+        Pipeline p;setup_held_y_pop(p,60);const auto at=1578u;
+        p.step(at,201,60,1,16,2);
+        if(native_continuation){p.poll(at,classic_y|0x2000u);p.grab_continuity=true;}
+        const auto selected=native_continuation?9:1;
+        // Release was1068. Keep every native sample fresh through the original
+        // lease boundary; repeated polls and grab admission cannot renew it.
+        for(unsigned now=1595;now<3568;now+=17){p.step(now,201,60,selected,16,2);p.poll(now,classic_y);}
+        p.step(3568,201,60,selected,16,2);check(p.retired_y(3568),"original2500ms boundary is inclusive");
+        p.poll(3568,classic_y);
+        p.step(3569,201,60,selected,16,2);check(!p.retired_y(3569),"pop and native grab paths cannot renew original2500ms lease");
+    }
+    {
+        Pipeline p;p.native_grab_enabled=true;p.step(1000,100,60);p.poll(1000,0);p.step(1034,201,60,1,16,2);
+        check(!p.retired_y(1034),"ordinary airborne Y+B has no rail provenance");p.poll(1034,classic_y|0x2000u);
+        check(!p.grabs,"ordinary airborne Y+B cannot enter native grab exception");
+    }
+}
 }
 int main() {
+    retired_initiating_y_grab();
     {
         Pipeline p;unsigned submissions{};
         p.bridge={&submissions,[](void* context,std::int32_t id) noexcept {

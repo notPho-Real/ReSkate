@@ -221,6 +221,12 @@ public:
     bool rail_followup_active(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) && sessions_[0].rail_followup_active(now,InputNativeContext::from_frame(frame));
     }
+    bool retired_rail_y(std::uint64_t now,const NativeInputFrame& frame,std::uint16_t buttons,
+            void* grab_context=nullptr,
+            bool (*grab_continues)(void*,InputGenerations,InputAirEpisode) noexcept=nullptr) const noexcept {
+        return enabled_ && admitted(0,now) && sessions_[0].retired_rail_y(now,
+            InputNativeContext::from_frame(frame),buttons,grab_context,grab_continues);
+    }
     std::uint64_t pending_manual_revert(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) ? sessions_[0].pending_manual_revert(now,InputNativeContext::from_frame(frame)) : 0;
     }
