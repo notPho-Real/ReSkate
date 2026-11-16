@@ -3,6 +3,7 @@
 #include "arcade_native_flip_entry_tests.h"
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
@@ -72,9 +73,11 @@ void setup_held_y_pop(Pipeline& p,unsigned hz,bool held=true) {
     for(unsigned i=5;i<34;++i){const auto at=1000+i*dt;p.step(at,i==5?701:i<8?200:201,hz,1,16,2);p.poll(at,held?classic_y:0);}
 }
 void retired_initiating_y_grab() {
+    // Each fixture contains the full controller journals. Heap ownership keeps
+    // scoped cases from accumulating beyond the Windows test stack reserve.
     for(unsigned hz:{30u,60u,120u}) {
         const auto dt=(1000u+hz-1)/hz;const auto at=1000+34*dt;
-        Pipeline p;setup_held_y_pop(p,hz);
+        const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;setup_held_y_pop(p,hz);
         p.step(at,201,hz,1,16,2);
         check(p.input.rail_followup_active(at,p.frame),"grab begins with actual qualified released rail lease");
         check(p.retired_y(at),"only initiating held Y is retired for this pop");
@@ -93,7 +96,7 @@ void retired_initiating_y_grab() {
         check(!p.retired_y(at+dt),"missing native occurrence cannot inherit retired pop selector");
     }
     for(unsigned fault=0;fault<12;++fault) {
-        Pipeline p;setup_held_y_pop(p,60,fault!=0);const auto at=1578u;
+        const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;setup_held_y_pop(p,60,fault!=0);const auto at=1578u;
         if(fault==1)p.poll(at-17,0); // A new Y is a new command, even in the same flight.
         if(fault==2)++p.owner.entity;
         const auto state=fault==3?100u:fault==4?300u:201u;
@@ -109,13 +112,13 @@ void retired_initiating_y_grab() {
         check(!p.grabs,"invalid rail provenance cannot authorize native Y+B");
     }
     {
-        Pipeline p;setup_held_y_pop(p,60);const auto at=1578u;p.step(at,201,60,1,16,2);p.poll(at,classic_y|0x2000u);
+        const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;setup_held_y_pop(p,60);const auto at=1578u;p.step(at,201,60,1,16,2);p.poll(at,classic_y|0x2000u);
         p.grab_continuity=true;p.step(at+17,201,60,9,16,2);check(p.retired_y(at+17),"fixture has observed continuation");
         p.poll(at+17,0x2000u);check(!p.retired_y(at+17),"Y release permanently clears retired hold metadata");
         p.step(at+34,201,60,9,16,2);check(!p.retired_y(at+34),"Y repress cannot borrow earlier native grab occurrence");
     }
     for(bool native_continuation:{false,true}) {
-        Pipeline p;setup_held_y_pop(p,60);const auto at=1578u;
+        const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;setup_held_y_pop(p,60);const auto at=1578u;
         p.step(at,201,60,1,16,2);
         if(native_continuation){p.poll(at,classic_y|0x2000u);p.grab_continuity=true;}
         const auto selected=native_continuation?9:1;
@@ -127,7 +130,7 @@ void retired_initiating_y_grab() {
         p.step(3569,201,60,selected,16,2);check(!p.retired_y(3569),"pop and native grab paths cannot renew original2500ms lease");
     }
     {
-        Pipeline p;p.native_grab_enabled=true;p.step(1000,100,60);p.poll(1000,0);p.step(1034,201,60,1,16,2);
+        const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.native_grab_enabled=true;p.step(1000,100,60);p.poll(1000,0);p.step(1034,201,60,1,16,2);
         check(!p.retired_y(1034),"ordinary airborne Y+B has no rail provenance");p.poll(1034,classic_y|0x2000u);
         check(!p.grabs,"ordinary airborne Y+B cannot enter native grab exception");
     }
