@@ -88,9 +88,29 @@ int main(){
   const unsigned takeoff=1000+dt+hold;
   auto out=poll(takeoff,side,200,false);
   check(out.owns_left&&out.y==0,"short crouch retains original shoulder preparation through genuine takeoff");
+  check(out.x==(side==BoardChord::lb?-31783:31783)&&out.yaw_rate==0,
+        "genuine takeoff ends ground chord arbitration so a short prewind rotates immediately");
+  const auto duplicate=poll(takeoff,side,200,false);
+  check(duplicate.x==out.x&&duplicate.y==out.y&&duplicate.yaw_rate==0,
+        "duplicate takeoff polling retains one native stick direction without accumulating rotation");
   for(unsigned t=takeoff+dt;t<takeoff+200;t+=dt){out=poll(t,side,200,false);}
-  check(out.x==(side==BoardChord::lb?-31783:31783)&&out.yaw_rate==0,"buffered AIR spin survives remaining chord interval without body writer");
+  check(out.x==(side==BoardChord::lb?-31783:31783)&&out.yaw_rate==0,"buffered AIR spin retains native direction without body writer");
   check(!poll(takeoff+220,0,200,false).owns_left,"buffer release cannot stick");
+ }
+
+ for(auto side:{BoardChord::lb,BoardChord::rb})for(unsigned fault=0;fault<5;++fault) {
+  AirRotation buffer;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
+  NativeRequestSample sample{};sample.valid=true;sample.state=103;sample.crouch_mode=0;sample.words[1]=0xc000;
+  auto f=producer.observe(1000,owner,sample,{true,1,16});
+  buffer.poll_preparation(1000,0,true,f,true,false,false,SpinMode::held);
+  f=producer.observe(1017,owner,sample,{true,1,16});
+  buffer.poll_preparation(1017,side,true,f,true,false,false,SpinMode::held);
+  if(fault==0)++owner.rig;
+  sample.state=200;sample.words[1]=0;sample.crouch_mode=1;
+  f=producer.observe(1034,owner,sample,{true,1,16});
+  const auto out=buffer.poll_preparation(fault==2?1185:1034,
+      fault==3?BoardChord::pair:side,fault!=1,f,false,false,fault==4,SpinMode::held);
+  check(!out.owns_left,"owner change, focus loss, stale AIR, opposed shoulders or competing action cancel short prewind");
  }
  for(auto side:{BoardChord::lb,BoardChord::rb})for(bool nollie:{false,true}) {
   AirRotation preparation; NativeInputFrame f{};f.valid=true;f.owner={1,2,3,4,5};

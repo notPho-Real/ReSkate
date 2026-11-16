@@ -58,11 +58,10 @@ public:
                 frame.airborne_started_at>=prepared_.sampled_at && frame.air_departure==prepared_.air_departure)
                 prepared_air_=frame.airborne_episode;
             if (prepared_air_==frame.airborne_episode && frame.air_departure==prepared_.air_departure) {
-                // Preserve the remaining chord interval across takeoff, rather
-                // than requiring the entire interval to elapse while crouched.
-                if(now>=pressed_at_ && now-pressed_at_>BoardChord::window_ms)
-                    return {true,static_cast<std::int16_t>((held==BoardChord::lb?-.97f:.97f)*32767),0};
-                return {true,0,0};
+                // Chord arbitration protects the grounded board action. Once
+                // native AIR is proved, match ordinary airborne shoulders on
+                // this first sample instead of suppressing a short prewind.
+                return {true,static_cast<std::int16_t>((held==BoardChord::lb?-.97f:.97f)*32767),0};
             }
             prepared_={}; prepared_air_=0;
         }
