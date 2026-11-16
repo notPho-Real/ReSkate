@@ -376,7 +376,35 @@ void compact_accounting(){
         check(capture_correlation_complete(footer)&&footer.expected==5&&footer.drained==5&&!footer.dropped,
             "existing formatter/drain completeness accounts compact source7 and unchanged other sources together");
     }
-    for(unsigned count:{224u,225u}){
+    {
+        // The retained three-second, 60 Hz trial needed 347 selected observations.
+        // Interleave two publications per physics step without changing compaction.
+        reset();begin(103,3000);auto rows=drain();
+        for(const auto source:{CaptureCorrelationSource::input,CaptureCorrelationSource::recognition,
+                CaptureCorrelationSource::native,CaptureCorrelationSource::native_admission}){
+            CaptureCorrelationEvidence row;row.source=source;row.source_sequence=1;row.ms=1000;row.events_known=true;
+            row.controller=controller_capture_context(1000,1).details;
+            if(source==CaptureCorrelationSource::recognition){row.recognition_id=row.recognition_session=1;
+                row.action=3;row.context=2;row.footprint_kind=2;row.recognized_ms=1000;}
+            input_capture_correlation.observation(row,frame(),telemetry.client.dropped(),capture_row);
+        }
+        auto initial=drain();rows.insert(rows.end(),initial.begin(),initial.end());
+        for(unsigned i=0;i<347;++i){
+            clock_ms=1000+(2990*i)/346;ControllerPollCapture c{};
+            check(begin_controller_poll(1,c),"three-second selected observation reserves a poll");
+            c.proof=frame(1000+(2990*(i/2*2))/346,1+i/2);c.details=controller_capture_context(clock_ms,1).details;
+            c.details.poll_started=c.details.raw_ms=c.details.remap_ms=c.details.returned_ms=clock_ms;
+            c.details.binding_native_ms=clock_ms;
+            complete_controller_poll(c);auto part=drain();rows.insert(rows.end(),part.begin(),part.end());
+        }
+        input_capture_correlation.end(clock_ms,frame(clock_ms,174),telemetry.client.dropped(),capture_row);auto end=drain();
+        check(rows.size()==352&&end.size()==1,"three-second 347-row selected stream is retained in full");
+        CaptureCorrelationDrain consumer;for(const auto& row:rows)consumer.written(row,true);
+        const auto footer=consumer.footer(end[0],telemetry.client.dropped());
+        check(capture_correlation_complete(footer)&&footer.expected==351&&footer.drained==351&&!footer.dropped&&
+            footer.events_known&&!footer.overflow,"measured selected-row demand closes without missing evidence or hidden loss");
+    }
+    for(unsigned count:{384u,385u}){
         reset();begin(103);auto begin_row=drain();std::vector<CaptureCorrelationEvidence> rows=begin_row;
         for(unsigned i=0;i<count;++i){
             clock_ms=1000+i;ControllerPollCapture c{};check(begin_controller_poll(1,c),"bounded capture reserves all completed polls");
@@ -386,10 +414,10 @@ void compact_accounting(){
             auto part=drain();rows.insert(rows.end(),part.begin(),part.end());
         }
         input_capture_correlation.end(clock_ms,{},telemetry.client.dropped(),capture_row);auto end=drain();
-        check(rows.size()==225&&end.size()==1,"exact224 compact rows is the hard output bound");
+        check(rows.size()==385&&end.size()==1,"exact384 compact rows is the hard output bound");
         for(unsigned i=1;i<rows.size();++i)check(rows[i].ordinal==i&&rows[i].source_sequence==i,"compact row and global ordinal sequences are contiguous without ticket gaps");
-        check(end[0].expected==count&&end[0].complete==(count==224)&&end[0].events_known==(count==224)&&end[0].overflow==(count==225),
-            "225th selected observation is counted once as loss, never silent truncation");
+        check(end[0].expected==count&&end[0].complete==(count==384)&&end[0].events_known==(count==384)&&end[0].overflow==(count==385),
+            "385th selected observation is counted once as loss, never silent truncation");
     }
     for(unsigned fault=0;fault<8;++fault){
         reset();begin(103);(void)drain();ControllerPollCapture first{},second{};

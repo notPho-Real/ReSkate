@@ -410,3 +410,24 @@ boundary, so that new allowance's live orientation gate remains unverified.
 The rebuilt shared-consumer sanitizer graph also passes 46/46 suites in 57.45s,
 including both wallplant configurations and existing Casper consumers. Receipt:
 `/Volumes/ReSkateSSD/ReSkateWork/builds/worktrees-rc4-work/rc51-targeted/rc51-dependency-targeted.xml`.
+
+### Bounded diagnostic capacity
+
+The incomplete 60Hz source-7 captures reached the intentional 224-record output
+cap; they were not evidence of controller input loss. The separate localized
+adjustment raises that finite cap to 384. A regression reproduces the measured
+347 selected observations across 2,990ms, while the 385th record still makes a
+capture incomplete. Existing outstanding-ticket, queue-loss, hook invariance,
+compaction and footer checks remain intact; no old receipt is relabeled complete.
+
+The producer retains the same four previous-poll records and existing queues,
+with no new hooks or native reads. The change adds zero static storage and at
+most 160 formatted records (about 362KB at the largest observed line length).
+Extra serialization/logging cost and native timing remain unverified. Evidence
+is retained at `/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-capture-cap384`;
+the diagnostic improvement is separate from native gameplay acceptance.
+The final fixture keeps each native proof unchanged across duplicate polls while
+binding publication time advances. It passes 2,656 controller-capture checks,
+4,222 telemetry checks and 188 schema-4 checks with warnings-as-errors and
+address/undefined sanitizers. An isolated old-cap header compiles and fails the
+347-record retention assertion.

@@ -510,7 +510,7 @@ class CaptureCorrelationProducer {
     std::array<CompactPoll,4> compact_polls_{};
     std::uint64_t compact_completed_{},compact_emitted_{},compact_returned_{};
     unsigned compact_selected_{4},compact_withdrawal_{};
-    static constexpr unsigned compact_poll_limit=224;
+    static constexpr unsigned compact_poll_limit=384;
     unsigned scope_{};bool active_{},known_{true},overflow_{};
     static bool fresh(const NativeInputFrame& f,std::uint64_t now) noexcept {
         return f.valid&&f.owner.valid()&&f.owner_generation&&f.contact_generation&&f.action_generation&&f.physics_step&&
