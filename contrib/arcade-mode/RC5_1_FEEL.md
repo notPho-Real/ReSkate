@@ -3,11 +3,12 @@
 This candidate is not hardware accepted. Development stays on
 `arcade-stage-rc51-feel`; the accepted updater and historical builds are unchanged.
 
-Latest compiled checkpoint: `ae9c827ea6bd41f85dffb899c6adc6dc20ee4746`.
-All required CI gates and package verification pass. A repaired receipt path
-returned three complete 30 Hz trials: two physical doubles and one physical
+Latest compiled checkpoint: `986fb8c014e6d4afc5c4f7034df56130ec104d49`.
+All required CI gates and package verification pass; this DLL is not yet native
+accepted. Earlier ae9 trials retained two physical doubles and one physical
 single despite a preserved held request. Reliability remains unresolved.
-The Deck is restored and released; the failure is retained.
+Newer source `c038d602` fixes a separate queued-grab handoff and awaits Windows
+compilation. Hardware outcomes and restoration receipts are recorded below.
 
 ## Baseline and provenance
 
@@ -40,10 +41,11 @@ explicitly tied to this candidate's exact DLL.
 | 1: Rotation/prewind | Existing native LS spin, flight owner and ground chord; RC3 native rotation observations | Short prewind suppresses initial AIR rotation until ground chord interval expires | S | Proved native flight; both shoulders/cadences, no ground yaw, release and switch landing | Implemented; 32535ec4 short-window LB/RB native response observed; repeated switch acceptance pending |
 | 2: Input responsiveness / grabs | Existing directional/repeated-B registry and native grab adapter | Second B before first grab admission loses repeated variant; retain physical prefix independently of native readiness | S | Same owner/action/flight, original edge window and deadlines; actual actor/exit/landing | Queued-prefix correction implemented; old-source regression fails; HIL pending |
 | 2: Delayed grab recognition | Existing physical journal and native-air cutoffs | Two B edges before client readiness replay singles in reverse order; recognize the pair once | S | Both original edges, 250 ms repeat limit, second-edge +200 ms deadline, no stale replay | Implemented; 32535ec4 Method actor advancement/release/physical landing observed once |
+| 2: Queued grab after pop retirement | Existing released-pop queue proof already preserves the first B | Auxiliary admission rejected its retired action stamp; use the already-qualified current lineage and retain B2 recognition | S | Valid timely AIR, exact owner/pop/stance, native adapter admission and second-edge +200 ms | c038d602 implemented; old-header regression and 46/46 sanitizer suites pass; Windows and exact-DLL native tests pending |
 | 2: Repeated-input expiry | Existing request policy and deadline gate | `39ef1c70` stores a repeat deadline but inherits an unbounded ordinary policy; enforce the new repeat's physical-edge window | S | Fresh native observations and unavailable admission through exact second-edge +200 ms | Negative regression reproduces the defect; new repeated paths bounded; ordinary first-request policy preserved |
 | 2: Pre-AIR repeated X | Existing released-pop journal and bounded dependency queue | Preserve physical repeats through late first-action readiness | S | Same owner/pop, immutable first-AIR bounds, actual native actor and board rotation | Exact ae9c827e preserves all three immediate-pair requests beyond 200 ms; physical doubles 2/3 at 30 Hz, with a retained post-request execution failure |
 | 2: Queued double flip | Existing held-flip adapter and queue eligibility | Matching native observation can disappear before held actor entry | S | Actual actor/preparation/rotation, current owner and phase; no cached phase or renewed deadline | Source18de7d3a reuses existing zero-only owner-validated phase reread; focused and 46/46 shared tests pass, Windows/native effect pending; exact failure cause unproven |
-| 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S verification; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | New corridor baseline stops at a mixed request-word read; route/braking and Manual hold remain unverified. Separate observer proposal tested; no speculative gameplay change |
+| 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S verification; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | ae9 full corridor/native braking prerequisite passed once; brief physical Manual corroborated, but entry speed exceeded the unchanged test margin. Ten-second hold/revert chain pending; shorten ordinary setup push and fix final diagnostic drain offline |
 | 4: Camera | Shortest yaw, rigid orbit, native pivot, elapsed duplicate sampling and restoration already fixed | Reverse restart remains inconclusive; exact candidate switch/revert follow pending | S verification | Sequence C and OFF, root/motion unchanged | Exact 2427231d right/up orbit and neutral recenter observed with complete camera captures and stable body heading; switch/revert follow and OFF restoration remain pending |
 | 5: Ollie/movement | Native release, charge, launch descriptors and bounded push budget already implemented | No new source-proved tuning defect; short/held jumps and momentum need comparative evidence | S verification / M tuning | Native cadence, trajectory, catch/contact, collision/bail controls | Preserve coherent current parameters; measure before tuning |
 | 6: HUD/scoring | Native-plus-custom combo model, integer ring and retained native stack entries | 39ef1c70 rendered Casper/Casper Flip names and x10 in the separate RC5 HUD session | S verification / M if binding defect remains | Sequence F, actual rendered names, banking/bail/OFF; RC5 chat owns HUD investigation | Native rendered names and OFF cleanup observed on 39ef1c70; integrated 32535ec4 full chain pending |
@@ -788,3 +790,139 @@ before a single Windows compilation checkpoint.
 The final combined held/ground batch passes 46/46 shared sanitizer suites in
 56.91 seconds. JUnit: `rc51-targeted/rc51-native-phase-targeted.xml`.
 The final manifest edit separately passes both candidate-contract tests.
+
+## ae9c827e independent Manual prerequisite attempt
+
+The reviewed mixed-request observer correction passed 76 preparation and 109
+focused checks before a new exclusive slot. The exact previously compiled ae9
+DLL was reused; these observations do not validate later source corrections.
+Fresh stopped-state installation checks, mapped DLL hash and native Mega Park
+identity passed. Both native and cached steps measured 1/60 after setup.
+
+The corridor trial stopped at 11.835830679 seconds on an unknown top-level
+phase (`0`). The owner remained identical. Separate wall-motion, contact and
+bail reads reported state100, with four stable active contacts, coherent request
+words, valid pose, unchanged stance and continuous motion. Adjacent state100
+rows bracketed the unknown within 59.63 ms. This is an inconsistent external
+observation; it does not establish a physical collision, owner change or bail.
+
+The baseline remains failed: neither the full 15-second movement interval nor
+the separate native brake ran. Its later OFF sample still moved at 6.05082 m/s.
+No Manual trial was attempted. The retained acquisition capture was incomplete
+(3095/3099 rows, four drops); it cannot establish complete input history. A
+separate offline audit covers unavailable phase handling across existing
+physical, arrival and feedback gates before another hardware attempt.
+
+Evidence directory:
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-manual-hil-ae9c827e`.
+Independent analysis SHA-256:
+`412177474ca1e6ad9ad59317392110d87e6ffe81b97f82955293ac47838445c9`.
+Both processes closed normally. Four exact session-generated HUD files were
+removed, and prior971c DLL/settings/receipt hashes were restored. All 132
+rollback sets remain intact; transport authority is revoked with no pending
+hardware action. Returned receipt SHA-256:
+`94daa555f8e630e0dc1cd0b1851f908834af59c76bc24d75fee119915e426a18`.
+Restoration receipt SHA-256:
+`7a28afe065c8ba234ee267b3be3021e44884939545dc599d0a40b1d570dc8b89`.
+
+## Queued grabs through native pop retirement
+
+Source `c038d602f2f38ab4449a9a221c3bdd93896ae43c` fixes a source-proven
+inconsistency between existing queue eligibility and auxiliary admission. A
+waiting first B could retain the exact released-pop proof but reach the native
+grab adapter with its retired action stamp. The queue now passes the already
+qualified current lineage to that unchanged adapter. Repeated-B recognition
+uses the same eligibility gate, preserving the first direction and the second
+physical edge. No native actor is inferred from either request.
+
+The old production header compiles and fails the composed regression with AIR
+reached inside the existing 500 ms takeoff window. An earlier exploratory
+fixture exceeded that window and was insufficient evidence; it is retained as
+a negative test. The correction covers single and repeated B at 30/60/120 Hz,
+both stances, neutral grabs, the 199/200 ms repeat boundary and owner, object,
+stance, stale observation, landing, wrong selector, focus and new-A cancellation.
+Original timestamps, ordinary first-request policy and native admission remain
+unchanged. Both B presses already queued before a later selector retirement
+remain a gameplay limitation: a child cannot fabricate native grab ownership.
+
+Focused ASan/UBSan and warnings-as-errors checks pass: 20,796 native-grab,
+6,517 session, 648 takeoff, 326 jump-idle, 2,068 held-flip and 9,174 dispatch.
+The shared graph passes 46/46 in 57.49 seconds, including disabled wallplants
+and Casper. Root and independent source review passed. Receipts:
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-grab-retirement-checks`.
+JUnit: `rc51-targeted/rc51-grab-retirement-targeted.xml`.
+This source correction is not covered by the older ae9 or 986 packages; Windows
+compilation and repeated exact-DLL native acceptance remain required.
+
+## Compiled checkpoint: 986fb8c0
+
+Exact source `986fb8c014e6d4afc5c4f7034df56130ec104d49` passed
+[CI 43845046801](https://github.com/notPho-Real/ReSkate/actions/runs/43845046801).
+All nine required jobs succeeded, including 140 Windows preflight and 132
+upstream integration tests, Windows runtime compilation, packaging and release
+eligibility. Actual release publication was skipped. The held and ground phase
+read corrections are compiled; the newer queued-grab correction is excluded.
+
+Installable experimental artifacts:
+[Deck installer](https://github.com/notPho-Real/ReSkate/actions/runs/43845046801/artifacts/14217675637),
+[runtime](https://github.com/notPho-Real/ReSkate/actions/runs/43845046801/artifacts/14216269863),
+[integration results](https://github.com/notPho-Real/ReSkate/actions/runs/43845046801/artifacts/14216833635).
+DLL size: 45,610,496 bytes. DLL SHA-256:
+`65e59c3bde3abe98935e87298c0a7912e08f56956bfa850451b395592307f215`.
+Strict archive, PE, provenance and embedded DLL/installer/updater checks pass.
+Local package: `/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-native-phase-ready-986fb8c0`.
+Verification receipt SHA-256:
+`14bd109b15de97d3df8fb37f48d256da1d76a46f09d976f2662f2fd0163f61a9`.
+
+No native test of this exact DLL is claimed. Use the existing stopped-state
+installation and rollback procedure above, preserving prior DLL/settings/receipt
+and stock assets. The accepted updater remains unchanged. Next native work is
+repeated early-flip/held-actor validation and ground-input cancellation controls;
+the independent Manual observations continue to belong to ae9 only.
+
+## ae9 corridor qualification and brief physical Manual
+
+The next independently reviewed observer version passed 186 focused and 105
+clock/rotation checks, then 76 preparation and 112 inactive-scaffold checks.
+Unavailable top-level phase cannot qualify or renew physical/balance evidence;
+unknown or stale samples neutralize corrective input. Existing entry, stop,
+owner, contrary-state and time bounds remain intact. Both previous failures
+remain retained; neither is retroactively accepted.
+
+On the exact ae9 DLL, the new corridor completed 15.0218 seconds of movement.
+One owner and stance persisted; the largest independently qualified sample gap
+was 97.984 ms, within the original 150 ms bound. Nineteen unavailable samples
+did not renew evidence. Native braking after Arcade OFF ran for 2.2155 seconds,
+stopping over 5.8176 metres to 0.0000664 m/s, with a later stationary sample.
+This qualifies one bounded follow-up on the same reset, not arbitrary geometry
+or continuous native callback coverage. The acquisition capture was incomplete
+(3090/3101 rows); video ended before braking, whose proof is physical telemetry
+and the post-stop frame. Independent analysis SHA-256:
+`e81eaabed8408e0862a3f26c0d658fb000dc3965aeb7109ddb69b5b8d46a4122`.
+
+After a fresh identical reset, the natural stick throw produced a brief physical
+Manual: 24 samples over 0.865 seconds show approximately 2–11 degrees of board
+pitch, two upward-normal support points, valid pose, stable owner and stance.
+Native current-sequence points advanced 0 to37, with rendered Manual/balance/x1
+feedback. This is stronger than intent or HUD alone, but is not lifetime or bank
+acceptance. Every entry-window sample exceeded the unchanged 8 m/s test margin
+(8.4196–8.8846 m/s). The 700 ms entry gate timed out; no adaptive correction,
+10-second hold record or Ollie exit was executed. Video shows a later bail after
+physical collection stopped, so its precise cause is not established.
+
+A second failure occurred during final log collection after the collector and
+video had stopped: the bounded log planner rejected backlog/truncation. It did
+not cause the earlier entry timeout. Next offline work uses ordinary input to
+meet the existing speed margin and separates final diagnostic draining from
+live balance freshness; no production speed tuning is justified by this test.
+Manual analysis SHA-256:
+`8efb6e5371f87b24f2d0fef6fec0b9e02921507b0f0efface91797bd4a2e87cc`.
+
+Evidence directory:
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-manual-phase-hil-ae9c827e`.
+Game and launcher closed normally, four exact generated HUD files were removed,
+and prior971c DLL/settings/receipt were restored with all132 rollback sets.
+Authority is revoked, with no pending hardware actions. Returned receipt:
+`1123126c478c5a75fb49cfeb8b94c5ada8caca7626a5a6ec6e62c459ed67092a`.
+Restoration receipt:
+`8af305cd31bd80526c7154b5d1011998b47166b043972f35aaefa56cf621a8fa`.
