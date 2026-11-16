@@ -50,6 +50,8 @@ wallplant/flatland failure diagnostics; main-map causality remains unverified.
 Do not claim this correction set is compiled or hardware accepted until its
 own exact-source gates pass.
 
+Final readmission review also reproduced stale neutral-release suppression after an owned Manual ended. New independently proved native episodes now clear that old release step; the production-composed regression verifies both a visible bar and current actuation eligibility without inventing a new RS request.
+
 Combined offline validation:46/46 shared targeted tests,21/21 production-composed lifecycle/HUD tests,12/12 native-input consumer tests,7,010 standalone rendered HUD checks and285 balance lifecycle checks pass. The clarified trick-to-Manual landing adds48 cases/792 checks covering both prior/current support types, immediate/delayed history and stale-history rejection. New source remains uncompiled on Windows until CI below is recorded. Test-only clarification was compiled separately after the21-test checkpoint.
 
 

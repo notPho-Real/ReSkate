@@ -1330,6 +1330,19 @@ void episode_plain_landing(){
       "plain four-wheel landing retires the previous airborne Manual without a new preparation");
  }
 }
+void native_manual_after_owned_release(){
+ for(bool nose:{false,true}){
+  qualified(nose,17,300);
+  check(remap(12u).manual.release_requested,"native readmission fixture first releases an owned Manual");
+  for(unsigned i=0;i<15;++i){tick(17,100,0xc000u);remap();}
+  check(manual_episode.ended(),"owned Manual physically finishes before independent native readmission");
+  rows.push_back({1003,1004,nose?2u:1u});tick(17,100,nose?0x8000u:0x4000u);remap();
+  check(manual_balance_admitted.load()&&balance_hud_pending()&&!manual_episode.owned(),
+      "fresh native history readmits balance after an owned release without another RS request");
+  check(manual_episode.actuatable(clock_ms),
+      "a new native Manual cannot inherit the prior section's release suppression");
+ }
+}
 void episode_ten_seconds(){
  for(unsigned hz:{30u,60u,120u})for(bool nose:{false,true})for(bool early:{false,true}){
   reset_case();native_score_active=false;
@@ -1578,6 +1591,6 @@ int main(){
  episode_airborne_combos();episode_real_exits();episode_suspension();episode_buffered_endpoint();
  ground_manual_after_completed_exit();
  camera_lifecycle();camera_routing_lifecycle();camera_root_pivot();camera_diagnostic_lock_outcomes();controller_packet_dependencies();
- episode_plain_landing();independent_native_history_readmission();native_trick_landing_readmission();
+ episode_plain_landing();independent_native_history_readmission();native_trick_landing_readmission();native_manual_after_owned_release();
  std::cout<<checks<<" production-composed manual episode checks passed\n";
 }

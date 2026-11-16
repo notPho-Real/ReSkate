@@ -66,6 +66,9 @@ public:
             f.contacts!=(admission.pose==SkatePose::manual?0x4000u:0x8000u))return;
         if(serial_==UINT64_MAX)return;
         ++serial_;phase_=Phase::active;exit_=Exit::none;pose_=admission.pose;physical_exit_=uncertain_=false;
+        // A newly proved native section has no relationship to the previous
+        // section's neutral release packet, including independent history entry.
+        release_step_=0;
         owner_=f.owner;generation_=f.owner_generation;entry_step_=integration_step_=f.physics_step;last_=f;two_at_=0;
     }
     // Return true only for a positive terminal boundary, including boundaries
