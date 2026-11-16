@@ -48,6 +48,12 @@ directions remaining valid. Consumed released directions do not repeat. Extra
 air trick face presses use300ms; named grab repeats use 250ms. Neutral B requests
 BS Grab.
 Repeated-X/B readiness handoffs expire 200ms after the second physical edge.
+For a qualified queued pre-AIR double flip only, a matching first flip admitted
+before that deadline may give its child one attempt on the immediately following
+native physics frame. This consumes one opportunity, retains the original
+deadline and cannot outlive the admitted frame's 150ms observation lease.
+Changed owner, pop, stance, object, flight, skipped frames or stale observations
+cancel that allowance; native actor admission still decides execution.
 A qualified ordinary first flip can instead follow its exact admitted pop through
 native setup; owner, pop withdrawal and landing checks still cancel it. These
 windows add no fixed wait and do not establish native trick completion.

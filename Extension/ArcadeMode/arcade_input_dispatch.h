@@ -3,6 +3,7 @@
 #include "arcade_air_selection.h"
 #include "arcade_native_grab_lease.h"
 #include "arcade_input_policy.h"
+#include "arcade_held_flip.h"
 #include <limits>
 #include <memory>
 
@@ -90,6 +91,7 @@ struct InputRequest {
     std::uint64_t table_generation{}, table_expires_at{};
     InputFlipObservation waiting_flip{};
     std::uint64_t pop_release_at{}; // Qualified original release; recognition only, never AIR authority.
+    std::uint64_t parent_input_sequence{}; // Exact already-queued pre-AIR X, not a native completion.
     constexpr GrindChangeTarget grind_target() const noexcept {
         return action == InputAction::rail_change ? grind_change_target(variant) : GrindChangeTarget::none;
     }
@@ -150,9 +152,10 @@ public:
         else { slots_[1 + (front_ + size_) % capacity] = request; ++size_; }
         return true;
     }
-    void clear() noexcept { slots_ = {}; front_ = size_ = 0; ++epoch_; ++manual_epoch_; ++rail_epoch_; }
+    void clear() noexcept { slots_ = {}; held_dependency_={}; front_ = size_ = 0; ++epoch_; ++manual_epoch_; ++rail_epoch_; }
     void clear_ordinary() noexcept {
         for (std::size_t i = 1; i <= capacity; ++i) slots_[i] = {};
+        held_dependency_={};
         front_ = size_ = 0; ++epoch_;
     }
     void bind_rail_selection(std::uint64_t now, const InputRailState& rail) noexcept {
@@ -172,6 +175,7 @@ public:
                   InputAdapter adapter, Report report, InputNativeContext native = {}, bool rail_ready = false, InputAirTables tables = {}, std::uint64_t released_jump = 0,
                   void* grab_context = nullptr, bool (*grab_continues)(void*,InputGenerations,InputAirEpisode) noexcept = nullptr) noexcept {
         bool started{};
+        if(held_dependency_.input_sequence && !dependency_current(now,native))held_dependency_={};
         // Installed extras precede the ordinary FIFO; each retains insertion
         // order. Manual keeps its independent replaceable slot.
         for (std::size_t visited = 0; visited < capacity && size_; ++visited) {
@@ -188,9 +192,20 @@ public:
                 request.air_episode==native.air_episode() && grab_continues &&
                 grab_continues(grab_context,request.generations,request.air_episode))
                 request.generations=native.generations;
-            const auto gate = eligibility(request, now, session, context, native, tables, released_jump);
+            auto gate = eligibility(request, now, session, context, native, tables, released_jump);
+            const bool dependent=dependency_matches(request);
+            bool successor_admission{};
+            if(gate==InputDisposition::expired && dependent) {
+                // A first flip accepted just before the physical deadline can
+                // only expose its native actor on the next physics sample.
+                // Same-sample polls wait without admitting or renewing input.
+                if(native.physics_step==held_dependency_.native.physics_step)break;
+                gate=InputDisposition::waiting;successor_admission=true;
+            }
             if (gate != InputDisposition::waiting) { pop(); report(InputDispatchEvent{request, gate}); continue; }
             if (started || now < request.ready_at) break;
+            const auto child=dependency_candidate(request,now,session,context,native,tables,released_jump);
+            if(dependent && native.physics_step>held_dependency_.native.physics_step)held_dependency_={};
             pop(); // Removal precedes any adapter/reentrant boundary.
             const auto epoch = epoch_;
             const auto cancellation = cancellations_[static_cast<std::size_t>(request.action)];
@@ -203,9 +218,24 @@ public:
                     table_cancellation != table_cancellations_[static_cast<std::size_t>(request.selection.table)]) {
                     report(InputDispatchEvent{request, InputDisposition::cancelled}); continue;
                 }
+                if(successor_admission) {
+                    report(InputDispatchEvent{request,InputDisposition::expired});continue;
+                }
                 // The callback's insertions reserve this slot and cannot make
                 // restoring the unchanged waiting request overflow the FIFO.
                 insert(request, request.selection.table == InputAirTableKind::grab_extra ? 0 : extra_prefix()); break;
+            }
+            if(result==InputDisposition::started && child.input_sequence && epoch==epoch_ &&
+                cancellation==cancellations_[static_cast<std::size_t>(request.action)] &&
+                table_cancellation==table_cancellations_[static_cast<std::size_t>(request.selection.table)]) {
+                // Snapshot before the adapter call: a reentrant insertion is
+                // never evidence that this parent already had a queued child.
+                for(const auto& pending:slots_)if(pending==child) {
+                    held_dependency_={native,child.input_sequence,child.parent_input_sequence,
+                        child.session,child.pop_release_at,child.deadline,now,
+                        static_cast<std::int32_t>(held_flip_base(child.air.trick))};
+                    break;
+                }
             }
             report(InputDispatchEvent{request, result});
             started = result == InputDisposition::started;
@@ -239,6 +269,7 @@ public:
         // A request is absent from slots while its adapter runs. Invalidate
         // that reservation too, without cancelling unrelated waiting actions.
         ++cancellations_[static_cast<std::size_t>(action)];
+        if(action==InputAction::flip)held_dependency_={};
         for (auto& slot : slots_) if (slot.action == action) slot = {};
         compact();
     }
@@ -251,6 +282,46 @@ public:
     }
     std::span<const InputRequest> slots() const noexcept { return slots_; }
 private:
+    struct HeldDependency {
+        InputNativeContext native{};
+        std::uint64_t input_sequence{},parent_sequence{},session{},pop_release_at{},deadline{},accepted_at{};
+        std::int32_t id{};
+    } held_dependency_{};
+    bool dependency_current(std::uint64_t now,const InputNativeContext& native) const noexcept {
+        const auto& before=held_dependency_.native;
+        return now>=held_dependency_.accepted_at && held_dependency_.accepted_at<held_dependency_.deadline &&
+            native.follows(before) && native.physics_step-before.physics_step<=1 &&
+            before.orientation.valid && native.orientation==before.orientation &&
+            held_flip_continues(before,native,now,held_dependency_.id);
+    }
+    bool dependency_matches(const InputRequest& request) const noexcept {
+        return held_dependency_.input_sequence && request.input_sequence==held_dependency_.input_sequence &&
+            request.parent_input_sequence==held_dependency_.parent_sequence && request.session==held_dependency_.session &&
+            request.pop_release_at==held_dependency_.pop_release_at && request.deadline==held_dependency_.deadline &&
+            request.action==InputAction::flip && request.form==InputForm::held_repeat && request.presses==2 &&
+            !request.nollie && !request.unbounded && request.context==InputContext::ground &&
+            static_cast<std::int32_t>(held_flip_base(request.air.trick))==held_dependency_.id;
+    }
+    InputRequest dependency_candidate(const InputRequest& parent,std::uint64_t now,std::uint64_t session,
+        InputContext context,InputNativeContext native,const InputAirTables& tables,std::uint64_t released_jump) const noexcept {
+        if(parent.action!=InputAction::flip || parent.presses!=1 || parent.nollie || !parent.input_sequence ||
+            parent.context!=InputContext::ground || !parent.pop_release_at || parent.pop_release_at!=released_jump ||
+            (parent.form!=InputForm::ordinary && parent.form!=InputForm::neutral_press && parent.form!=InputForm::neutral_release) ||
+            (parent.air.trick!=ArcadeTrick::kickflip && parent.air.trick!=ArcadeTrick::heelflip) ||
+            !native.required || !native.fresh(now) || !native.airborne || !native.air_episode().number || !native.orientation.valid)return {};
+        for(const auto& child:slots_) {
+            if(child.parent_input_sequence!=parent.input_sequence || !child.input_sequence ||
+                child.input_sequence<=parent.input_sequence || child.action!=InputAction::flip ||
+                child.form!=InputForm::held_repeat || child.presses!=2 || child.nollie || child.unbounded ||
+                child.context!=InputContext::ground || child.pop_release_at!=parent.pop_release_at ||
+                child.session!=parent.session || child.generations.owner!=parent.generations.owner ||
+                child.physical_pressed_at<=parent.physical_pressed_at || now>=child.deadline ||
+                held_flip_base(child.air.trick)!=(parent.air.trick==ArcadeTrick::kickflip?2u:3u) ||
+                eligibility(child,now,session,context,native,tables,released_jump)!=InputDisposition::waiting)continue;
+            return child;
+        }
+        return {};
+    }
     std::size_t extra_prefix() const noexcept {
         std::size_t prefix{};
         while (prefix < size_ && slots_[1 + (front_ + prefix) % capacity].selection.table == InputAirTableKind::grab_extra) ++prefix;
@@ -816,7 +887,8 @@ private:
                  InputForm form = InputForm::ordinary, std::int16_t defined_direction = 0,
                  InputFootprintKind footprint_kind = InputFootprintKind::unknown,
                  const InputGenerations* lineage = nullptr,
-                 const ContextualTrickRow* contextual = nullptr) noexcept {
+                 const ContextualTrickRow* contextual = nullptr,
+                 const InputRequest* parent = nullptr) noexcept {
         const auto limit = std::numeric_limits<std::uint64_t>::max();
         const auto deadline = now > limit - duration ? limit : now + duration;
         InputRequest request{action, environment.context, now, deadline, session_,
@@ -859,6 +931,7 @@ private:
         }
         if (action == InputAction::jump_variant) request.jump_generation = environment.jump_generation;
         request.form = form;
+        if(parent)request.parent_input_sequence=parent->input_sequence;
         if(action==InputAction::flip && environment.context==InputContext::ground) {
             request.pop_release_at=takeoff_release_at_;request.air_episode={};
             // An ordinary first flip belongs to an admitted released pop. Native setup
@@ -909,6 +982,7 @@ private:
                     static_cast<std::int16_t>(action == InputAction::flip ? 14 : 13),InputEdge::press}) continue;
                 for (std::size_t i=0;i<footprint->count;++i) if (footprint->events[i]==event.sequence) {
                     request.physical_pressed_at=event.at;
+                    if(action==InputAction::flip)request.input_sequence=event.sequence;
                     request.physical_released_at=0;
                     for (const auto& release : events_.history().events())
                         if (release.sequence>event.sequence && release.token.source==event.token.source &&
@@ -1352,7 +1426,8 @@ private:
             InputToken{flip_source_,flip_direction_,InputEdge::press};
         enqueue(InputAction::flip, now, InputTiming::readiness_ms, selected, presses, 0, 0, 0,
             presses > 1 ? inherited : InputToken{}, &match,form,defined_direction,
-            InputFootprintKind::unknown, presses > 1 ? queued_prefix?&queued_prefix->generations:&flip_generations_ : nullptr);
+            InputFootprintKind::unknown, presses > 1 ? queued_prefix?&queued_prefix->generations:&flip_generations_ : nullptr,
+            nullptr,preair?queued_prefix:nullptr);
         direction_ = 0; return true;
     }
     void recognize_surface(std::uint64_t now, InputEnvironment environment) noexcept {

@@ -377,3 +377,36 @@ stops/reverses near Z −136 after approximately 36m; historical successful Manu
 routes run elsewhere. Qualify a clear corridor before that acceptance test.
 Follow the installation/rollback procedure above; this session's exact restore
 and returned-slot evidence is preserved.
+
+### Follow-up: one native successor for the queued first-flip dependency
+
+The retained 30Hz failure exposes a dependency between a timely first flip and
+its already-recognized child: first-flip admission at second-edge +190ms can
+leave the next native dispatch at +224ms, beyond the original +200ms deadline.
+The follow-up keeps that deadline unchanged and adds a queue-local, one-shot
+allowance only for the exact pre-AIR child already queued before its matching
+basic parent was admitted before expiry. Native admission is still required;
+the allowance grants no animation, completion or score evidence.
+
+The allowance belongs to the parent's accepted native observation and its
+existing 150ms freshness lease. Only its immediate successor physics step can
+use it; duplicate polls cannot renew it, skipped steps cancel it, and one failed
+successor attempt consumes it. Owner, exact physical parent, pop, object,
+corroborated stance, flight and monotonic observation identity must remain valid.
+Reentrant queue changes cannot manufacture a preexisting child. Ordinary paths
+retain their original timing and do not acquire the new orientation prerequisite.
+
+The old header compiles successfully with the composed regression and then
+fails the intended 190→224ms behavior assertion. The correction passes 1,860
+held-flip checks, 6,517 session checks, 648 takeoff and 326 jump-idle cases,
+9,174 dispatch and 20,740 grab checks with address/undefined sanitizers and
+warnings as errors. Independent review found no remaining blocker. Exact
+commands, hashes and the failing-old result are retained in
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-held-dependency-checks/regression-results.json`.
+Windows compilation and exact-DLL native validation remain pending. The prior
+capture does not serialize the precise producer orientation at the dependency
+boundary, so that new allowance's live orientation gate remains unverified.
+
+The rebuilt shared-consumer sanitizer graph also passes 46/46 suites in 57.45s,
+including both wallplant configurations and existing Casper consumers. Receipt:
+`/Volumes/ReSkateSSD/ReSkateWork/builds/worktrees-rc4-work/rc51-targeted/rc51-dependency-targeted.xml`.
