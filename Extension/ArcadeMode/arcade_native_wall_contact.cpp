@@ -704,7 +704,7 @@ bool static_world_owner(const SurfaceGeometryBody& shape,SurfaceGeometryWorldOwn
         };
         return static_world_owner_detail::observe(shape,
             SurfaceGeometryBody{first.body.world,first.body.index,first.body.generation},first.world_store,
-            [](auto at,auto& value){return read(at,value);},current_owner,out);
+            [](auto at,auto& value){return read(at,value);},current_owner,out,true);
     } catch(...) {out={};return false;}
 }
 bool local_component_owner(const SurfaceGeometryBody& shape,std::uintptr_t entity,SurfaceGeometryWorldOwner& out) noexcept {

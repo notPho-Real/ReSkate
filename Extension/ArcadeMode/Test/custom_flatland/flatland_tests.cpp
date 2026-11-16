@@ -77,6 +77,21 @@ struct Rig {
         check(trick.phase()==CustomFlatland::Phase::hold,"native elapsed time advances entry to hold");
     }
 };
+void native_support_admission(){
+    for(const auto contact:{0x4000u,0x8000u})for(const auto stance:{0u,0x20u}) {
+        Rig r;auto context=r.context();context.frame.contacts=contact;context.frame.stance_and_push=stance;
+        context.manual_pose=contact==0x4000u?SkatePose::manual:SkatePose::nose_manual;
+        check(context.valid(),"both independently admitted native Manual support types permit Casper in either stance");
+        auto bad=context;bad.manual_pose=contact==0x4000u?SkatePose::nose_manual:SkatePose::manual;
+        check(!bad.valid(),"opposite native support cannot borrow the admitted Manual identity");
+        bad=context;bad.manual_pose=SkatePose::riding;check(!bad.valid(),"ordinary riding cannot authorize Casper");
+        for(auto contacts:{0u,0xc000u}){bad=context;bad.frame.contacts=contacts;check(!bad.valid(),"missing or full contact is not Manual support");}
+        bad=context;bad.frame.stance_and_push|=0x40u;check(!bad.valid(),"native pushing remains excluded in either stance");
+        bad=context;bad.manual_admitted=false;check(!bad.valid(),"support alone cannot manufacture an admitted Manual");
+        bad=context;bad.balance_active=false;check(!bad.valid(),"support alone cannot manufacture governing balance");
+        bad=context;bad.frame.airborne=true;check(!bad.valid(),"airborne support cannot authorize Casper");
+    }
+}
 void input_and_continuity(){
     Rig r;const auto episode=r.episode.serial();const auto initial=r.combo.model().state();r.enter();r.hold();
     auto at=r.now+10;r.poll(at,0x4000);r.poll(at+30);auto out=r.poll(at+100,0x4000);
@@ -264,5 +279,5 @@ void animation(){
     const auto roundtrip=clip_from_bytes(clip_bytes(*c.entry_hold));check(roundtrip.times==c.entry_hold->times,"authored clip uses existing portable serialization");
 }
 }
-int main(){surface_tests();input_and_continuity();sequence_boundaries();friction();cancellation();balance_continuity();display_rotation();animation();
+int main(){surface_tests();native_support_admission();input_and_continuity();sequence_boundaries();friction();cancellation();balance_continuity();display_rotation();animation();
     std::cout<<checks<<" custom flatland checks passed (simulated native observations/player; no gameplay acceptance)\n";}

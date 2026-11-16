@@ -87,7 +87,7 @@ void diagnostic_draw_receipt(BalanceHudSource source,std::uint64_t,std::uint64_t
  ++diagnostic_draws;diagnostic_draw_source=source;capture_manual_join.render_seen=true;
 }
 void publish_balance_hud(const State&,unsigned,BalanceHudSource,
-    BalanceEndpoints = BalanceEndpoints::bail_both,float = 1) noexcept;
+    BalanceEndpoints = BalanceEndpoints::bail_both,float = 1,bool = false) noexcept;
 @@HUD_PUBLISH@@
 @@HUD_PENDING@@
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
@@ -147,13 +147,13 @@ template<class... Args>void log(Level,Channel,const char*,Args&&...){}
 @@SET_ENABLED@@
 NoBailSkater owner{1,2,3,4,5};NativeRequestSample raw;NativeInputFrame latest;
 bool corrupt_manual_delivery{};NativeOrientation orientation{true,false};
-void observe(float seconds,unsigned contacts,unsigned state=100,bool valid=true,bool idle_known=true){
+void observe(float seconds,unsigned contacts,unsigned state=100,bool valid=true,bool idle_known=true,std::int32_t flip_id=-1){
  if(trial_hz)seconds=1.f/static_cast<float>(trial_hz);
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  if(hud_hz)seconds=1.f/hud_hz;
 #endif
  raw.valid=valid;raw.state=state;raw.crouch_mode=state==103?0:1;raw.words[1]=contacts;
- const auto now=clock_ms;const auto sample=raw;const NativeFlipSelection flip{idle_known,-1};const bool wipeout=false;
+ const auto now=clock_ms;const auto sample=raw;const NativeFlipSelection flip{idle_known,flip_id};const bool wipeout=false;
  std::lock_guard lock(ollie_mutex);
 @@OBSERVER@@latest=frame;arcade_input.publish_authority(now,frame.owner_generation,1,true);
 }
@@ -569,9 +569,9 @@ void rendered(bool expected,const char* why,BalanceKind kind=BalanceKind::manual
  if(expected){
   const auto& display=combo_session.balance_display_state();
   check(display.balance_kind==kind,"native lifecycle selects the expected displayed balance family");
-  const bool safe_side=kind==BalanceKind::manual && (physical_manual.nose()?display.balance>0:display.balance<0);
+  const bool safe_side=kind==BalanceKind::manual && (physical_manual.nose()?display.balance<0:display.balance>0);
   const auto color=safe_side?IM_COL32(90,225,150,255):danger_level>=2?IM_COL32(255,65,65,255):danger_level==1?IM_COL32(255,190,65,255):IM_COL32(90,225,230,255);
-  if(kind==BalanceKind::manual)check(meter.endpoints==(physical_manual.nose()?BalanceEndpoints::negative_bail:BalanceEndpoints::positive_bail)&&
+  if(kind==BalanceKind::manual)check(meter.endpoints==manual_balance_endpoints(physical_manual.nose())&&meter.nose==physical_manual.nose()&&
       meter.limit==physical_manual.display_limit(),"actual HUD retains the governing physical type and terminal limit");
   float left=std::numeric_limits<float>::max(),top=left,right=std::numeric_limits<float>::lowest(),bottom=right;
   unsigned cursor{};const ImU32 rgb=~IM_COL32_A_MASK;
@@ -1318,6 +1318,18 @@ void episode_ground_gap_regression(){
  }
 }
 
+void episode_plain_landing(){
+ for(unsigned hz:{30u,60u,120u})for(bool nose:{false,true})for(unsigned duration:{100u,300u,800u}){
+  const unsigned dt=1000/hz;qualified(nose,dt,300);
+  const auto setup=remap(0x1000);check(setup.jump.setup_started,"plain landing begins with an admitted Manual Ollie");
+  tick(dt,103,0xc000);remap(0x1000);tick(dt,103,0xc000);remap();
+  const auto start=clock_ms;tick(dt,200,0);remap();
+  while(clock_ms-start<duration){tick(dt,200,0);remap();}
+  for(unsigned elapsed=0;elapsed<250;elapsed+=dt){tick(dt,100,0xc000);remap();}
+  check(!manual_episode.established()&&!manual_episode.airborne()&&!balance_hud_pending()&&!remap().manual.owns,
+      "plain four-wheel landing retires the previous airborne Manual without a new preparation");
+ }
+}
 void episode_ten_seconds(){
  for(unsigned hz:{30u,60u,120u})for(bool nose:{false,true})for(bool early:{false,true}){
   reset_case();native_score_active=false;
@@ -1373,7 +1385,7 @@ void episode_real_exits(){
   for(bool safe:{false,true}){
    qualified(nose,dt,300);ManualBalanceAdjustment adjustment;
    const float edge=GameplayProfile{}.balance(PhysicalBalanceKind::manual).endpoint;
-   adjustment.lean_multiplier=0;adjustment.lean_add_signed=(safe?(nose?1.f:-1.f):(nose?-1.f:1.f))*edge*1.01f;
+   adjustment.lean_multiplier=0;adjustment.lean_add_signed=(safe?(nose?-1.f:1.f):(nose?1.f:-1.f))*edge*1.01f;
    adjustment.speed_multiplier=0;
    check(physical_manual.adjust(adjustment),"endpoint fixture adjusts actual production dynamics");
    tick(dt,100,wanted);remap();
@@ -1421,7 +1433,7 @@ void episode_suspension(){
 void episode_buffered_endpoint(){
  for(bool nose:{false,true}){
   const auto wanted=nose?0x8000u:0x4000u;qualified(nose,17,300);
-  ManualBalanceAdjustment a;a.lean_multiplier=0;a.lean_add_signed=(nose?1.f:-1.f)*100000.f;a.speed_multiplier=0;
+  ManualBalanceAdjustment a;a.lean_multiplier=0;a.lean_add_signed=(nose?-1.f:1.f)*100000.f;a.speed_multiplier=0;
   check(physical_manual.adjust(a),"endpoint uses actual physical balance");tick(17,100,wanted);remap();
   check(manual_release.pending(),"integrated safe endpoint starts actual release adapter");
   clock_ms+=17;observe(.017f,0xc000);clock_ms+=17;observe(.017f,wanted);client(.017f,history());remap();
@@ -1448,6 +1460,97 @@ void ground_manual_after_completed_exit(){
     "only new original wheel contact admits the replacement manual episode");
  }
 }
+
+void independent_native_history_readmission() {
+ unsigned failures{};
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned ending:{0u,1u,2u,3u,4u,5u,6u}) {
+  reset_case();native_score_active=false;
+  const auto wanted=nose?0x8000u:0x4000u;
+  observe(dt/1000.f,0xc000u);client(dt/1000.f,history());remap();
+  rows.push_back({1001,1002,nose?2u:1u});tick(dt,100,wanted);remap();
+  check(manual_episode.established()&&manual_balance_admitted.load()&&balance_hud_pending(),
+        "independent fresh native history plus contact admits initial unactuated Manual");
+  check(!manual_episode.owned(),"native-only fixture has no Arcade-owned RS actuator");
+  if(ending<2 || ending>=4) {
+   for(unsigned i=0;i<8;++i){tick(dt,100,0xc000u);remap();}
+   check(manual_episode.ended()&&!manual_balance_admitted.load()&&!balance_hud_pending(),
+         "original consecutive four-wheel observations positively finish first native Manual");
+  } else {
+   // Actual physical model closes an endpoint on its next original sample.
+   const auto prior=physical_manual.snapshot();
+   const bool negative=!nose;
+   ManualBalanceAdjustment adjustment;
+   adjustment.lean_multiplier=negative?(prior.position<0?1.f:-1.f):(prior.position<0?-1.f:1.f);
+   adjustment.lean_add_signed=GameplayProfile{}.balance(PhysicalBalanceKind::manual).endpoint*2;
+   check(physical_manual.adjust(adjustment),"fixture drives existing admitted dynamics to unsafe endpoint");
+   tick(dt,100,wanted);remap();
+   check(manual_episode.ended(),"existing modeled endpoint terminates the first episode");
+   if(ending==3)for(unsigned i=0;i<8;++i){tick(dt,100,0xc000u);remap();}
+  }
+  const auto terminal=manual_episode.termination_frame();
+  if(ending!=1)rows.push_back({1003,1004,nose?2u:1u});
+  if(ending==4)++owner.rig;
+  if(ending==5) {
+   raw.words[1]=wanted;client(dt/1000.f,history());remap();
+  } else if(ending==6) {
+   clock_ms+=151;raw.words[1]=wanted;client(dt/1000.f,history());remap();
+  } else {tick(dt,100,wanted);remap();}
+  const bool expected=ending==0||ending==3;
+  const bool shown=manual_balance_admitted.load()&&balance_hud_pending();
+  std::cout<<"CASE nose="<<nose<<" dt="<<dt<<" ending="<<ending
+   <<" expected="<<expected<<" shown="<<shown<<" phase="<<static_cast<unsigned>(manual_episode.phase())
+   <<" terminal_step="<<terminal.physics_step<<" new_step="<<latest.physics_step
+   <<" label_sequence="<<history().sequence<<" owned="<<manual_episode.owned()<<"\n";
+  if(shown!=expected)++failures;
+ }
+ std::cout<<"independent_native_readmission_failures="<<failures<<"\n";
+ check(failures==0,"fresh independent native Manual after proved exit must readmit without owned RS; stale/owner/gap/rebound controls remain rejected");
+}
+
+
+void native_trick_landing_readmission() {
+ for(bool original_nose:{false,true})for(bool nose:{false,true})for(unsigned dt:{17u,34u})
+  for(bool endpoint:{false,true})for(unsigned history_timing:{0u,1u,2u}) {
+   reset_case();native_score_active=false;
+   const auto original=original_nose?0x8000u:0x4000u,wanted=nose?0x8000u:0x4000u;
+   observe(dt/1000.f,0xc000u);client(dt/1000.f,history());remap();
+   rows.push_back({1101,1102,original_nose?2u:1u});tick(dt,100,original);remap();
+   check(manual_balance_admitted.load()&&balance_hud_pending()&&!manual_episode.owned(),
+         "trick landing case starts from independent native Manual history and contact");
+   if(endpoint) {
+    const auto prior=physical_manual.snapshot();
+    const bool negative=!original_nose;
+    ManualBalanceAdjustment adjustment;
+    adjustment.lean_multiplier=negative?(prior.position<0?1.f:-1.f):(prior.position<0?-1.f:1.f);
+    adjustment.lean_add_signed=GameplayProfile{}.balance(PhysicalBalanceKind::manual).endpoint*2;
+    check(physical_manual.adjust(adjustment),"trick landing fixture reaches existing unsafe endpoint");
+    tick(dt,100,original);remap();
+   }
+   for(unsigned i=0;i<8;++i){tick(dt,100,0xc000u);remap();}
+   check(manual_episode.ended()&&!balance_hud_pending(),"actual four-wheel exit precedes new airborne trick");
+   // These are supplied original native observations, not an input request or
+   // a claim of native actor execution. Exercise the production observer join.
+   for(unsigned i=0;i<12;++i) {
+    advance_trial(dt);
+    observe(dt/1000.f,0,i<5?200u:201u,true,true,i<10?2:-1);
+    client(dt/1000.f,history());remap();
+    check(!balance_hud_pending(),"airborne native flip selection and retirement cannot render Manual balance");
+   }
+   if(history_timing==0)rows.push_back({1103,1104,nose?2u:1u});
+   tick(dt,100,wanted);remap();
+   if(history_timing==1) {
+    check(!manual_balance_admitted.load()&&!balance_hud_pending(),
+          "trick landing contact alone waits for independent native history");
+    rows.push_back({1103,1104,nose?2u:1u});tick(dt,100,wanted);remap();
+   }
+   check(manual_balance_admitted.load()==(history_timing!=2)&&balance_hud_pending()==(history_timing!=2),
+         "landing from native flip into fresh Manual history restores bar; old history cannot");
+   if(history_timing!=2)
+    check(manual_episode.pose()==(nose?SkatePose::nose_manual:SkatePose::manual),
+          "trick landing uses current native wheel type rather than prior Manual type");
+  }
+}
+
 int main(){
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  ImGui::CreateContext();auto& io=ImGui::GetIO();io.IniFilename=nullptr;io.LogFilename=nullptr;
@@ -1475,5 +1578,6 @@ int main(){
  episode_airborne_combos();episode_real_exits();episode_suspension();episode_buffered_endpoint();
  ground_manual_after_completed_exit();
  camera_lifecycle();camera_routing_lifecycle();camera_root_pivot();camera_diagnostic_lock_outcomes();controller_packet_dependencies();
+ episode_plain_landing();independent_native_history_readmission();native_trick_landing_readmission();
  std::cout<<checks<<" production-composed manual episode checks passed\n";
 }

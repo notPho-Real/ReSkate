@@ -550,6 +550,42 @@ int main() {
         auto ordinary=f.api();ordinary.static_world_owner=nullptr;
         check(!revalidate_surface_geometry(ordinary,f.live,sample),"world-owner opt-in cannot escape to ordinary surface consumers");
     }
+    {
+        Fixture f;f.allow_world_owner=true;f.world_owner.kind=1;f.world_owner.value=20;
+        const auto sample=f.query_wall();
+        check(sample.valid && sample.body_owner==20 && sample.world_owner==f.world_owner,
+            "entity-owned static wall retains the independently matched native owner stamp");
+        check(revalidate_surface_geometry(f.api(),f.live,sample),
+            "unchanged entity and static body owner revalidate together");
+        for(unsigned change=0;change<8;++change) {
+            const auto original=f.world_owner;
+            switch(change) {
+            case 0:++f.world_owner.index;break;case 1:++f.world_owner.generation;break;
+            case 2:f.world_owner.kind=0;break;case 3:++f.world_owner.value;break;
+            case 4:++f.world_owner.body.generation;break;case 5:++f.world_owner.store;break;
+            case 6:f.reject_world_owner=true;break;case 7:f.changed_owner=true;break;
+            }
+            check(!revalidate_surface_geometry(f.api(),f.live,sample),
+                "entity static motion owner and generation changes revoke wall geometry");
+            f.world_owner=original;f.reject_world_owner=f.changed_owner=false;
+        }
+        auto ordinary=f.api();ordinary.static_world_owner=nullptr;
+        check(!revalidate_surface_geometry(ordinary,f.live,sample),
+            "static entity proof cannot escape into an ordinary entity-only query");
+
+    }
+    for(unsigned fault=0;fault<5;++fault) {
+        Fixture f;f.allow_world_owner=true;f.world_owner.kind=1;f.world_owner.value=20;
+        switch(fault) {
+        case 0:f.reject_world_owner=true;break;
+        case 1:f.world_owner.kind=0;break;
+        case 2:f.world_owner.value=21;break;
+        case 3:f.changing_world_owner=true;break;
+        case 4:f.world_owner.value=0;break;
+        }
+        check(!f.query_wall().valid,
+            "entity ID alone cannot bypass moving unknown mismatched or recycled static ownership");
+    }
     { Fixture f;f.unknown=true;f.allow_world_owner=true;f.reject_world_owner=true;
       check(!f.query().valid,"unknown or moving owner remains rejected"); }
     { Fixture f;f.unknown=true;f.allow_world_owner=true;f.changing_world_owner=true;

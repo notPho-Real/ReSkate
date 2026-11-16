@@ -308,15 +308,15 @@ int main() {
     clock_ms.store(159000);
     for(bool nose:{false,true})for(float lean:{-.9f,.9f}){
         ManualPhysics dynamics;dynamics.begin(nose);
-        const auto endpoints=nose?BalanceEndpoints::negative_bail:BalanceEndpoints::positive_bail;
-        const auto typed=balance_meter(snapshot(BalanceKind::manual,lean),endpoints,dynamics.display_limit());
+        const auto endpoints=manual_balance_endpoints(nose);
+        const auto typed=balance_meter(snapshot(BalanceKind::manual,lean),endpoints,dynamics.display_limit(),nose);
         require(typed.cursor_y==-lean&&typed.limit==4000.0f/4096.0f,
             "typed meter keeps governing lean and actual terminal threshold without rescaling dynamics");
-        require(typed.bail_side(nose?1.0f:-1.0f)&&!typed.bail_side(nose?-1.0f:1.0f),
+        require(typed.bail_side(nose?-1.0f:1.0f)&&!typed.bail_side(nose?1.0f:-1.0f),
             "Manual and Nose putdown endpoints are opposite their failure endpoints");
         require(std::string_view(typed.title())==(nose?"NOSE MANUAL":"MANUAL"),
             "title retains the actual governing type at both boundaries");
-        publish_balance_hud(snapshot(BalanceKind::manual,lean),2,{159000,true},endpoints,dynamics.display_limit());
+        publish_balance_hud(snapshot(BalanceKind::manual,lean),2,{159000,true},endpoints,dynamics.display_limit(),nose);
         rendered_cursor(BalanceKind::manual,lean,2,endpoints);
     }
     for(float limit:{0.0f,-1.0f,1.1f,std::numeric_limits<float>::quiet_NaN()}){

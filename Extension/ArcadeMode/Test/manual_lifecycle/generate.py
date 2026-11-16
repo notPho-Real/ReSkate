@@ -124,7 +124,7 @@ def generated(root):
         '#include "Extension/ArcadeMode/arcade_manual_episode.h"',
         '#include "Extension/ArcadeMode/arcade_manual_episode.h"\n#include "acquisition_without_bail.h"')
     outputs["bail.cpp"] = outputs["bail.cpp"].replace("ManualEpisode", "ManualEpisodeWithoutBail")
-    rollback = replace_once(episode, "bail || f.state==300", "bail")
+    rollback = replace_once(episode, "if(bail || f.state==300)return finish", "if(bail)return finish")
     # Unknown300 must not be rescued by the generic incompatible-owner branch.
     rollback = replace_once(rollback,"if(f.state!=100 || f.mode!=1 || (f.stance_and_push&0x40u)){end", "if((f.state!=100 && f.state!=300) || f.mode!=1 || (f.stance_and_push&0x40u)){end")
     rollback = rollback.replace("if(f.state!=100 && f.state!=300 ||", "if((f.state!=100 && f.state!=300) ||")

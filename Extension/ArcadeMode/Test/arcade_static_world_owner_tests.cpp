@@ -30,11 +30,11 @@ struct Fixture {
         const auto it=bytes.find(at);if(it==bytes.end()||it->second.size()!=sizeof out)return false;
         std::memcpy(&out,it->second.data(),sizeof out);return true;
     }
-    bool query(SurfaceGeometryWorldOwner& out) {
+    bool query(SurfaceGeometryWorldOwner& out,bool allow_entity=false) {
         return static_world_owner_detail::observe(shape,body,store,
             [&](auto at,auto& value){return read(at,value);},[&] {
                 if(++current_calls==2&&between)between();return allocated_static;
-            },out);
+            },out,allow_entity);
     }
 };
 }
@@ -42,6 +42,26 @@ int main() {
     {Fixture f;SurfaceGeometryWorldOwner out;
      check(f.query(out),"valid static non-ECS geometry needs no ECS entity ID");
      check(out==SurfaceGeometryWorldOwner{f.body,f.store,69,50331648,0,0x12345678},"complete native owner incarnation retained");}
+    {Fixture f;f.put(Fixture::kinds+(69>>3),std::uint8_t{0});SurfaceGeometryWorldOwner out;
+     check(!f.query(out),"non-ECS component callers still refuse entity owners without opt-in");
+     check(f.query(out,true),"static wall opt-in retains a valid entity-kind owner");
+     check(out==SurfaceGeometryWorldOwner{f.body,f.store,69,50331648,1,0x12345678},
+         "entity-kind owner retains exact body store generation and value");}
+    for(unsigned scenario=0;scenario<6;++scenario) {
+        Fixture f;f.put(Fixture::kinds+(69>>3),std::uint8_t{0});SurfaceGeometryWorldOwner out;
+        f.between=[&] {
+            switch(scenario) {
+            case 0:f.put(Fixture::generations+69*4,std::uint32_t{50331649});break;
+            case 1:f.put(Fixture::values+69*8,std::uint64_t{0x87654321});break;
+            case 2:f.put(Fixture::owners+42*4,std::uint32_t{68});break;
+            case 3:f.put(Fixture::kinds+(69>>3),std::uint8_t{1u<<(69&7)});break;
+            case 4:f.bytes.erase(Fixture::values+69*8);break;
+            case 5:f.allocated_static=false;break;
+            }
+        };
+        check(!f.query(out,true),"entity recycle value kind missing read and moving body still reject");
+        check(out==SurfaceGeometryWorldOwner{},"failed entity proof clears the output stamp");
+    }
     {Fixture f;f.put(Fixture::generations+69*4,std::uint32_t{0});SurfaceGeometryWorldOwner out;
      check(f.query(out)&&out.generation==0,"zero native generation is not an invented invalid sentinel");}
     for(unsigned scenario=0;scenario<12;++scenario) {

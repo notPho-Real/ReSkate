@@ -5,6 +5,12 @@
 #include <initializer_list>
 
 namespace dingosdk::arcade_mode {
+// Balance coordinates follow the configured controls: up is positive. The
+// admitted native wheel type determines which direction lowers the raised end;
+// switch/fakie travel must not reverse that physical contact identity.
+constexpr BalanceEndpoints manual_balance_endpoints(bool nose) noexcept {
+    return nose ? BalanceEndpoints::positive_bail : BalanceEndpoints::negative_bail;
+}
 struct ManualBalanceAdjustment {
     float time_multiplier{1}, time_add_seconds{};
     float lean_multiplier{1}, lean_add_signed{};
@@ -110,7 +116,7 @@ public:
         } else speed_ += static_cast<float>(drift_draw(50)) / 100 * sign(speed_);
         BalanceExit outcome{};
         if (std::abs(lean_) > p.endpoint) {
-            const bool safe = nose_ ? lean_ > 0 : lean_ < 0;
+            const bool safe = manual_balance_endpoints(nose_) == BalanceEndpoints::negative_bail ? lean_ > 0 : lean_ < 0;
             outcome = safe ? BalanceExit::putdown : BalanceExit::bail;
             active_ = false; closed_ = true;
         }

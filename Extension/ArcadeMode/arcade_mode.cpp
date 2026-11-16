@@ -511,8 +511,8 @@ ManualEpisode manual_episode;
 // native Manual episode; it does not create balance or a scoring occurrence.
 CustomFlatlandContext flatland_context(std::uint64_t now,const NativeInputFrame& frame,bool permitted=true) noexcept {
     return {frame,now,manual_episode.serial(),enabled() && permitted,
-        manual_episode.actuatable(now) && manual_episode.pose()==SkatePose::manual,
-        manual_balance_admitted.load(std::memory_order_relaxed),false,false,0,physical_manual.snapshot().position};
+        manual_episode.actuatable(now) && balance_kind(manual_episode.pose())==BalanceKind::manual,
+        manual_balance_admitted.load(std::memory_order_relaxed),false,false,0,physical_manual.snapshot().position,manual_episode.pose()};
 }
 std::atomic<std::uint64_t> manual_hud_episode{};
 GroundManualBalance ground_manual_balance; // Same mutex; delivered basic ground contact only.
@@ -833,9 +833,11 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     if(episode.grounded()) {hud_source.episode=&manual_hud_episode;hud_source.episode_id=episode.serial();}
     auto hud_endpoints=BalanceEndpoints::bail_both;
     float hud_limit=1;
+    bool hud_nose{};
     if(display.balance_kind==BalanceKind::manual){
         std::lock_guard lock(ollie_mutex);
-        hud_endpoints=physical_manual.nose() ? BalanceEndpoints::negative_bail : BalanceEndpoints::positive_bail;
+        hud_nose=physical_manual.nose();
+        hud_endpoints=manual_balance_endpoints(hud_nose);
         hud_limit=physical_manual.display_limit();
         if(input_capture_correlation.schema4()&&capture_manual_join.request&&capture_manual_join.model_seen&&
            !capture_manual_join.render_seen&&native_frame.valid&&
@@ -859,7 +861,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         }
     }
     publish_balance_hud(display, combo_session.failed_section() && display.balance_kind == BalanceKind::manual ?
-        2 : combo_session.model().danger(), hud_source,hud_endpoints,hud_limit);
+        2 : combo_session.model().danger(), hud_source,hud_endpoints,hud_limit,hud_nose);
     if(hud_source.publication&&balance_hud_pending()){
         const auto published_ms=GetTickCount64();
         std::lock_guard lock(ollie_mutex);

@@ -66,7 +66,7 @@ void release_and_boundaries(){
  }
  for(bool nose:{false,true})for(bool unsafe:{false,true})for(float dt:{.017f,.034f}){
   ManualPhysics model({},1);model.begin(nose);BalanceControl controls;PhysicalBalanceSample out{};
-  const int sign=(nose!=unsafe)?1:-1;const ManualBalanceButtons buttons{sign>0,sign<0};
+  const int sign=(nose==unsafe)?1:-1;const ManualBalanceButtons buttons{sign>0,sign<0};
   std::uint64_t now{};
   for(unsigned i=0;i<2000 && model.active();++i){
    controls.poll_manual(now,out.position,buttons,true);out=model.sample(dt,controls.manual_input());

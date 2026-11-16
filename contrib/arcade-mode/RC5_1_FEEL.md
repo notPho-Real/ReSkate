@@ -12,10 +12,46 @@ exact `986fb8c0` DLL completed five scoped physical doubles at 30 Hz and one at
 recovery path and durable native banking remain unverified. Earlier ae9 failures
 are retained. Two exact-f002 corridor attempts stopped on speed and contact
 prerequisites; no f002 Manual trial ran. All136 rollback sets are preserved and
-the prior installation is restored. The exact `36d615ce` corridor and native brake passed once; its
+the prior installation was restored for that completed session. The exact `36d615ce` corridor and native brake passed once; its
 Manual trial was inconclusive because the observer stopped before recording
 physical entry. The corrected observer passes 421 offline checks; these are
 not native Manual evidence.
+
+## Owner feedback correction — November 16
+
+The owner requested and received exact `f0025f3e` for persistent playtesting.
+Its installed DLL hash was verified; the previous `971c16b0` installation and
+all136 existing rollback sets were preserved, with a137th owner-playtest backup.
+The game was closed normally before installation. Automated hardware authority
+was revoked afterward; the candidate remains installed for the owner.
+Receipt: `artifacts/rc51-owner-playtest-f0025f3e/owner-handoff.json`.
+
+Current feedback and source work:
+
+| Feature | State | Evidence | Next action |
+| --- | --- | --- | --- |
+| Casper stance/support | Implemented in working source | Native admitted Manual/Nose support now matches its actual wheel contact; seed and active playback remain bound to owner, episode and stance | Combined Windows compilation and exact-candidate native stance trials |
+| Manual endpoints | Implemented in working source | Regular backward lean bails; forward puts down; Nose reverses. Typed HUD label is independent of endpoint direction. Old regression fails, focused sanitizer suites pass | Verify actual native falling, not just a queued bail |
+| Manual after plain landing | Implemented in working source | Production-composed short-flight landing regression fails before correction; airborne retention no longer grants timeless old pressure on four-wheel landing | Full composed regression and owner replay |
+| Manual without meter | Implemented in working source | Fresh independent native history/contact can readmit after proved physical exit. Old production-composed cases fail; stale labels, same failed section, owner change and duplicate frames remain rejected | Full composed regression and owner replay |
+| Main-map Casper/wallplants | Static entity wall routing implemented; native cause remains unverified | No map-name allowlist found. Geometry1631/static-owner48 checks pass; independent static/allocation/entity proof and self exclusion retained | Windows compilation; verify San Vansterdam free skate with exact candidate |
+| Manual acceptance duration | Updated to two seconds |173 offline checks; entry and exit gates, freshness, owner/contact/stance, scoring and landing requirements retained | Use the new inactive recipe at the next authorized native session |
+
+The new native Manual hold threshold is **two qualified seconds**, superseding
+ten seconds for future acceptance. Existing ten-second recordings and offline
+endurance regressions remain historical evidence/tests, not a new hardware
+requirement. The new recipe retains the15-second overall observation for exit,
+landing and banking. Proposal provenance:
+`artifacts/rc51-manual-two-second-proposal/proposal-provenance.json`.
+
+A read-only look at the current owner session log sent no gameplay input or
+console commands and did not change the installation. It contained no relevant
+wallplant/flatland failure diagnostics; main-map causality remains unverified.
+Do not claim this correction set is compiled or hardware accepted until its
+own exact-source gates pass.
+
+Combined offline validation:46/46 shared targeted tests,21/21 production-composed lifecycle/HUD tests,12/12 native-input consumer tests,7,010 standalone rendered HUD checks and285 balance lifecycle checks pass. The clarified trick-to-Manual landing adds48 cases/792 checks covering both prior/current support types, immediate/delayed history and stale-history rejection. New source remains uncompiled on Windows until CI below is recorded. Test-only clarification was compiled separately after the21-test checkpoint.
+
 
 ## Baseline and provenance
 
@@ -53,7 +89,7 @@ explicitly tied to this candidate's exact DLL.
 | 2: Repeated-input expiry | Existing request policy and deadline gate | `39ef1c70` stores a repeat deadline but inherits an unbounded ordinary policy; enforce the new repeat's physical-edge window | S | Fresh native observations and unavailable admission through exact second-edge +200 ms | Negative regression reproduces the defect; new repeated paths bounded; ordinary first-request policy preserved |
 | 2: Pre-AIR repeated X | Existing released-pop journal and bounded dependency queue | Preserve physical repeats through late first-action readiness | S | Same owner/pop, immutable first-AIR bounds, actual native actor and board rotation | Exact ae9c827e preserves all three immediate-pair requests beyond 200 ms; physical doubles 2/3 at 30 Hz, with a retained post-request execution failure |
 | 2: Queued double flip | Existing held-flip adapter and queue eligibility | Matching native observation can disappear before held actor entry | S | Actual actor/preparation/rotation, current owner and phase; no cached phase or renewed deadline | Source18de7d3a compiled in986fb8c0; scoped doubles5/5 at30Hz and1/1 at60Hz with native release/landing; zero-reread path unobserved, causal effect and full acceptance unproven |
-| 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S observer correction; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | Exact36 corridor/native braking passes; shorter-approach Manual is inconclusive after startup backlog/truncation guard rejection. Lossless startup draining passes421 offline checks; ten-second physical hold remains pending |
+| 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S observer correction; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | Exact36 corridor/native braking passes; shorter-approach Manual is inconclusive after startup backlog/truncation guard rejection. Lossless startup draining passes421 offline checks; current two-second physical hold remains pending (owner reduced the requirement on November 16) |
 | 4: Camera | Shortest yaw, rigid orbit, native pivot, elapsed duplicate sampling and restoration already fixed | Reverse restart remains inconclusive; exact candidate switch/revert follow pending | S verification | Sequence C and OFF, root/motion unchanged | Exact 2427231d right/up orbit and neutral recenter observed with complete camera captures and stable body heading; switch/revert follow and OFF restoration remain pending |
 | 5: Ollie/movement | Native release, charge, launch descriptors and bounded push budget already implemented | No new source-proved tuning defect; short/held jumps and momentum need comparative evidence | S verification / M tuning | Native cadence, trajectory, catch/contact, collision/bail controls | Preserve coherent current parameters; measure before tuning |
 | 6: HUD/scoring | Native-plus-custom combo model, integer ring and retained native stack entries | 39ef1c70 rendered Casper/Casper Flip names and x10 in the separate RC5 HUD session | S verification / M if binding defect remains | Sequence F, actual rendered names, banking/bail/OFF; RC5 chat owns HUD investigation | Native rendered names and OFF cleanup observed on 39ef1c70; integrated 32535ec4 full chain pending |

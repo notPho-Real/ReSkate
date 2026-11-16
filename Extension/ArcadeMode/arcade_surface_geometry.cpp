@@ -32,14 +32,21 @@ bool body_owner(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContex
     const auto fail = [&](const char* reason) { if (trace) {trace->reason=reason;trace->shape=body;trace->entity=value[0];} return false; };
     if (body.world != ctx.world || body.index == UINT32_MAX || !api.picking.body_valid(&body)) return fail("shape_invalid");
     if (api.picking.body_entity(value.data(),&body) != value.data()) return fail("entity_reader");
-    if (!value[0] && (!world_owner || !api.static_world_owner ||
-        !api.static_world_owner(api.user,body,native_owner))) return fail("entity_zero");
+    // Wallplant consumers opt into static identity for either native owner
+    // representation. The independently read entity must match the pool value.
+    // Local self shapes retain the existing exact-entity exclusion path.
+    const bool static_identity=world_owner && api.static_world_owner && value[0]!=ctx.self_entity;
+    if (static_identity) {
+        if (!api.static_world_owner(api.user,body,native_owner))return fail("static_owner_reader");
+        if (!native_owner.value || native_owner.kind!=(value[0]?1u:0u) ||
+            (value[0] && native_owner.value!=value[0]))return fail("static_owner_entity_mismatch");
+    } else if (!value[0]) return fail("entity_zero");
     if (!api.picking.body_valid(&body)) return fail("shape_changed");
     if (api.picking.body_entity(after.data(),&body) != after.data()) return fail("entity_reader_again");
     if (value != after) return fail("entity_changed");
     if (!api.picking.body_valid(&body)) return fail("shape_changed_after_entity");
     if (!current(api,ctx,trace)) return fail("owner_context_changed");
-    if (!value[0]) {
+    if (static_identity) {
         SurfaceGeometryWorldOwner again{};
         if (!api.static_world_owner(api.user,body,again))return fail("static_owner_reader_again");
         if (again!=native_owner)return fail("static_owner_stamp_changed");

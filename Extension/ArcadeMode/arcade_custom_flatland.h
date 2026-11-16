@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_input_dispatch.h"
+#include "arcade_combo_session.h"
 #include "arcade_ground_motion_step.h"
 #include "arcade_movement.h"
 #include "Extension/AnimationStudio/motion_authoring.h"
@@ -52,10 +53,13 @@ struct CustomFlatlandContext {
     bool enabled{}, manual_admitted{}, balance_active{}, competing_owner{}, ollie{};
     int spin_direction{}; // Held display turn only: -1, 0, +1; physics placement stays native.
     float balance{}; // Read-only governing Manual balance; no new dynamics.
+    SkatePose manual_pose{SkatePose::manual}; // The independently admitted native support type.
     bool valid() const noexcept {
         return std::isfinite(balance) && enabled && manual_admitted && balance_active && !competing_owner && !ollie &&
             manual_episode && frame.valid && InputNativeContext::from_frame(frame).fresh(now) &&
-            frame.state==100 && frame.mode==1 && frame.contacts==0x4000u &&
+            frame.state==100 && frame.mode==1 &&
+            ((manual_pose==SkatePose::manual && frame.contacts==0x4000u) ||
+             (manual_pose==SkatePose::nose_manual && frame.contacts==0x8000u)) &&
             !(frame.stance_and_push&0x40u) && !frame.airborne && !frame.rail_family;
     }
 };
@@ -90,6 +94,7 @@ public:
         if(!active())return;
         if(!context.valid() || context.manual_episode!=episode_ || context.frame.owner!=owner_ ||
             context.frame.owner_generation!=owner_generation_ ||
+            context.manual_pose!=manual_pose_ || context.frame.stance_and_push!=stance_and_push_ ||
             context.frame.physics_step<started_step_ ||
             !playback_.owns(playback_.context,ticket_))cancel();
     }
@@ -191,6 +196,7 @@ private:
         display_radians_=turn;
         owner_=context_.frame.owner;owner_generation_=context_.frame.owner_generation;
         episode_=context_.manual_episode;started_step_=context_.frame.physics_step;
+        manual_pose_=context_.manual_pose;stance_and_push_=context_.frame.stance_and_push;
         duration_=clip->duration();phase_=back?Phase::direct_exit:flip?Phase::flip_exit:Phase::entry;
         return InputDisposition::started;
     }
@@ -198,6 +204,8 @@ private:
     CustomTrickPlayback playback_;
     CustomFlatlandContext context_{};
     NativeInputOwner owner_{};
+    SkatePose manual_pose_{SkatePose::manual};
+    std::uint32_t stance_and_push_{};
     std::uint64_t owner_generation_{},episode_{},ticket_{},started_step_{};
     GroundMotionStep steps_;
     GroundResistance resistance_;

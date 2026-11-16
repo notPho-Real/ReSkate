@@ -5,7 +5,7 @@ namespace dingosdk::arcade_mode {
 // Source is the immutable physical sample's GetTickCount64 timestamp. An invalid
 // source clears the display. Publication does not establish new native evidence.
 void publish_balance_hud(const State& state, unsigned danger, BalanceHudSource source,
-    BalanceEndpoints endpoints = BalanceEndpoints::bail_both, float limit = 1) noexcept;
+    BalanceEndpoints endpoints = BalanceEndpoints::bail_both, float limit = 1, bool nose = false) noexcept;
 bool balance_hud_pending() noexcept;
 void draw_balance_hud() noexcept;
 using BalanceHudRenderAck = void (*)(BalanceHudSource,std::uint64_t,std::uint64_t) noexcept;

@@ -200,6 +200,8 @@ bool raw_wall(const Hit& h) noexcept {
 bool query_current(const SurfaceGeometrySample& wall) noexcept {
     SurfaceGeometryWorldOwner owner{};
     return wall.valid && wall.world_owner.value &&
+        wall.world_owner.kind==(wall.body_owner?1u:0u) &&
+        (!wall.body_owner || wall.world_owner.value==wall.body_owner) &&
         native_wall_contact::static_world_owner(wall.body,owner) && owner==wall.world_owner;
 }
 bool scoped_motion(std::uint64_t token,const NativeInputFrame& frame,std::uint64_t now) noexcept {

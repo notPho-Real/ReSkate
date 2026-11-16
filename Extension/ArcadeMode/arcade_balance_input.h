@@ -88,21 +88,22 @@ struct BalanceMeter {
     float cursor_x{}, cursor_y{}; // normalized offsets from center; screen Y points down
     BalanceEndpoints endpoints{BalanceEndpoints::bail_both};
     float limit{1};
+    bool nose{}; // Physical support type is independent of the failure side.
     bool bail_side(float screen_offset) const noexcept {
         if (!vertical || endpoints == BalanceEndpoints::bail_both) return true;
         return endpoints == BalanceEndpoints::positive_bail ? screen_offset < 0 : screen_offset > 0;
     }
     const char* title() const noexcept {
-        return !vertical ? "GRIND" : endpoints == BalanceEndpoints::negative_bail ? "NOSE MANUAL" : "MANUAL";
+        return !vertical ? "GRIND" : nose ? "NOSE MANUAL" : "MANUAL";
     }
 };
 inline BalanceMeter balance_meter(const State& state, BalanceEndpoints endpoints = BalanceEndpoints::bail_both,
-                                  float limit = 1) noexcept {
+                                  float limit = 1, bool nose = false) noexcept {
     if (!state.combo_active || state.balance_kind == BalanceKind::none ||
         !std::isfinite(state.balance) || !std::isfinite(state.balance_velocity) ||
         !std::isfinite(limit) || limit <= 0 || limit > 1) return {};
     const bool vertical = state.balance_kind == BalanceKind::manual;
     return {true, vertical, vertical ? 0.0f : state.balance, vertical ? -state.balance : 0.0f,
-        vertical ? endpoints : BalanceEndpoints::bail_both, vertical ? limit : 1};
+        vertical ? endpoints : BalanceEndpoints::bail_both, vertical ? limit : 1, vertical && nose};
 }
 }

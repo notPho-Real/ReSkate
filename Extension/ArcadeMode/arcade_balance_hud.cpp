@@ -31,11 +31,11 @@ void set_balance_hud_render_ack(BalanceHudRenderAck callback) noexcept {
     render_ack.store(callback,std::memory_order_release);
 }
 void publish_balance_hud(const State& state, unsigned danger, BalanceHudSource source,
-        BalanceEndpoints endpoints, float limit) noexcept {
+        BalanceEndpoints endpoints, float limit, bool nose) noexcept {
     std::lock_guard lock(hud_mutex);
     const bool finite = std::isfinite(state.balance) && std::isfinite(state.balance_velocity);
     const bool kind = state.balance_kind == BalanceKind::manual || state.balance_kind == BalanceKind::grind;
-    meter = finite && kind && BalanceHudLease::fresh(source, hud_now()) ? balance_meter(state,endpoints,limit) : BalanceMeter{};
+    meter = finite && kind && BalanceHudLease::fresh(source, hud_now()) ? balance_meter(state,endpoints,limit,nose) : BalanceMeter{};
     danger_level = danger;
     observed = source;
 }
@@ -73,7 +73,7 @@ void draw_balance_hud() noexcept {
     draw->AddRect(panel_min, panel_max, danger >= 2 ? color : IM_COL32(150, 165, 180, 210),
                   10 * scale, 0, (danger >= 2 ? 4 : 2) * scale);
     const char* title = view.title();
-    const float font_size = (view.vertical && view.endpoints == BalanceEndpoints::negative_bail ? 14 : 20) * scale;
+    const float font_size = (view.vertical && view.nose ? 14 : 20) * scale;
     const auto text_size = ImGui::GetFont()->CalcTextSizeA(font_size, screen.x, 0, title);
     draw->AddText(ImGui::GetFont(), font_size,
         ImVec2(layout.center.x - text_size.x / 2, panel_min.y + 10 * scale),

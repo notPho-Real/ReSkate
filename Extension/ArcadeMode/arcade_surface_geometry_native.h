@@ -26,7 +26,8 @@ struct SurfaceGeometryNativeApi {
     // storage and its published allocator. Tests supply fixture storage only.
     bool (*read_bytes)(std::uintptr_t, void*, std::size_t) noexcept{};
     // Opt-in only for wallplant geometry. Must validate an allocated shape,
-    // its current static body, and a complete non-ECS native owner stamp.
+    // its current static body, and a complete native owner stamp. Entity-kind
+    // stamps must match the separately re-read body_entity value.
     bool (*static_world_owner)(void*, const SurfaceGeometryBody&, SurfaceGeometryWorldOwner&) noexcept{};
     // Copied diagnostic from the existing current() callback, never a retry.
     const char* (*current_failure)(void*) noexcept{};

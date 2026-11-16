@@ -12,7 +12,8 @@ struct SurfaceGeometryBody {
     bool operator==(const SurfaceGeometryBody&) const = default;
 };
 static_assert(sizeof(SurfaceGeometryBody) == 16);
-// A validated static non-ECS owner is distinct from an unknown/zero ECS ID.
+// A validated static native owner retains its kind: non-ECS0 or entity1.
+// An unknown/zero entity ID alone never proves a static owner.
 // Retain both native owner incarnation and shape-to-body association.
 struct SurfaceGeometryWorldOwner {
     SurfaceGeometryBody body;

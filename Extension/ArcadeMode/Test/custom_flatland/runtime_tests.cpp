@@ -76,17 +76,20 @@ struct Rig {
     bool enabled{true},balanced{true},catalog_loaded{true},controls_owned{true};
     bool offboard{},releasing_manual{},grind_owned{};
     unsigned physical_left_trigger{},physical_right_trigger{};
-    explicit Rig(float seed_pitch=0,bool reset_override=true){
+    SkatePose manual_pose{SkatePose::manual};
+    unsigned stance{};
+    explicit Rig(float seed_pitch=0,bool reset_override=true,SkatePose pose=SkatePose::manual,unsigned native_stance=0)
+        :manual_pose(pose),stance(native_stance){
         if(reset_override)custom_flatland_runtime::set_enabled(true);
         custom_flatland_runtime::cancel();player.occupied=false;player.seed_available=true;player.seed_wrong_owner=false;player.reject_replace=false;player.renders=true;
         player.seed_pitch=seed_pitch;player.seed_age=.001;
         next();tick();next();tick();
         check(binding().enabled,"a fresh matching native seed enables the flatland bridge");
         InputAdmission a=admission();session.poll(now,{},0,0,a);
-        ManualInputDiagnostic d{};d.owns=d.safe=true;d.request=-1;d.request_at=now-100;d.recognized_at=d.request_at;d.recognition_id=7;
+        ManualInputDiagnostic d{};d.owns=d.safe=true;d.request=manual_pose==SkatePose::nose_manual?1:-1;d.request_at=now-100;d.recognized_at=d.request_at;d.recognition_id=7;
         session.resume_manual_episode(d,a.native_context);
     }
-    CustomFlatlandContext context()const{return {frame,now,owner.entity,enabled,true,balanced,false,false,0,balance};}
+    CustomFlatlandContext context()const{return {frame,now,owner.entity,enabled,true,balanced,false,false,0,balance,manual_pose};}
     CustomFlatlandContext input_context(unsigned physical_buttons=0)const{
         const bool game_input=enabled,owns_controls=controls_owned;
         [[maybe_unused]] const bool authored=catalog_loaded;
@@ -101,7 +104,7 @@ struct Rig {
     CustomFlatlandBinding binding(){return custom_flatland_runtime::observe_input(input_context(),physical_left_trigger,physical_right_trigger);}
     InputAdmission admission(){
         auto binding=this->binding();InputAdmission a{};
-        a.gameplay=enabled;a.authored=catalog_loaded;a.may_start=a.manual_safe=a.manual_balance_admitted=true;a.pose=SkatePose::manual;a.tick=now;
+        a.gameplay=enabled;a.authored=catalog_loaded;a.may_start=a.manual_safe=a.manual_balance_admitted=true;a.pose=manual_pose;a.tick=now;
         a.native_context=InputNativeContext::from_frame(frame);a.balance_generations=a.native_context.generations;
         a.balance_controls=InputBalanceControls::vertical();a.balance_controls.generations=a.balance_generations;
         a.custom_flatland=binding.enabled;a.custom_flatland_triggers=binding.owns_triggers;a.custom_flatland_branch=binding.branch;a.branch_ready=binding.ready;
@@ -109,7 +112,7 @@ struct Rig {
         return a;
     }
     void next(unsigned ms=17){
-        now+=ms;player.now=now;NativeRequestSample s{};s.valid=true;s.state=100;s.crouch_mode=1;s.words[1]=0x4000u;
+        now+=ms;player.now=now;NativeRequestSample s{};s.valid=true;s.state=100;s.crouch_mode=1;s.words[1]=manual_pose==SkatePose::nose_manual?0x8000u:0x4000u;s.words[0]=stance;
         frame=observer.observe(now,owner,s,{true,-1},false,dt);
     }
     void tick(){custom_flatland_runtime::tick(context());}
@@ -421,6 +424,28 @@ void rejected_entry_seed(){
         check(r.poll(0).manual.owns,"refused custom entry preserves ordinary native Manual");
     }
 }
+void both_native_manual_supports(){
+    for(const auto pose:{SkatePose::manual,SkatePose::nose_manual})for(const auto stance:{0u,0x20u}) {
+        Rig r(0,true,pose,stance);r.enter();r.hold();
+        const auto ticket=player.ticket;
+        check(ticket && r.context().valid() && r.frame.stance_and_push==stance,
+            "both native support types and stances retain original owned playback");
+        r.poll(0x4000);r.poll(0);r.poll(0x4000);r.tick();
+        check(custom_flatland_runtime::status().phase==CustomFlatland::Phase::flip_exit,
+            "either admitted Manual support can enter the existing Casper Flip");
+        for(unsigned i=0;i<50;++i){r.next();r.step();r.tick();}
+        check(!player.ticket && r.poll(0).manual.owns,
+            "either support returns to its continuing native Manual without a new balance episode");
+    }
+    for(const auto pose:{SkatePose::manual,SkatePose::nose_manual})for(unsigned fault=0;fault<3;++fault) {
+        Rig r(0,true,pose);r.enter();r.hold();
+        if(fault==0)r.stance=0x20u;
+        if(fault==1)r.stance=0x40u;
+        if(fault==2)r.manual_pose=pose==SkatePose::manual?SkatePose::nose_manual:SkatePose::manual;
+        r.next();check(!r.step().admitted,"changed stance, pushing or support cannot inherit active Casper motion");
+        r.tick();check(!player.ticket,"changed stance or support releases the old animation before fresh seeding");
+    }
+}
 void seed_and_pending(){
     Rig r;custom_flatland_runtime::cancel();r.owner.entity=++player.entity;player.seed_wrong_owner=true;
     r.next();r.tick();r.next();r.tick();check(!r.binding().enabled,"mismatched seed entity cannot enable gesture");
@@ -449,4 +474,4 @@ int main(){
     const auto prepared=preparations;
     custom_flatland_runtime::tick(gameplay);
     check(preparations==prepared,"diagnostic OFF keeps flatland hooks idle");
-    executed_scoring();fresh_entry_seed();rejected_entry_seed();balance_range();moving_hold();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}
+    both_native_manual_supports();executed_scoring();fresh_entry_seed();rejected_entry_seed();balance_range();moving_hold();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

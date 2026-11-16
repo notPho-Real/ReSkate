@@ -10,7 +10,7 @@ namespace dingosdk::arcade_mode::static_world_owner_detail {
 // ownership. Native non-ECS identity is never an invented ECS ID.
 template<class Read,class Current>
 bool observe(SurfaceGeometryBody shape,SurfaceGeometryBody body,std::uintptr_t store,
-        Read&& read,Current&& current,SurfaceGeometryWorldOwner& out) {
+        Read&& read,Current&& current,SurfaceGeometryWorldOwner& out,bool allow_entity=false) {
     namespace p=game::build::v20260929::physics_bodies;
     namespace o=game::build::v20260929::physics_owner;
     out={};
@@ -37,12 +37,14 @@ bool observe(SurfaceGeometryBody shape,SurfaceGeometryBody body,std::uintptr_t s
            (s.end-s.begin)%4 || (s.end-s.begin)/4>1048576 ||
            !element(s.owners,shape.index,s.index) || s.index==UINT32_MAX || s.index>=(s.end-s.begin)/4 ||
            !element(s.begin,s.index,s.generation) || !element(s.kinds,s.index>>3,s.kind_byte) ||
-           !(s.kind_byte&(1u<<(s.index&7u))) || !element(s.values,s.index,s.value) || !s.value)return false;
+           (!allow_entity && !(s.kind_byte&(1u<<(s.index&7u)))) ||
+           !element(s.values,s.index,s.value) || !s.value)return false;
         return current();
     };
     Snapshot before{},after{};
     if(!snapshot(before) || !snapshot(after) || before!=after || !current())return false;
-    out={body,store,before.index,before.generation,0,before.value};
+    const auto kind=(before.kind_byte&(1u<<(before.index&7u)))?0u:1u;
+    out={body,store,before.index,before.generation,kind,before.value};
     return true;
 }
 }

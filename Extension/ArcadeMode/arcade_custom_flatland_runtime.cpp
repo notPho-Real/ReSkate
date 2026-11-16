@@ -19,6 +19,7 @@ struct State {
     NativeInputOwner seed_owner{};
     std::uint64_t seed_generation{},seed_episode{},seed_step{},seed_at{};
     std::uint32_t seed_stance{};
+    SkatePose seed_pose{SkatePose::manual};
     std::uint64_t serial{},logical{},submitted{},ticket{},client_at{};
     std::shared_ptr<const anim_studio::Clip> clip;
     float time{};
@@ -29,7 +30,8 @@ struct State {
     }
     bool seed_current() const noexcept {
         return seed_owner==context.frame.owner && seed_generation==context.frame.owner_generation &&
-            seed_episode==context.manual_episode && seed_stance==context.frame.stance_and_push;
+            seed_episode==context.manual_episode && seed_stance==context.frame.stance_and_push &&
+            seed_pose==context.manual_pose;
     }
     bool accepts_seed(const skater_animation::NativePose& seed) const noexcept {
         return seed.base==context.frame.owner.base && seed.entity==context.frame.owner.entity &&
@@ -241,10 +243,12 @@ void tick(CustomFlatlandContext context) noexcept {
         // Require a pose evaluated after this independently admitted episode
         // was first seen. A cached pre-Manual pose cannot seed a new trick.
         if(s.seed_episode!=context.manual_episode || s.seed_owner!=context.frame.owner ||
-            s.seed_generation!=context.frame.owner_generation || s.seed_stance!=context.frame.stance_and_push) {
+            s.seed_generation!=context.frame.owner_generation || s.seed_stance!=context.frame.stance_and_push ||
+            s.seed_pose!=context.manual_pose) {
             s.seed_at=context.now;s.seed_step=context.frame.physics_step;
             s.seed_owner=context.frame.owner;s.seed_generation=context.frame.owner_generation;
-            s.seed_episode=context.manual_episode;s.seed_stance=context.frame.stance_and_push;s.trick.reset();
+            s.seed_episode=context.manual_episode;s.seed_stance=context.frame.stance_and_push;
+            s.seed_pose=context.manual_pose;s.trick.reset();
         }
         if(!seed || !s.accepts_seed(*seed))return;
         auto clips=make_casper_clips(seed->joints,seed->board);

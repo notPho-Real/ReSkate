@@ -125,8 +125,8 @@ public:
         const auto kind = balance_kind(pose);
         // Basic Manual and Nose Manual swap their physical endpoint outcomes.
         // Rail balance retains its existing two-sided failure behavior.
-        const auto endpoints = previous_ == SkatePose::manual ? BalanceEndpoints::positive_bail :
-            previous_ == SkatePose::nose_manual ? BalanceEndpoints::negative_bail : BalanceEndpoints::bail_both;
+        const auto endpoints = balance_kind(previous_) == BalanceKind::manual ?
+            manual_balance_endpoints(previous_ == SkatePose::nose_manual) : BalanceEndpoints::bail_both;
         bool failure = model_.tick(dt, correction, 1, endpoints, physical == nullptr,
             pending_manual_revert && !failed_section_ && !manual_putdown_ &&
             (pose==SkatePose::riding || kind==BalanceKind::manual));

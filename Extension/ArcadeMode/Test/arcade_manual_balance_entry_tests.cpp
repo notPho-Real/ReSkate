@@ -82,7 +82,7 @@ void composed(){
     }
     for(bool nose:{false,true})for(bool unsafe:{false,true}){
         Pipeline p(nose,17);p.enter();
-        const auto raw=static_cast<short>((nose!=unsafe)?32767:-32768);
+        const auto raw=static_cast<short>((nose==unsafe)?32767:-32768);
         while(p.now<7000&&!p.combo.manual_putdown()&&!p.combo.failed_section())p.step(p.wanted(),raw);
         if(unsafe){
             check(p.combo.failed_section()&&p.failed&&!p.exiting,"unsafe physical endpoint routes failure without substituting safe putdown");

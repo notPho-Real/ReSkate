@@ -365,20 +365,20 @@ def generate(root,variant='current'):
 
       // Safe and unsafe model endpoints use different production release paths.
       enter_ground(nose,hz);bool putdown=false;
-      remap(0,inward);
-      for(unsigned i=0;i<10*hz;++i){physical_step(hz,contact);remap(0,inward);if(combo_session.manual_putdown()){putdown=true;break;}}
+      remap(0,outward);
+      for(unsigned i=0;i<10*hz;++i){physical_step(hz,contact);remap(0,outward);if(combo_session.manual_putdown()){putdown=true;break;}}
       expect(putdown&&manual_release.pending()&&!last_pad.ry&&!last_pad.drive&&!last_pad.correction,
              "safe endpoint owns neutral RS and withdraws force/drive until observed physical completion");
       expect(writer_intent.ground_controls.manual_vertical_reserved,"current production carrier reserves owned neutral release");
       expect(writer_manual_hold&&last_pad.y==0,
              "owned neutral-RS release also reserves vertical native locomotion through physical completion");
-      trace("safe-putdown",hz,nose,inward);
+      trace("safe-putdown",hz,nose,outward);
       physical_step(hz,0xc000);remap();expect(!manual_release.pending(),"fresh actual two-wheel completion retires putdown ownership");
 
       for(bool protected_skater:{false,true}){
        enter_ground(nose,hz);protected_no_bail=protected_skater;
        bool failed=false;
-       for(unsigned i=0;i<10*hz;++i){physical_step(hz,contact);remap();if(combo_session.failed_section()){failed=true;break;}}
+       for(unsigned i=0;i<10*hz;++i){physical_step(hz,contact);remap(0,inward);if(combo_session.failed_section()){failed=true;break;}}
        expect(failed&&bail_requests>0&&!last_pad.ry&&!last_pad.drive,"unsafe model endpoint withdraws partial RS and drive while requesting native failure");
        expect(!manual_release.pending(),"unsafe endpoint cannot silently substitute safe putdown");
        if(protected_skater)expect(bail_vetoes>0&&bail_receipt.status().serial==0,"controlled native NoBail veto yields no issued bail ticket");

@@ -119,7 +119,7 @@ void neutral_trajectories_and_boundaries() {
         ManualPhysics physics;physics.begin(nose);
         check(!physics.sample(0,0).valid,"invalid cadence cannot advance a local stream");
         physics.begin(nose);check(std::abs(physics.sample(.017f,0).velocity)==14.f/4096,"first draw remains after invalid cadence");
-        physics.reset();physics.begin(nose);physics.adjust({1,0,0,nose?5000.f:-5000.f,0,1});
+        physics.reset();physics.begin(nose);physics.adjust({1,0,0,nose?-5000.f:5000.f,0,1});
         check(physics.sample(.017f,0).exit==BalanceExit::putdown&&physics.closed(),"ordered integration preserves safe endpoint policy");
         check(!physics.sample(.017f,0).active,"closed endpoint is inactive without an extra drift draw");
         physics.reset();physics.begin(nose);

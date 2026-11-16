@@ -68,7 +68,7 @@ int main(){
  }
  for(bool nose:{false,true}) {
   Pipeline p(nose);p.pair();p.step(1051,100,nose?0x8000:0x4000,0,true);
-  for(std::uint64_t at=1068;at<6000&&!p.session.failed_section();at+=17)p.step(at,100,nose?0x8000:0x4000);
+  for(std::uint64_t at=1068;at<6000&&!p.session.failed_section();at+=17)p.step(at,100,nose?0x8000:0x4000,nose?25000:-25000);
   check(p.session.failed_section()&&p.meter()&&!p.output.manual.owns&&!p.exiting,"admitted balance failure retains its failed meter and withdraws actuation instead of substituting unadmitted putdown");
   // Keep the actual producer cadence and physical failed section continuous.
   auto at=p.frame.sampled_at;
