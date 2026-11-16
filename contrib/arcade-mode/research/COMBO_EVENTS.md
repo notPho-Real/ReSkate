@@ -421,3 +421,31 @@ fields. An independent text-graph inspection finds zero inputs on the failed
 listener and both native inputs on the correction; the separate metadata check
 also passes. This is an offline correction awaiting rendered acceptance, not a
 new DLL or a completed Casper-name fix.
+
+
+The follow-up context-binding trial reused the existing DLL with the regenerated
+private widget. The expected DLL was mapped, but navigation remained in the
+native hub. Neither keyboard menu actions nor a settled controller Back press
+established the requested test level. The out-of-trial controller-route samples
+reported no available source; they do not prove why menu navigation failed.
+No combo or rendered-count acceptance was obtained. The verified test process
+required targeted termination after both normal close methods failed. Both exact
+temporary packs were removed, the previous installation was restored, and all
+125 rollback sets were verified before revoking the session and returning the
+stopped device.
+
+Offline source comparison identified a separate row integration mismatch:
+the standalone score-line factory initializes stack items with the d-pad stack's
+transition. Native-history augmentation now replaces that owned item's transition
+with the destination trick stack's DefaultTransitionStyle, using the existing
+typed copy API, just as native stack insertion elsewhere does. It does not copy
+a native row or its scoring back-reference. The focused regression uses distinct
+transition values, rejects the old path, preserves every native item byte, and
+covers partial-copy cleanup under sanitizers. This corrects transition ownership;
+rendered Casper names still require native verification.
+
+The retained native row graph also shows that TrickName alpha is computed from
+its measured width and the stack-supplied Index. Its Visible, font and RawText
+inputs come through the standard label binding. A text/style copy alone therefore
+does not prove visibility; the next bounded capture must inspect the actual row
+and its stack transition alongside rendered frames.

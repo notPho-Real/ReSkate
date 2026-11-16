@@ -94,6 +94,12 @@ void update_native_rows(Hud& h,const Context& c,bool allowed,double now) {
             require(name_template.handle!=0,"Native trick label template is unavailable.");
             NativeRow row;row.trick=requested;row.row=make_row(h,c,type,requested.name);
             made.push_back(row);
+            // This row belongs to the game's trick stack. Its transition must
+            // come from that stack, not the d-pad used by the standalone HUD.
+            const auto transition=c.field(row.row.item,corner::item_transition);
+            const auto stack_transition=c.path(n.root,{score::trick_list,corner::default_transition});
+            require(transition.type==stack_transition.type,"Native trick stack transition type differs.");
+            c.copy(transition,c.address(stack_transition));
             const auto label=c.field(row.row.model,score::row_name);
             require(label.type==name_template.type,"Native trick label type differs.");
             c.copy(label,c.address(name_template));
