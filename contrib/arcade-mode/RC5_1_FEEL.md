@@ -1260,6 +1260,28 @@ SHA-256 `809a585e22a1407194e450717621ca44b2a94dd0dd23809608fcb3b39ff618d0`.
 Exact failing offsets were not retained, so the startup-backlog cause remains
 source-supported inference; this correction supplies no native Manual result.
 
+## Wallplant clearance ownership correction
+
+The exact installed `5ae5778627a7dbe0bf3153eb7b36b471bdd5aa1b` was tested in
+San Vansterdam free skate on November 16. The bounded attempt delivered a fresh
+airborne A, passed two native broad-wall queries, then failed clearance admission
+and fell without a hold or rebound. Native callbacks measured about 29.72 Hz;
+physics and cached steps were both 1/30. The captured location includes a raised
+bench surface, so it is not an accepted unobstructed-wall trial. Capture-wide
+event completeness is unproven. Evidence is retained in
+`artifacts/rc51-wallplant-verify-5ae57786/city_wall_1.json` and its independent
+analysis; no wallplant acceptance follows from this attempt.
+
+Source review independently found that ordinary ground samples can lack the
+static-owner stamp required by wallplant geometry. Both wallplant consumers now
+reuse ground only after revalidation under their own owner policy; otherwise
+they query fresh clearance through the existing native mechanism. All final
+geometry, ownership, height, timing and collision gates remain in place.
+Regressions fail against the old runtime in both paths and pass with the fix:
+335 lifecycle checks under AddressSanitizer/UndefinedBehaviorSanitizer and an
+optimized build. Windows compilation and exact-candidate native verification
+remain pending. The installed DLL is still 5ae57786, without this correction.
+
 ## Remaining independent acceptance work
 
 Held-Y rail-grab testing needs the existing owned fixture, segment, physical

@@ -436,7 +436,10 @@ void publish_motion_geometry(std::uint64_t token,const SurfaceGeometryNativeApi&
     if(!query_current(wall))return;
     note("clearance");
     auto clearance=ground;
-    if(!clearance.fresh_for(ctx,api.now(api.user)))clearance=query_surface_geometry(api,ctx,wallplant_clearance_request(root));
+    // Ordinary ground queries do not carry this consumer's static-owner stamp.
+    // Reuse only evidence that also survives the final wallplant owner policy.
+    if(!clearance.fresh_for(ctx,api.now(api.user)) || !revalidate_surface_geometry(api,ctx,clearance))
+        clearance=query_surface_geometry(api,ctx,wallplant_clearance_request(root));
     const auto height=root[1]-clearance.point[1];
     if(!clearance.valid || !revalidate_surface_geometry(api,ctx,clearance) ||
        !std::isfinite(height) || height<WallplantParameters::reference_prototype().minimum_height)return;
@@ -496,7 +499,8 @@ void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const Surface
             ((source.state==200||source.state==201)?16ull:0ull)|(ctx.fresh(now)?32ull:0ull));return;
     }
     auto clearance_ground=ground;
-    const bool ground_reused=clearance_ground.fresh_for(ctx,now);
+    const bool ground_reused=clearance_ground.fresh_for(ctx,now) &&
+        revalidate_surface_geometry(api,ctx,clearance_ground);
     if(!ground_reused) {
         SurfaceGeometryTrace trace;
         clearance_ground=query_surface_geometry(api,ctx,wallplant_clearance_request(root),&trace);
