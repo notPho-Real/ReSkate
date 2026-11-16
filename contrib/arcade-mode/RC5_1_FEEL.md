@@ -3,6 +3,11 @@
 This candidate is not hardware accepted. Development stays on
 `arcade-stage-rc51-feel`; the accepted updater and historical builds are unchanged.
 
+Latest compiled checkpoint: `ae9c827ea6bd41f85dffb899c6adc6dc20ee4746`.
+All required CI gates and package verification pass. Its first native trial
+returned no physical-sample receipt after a transport timeout; retained logs
+are insufficient for gameplay acceptance. The Deck is restored and released.
+
 ## Baseline and provenance
 
 Refreshed both remotes before implementation. Observed heads: unified `dev`
@@ -605,3 +610,69 @@ enabled/disabled wallplants and Casper. JUnit: `rc51-targeted/rc51-first-air-tar
 under the SSD build directory. The final provenance edit also passes both existing
 candidate-manifest tests. Build necessity and exact regression receipts are
 retained with the first-AIR task; Windows and native results remain pending.
+
+## Exact ae9c827e compiled checkpoint and uncertain native trial
+
+[CI run 43827670185](https://github.com/notPho-Real/ReSkate/actions/runs/43827670185)
+passes all nine required jobs, including Windows compilation, 140 preflight
+tests, 132 integration tests, Deck packaging and release eligibility. Publication
+was skipped; the experimental candidate remains unaccepted.
+
+The verified DLL is 45,607,936 bytes, SHA-256
+`d927dac32067973b96802ec8975394f45d72249590a532292f04d5066fc2ca82`.
+Runtime artifact: `14209790623`; Deck installer artifact: `14209242144`.
+The local installable package and complete verification receipt are under
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-first-air-ready-ae9c827e`.
+Verification receipt SHA-256:
+`2e2102c9076a58747dfd9ba8e9ab3eebd13a2456d223336e730d7868515b0da5`.
+Archive hashes, PE identity, source provenance, embedded installer DLL and source
+scripts all pass. A build pass does not establish native gameplay behavior.
+
+The exclusive Deck session verified the exact mapped DLL and native MegaPark
+descriptor before input. Its first original queued-X pair timed out at the
+unchanged 80-second transport bound. No finalized trial receipt, full physical
+samples or dense board basis returned. The attempt was retained as uncertain
+and was not automatically replayed.
+
+A separate read-only recovery acquired the exclusive lock and recovered native
+logs. These contain all 383 contiguous capture rows, a complete 383/383 footer
+with zero drops, measured 30.0035 Hz native cadence, base and held actor
+advancement, and a held request 192 ms after the second X. That timing does not
+exercise the new post-deadline allowance. Physical double rotation, catch and
+landing cannot be reconstructed from the missing samples. The logs also contain
+one model bank terminal: 224 points, two actions, zero custom points, explicitly
+`model_only=true native_bank_verified=false`. This observes the new diagnostic;
+it does not prove durable native banking.
+
+The native logs span about 26 seconds from controller binding to final ON.
+Their wall clock is not independently aligned with the local start marker.
+The cause of the transport timeout is unresolved. The
+local transport discarded available partial output on timeout; preserving that
+output and reducing receipt transfer size are independent harness corrections.
+Neither changes gameplay, capture coverage or test deadlines.
+
+Both game and launcher subsequently closed normally. An initial close refused a
+transient gamescope focus mismatch before Alt-F4; fresh observation preceded the
+successful `close_window` operation. Four exact candidate-generated score-pack
+files were removed, and the prior `971c16b0` DLL, settings and install receipt
+were restored exactly. All 132 rollback sets, stock DLL and pinned game remain
+preserved. Authority is revoked with no pending hardware action.
+
+Session evidence:
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-first-air-hil-ae9c827e`.
+Returned receipt SHA-256:
+`d767aa31f07d11334d10afce2bb743c14e76e184adea333b22936532754d8b97`.
+Restoration receipt SHA-256:
+`c7d6650867ff0f7509324488c3c65185de0d1939b0c4a4ef6354647bdf2cc171`.
+Rollback remains the exact preserved prior installation; use the existing
+stopped-state restoration procedure and verify these identities. The accepted
+updater and historical builds are unchanged.
+
+The Manual-only observer correction now passes 111 focused checks, plus 76
+scaffold, 23 corridor-generator and 29 contact-phase checks. Independent review
+confirmed separate Linux arrival/native counter clocks, authenticated native log
+rotation, unchanged 450 ms freshness and 700 ms gates, and AST-equivalent loader
+compaction below the existing limit. This establishes harness readiness only.
+The new west corridor and 10-second physical Manual remain untested. Next work
+is reliable receipt delivery, repeated exact-DLL input trials including the
+immediate-release pair, then the independent corridor and Manual acceptance.
