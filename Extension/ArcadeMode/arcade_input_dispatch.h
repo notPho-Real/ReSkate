@@ -204,6 +204,13 @@ public:
             }
             if (gate != InputDisposition::waiting) { pop(); report(InputDispatchEvent{request, gate}); continue; }
             if (started || now < request.ready_at) break;
+            // Eligibility already preserves this first physical grab through
+            // its independently observed released pop. Present that current
+            // lineage to the unchanged native adapter; no grab actor is implied.
+            if(request.action==InputAction::grab &&
+                !native.correlates_action(request.generations) &&
+                jump_selection_retired(request,native,released_jump))
+                request.generations=native.generations;
             const auto child=dependency_candidate(request,now,session,context,native,tables,released_jump);
             if(dependent && native.physics_step>held_dependency_.native.physics_step)held_dependency_={};
             pop(); // Removal precedes any adapter/reentrant boundary.
@@ -1220,13 +1227,16 @@ private:
             for(const auto& request:pending_.slots()) {
                 if(request.action!=InputAction::grab || request.form!=InputForm::ordinary ||
                     !request.named_binding || request.modifier || !request.direction ||
-                    request.session!=session_ || request.context!=environment.context ||
-                    (!request.unbounded && now>=request.deadline) || (repeat_available && request.physical_pressed_at<repeat_at) ||
-                    !environment.native_context.correlates_action(request.generations) ||
-                    request.air_episode!=environment.native_context.air_episode())continue;
+                    (repeat_available && request.physical_pressed_at<repeat_at) ||
+                    InputRequestQueue::eligibility(request,now,session_,environment.context,
+                        environment.native_context,environment.air_tables,takeoff_release_at_)!=InputDisposition::waiting)continue;
                 repeat_available=true;repeat_count=request.presses;
                 repeat_at=request.physical_pressed_at;repeat_direction=request.direction;
-                repeat_source=request.direction_source;repeat_generations=request.generations;
+                repeat_source=request.direction_source;
+                // The same queue gate may preserve an unadmitted first grab
+                // across this pop's native jump retirement. The new physical B
+                // belongs to the current qualified action, not the retired stamp.
+                repeat_generations=environment.native_context.generations;
                 repeat_native=environment.native_context;
                 queued_repeat=true;
             }

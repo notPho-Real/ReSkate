@@ -195,7 +195,7 @@ struct Route {
     ArcadeInput input{true};NativeInputState producer;NativeInputReadiness readiness;
     NativeInputOwner owner{1,2,3,4,5};NativeInputFrame frame{};
     native_grab::Lease lease;std::vector<InputRequest> requests;std::vector<ArcadeTrick> tricks;
-    bool accept{true};std::uint64_t now{};std::uintptr_t selection_object{16};
+    bool accept{true};std::uint64_t now{},native_age{};std::uintptr_t selection_object{16};
     bool selection_valid{true},client_action_ready{true};native_grab::RetargetObservation grab_observation{};
     bool selector_available{true},foot_settings_ready{true},switched{};ArcadeTrick selected{ArcadeTrick::double_grab};
     InputGenerations grab_lineage{};InputAirEpisode grab_air{};NativeInputOwner grab_owner{};
@@ -233,6 +233,7 @@ struct Route {
         sample.words[1]=state==100?0xc000u:0;
         sample.words[0]=switched?0x20u:0;
         frame=producer.observe(at,owner,sample,{selection_valid,selection,selection_object});
+        if(native_age)frame.sampled_at=at>=native_age?at-native_age:0;
         readiness.publish(frame,{true,state==100,false,false,false,false,false,false,true,0});
         input.publish_native_context(frame);input.publish_authority(at,frame.owner_generation,1,true);
         const auto admission=readiness.sample(at,frame);
@@ -634,6 +635,89 @@ void repeated_grab_uses_physical_interval() {
               "physical repeated-B selection preserves the original airborne episode");
     }
 }
+void prepare_waiting_pop_grab(Route& route,unsigned dt,bool directional=true) {
+    route.poll(1000,0,100);route.poll(1000+dt,0x1000,100);route.poll(1000+2*dt,0,103,1);
+    for(auto at=1000+3*dt;at<1400;at+=dt)route.poll(at,0,103,1);
+    route.poll(1400,0,200,1);route.accept=false;
+    route.poll(1400+dt,directional?0x2004:0x2000,201,1);
+    route.poll(1400+2*dt,directional?4:0,201,1);
+}
+void queued_grab_released_pop_retirement() {
+    for(unsigned hz:{30u,60u,120u})for(bool switched:{false,true})for(bool second:{false,true}) {
+        const auto dt=(1000u+hz-1)/hz;auto route=std::make_unique<Route>();route->switched=switched;
+        prepare_waiting_pop_grab(*route,dt);
+        route->poll(1400+3*dt,second?0x2004:4,201,-1);
+        check(route->requests.empty(),"retired waiting grab never bypasses original adapter readiness");
+        route->accept=true;route->poll(1400+4*dt,second?0x2004:4,201,-1);
+        route->grab_observation={true,true,true,false,true,2};
+        route->poll(1400+5*dt,second?0x2004:4,201,-1);
+        check(route->requests.size()==(second?2u:1u) && route->tricks.front()==ArcadeTrick::melon &&
+            (!second || route->tricks.back()==ArcadeTrick::method),
+            "released-pop waiting grab and B2 during permitted retirement retain Melon then Method");
+        check(route->requests.front().physical_pressed_at==1400+dt &&
+            route->requests.front().recognized_at==1400+dt &&
+            route->requests.front().deadline==1400+dt+InputTiming::readiness_ms &&
+            route->requests.front().physical_released_at==0,
+            "retirement rebinding preserves queued first-edge timestamps without inventing later release metadata");
+        if(second)check(route->requests.back().presses==2 &&
+            route->requests.back().physical_pressed_at==1400+3*dt &&
+            route->requests.back().deadline==1400+3*dt+InputTiming::readiness_ms &&
+            !route->requests.back().unbounded,
+            "retired queued prefix preserves the second edge and its bounded deadline");
+    }
+    for(unsigned hz:{30u,60u,120u}) {
+        const auto dt=(1000u+hz-1)/hz;auto route=std::make_unique<Route>();
+        prepare_waiting_pop_grab(*route,dt,false);route->poll(1400+3*dt,0,201,-1);
+        route->accept=true;route->poll(1400+4*dt,0,201,-1);
+        check(route->requests.size()==1 && route->tricks.front()==ArcadeTrick::basic_bs_grab,
+            "neutral released B also retains exact pop handoff through native retirement");
+    }
+    for(unsigned delay:{199u,200u}) {
+        auto route=std::make_unique<Route>();prepare_waiting_pop_grab(*route,17);
+        const auto second=1451u;route->poll(second,0x2004,201,-1);
+        for(auto at=second+17;at<second+delay-1;at+=17)route->poll(at,0x2004,201,-1);
+        route->accept=true;route->poll(second+delay-1,0x2004,201,-1);
+        route->grab_observation={true,true,true,false,true,2};route->poll(second+delay,0x2004,201,-1);
+        check(route->requests.size()==(delay==199?2u:1u) &&
+            (delay!=199 || route->tricks.back()==ArcadeTrick::method),
+            "retired prefix cannot renew the repeated B physical199/200ms boundary");
+    }
+    for(unsigned fault=0;fault<9;++fault) {
+        auto route=std::make_unique<Route>();prepare_waiting_pop_grab(*route,17);
+        if(fault==0)++route->owner.entity;
+        if(fault==1)++route->selection_object;
+        if(fault==2)route->switched=true;
+        if(fault==3)route->native_age=151;
+        if(fault==4)route->selection_valid=false;
+        if(fault==8)route->poll(1445,0x1004,201,1);
+        const auto phase=fault==5?100u:201u;const auto selection=fault==6?2:-1;
+        route->poll(1451,0x2004,phase,selection,fault!=7);
+        route->native_age=0;route->accept=true;
+        route->poll(1468,0x2004,phase,selection,fault!=7);route->poll(1485,0x2004,phase,selection,fault!=7);
+        for(const auto& request:route->requests)check(request.physical_pressed_at!=1417 && request.presses!=2,
+            "owner, object, stance, stale or missing native evidence, landing, other flip, focus and another A cannot carry old grab lineage");
+    }
+    // An already queued child still needs an actual grab owner's continuity
+    // after its action generation retires. A waiting first request grants none.
+    for(unsigned hz:{30u,60u,120u}) {
+        const auto dt=(1000u+hz-1)/hz;auto route=std::make_unique<Route>();prepare_waiting_pop_grab(*route,dt);
+        route->poll(1400+3*dt,0x2004,201,1);route->poll(1400+4*dt,0x2004,201,-1);
+        route->accept=true;route->poll(1400+5*dt,0x2004,201,-1);route->poll(1400+6*dt,0x2004,201,-1);
+        check(route->requests.size()==1 && route->tricks.front()==ArcadeTrick::melon,
+            "unadmitted queued child cannot fabricate native grab continuity across later retirement");
+    }
+    {
+        // The original audit setup remained grounded beyond the pop window.
+        // Keep that unqualified case negative; it cannot justify rebinding.
+        auto route=std::make_unique<Route>();route->poll(1000,0,100);
+        route->poll(1017,0x1000,100);route->poll(1034,0,103,1);
+        for(unsigned at=1051;at<1600;at+=17)route->poll(at,0,103,1);
+        route->poll(1600,0,200,1);route->accept=false;
+        route->poll(1617,0x2004,201,1);route->poll(1634,4,201,1);
+        route->poll(1651,4,201,-1);route->accept=true;route->poll(1668,4,201,-1);
+        check(route->requests.empty(),"expired released-pop proof cannot preserve an old first grab across retirement");
+    }
+}
 void repeated_grab_before_native_admission() {
     for (unsigned hz:{30u,60u,120u}) for(bool switched:{false,true}) for(bool held:{false,true})
     for(bool retired:{false,true}) {
@@ -975,4 +1059,4 @@ void repeated_grab_after_clock_reset() {
           "reset prefix timestamp cannot suppress a new queued repeat after clock rollback");
 }
 
-int main(){repeated_grab_after_clock_reset();queued_grab_retirement_requires_native_owner();native_family_change_waits_for_exit();native_footer_exit_contract();current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();repeated_grab_before_native_admission();input_order_and_launch();native_air_before_client_readiness();repeated_grab_before_client_readiness();repeated_grab_wait_deadlines();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){queued_grab_released_pop_retirement();repeated_grab_after_clock_reset();queued_grab_retirement_requires_native_owner();native_family_change_waits_for_exit();native_footer_exit_contract();current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();repeated_grab_before_native_admission();input_order_and_launch();native_air_before_client_readiness();repeated_grab_before_client_readiness();repeated_grab_wait_deadlines();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
