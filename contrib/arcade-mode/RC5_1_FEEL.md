@@ -35,15 +35,15 @@ explicitly tied to this candidate's exact DLL.
 
 | Priority / feature | Current implementation and evidence | Defect / expected improvement | Effort | Dependencies / acceptance | State / next action |
 | --- | --- | --- | --- | --- | --- |
-| 0: CI admission | Required Windows/Linux source contract | YAML reader aborts before packaging; retain all assertions with block syntax | XS | Required preflight and packaging gates | Existing RC5 fixes reused; exact 7b23ea2f passes 140 preflight and 132 upstream integration tests, compilation and package verification |
-| 0: Windows compilation | Integrated contact contract included before platform headers | Four masks require undeclared Windows `LONG`; make their existing signed 32-bit type explicit | XS | Header-first compilation and contact-response regression | Reuse RC5 `e9872dc3` as `9345cc0a`; Windows build and package pass at 7b23ea2f |
+| 0: CI admission | Required Windows/Linux source contract | YAML reader aborts before packaging; retain all assertions with block syntax | XS | Required preflight and packaging gates | Existing RC5 fixes reused; exact ae9c827e passes 140 preflight and 132 upstream integration tests, compilation and package verification |
+| 0: Windows compilation | Integrated contact contract included before platform headers | Four masks require undeclared Windows `LONG`; make their existing signed 32-bit type explicit | XS | Header-first compilation and contact-response regression | Reuse RC5 `e9872dc3` as `9345cc0a`; Windows build and package pass at ae9c827e; later phase-read source awaits compilation |
 | 1: Rotation/prewind | Existing native LS spin, flight owner and ground chord; RC3 native rotation observations | Short prewind suppresses initial AIR rotation until ground chord interval expires | S | Proved native flight; both shoulders/cadences, no ground yaw, release and switch landing | Implemented; 32535ec4 short-window LB/RB native response observed; repeated switch acceptance pending |
 | 2: Input responsiveness / grabs | Existing directional/repeated-B registry and native grab adapter | Second B before first grab admission loses repeated variant; retain physical prefix independently of native readiness | S | Same owner/action/flight, original edge window and deadlines; actual actor/exit/landing | Queued-prefix correction implemented; old-source regression fails; HIL pending |
 | 2: Delayed grab recognition | Existing physical journal and native-air cutoffs | Two B edges before client readiness replay singles in reverse order; recognize the pair once | S | Both original edges, 250 ms repeat limit, second-edge +200 ms deadline, no stale replay | Implemented; 32535ec4 Method actor advancement/release/physical landing observed once |
 | 2: Repeated-input expiry | Existing request policy and deadline gate | `39ef1c70` stores a repeat deadline but inherits an unbounded ordinary policy; enforce the new repeat's physical-edge window | S | Fresh native observations and unavailable admission through exact second-edge +200 ms | Negative regression reproduces the defect; new repeated paths bounded; ordinary first-request policy preserved |
-| 2: Pre-AIR repeated X | The32535ec4 native pair records both edges during released-pop preparation | Two qualified edges become separate singles; retain the original flip prefix | S | Exact released pop and owner, existing160ms preload and second-edge+200ms expiry; actual held actor | Implemented; exact 7b23ea2f has complete captures and physical doubles in 2/2 trials at 60Hz and 2/3 at 30Hz; the retained 30Hz single exposes late first-action readiness |
-| 2: Queued double flip | Existing held-flip adapter and queue eligibility | Second X before first admission becomes another single and can be discarded | S | Kickflip/Heelflip actor, native preparation window, same flight and original physical deadline | Queued-prefix correction implemented; 7b23ea2f repeats observed below the original deadline, but late first-action readiness still loses the child; broader timing/stance/control acceptance pending |
-| 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S verification; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | Existing model regressions; no speculative physical change |
+| 2: Pre-AIR repeated X | Existing released-pop journal and bounded dependency queue | Preserve physical repeats through late first-action readiness | S | Same owner/pop, immutable first-AIR bounds, actual native actor and board rotation | Exact ae9c827e preserves all three immediate-pair requests beyond 200 ms; physical doubles 2/3 at 30 Hz, with a retained post-request execution failure |
+| 2: Queued double flip | Existing held-flip adapter and queue eligibility | Matching native observation can disappear before held actor entry | S | Actual actor/preparation/rotation, current owner and phase; no cached phase or renewed deadline | Source18de7d3a reuses existing zero-only owner-validated phase reread; focused and 46/46 shared tests pass, Windows/native effect pending; exact failure cause unproven |
+| 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S verification; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | New corridor baseline stops at a mixed request-word read; route/braking and Manual hold remain unverified. Separate observer proposal tested; no speculative gameplay change |
 | 4: Camera | Shortest yaw, rigid orbit, native pivot, elapsed duplicate sampling and restoration already fixed | Reverse restart remains inconclusive; exact candidate switch/revert follow pending | S verification | Sequence C and OFF, root/motion unchanged | Exact 2427231d right/up orbit and neutral recenter observed with complete camera captures and stable body heading; switch/revert follow and OFF restoration remain pending |
 | 5: Ollie/movement | Native release, charge, launch descriptors and bounded push budget already implemented | No new source-proved tuning defect; short/held jumps and momentum need comparative evidence | S verification / M tuning | Native cadence, trajectory, catch/contact, collision/bail controls | Preserve coherent current parameters; measure before tuning |
 | 6: HUD/scoring | Native-plus-custom combo model, integer ring and retained native stack entries | 39ef1c70 rendered Casper/Casper Flip names and x10 in the separate RC5 HUD session | S verification / M if binding defect remains | Sequence F, actual rendered names, banking/bail/OFF; RC5 chat owns HUD investigation | Native rendered names and OFF cleanup observed on 39ef1c70; integrated 32535ec4 full chain pending |
@@ -766,3 +766,25 @@ failure cause, Windows compilation and new-DLL native acceptance remain pending.
 The integrated shared sanitizer graph passes 46/46 suites in 57.69 seconds,
 including enabled/disabled wallplants and Casper. JUnit:
 `rc51-targeted/rc51-held-phase-targeted.xml` in the SSD build directory.
+
+## Related ground-input phase consistency
+
+Source correction `f2ce72dbc724402df97b4e26fb48379830f5b108` applies the same existing
+current-phase helper to Footplant and GroundGrab observation and ground actor
+ownership. Their old successful zero read reached active-lease cancellation.
+Both observers now require a known current phase; only zero gets one fresh read
+bracketed by exact skater/state-block identity. Existing Footplant subtype phase
+sets, GroundGrab state100, exact actor view, settings and deadlines remain intact.
+No cache, new buffer or native actor identity is introduced.
+
+Two behavior-preserving legacy-seam active-lease regressions fail before the
+correction and pass afterward. Footplant/GroundGrab, session, takeoff, jump-idle
+and held-flip sanitizer/Werror checks pass, with independent review. Evidence:
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-ground-phase-checks`.
+This is a source-proven sibling cancellation gap; no ground-mechanic native
+failure or new-DLL success is claimed. It is batched with the held-phase fix
+before a single Windows compilation checkpoint.
+
+The final combined held/ground batch passes 46/46 shared sanitizer suites in
+56.91 seconds. JUnit: `rc51-targeted/rc51-native-phase-targeted.xml`.
+The final manifest edit separately passes both candidate-contract tests.
