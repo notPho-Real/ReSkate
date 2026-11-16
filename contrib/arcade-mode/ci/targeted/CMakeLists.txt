@@ -8,6 +8,14 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 enable_testing()
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+# Catch workflow selection and candidate feature mismatches before a DLL build.
+add_test(NAME arcade_settings_snapshot_source
+    COMMAND "${Python3_EXECUTABLE}" -B
+        "${reskate_root}/Extension/ArcadeMode/Test/settings_snapshot_source_checks.py")
+add_test(NAME arcade_unified_candidate
+    COMMAND "${Python3_EXECUTABLE}" -B
+        "${reskate_root}/contrib/arcade-mode/ci/test_unified_candidate.py")
 # Existing production-header tests, not copied implementations. No runtime DLL,
 # asset downloads, Cargo, package or publishing permissions in this fast lane.
 foreach(test native_score_snapshot native_score_progress native_score_presentation native_score_rows custom_score input_session neutral_flip_release air_motion_proof launch_descriptor
