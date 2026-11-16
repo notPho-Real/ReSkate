@@ -34,6 +34,8 @@ explicitly tied to this candidate's exact DLL.
 | 1: Rotation/prewind | Existing native LS spin, flight owner and ground chord; RC3 native rotation observations | Short prewind suppresses initial AIR rotation until ground chord interval expires | S | Proved native flight; both shoulders/cadences, no ground yaw, release and switch landing | Immediate AIR handoff implemented; old-source regression fails; HIL pending |
 | 2: Input responsiveness / grabs | Existing directional/repeated-B registry and native grab adapter | Second B before first grab admission loses repeated variant; retain physical prefix independently of native readiness | S | Same owner/action/flight, original edge window and deadlines; actual actor/exit/landing | Queued-prefix correction implemented; old-source regression fails; HIL pending |
 | 2: Delayed grab recognition | Existing physical journal and native-air cutoffs | Two B edges before client readiness replay singles in reverse order; recognize the pair once | S | Both original edges, 250 ms repeat limit, second-edge +200 ms deadline, no stale replay | History-pair correction implemented and peer-reviewed; HIL pending |
+| 2: Repeated-input expiry | Existing request policy and deadline gate | `39ef1c70` stores a repeat deadline but inherits an unbounded ordinary policy; enforce the new repeat's physical-edge window | S | Fresh native observations and unavailable admission through exact second-edge +200 ms | Negative regression reproduces the defect; new repeated paths bounded; ordinary first-request policy preserved |
+| 2: Queued double flip | Existing held-flip adapter and queue eligibility | Second X before first admission becomes another single and can be discarded | S | Kickflip/Heelflip actor, native preparation window, same flight and original physical deadline | Queued-prefix correction implemented; triples remain deferred; exact-source HIL pending |
 | 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S verification; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | Existing model regressions; no speculative physical change |
 | 4: Camera | Shortest yaw, rigid orbit, native pivot, elapsed duplicate sampling and restoration already fixed | Reverse restart remains inconclusive; exact candidate switch/revert follow pending | S verification | Sequence C and OFF, root/motion unchanged | Focused production suites pass; native walkthrough pending |
 | 5: Ollie/movement | Native release, charge, launch descriptors and bounded push budget already implemented | No new source-proved tuning defect; short/held jumps and momentum need comparative evidence | S verification / M tuning | Native cadence, trajectory, catch/contact, collision/bail controls | Preserve coherent current parameters; measure before tuning |
@@ -66,6 +68,29 @@ The physical interval stays at most 250 ms and the final edge retains its 200 ms
 readiness deadline. Neither a queued first grab nor a matched pair counts as
 native execution. A consumed sequence floor prevents stale replay through a
 released-pop proof; the final B retains its own release or held state.
+
+A later exact-boundary regression found that `39ef1c70` recorded the repeated-B
+deadline while retaining the ordinary policy's unbounded flag. Fresh native
+observations could therefore keep a waiting repeat alive past that deadline.
+Both new grab-repeat paths now opt into the existing bounded request policy,
+with expiry anchored to the second physical edge. The original single request's
+policy remains unchanged. The frozen `39ef1c70` build is restricted to the
+independent HUD investigation; it is not input or gameplay accepted.
+
+The same review reproduced a queued X-to-X defect: before the first flip's native
+admission, the second X became another single and was lost on selector retirement.
+Recognition now reuses the queue's existing eligibility predicate and the pending
+Kickflip/Heelflip prefix. FIFO dispatch and the original held-flip adapter still
+require the actual base actor, valid preparation window and independent rotation
+evidence. The new repeat expires at its physical edge plus 200 ms. No triple-flip
+execution or native success is inferred from recognition.
+
+The final focused batch passes 1,504 held-flip checks, 20,740 native-grab checks,
+9,174 dispatch checks and the existing composed session suites with sanitizers
+and warnings as errors. Old-source overlays fail both the queued-X and fresh-state
+grab-expiry regressions. Positive +199 ms and negative +200 ms cases cover both
+new grab paths and queued doubles. Native observations in these tests are fixtures.
+Correction commit `39a37647` also passes the full 46/46 targeted sanitizer graph.
 
 No additional camera correction was justified by the source review. Its
 production tests cover reversal, pivot/orbit, cadence-normalized recentering,
@@ -110,3 +135,11 @@ known-failing runtime build. Its passing Linux checks do not qualify a package.
 Baseline run 43791688729 passed 132 upstream integration tests but produced no
 valid DLL or installer. The corrected full checkpoint includes the header fix
 and both repeated-grab timing corrections.
+
+Checkpoint `39ef1c70` runs in
+[43795662044](https://github.com/notPho-Real/ReSkate/actions/runs/43795662044).
+Its Windows preflight passed 140/140 tests; runtime compilation and packaging
+are separate gates. The subsequent bounded-repeat correction supersedes it for
+input acceptance. The RC5 chat may use its verified binary for the independent
+HUD question, then must stop, restore the exact prior installation and return
+the exclusive slot before this thread's corrected-candidate gameplay trials.
