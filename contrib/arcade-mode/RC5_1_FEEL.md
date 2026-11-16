@@ -30,8 +30,10 @@ explicitly tied to this candidate's exact DLL.
 | Priority / feature | Current implementation and evidence | Defect / expected improvement | Effort | Dependencies / acceptance | State / next action |
 | --- | --- | --- | --- | --- | --- |
 | 0: CI admission | Required Windows/Linux source contract | YAML reader aborts before packaging; retain all assertions with block syntax | XS | Required preflight and packaging gates | Existing RC5 fixes reused; run full candidate CI |
+| 0: Windows compilation | Integrated contact contract included before platform headers | Four masks require undeclared Windows `LONG`; make their existing signed 32-bit type explicit | XS | Header-first compilation and contact-response regression | Reuse RC5 `e9872dc3` as `9345cc0a`; Windows rebuild pending |
 | 1: Rotation/prewind | Existing native LS spin, flight owner and ground chord; RC3 native rotation observations | Short prewind suppresses initial AIR rotation until ground chord interval expires | S | Proved native flight; both shoulders/cadences, no ground yaw, release and switch landing | Immediate AIR handoff implemented; old-source regression fails; HIL pending |
 | 2: Input responsiveness / grabs | Existing directional/repeated-B registry and native grab adapter | Second B before first grab admission loses repeated variant; retain physical prefix independently of native readiness | S | Same owner/action/flight, original edge window and deadlines; actual actor/exit/landing | Queued-prefix correction implemented; old-source regression fails; HIL pending |
+| 2: Delayed grab recognition | Existing physical journal and native-air cutoffs | Two B edges before client readiness replay singles in reverse order; recognize the pair once | S | Both original edges, 250 ms repeat limit, second-edge +200 ms deadline, no stale replay | History-pair correction implemented and peer-reviewed; HIL pending |
 | 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S verification; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | Existing model regressions; no speculative physical change |
 | 4: Camera | Shortest yaw, rigid orbit, native pivot, elapsed duplicate sampling and restoration already fixed | Reverse restart remains inconclusive; exact candidate switch/revert follow pending | S verification | Sequence C and OFF, root/motion unchanged | Focused production suites pass; native walkthrough pending |
 | 5: Ollie/movement | Native release, charge, launch descriptors and bounded push budget already implemented | No new source-proved tuning defect; short/held jumps and momentum need comparative evidence | S verification / M tuning | Native cadence, trajectory, catch/contact, collision/bail controls | Preserve coherent current parameters; measure before tuning |
@@ -48,7 +50,7 @@ The short-prewind regression fails against the original rotation header. The
 fixed source passes 369 native spin composition checks and seven related
 sanitizer suites, including Manual throw, balance entry and lifetime. The grab
 regression likewise fails against the original dispatch header and passes with
-the corrected queued-prefix recognition: 20,641 grab checks, 9,174 dispatch
+the corrected queued-prefix and delayed-pair recognition: 20,730 grab checks, 9,174 dispatch
 checks, 6,517 session checks, 648 takeoff cases and 326 jump-idle checks pass with
 address/undefined sanitizers and warnings as errors. Independent review added
 clock-reset and native-retirement cases; only the existing native grab lease can
@@ -56,10 +58,14 @@ carry a queued repeat through the latter. These prove software behavior, not
 native trick completion or feel. Gameplay commits are `78796a71` (prewind) and
 `ce7f8af3` (queued grabs).
 
-The grab correction begins once the first B has entered the bounded recognition
-queue. Two presses both occurring before recognition becomes available are still
-a separate outstanding timing case. Do not describe this as blanket support for
-all pre-readiness double taps.
+The first grab correction covers an already queued physical prefix. A second
+regression reproduces two B edges before client recognition becomes available:
+the old matcher dispatched the newest single grab, then replayed the older one.
+The existing journal now recognizes that pair as one requested native variant.
+The physical interval stays at most 250 ms and the final edge retains its 200 ms
+readiness deadline. Neither a queued first grab nor a matched pair counts as
+native execution. A consumed sequence floor prevents stale replay through a
+released-pop proof; the final B retains its own release or held state.
 
 No additional camera correction was justified by the source review. Its
 production tests cover reversal, pivot/orbit, cadence-normalized recentering,
@@ -97,3 +103,10 @@ all stock/RC2/RC3 rollback sets. Do not change the accepted update channel.
 Exact candidate commit, CI results, artifact identity and any native results are
 recorded at the next checkpoint; until then this is implemented source under
 validation, not a playable or accepted milestone.
+
+The first feature run, [43794704338](https://github.com/notPho-Real/ReSkate/actions/runs/43794704338),
+was cancelled after the baseline compiler failure became known, avoiding another
+known-failing runtime build. Its passing Linux checks do not qualify a package.
+Baseline run 43791688729 passed 132 upstream integration tests but produced no
+valid DLL or installer. The corrected full checkpoint includes the header fix
+and both repeated-grab timing corrections.
