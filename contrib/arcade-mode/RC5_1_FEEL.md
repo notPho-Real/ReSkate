@@ -439,4 +439,8 @@ rejected checkpoint `576fa623` with C4459: a dependency-loop local named
 instantiation. The local is renamed `queued_child`; warning and test policies
 remain unchanged. Cancellation of the remaining obsolete jobs was requested after
 the failure was preserved. The two directly affected local sanitizer suites pass
-again. This run supplies no installable or native-accepted checkpoint.
+again. Full-log review also identified C4244 in the new negative-test fixture:
+an integer conditional was passed to a float count parameter. The fixture now
+uses explicit float literals, preserving its exact 0/1 cases. Both findings are
+corrected before another push. This run supplies no installable or
+native-accepted checkpoint.

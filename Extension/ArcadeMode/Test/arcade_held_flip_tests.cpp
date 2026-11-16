@@ -419,7 +419,7 @@ void composed_successor_negatives() {
         if(fault==13)h->native_orientation.fakie=true;
         if(fault==14)h->native_orientation.valid=false;
         PhysicalInputSample input{};if(fault==11)input.lt=255;if(fault==12)input.buttons=0x8000;
-        const auto out=h->poll(1394,input,fault==3?100:fault==4?300:201,1,fault==8,fault==10?1:0,false,false,fault==9?3:2);
+        const auto out=h->poll(1394,input,fault==3?100:fault==4?300:201,1,fault==8,fault==10?1.0f:0.0f,false,false,fault==9?3:2);
         check(!h->repeats && !out.held_actor_acknowledged,
               "successor still rejects foreign owner, focus, conflict, landing, bail, stance, object, missing observer, Prepare, wrong actor, count and buttons");
         h->poll(1428,{},201,1,false,0,false,false,2);
