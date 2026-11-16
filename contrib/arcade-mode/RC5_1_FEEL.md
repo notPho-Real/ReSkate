@@ -10,7 +10,9 @@ The preceding
 exact `986fb8c0` DLL completed five scoped physical doubles at 30 Hz and one at
 60 Hz, including native airborne release and supported landing. Its zero-phase
 recovery path and durable native banking remain unverified. Earlier ae9 failures
-are retained. The exact `36d615ce` corridor and native brake passed once; its
+are retained. Two exact-f002 corridor attempts stopped on speed and contact
+prerequisites; no f002 Manual trial ran. All136 rollback sets are preserved and
+the prior installation is restored. The exact `36d615ce` corridor and native brake passed once; its
 Manual trial was inconclusive because the observer stopped before recording
 physical entry. The corrected observer passes 421 offline checks; these are
 not native Manual evidence.
@@ -1131,3 +1133,46 @@ Next independent setup work aligns the baseline's initial ordinary push with
 the already shorter Manual approach. Preserve the original failed attempt,
 all physical/time/speed bounds, native braking and fresh-reset requirements.
 This is test setup work; no new runtime build is needed for it.
+
+## Exact f002 shortened-push contact failure
+
+The separate setup proposal changed only the west-baseline ordinary push release
+from0.8 to0.45 seconds, matching the existing Manual approach. Its122 offline
+checks plus2 loader checks verify scheduling, whole-generated-AST identity after
+that one event change, unrelated-recipe byte identity and unchanged rejection
+of the earlier8.0183 m/s sample. No physical speed prediction follows from those
+checks. Proposal manifest:
+`b62a7f55068b8bf44bc86382ce2f0c9c5b8fc9a332d5847c96bc1cee1b963de9`.
+The new inactive scaffold passed230 focused checks and retained the existing
+Manual evidence; manifest:
+`d27059f81b9d0a84a9fcf2ba7c791735a32983fef561218166165796f003d44d`.
+
+Fresh device/source/DLL/native-map verification passed on the same compiled f002
+package. The baseline then failed at0.703230218 seconds on two-truck selection.
+Matching request words, native state100, one owner and regular stance accompany
+mask0x8000, two repeat-stable selected and raw contacts, and board pitch−0.358826
+degrees. Speed was5.6774 m/s. Four contacts returned in the next sample at
+0.753161165 seconds. This is not the earlier demonstrably mixed-word read;
+nevertheless current-native-step contact freshness and axle mapping remain
+unproven. It does not establish a runtime regression or justify relaxing guards.
+
+The trace contains21 post-start physical rows through0.812117 seconds and a
+76.298 ms maximum sample gap. The longest native source6 group measures58.7156Hz;
+native/cache steps are1/60. The acquisition capture has1124 consecutive ordinals
+but no terminal and ends212.919ms before the failed physical sample, so it is
+incomplete. Video shows pushing/coasting; it cannot replace the missing15-second
+proof. Native braking and both Manual attempts did not run.
+
+Evidence: `artifacts/rc51-manual-short-baseline-hil-f0025f3e`; independent analysis
+SHA-256: `d1e8b88ceb42a8c4f5bd47c7919d526dc611c70b0495924f03ec4109bcdc6761`.
+Normal close, exact four-file generated-pack cleanup and prior971c restoration
+passed. Both processes are stopped, all136 rollback sets remain, and authority
+is revoked with no queued hardware work. Return:
+`3a43cfe5bb2a86c284bf71118c33eace8475af545cf44ccc792bdf3287cba27c`;
+restore: `2b9456f21a5f34d076557092ac8ded6a9ea8098aa2c362203a3d61d122dc9902`.
+
+Manual lifetime remains unaccepted. Further work must resolve the relationship
+between native pushing, physical contact and the corridor prerequisite from
+retained evidence before another hardware attempt; neither guard widening nor
+an automatic retry is justified. Independent held-Y rail guard integration and
+the other acceptance gaps remain separate work.
