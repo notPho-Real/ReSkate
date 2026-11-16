@@ -24,6 +24,12 @@ using anim_studio::Clip;
 // A clip from now on, in place: `speed` times as fast, blended in and out over `blend` seconds,
 // once or over and over.
 struct Play {
+    struct Contact {
+        std::uint16_t joint{};
+        anim_studio::Vec3 point{}, normal{};
+        std::optional<arm_reach::ContactFrame> frame;
+        bool level_body{}; // Keep both feet while removing placement bank/pitch from the held body.
+    };
     std::shared_ptr<const Clip> clip;
     float speed{1}, blend{0.15f};
     bool loop{};
@@ -35,6 +41,9 @@ struct Play {
     // that does not rise by itself (the game's own trick clips stay in place); on the ground its board
     // lies under the feet. Without it the body hangs from where the skater is, as the clip has it.
     bool floor{};
+    // Optional observed world-space plane for a bounded held pose. Render-only
+    // two-bone reach; an unreachable target never stretches or moves the root.
+    std::optional<Contact> contact;
 };
 // A clip the game's own trick plays as, from its takeoff: the clip's air (its takeoff to its
 // landing) stretched to the trick's. `trick` is the game's name ("kickflip"); `pop` "", "low",
@@ -75,10 +84,40 @@ struct PlaybackFrame {
     double age{};
 };
 std::optional<PlaybackFrame> playback_frame(std::uint64_t ticket) noexcept;
+// Borrow the idle player at one authored clip time until a monotonic
+// GetTickCount64 deadline (at most one second ahead), then blend out (at most
+// one second). The
+// animation callback enforces expiry even if the client stops ticking.
+std::uint64_t try_hold(Play clip,std::uint64_t deadline);
+bool release_play(std::uint64_t ticket); // matching held ticket begins its blend out
 void prepare_playback() noexcept; // requests the existing hooks at the next client tick
 bool can_play() noexcept;
 bool owns_play(std::uint64_t ticket) noexcept;
 void cancel_play(std::uint64_t ticket);
+// Copied evidence from actual local animation/render callbacks for an owned play.
+// These counters do not establish a native ActorController or a foot-wall contact.
+struct PlaybackEvidence {
+    struct Contact {
+        std::uint16_t joint{};
+        anim_studio::Vec3 reference_point{}, normal{};
+        float target_error{};
+        bool reachable{};
+        bool body_frame_applied{};
+    };
+    std::uint64_t ticket{}, samples{}, writes{}, draws{};
+    float first_sample{}, last_sample{};
+    // World joint origins from the exact body pose copied by the renderer,
+    // composed with its then-current native placement. These are not physical
+    // contact points, a sole surface, or native ActorController evidence.
+    std::uintptr_t component{};
+    std::uint64_t feet_drawn_at{};
+    anim_studio::Vec3 left_foot{}, right_foot{};
+    bool feet_valid{};
+    // Authored support reference after the renderer copied it, not mesh sole
+    // geometry or a manufactured native collision.
+    std::optional<Contact> contact;
+};
+std::optional<PlaybackEvidence> playback_evidence(std::uint64_t ticket) noexcept;
 // The clip of play(), moved to `seconds` (clamped to it), held there or playing on from it.
 void seek(float seconds);
 void pause(bool paused);
@@ -119,6 +158,25 @@ void pose(std::vector<PoseOffset> offsets, float weight, Shown shown = Shown::ev
 // empty without a skater. Asking keeps that joint read for two seconds, so the first ask comes back
 // empty; at most 32 joints are read at once.
 std::optional<anim_studio::Joint> joint(std::uint16_t index);
+// The same subscription with its animation component, sample age and sequence.
+// A sample from a replaced component is not returned. Callers choosing geometry
+// from a pose must check its age rather than treating a cached joint as current.
+struct JointObservation {
+    anim_studio::Joint joint;
+    std::uintptr_t component{};
+    double age{};
+    std::uint64_t sequence{};
+};
+std::optional<JointObservation> joint_observation(std::uint16_t index);
+// Immutable parent-local pose, before this API applies clips or offsets. Reading
+// renews a bounded observation lease; component, age and sequence identify it.
+struct PoseObservation {
+    std::vector<anim_studio::Joint> joints;
+    std::uintptr_t component{};
+    double age{};
+    std::uint64_t sequence{};
+};
+std::optional<PoseObservation> pose_observation();
 // The hand joint's (joint()).
 std::optional<arm_reach::Placed> hand(arm_reach::Hand side);
 // The game menu's character room (Extension/World/character_room.h). While the walk looks for it,

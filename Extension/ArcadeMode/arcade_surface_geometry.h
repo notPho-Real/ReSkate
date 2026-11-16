@@ -12,7 +12,16 @@ struct SurfaceGeometryBody {
     bool operator==(const SurfaceGeometryBody&) const = default;
 };
 static_assert(sizeof(SurfaceGeometryBody) == 16);
-enum class SurfaceGeometryPhase : std::uint8_t { unavailable, client, park };
+// A validated static non-ECS owner is distinct from an unknown/zero ECS ID.
+// Retain both native owner incarnation and shape-to-body association.
+struct SurfaceGeometryWorldOwner {
+    SurfaceGeometryBody body;
+    std::uintptr_t store{};
+    std::uint32_t index{UINT32_MAX}, generation{}, kind{};
+    std::uint64_t value{};
+    bool operator==(const SurfaceGeometryWorldOwner&) const = default;
+};
+enum class SurfaceGeometryPhase : std::uint8_t { unavailable, client, park, collision_response, motion_admission };
 struct SurfaceGeometryContext {
     std::array<std::uintptr_t, 5> owner{};
     InputNativeContext native;
@@ -23,7 +32,8 @@ struct SurfaceGeometryContext {
     bool fresh(std::uint64_t now) const noexcept {
         return native.required && native.fresh(now) && client_context && world && world_generation &&
             self_entity && self_generation &&
-            (phase == SurfaceGeometryPhase::client || phase == SurfaceGeometryPhase::park) &&
+            (phase == SurfaceGeometryPhase::client || phase == SurfaceGeometryPhase::park ||
+             phase == SurfaceGeometryPhase::collision_response || phase == SurfaceGeometryPhase::motion_admission) &&
             owner[0] && owner[1] && owner[2] && owner[3] && owner[4];
     }
 };
@@ -36,6 +46,7 @@ struct SurfaceGeometrySample {
     std::uint64_t body_owner{}, queried_at{};
     SurfaceGeometryVector point{}, query_normal{};
     bool valid{};
+    SurfaceGeometryWorldOwner world_owner{};
     // This is query geometry, never actual board support or prediction normal.
     // Revalidation of the live body is also required in the authorized callback.
     bool fresh_for(const SurfaceGeometryContext& current, std::uint64_t now) const noexcept {
@@ -47,6 +58,20 @@ struct SurfaceGeometrySample {
             context.native.air_episode() == current.native.air_episode() &&
             context.native.airborne == current.native.airborne;
     }
+};
+// Optional copied receipts from calls already made by a geometry query. Never
+// issues another native query or changes its admission/cleanup behavior.
+struct SurfaceGeometryTrace {
+    const char* reason{"not_started"};
+    const char* context_reason{"not_observed"};
+    unsigned ray{}, attempt{}, hits{};
+    SurfaceGeometryBody shape{};
+    std::uint64_t entity{};
+    SurfaceGeometryVector start{}, end{}, point{};
+    float value{};
+    // Anchor operands survive individual clearance-ray diagnostics.
+    SurfaceGeometryVector anchor_root{}, anchor_body{}, anchor_target{};
+    float anchor_displacement{};
 };
 namespace surface_geometry_detail {
 inline SurfaceGeometryVector sub(SurfaceGeometryVector a, SurfaceGeometryVector b) noexcept {

@@ -1,0 +1,94 @@
+#include "Engine/Game/World/body_drive_lease.h"
+#include "Engine/Game/Build/20260929/body_drive.h"
+#include <cstring>
+#include <cstdlib>
+#include <iostream>
+#include <map>
+#include <vector>
+namespace native_cleanup_test {
+using namespace dingosdk::body_drive;
+namespace d=dingosdk::game::build::v20260929::body_drive;
+namespace r=dingosdk::game::build::v20260929::rigid_bodies;
+using Touch=void (*)(NativeHandle*);
+using Remove=void (*)(std::uintptr_t,NativeHandle*);
+constexpr World live{0x10000,0x20000,0x30000};
+constexpr NativeHandle owned{live.world,20,31};
+constexpr std::uintptr_t active_address=0x40000,queued_address=0x50000,generations_address=0x60000;
+std::map<std::uintptr_t,std::vector<unsigned char>> memory_bytes;
+std::vector<unsigned> calls;
+bool fail_disable{},fail_release{},publish_queue{},keep_active{},clear_joint{},generation_changed{};
+void require(bool ok,const char* reason){if(!ok){std::cerr<<reason<<'\n';std::exit(1);}}
+template<class T>void put(std::uintptr_t at,T value){
+ auto& bytes=memory_bytes[at];bytes.resize(sizeof(value));std::memcpy(bytes.data(),&value,sizeof(value));
+}
+namespace memory {
+template<class T>bool peek(std::uintptr_t at,T& value){
+ const auto i=memory_bytes.find(at);
+ if(i==memory_bytes.end()||i->second.size()!=sizeof(value))return false;
+ std::memcpy(&value,i->second.data(),sizeof(value));return true;
+}
+}
+bool pointer(std::uintptr_t p){return p>=0x10000&&p<0x1000000;}
+bool call(Touch fn,NativeHandle* h){
+ require(reinterpret_cast<std::uintptr_t>(fn)==d::disable_body.rva&&*h==owned,"disable must own exact helper");
+ calls.push_back(1);if(fail_disable)return false;
+ put(active_address+2,static_cast<std::uint8_t>(keep_active?16U:0U));return true;
+}
+bool call(Remove fn,std::uintptr_t world,NativeHandle* h){
+ require(world==live.world&&*h==owned,"release must own exact generation and world");
+ if(reinterpret_cast<std::uintptr_t>(fn)==d::release_joint.rva){calls.push_back(3);if(fail_release)return false;if(clear_joint)*h={};return true;}
+ require(reinterpret_cast<std::uintptr_t>(fn)==d::release_body.rva,"wrong native release");
+ calls.push_back(2);if(fail_release)return false;
+ if(publish_queue)put(queued_address+2,std::uint8_t{16});
+ if(generation_changed)put(generations_address+20*sizeof(std::uint32_t),std::uint32_t{32});
+ return true; // Allocation and generation normally stay valid until the queue drains.
+}
+struct NativeDrive {
+ std::uintptr_t base_{};
+ bool live_world=true,valid_body=true,valid_joint=true;
+ bool current(World w)const{return live_world&&w==live;}
+ bool body_valid(NativeHandle h)const{return valid_body&&h==owned;}
+ bool joint_valid(NativeHandle h)const{return valid_joint&&h==owned;}
+ bool remove_joint(World,NativeHandle&)noexcept;
+ bool remove_anchor(World,NativeHandle&)noexcept;
+};
+@native_drive_cleanup@
+void reset(){
+ memory_bytes.clear();calls.clear();fail_disable=fail_release=keep_active=generation_changed=false;
+ publish_queue=clear_joint=true;
+ put(live.state+d::body_active_bits,active_address);put(live.world+d::body_retirement_bits,queued_address);
+ put(live.world+r::world_body_generations,generations_address);
+ put(active_address+2,std::uint8_t{16});put(queued_address+2,std::uint8_t{0});put(generations_address+80,owned.generation);
+}
+void run(){
+ reset();NativeDrive drive;auto h=owned;
+ require(drive.remove_anchor(live,h)&&h==NativeHandle{},"disabled queued helper must retire while generation is still valid");
+ require(calls==std::vector<unsigned>{1,2},"body disable and retirement must each happen once");
+ for(unsigned fault=0;fault<9;++fault){
+  reset();drive={};h=owned;
+  switch(fault){
+   case 0:drive.live_world=false;break;case 1:drive.valid_body=false;break;
+   case 2:fail_disable=true;break;case 3:fail_release=true;break;
+   case 4:publish_queue=false;break;case 5:keep_active=true;break;
+   case 6:generation_changed=true;break;
+   case 7:memory_bytes.erase(live.world+d::body_retirement_bits);break;
+   case 8:put(live.state+d::body_active_bits,std::uintptr_t{0});break;
+  }
+  require(!drive.remove_anchor(live,h)&&h==owned,"uncertain retirement must preserve ownership for quarantine");
+  if(fault<2)require(calls.empty(),"foreign or invalid body must not be released");
+  if(fault==2)require(calls==std::vector<unsigned>{1},"failed disable must not release");
+ }
+ reset();drive={};h=owned;
+ require(drive.remove_joint(live,h)&&h==NativeHandle{}&&calls==std::vector<unsigned>{3},"native joint wrapper clears exact owned handle");
+ for(unsigned fault=0;fault<4;++fault){
+  reset();drive={};h=owned;
+  if(fault==0)drive.live_world=false;
+  if(fault==1)drive.valid_joint=false;
+  if(fault==2)fail_release=true;
+  if(fault==3)clear_joint=false;
+  require(!drive.remove_joint(live,h)&&h==owned,"uncertain joint release must not permit anchor removal");
+ }
+ std::cout<<"native deferred-retirement cleanup regressions passed\n";
+}
+}
+void run_native_drive_cleanup_tests(){native_cleanup_test::run();}

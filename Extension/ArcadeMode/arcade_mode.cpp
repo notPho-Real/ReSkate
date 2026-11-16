@@ -675,7 +675,8 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const bool episode_live=episode.established() || episode.airborne();
     if (!physical.valid && !episode_live) { manual_identity.reset(manual_label); balance_control.reset_manual(); }
     const bool failed = combo_session.step(pose, manual_pose ? physical_seconds : (episode_live?0.f:dt), correction, native_revert,
-        manual_pose || (kind == BalanceKind::manual && !episode_live) ? &physical : nullptr,pending_manual_revert,episode_live);
+        manual_pose || (kind == BalanceKind::manual && !episode_live) ? &physical : nullptr,pending_manual_revert,episode_live,
+        valid && !owner_changed && !bail && wallplant_runtime::preserves_combo(native_frame,now));
     const auto executions=custom_flatland_runtime::take_executions();
     if(!executions.overflow && valid && !bail && !owner_changed && !failed)
         for(unsigned i=0;i<executions.count;++i) {
@@ -1565,22 +1566,152 @@ bool set_input_capture(unsigned duration_ms,unsigned required_sources,bool angul
 }
 
 // Controller route binding_context publication begin.
+static NativeInputFrame native_air_context_locked(std::uint64_t now,const NativeInputOwner& owner,
+        const NativeRequestSample& sample,MotionCleanupProof* cleanup,const char** diagnostic_reason,
+        NativeInputCorrelation* diagnostic=nullptr) noexcept {
+    const auto unavailable=[&](const char* reason) {if(diagnostic_reason)*diagnostic_reason=reason;return NativeInputFrame{};};
+    if (cleanup) *cleanup=MotionCleanupProof{motion_cleanup_state.correlate(now,owner,sample)};
+    if (!mode_enabled.load(std::memory_order_acquire))return unavailable("frame_disabled");
+    if (!controller_route.physical(now).valid)return unavailable("frame_route");
+    if (!arcade_input.admitted(0,now))return unavailable("frame_not_admitted");
+    const auto frame = native_input_state.correlate(now,owner,sample,diagnostic);
+    if(!frame.valid)return unavailable("frame_correlation");
+    if(frame.owner_generation!=arcade_input.owner_epoch())return unavailable("frame_owner_generation");
+    if(diagnostic_reason)*diagnostic_reason="frame_valid";
+    return frame;
+}
 NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
-                                   const NativeRequestSample& sample, MotionCleanupProof* cleanup) noexcept {
+                                   const NativeRequestSample& sample, MotionCleanupProof* cleanup,
+                                   const char** diagnostic_reason) noexcept {
     if (cleanup) *cleanup={};
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
-    if (!lock.owns_lock()) return {};
-    if (cleanup) *cleanup=MotionCleanupProof{motion_cleanup_state.correlate(now,owner,sample)};
-    if (!mode_enabled.load(std::memory_order_acquire) || !controller_route.physical(now).valid || !arcade_input.admitted(0,now)) return {};
-    const auto frame = native_input_state.correlate(now,owner,sample);
-    return frame.valid && frame.owner_generation == arcade_input.owner_epoch() ? frame : NativeInputFrame{};
+    if (!lock.owns_lock()) {
+        if(diagnostic_reason)*diagnostic_reason="frame_lock_busy";
+        return {};
+    }
+    return native_air_context_locked(now,owner,sample,cleanup,diagnostic_reason);
+}
+WallplantExecutionProof native_wallplant_context(const NativeInputOwner& owner,std::uint64_t& now,
+                                         const char** diagnostic_reason) noexcept {
+    // Native wallplant admission uses synchronous arbitration. Its
+    // caller holds no source busy flag, runtime mutex or No Bail lease lock.
+    // Refresh both time and native inputs AFTER acquiring authority; waiting
+    // never extends a frame, physical press or controller lease.
+    std::lock_guard lock(ollie_mutex);
+    now=GetTickCount64();
+    namespace native=game::build::v20260929::arcade_native_probe;
+    NativeRequestSample sample{};
+    sample.valid=memory::peek(owner.context+native::selected_state,sample.state) &&
+        memory::peek(owner.rig+native::crouch_mode,sample.crouch_mode) &&
+        memory::peek(owner.context+native::request_words,sample.words[0]) &&
+        memory::peek(owner.context+native::request_words+4,sample.words[1]);
+    sample.words[1]&=0xc000u;
+    NativeInputCorrelation diagnostic{};
+    auto frame=native_air_context_locked(now,owner,sample,nullptr,diagnostic_reason,&diagnostic);
+    bool imported_contact=false;
+    if(!frame.valid && wallplant_imported_contact_phase(diagnostic,sample) &&
+       diagnostic.observed.owner_generation==arcade_input.owner_epoch()) {
+        frame=diagnostic.observed; // Unchanged original frame, never re-observed or refreshed.
+        imported_contact=true;
+        if(diagnostic_reason)*diagnostic_reason="frame_wall_contact_phase";
+    }
+    static unsigned reported{}; // Serialized by ollie_mutex; contact-scoped accessor only.
+    if(diagnostic.mismatches && reported<64) {
+        ++reported;
+        const auto& original=diagnostic.observed;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT CORRELATION: ms={} mismatch={} owner={} owner_equal={} original_valid={} sample_valid={} step={} frame_ms={} age_valid={} age={} original_state={} live_state={} original_mode={} live_mode={} original_contacts={} live_contacts={} original_stance={} live_stance={} imported_contact_accepted={}.",
+            now,diagnostic.mismatches,owner.core,owner==original.owner,original.valid,sample.valid,
+            original.physics_step,original.sampled_at,now>=original.sampled_at,
+            now>=original.sampled_at?now-original.sampled_at:0,original.state,sample.state,original.mode,sample.crouch_mode,
+            original.contacts,sample.words[1]&0xc000u,original.stance_and_push,sample.words[0]&0x60u,imported_contact);
+    }
+    return {frame,sample,imported_contact};
+}
+static bool wallplant_execution_authorized_locked(const NativeInputFrame& original,std::uint64_t now) noexcept {
+    const auto physical=controller_route.physical(now);
+    const auto pending=wallplant_runtime::writer_probe();
+    const auto accepted=pending.contact && pending.motion && wallplant_runtime::motion_current(pending.motion,original) && wallplant_same_observation(pending.native,original)
+        ? pending.input : 0;
+    return mode_enabled.load(std::memory_order_acquire) &&
+        action_mode.load(std::memory_order_acquire)==ActionExperiment::classic && !grind_change.active() &&
+        physical.valid && physical.lt<=30 && physical.rt<=30 && !(physical.buttons&0xe030u) &&
+        arcade_input.admitted(0,now) && arcade_input.wallplant_controls_unowned(0,accepted) &&
+        original.owner_generation==arcade_input.owner_epoch() &&
+        wallplant_same_observation(original,arcade_input.native_context(now));
+}
+bool native_wallplant_execution_authorized(const NativeInputFrame& original,std::uint64_t& now) noexcept {
+    std::lock_guard lock(ollie_mutex);now=GetTickCount64();
+    return wallplant_execution_authorized_locked(original,now);
+}
+bool claim_native_wallplant_contact(const NativeInputFrame& frame) noexcept {
+    std::lock_guard lock(ollie_mutex);
+    const auto now=GetTickCount64();
+    if(!wallplant_execution_authorized_locked(frame,now))return false;
+    // Reuse only a request owned by this motion callback. A later callback or
+    // another thread must claim its own fresh journal edge after its own query.
+    const auto pending=wallplant_runtime::writer_probe();
+    if(pending.input && pending.contact && pending.motion && wallplant_runtime::motion_current(pending.motion,frame) &&
+       wallplant_same_observation(pending.native,frame))return true;
+    const auto surface=wallplant_runtime::surface(now,frame);
+    const auto request=arcade_input.claim_wallplant_contact(now,frame,surface);
+    return request.action==InputAction::wall_command &&
+        wallplant_runtime::request(request,now,frame)==InputDisposition::started;
+}
+NativeInputFrame native_wallplant_hold_context(const NativeInputOwner& owner,std::uint64_t& now) noexcept {
+    std::lock_guard lock(ollie_mutex);
+    now=GetTickCount64();
+    const auto physical=controller_route.physical(now);
+    const auto live=arcade_input.native_context(now);
+    const auto conflicts=wallplant_runtime::excludes_grind(live,now)?0x6030u:0xe030u;
+    const auto held=wallplant_runtime::held_command();
+    const auto accepted=held && held.native.owner==owner ? held.input_sequence : 0;
+    if(!mode_enabled.load(std::memory_order_acquire) ||
+       action_mode.load(std::memory_order_acquire)!=ActionExperiment::classic || grind_change.active() ||
+       !physical.valid || physical.lt>30 || physical.rt>30 || (physical.buttons&conflicts) ||
+       !arcade_input.admitted(0,now) || !arcade_input.wallplant_controls_unowned(0,accepted) ||
+       !live.valid || live.owner!=owner || live.owner_generation!=arcade_input.owner_epoch()) {
+        const auto command=wallplant_runtime::held_command();
+        static std::uint64_t reported_input{};
+        if(command && command.native.owner==owner && reported_input!=command.input_sequence) {
+            reported_input=command.input_sequence;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE WALLPLANT HOLD CONTEXT: occurrence={} ms={} enabled={} classic={} grind={} physical={} lt={} rt={} buttons={} conflicts={} admitted={} unowned={} valid={} owner_same={} generation_same={} state={} step={} sampled={}.",
+                command.input_sequence,now,mode_enabled.load(std::memory_order_acquire),
+                action_mode.load(std::memory_order_acquire)==ActionExperiment::classic,grind_change.active(),
+                physical.valid,physical.lt,physical.rt,physical.buttons,conflicts,
+                arcade_input.admitted(0,now),arcade_input.wallplant_controls_unowned(0,accepted),live.valid,
+                live.owner==owner,live.owner_generation==arcade_input.owner_epoch(),live.state,live.physics_step,live.sampled_at);
+        }
+        return {};
+    }
+    return live;
+}
+static NativeInputFrame surface_geometry_native_frame_locked(std::uint64_t now,const char** diagnostic_reason) noexcept {
+    const auto unavailable=[&](const char* reason) {if(diagnostic_reason)*diagnostic_reason=reason;return NativeInputFrame{};};
+    if(!mode_enabled.load(std::memory_order_acquire))return unavailable("frame_disabled");
+    if(!arcade_input.admitted(0,now))return unavailable("frame_not_admitted");
+    const auto frame=arcade_input.native_context(now);
+    if(diagnostic_reason)*diagnostic_reason=frame.valid?"frame_valid":"frame_unavailable";
+    return frame;
+}
+NativeInputFrame surface_geometry_native_frame(std::uint64_t now,const char** diagnostic_reason) noexcept {
+    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+    if(!lock.owns_lock()) {
+        if(diagnostic_reason)*diagnostic_reason="frame_lock_busy";
+        return {};
+    }
+    return surface_geometry_native_frame_locked(now,diagnostic_reason);
+}
+NativeInputFrame wallplant_surface_geometry_native_frame(const char** diagnostic_reason) noexcept {
+    // Retained wall-contact query only. Its callback owns local/world lifetime
+    // locks, but holds neither the wallplant runtime mutex nor source busy.
+    // Input-owned paths never block on those lifetime locks; preference reads
+    // use try-lock and camera/persistence release input before native work.
+    std::lock_guard lock(ollie_mutex);
+    return surface_geometry_native_frame_locked(GetTickCount64(),diagnostic_reason);
 }
 // Controller route binding_context publication end.
-NativeInputFrame surface_geometry_native_frame(std::uint64_t now) noexcept {
-    std::unique_lock lock(ollie_mutex,std::try_to_lock);
-    return lock.owns_lock() && mode_enabled.load(std::memory_order_acquire) && arcade_input.admitted(0,now) ?
-        arcade_input.native_context(now) : NativeInputFrame{};
-}
 void invalidate_traffic_surface() noexcept {traffic_surface_available.store(false,std::memory_order_release);}
 void invalidate_surface_geometry() noexcept {surface_geometry_available.store(false,std::memory_order_release);}
 void publish_surface_geometry(const SurfaceGeometrySample& sample) noexcept {
@@ -2428,10 +2559,16 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             !releasing_manual && !grind_change.active() && !(physical_buttons&0x0030u));
         flatland.ollie=(physical_buttons&classic_a)!=0;
         const auto flatland_binding=custom_flatland_runtime::observe_input(flatland,physical_left_trigger,physical_right_trigger);
-        const auto wallplant_receipt=wallplant_runtime::latest_completed();
-        if(wallplant_receipt)
-            arcade_input.acknowledge_wallplant(now,wallplant_receipt.native,wallplant_receipt.input_sequence);
-        const bool grind_permitted=game_input && owns_controls && !offboard && !releasing_manual &&
+        const bool plant_grind_excluded=wallplant_runtime::excludes_grind(grind_frame,now);
+        const auto plant_command=wallplant_runtime::held_command();
+        bool plant_query_stale{};
+        const bool plant_current=plant_command && wallplant_runtime::hold_current(plant_command,now,grind_frame,&plant_query_stale);
+        // A deferred reader cannot launch a ground action into a newer hold.
+        // This only withholds controls; it grants no physics-write authority.
+        const bool plant_holding=plant_current || plant_query_stale;
+        if(plant_holding)
+            arcade_input.acknowledge_wallplant_entry(now,plant_command.native,plant_command.input_sequence,plant_command.issued_at);
+        const bool grind_permitted=game_input && owns_controls && !offboard && !releasing_manual && !plant_grind_excluded &&
             !(physical_buttons & (classic_a | 0x0330u)) && physical_left_trigger<=30 && physical_right_trigger<=30;
         const auto grind_contact=grind_permitted?native_grind::contact(native_flip_owner):NativeGrindContact{};
         const auto grind_animation=grind_permitted && (grind_contact.valid || grind_change.active())?
@@ -2475,9 +2612,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 const auto& c=*static_cast<FootplantContext*>(context);
                 return native_ground_grab::controls(c.owner,c.step,held);
             }};
-        result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,
-            game_input, may_start, may_push && auto_kick_enabled(), admission.speed,
-            left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
+        // Preserve raw physical history above, but withhold grind intent for
+        // the short contact/release exclusion interval of the owned plant.
+        const auto gameplay_buttons=static_cast<unsigned short>(plant_grind_excluded?buttons&~0x8000u:buttons);
+        result = arcade_input.poll(NativeControllerRoute::session, now, gameplay_buttons, left_x, left_y, right_x, right_y,
+            game_input, may_start && !plant_holding, may_push && auto_kick_enabled() && !plant_holding, admission.speed,
+            left_trigger > 30 || right_trigger > 30, may_toggle_board && !plant_holding, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             admission.mirror_x, manual_safe,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
@@ -2552,7 +2692,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // The semantic session owns recognition; this existing actor owns only
         // its admitted RS channel. Native Manual release remains independent.
         const auto rail_pad = arcade_input.sample_native_rail(result.rail,now,
-            game_input && !offboard && !releasing_manual && !reference && !action.owned);
+            game_input && !offboard && !releasing_manual && !reference && !action.owned && !plant_grind_excluded);
         if (rail_pad.owns_right_stick) { result.right_x = rail_pad.right_x; result.right_y = rail_pad.right_y; }
         if(grind_change.active() && (reference || action.owned || result.authored_playback)) {
             grind_change.cancel();native_grind::cancel();

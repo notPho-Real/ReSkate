@@ -99,4 +99,103 @@ Reached hand_of(std::span<const Joint> pose, Hand hand) noexcept {
     if (!compose(pose, chain(hand), w)) return {};
     return {finite(w[hand_at].position), w[hand_at], true};
 }
+std::optional<Vec3> plane_point(const Vec3& tip, const Vec3& point, const Vec3& normal) noexcept {
+    if (!finite(tip) || !finite(point) || !finite(normal)) return {};
+    const auto square = dot(normal, normal);
+    if (!std::isfinite(square) || square <= 1e-12f) return {};
+    const auto result = sub(tip, scaled(normal, dot(sub(tip, point), normal) / square));
+    return finite(result) ? std::optional(result) : std::nullopt;
+}
+
+bool valid_contact_frame(const ContactFrame& frame) noexcept {
+    return finite(frame.normal) && std::abs(dot(frame.normal,frame.normal)-1.f)<.001f &&
+        std::isfinite(frame.clearance) && frame.clearance>=0;
+}
+namespace {
+bool usable(const Joint& joint) {
+    float square{};
+    for(const auto value:joint.rotation)square+=value*value;
+    return anim_studio::finite(joint) && std::abs(square-1.f)<.001f && joint.scale[0]>1e-6f &&
+        std::abs(joint.scale[0]-joint.scale[1])<1e-5f && std::abs(joint.scale[0]-joint.scale[2])<1e-5f;
+}
+}
+std::optional<ContactFrame> contact_frame(const Joint& endpoint,const Joint& support) noexcept {
+    if(!usable(endpoint) || !usable(support))return {};
+    const auto normal=rotate(support.rotation,{0,1,0});
+    ContactFrame frame{rotate(conjugate(endpoint.rotation),normal),
+        dot(sub(endpoint.position,support.position),normal)/endpoint.scale[0]};
+    return valid_contact_frame(frame)?std::optional(frame):std::nullopt;
+}
+std::optional<Placed> contact_target(const Joint& endpoint,const ContactFrame& frame,
+        const Vec3& point,const Vec3& normal) noexcept {
+    if(!usable(endpoint) || !valid_contact_frame(frame))return {};
+    const auto projected=plane_point(endpoint.position,point,normal);
+    if(!projected)return {};
+    const auto outward=unit(normal,{0,1,0});
+    const auto rotation=normalised(multiply(arc(rotate(endpoint.rotation,frame.normal),outward),endpoint.rotation));
+    const auto position=add(*projected,scaled(outward,frame.clearance*endpoint.scale[0]));
+    if(!finite(position) || !finite(rotation))return {};
+    return Placed{position,rotation,endpoint.scale[0]};
+}
+
+Reached reach_joint(std::span<Joint> pose, std::uint16_t tip, const Vec3& at, float weight,
+        const std::optional<Quat>& rotation) noexcept {
+    if(!finite(at) || !std::isfinite(weight) || weight<0 || weight>1)return {};
+    if(rotation) {
+        float square{};
+        for(const auto value:*rotation)square+=value*value;
+        if(!finite(*rotation) || std::abs(square-1.f)>.001f)return {};
+    }
+    std::array<std::uint16_t,64> joints{};
+    std::size_t count{};
+    int index=tip;
+    while(index>=0 && count<joints.size()) {
+        if(static_cast<std::size_t>(index)>=pose.size())return {};
+        joints[count++]=static_cast<std::uint16_t>(index);
+        index=anim_studio::parent(static_cast<std::uint16_t>(index));
+    }
+    if(index>=0 || count<4)return {};
+    std::reverse(joints.begin(),joints.begin()+count);
+    // The world-placement joints are never candidates for this operation.
+    if(joints[count-3]<2)return {};
+    std::array<Placed,64> placed{};
+    const auto chain_joints=std::span<const std::uint16_t>(joints.data(),count);
+    if(!compose(pose,chain_joints,placed))return {};
+    const auto root=placed[count-3],middle=placed[count-2],end=placed[count-1];
+    const float a=length(sub(middle.position,root.position)),b=length(sub(end.position,middle.position));
+    const float d=length(sub(at,root.position));
+    if(!std::isfinite(a+b+d) || a<=1e-6f || b<=1e-6f || d<=1e-6f)return {};
+    if(d> a+b || d<std::abs(a-b))return {true,end,false};
+    if(weight==0)return {true,end,true};
+    const auto direction=scaled(sub(at,root.position),1.f/d);
+    auto pole=sub(middle.position,root.position);
+    pole=sub(pole,scaled(direction,dot(pole,direction)));
+    if(length(pole)<=1e-6f) {
+        pole=rotate(root.rotation,{1,0,0});
+        pole=sub(pole,scaled(direction,dot(pole,direction)));
+        if(length(pole)<=1e-6f) {
+            pole=rotate(root.rotation,{0,0,1});
+            pole=sub(pole,scaled(direction,dot(pole,direction)));
+        }
+    }
+    if(length(pole)<=1e-6f)return {};
+    pole=unit(pole,{0,1,0});
+    const float cosine=std::clamp((a*a+d*d-b*b)/(2*a*d),-1.f,1.f);
+    const auto bend=add(root.position,add(scaled(direction,a*cosine),scaled(pole,a*std::sqrt(std::max(0.f,1-cosine*cosine)))));
+    const auto turn_root=arc(sub(middle.position,root.position),sub(bend,root.position));
+    const auto root_rotation=normalised(multiply(turn_root,root.rotation));
+    const auto turn_middle=arc(rotate(turn_root,sub(end.position,middle.position)),sub(at,bend));
+    const auto middle_rotation=normalised(multiply(turn_middle,multiply(turn_root,middle.rotation)));
+    const auto saved_root=pose[joints[count-3]],saved_middle=pose[joints[count-2]],saved_tip=pose[tip];
+    pose[joints[count-3]].rotation=blend(saved_root.rotation,normalised(multiply(conjugate(placed[count-4].rotation),root_rotation)),weight);
+    pose[joints[count-2]].rotation=blend(saved_middle.rotation,normalised(multiply(conjugate(root_rotation),middle_rotation)),weight);
+    if(compose(pose,chain_joints,placed)) {
+        // Preserve the authored endpoint orientation unless the caller supplied
+        // a measured contact frame. Root and bone lengths remain untouched.
+        pose[tip].rotation=blend(saved_tip.rotation,normalised(multiply(conjugate(placed[count-2].rotation),rotation.value_or(end.rotation))),weight);
+        if(compose(pose,chain_joints,placed))return {true,placed[count-1],true};
+    }
+    pose[joints[count-3]]=saved_root;pose[joints[count-2]]=saved_middle;pose[tip]=saved_tip;
+    return {};
+}
 }

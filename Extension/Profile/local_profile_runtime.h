@@ -69,6 +69,10 @@ bool queue_local_park_delete(const EditorDeleteRequest &);
 void tick_local_park_editor() noexcept;
 // Called only from the existing native client update callback. Observation only.
 void tick_arcade_surface_geometry(std::uintptr_t client) noexcept;
+void query_arcade_wallplant_collision_geometry() noexcept;
+namespace arcade_mode {struct NativeInputFrame; namespace wallplant_runtime {struct MotionDiagnostic;}}
+void query_arcade_wallplant_motion_geometry(std::uint64_t,const arcade_mode::NativeInputFrame&,
+    arcade_mode::wallplant_runtime::MotionDiagnostic*) noexcept;
 void tick_arcade_traffic_surface(std::uintptr_t park) noexcept;
 ControllerBindingsModel local_profile_controller_bindings();
 bool set_local_freecam_controller(bool);

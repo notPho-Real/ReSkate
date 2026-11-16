@@ -66,9 +66,18 @@ public:
         exit_elapsed_ = 0;
     }
     bool step(SkatePose pose, float dt, float correction, bool observed_revert = false,
-              const PhysicalBalanceSample* physical = nullptr, bool pending_manual_revert = false, bool manual_episode = false) noexcept {
+              const PhysicalBalanceSample* physical = nullptr, bool pending_manual_revert = false, bool manual_episode = false,
+              bool wallplant_hold = false) noexcept {
         custom_scoring_.synchronize(model_);
         if(!model_.state().combo_active)custom_scoring_.clear();
+        // Only an independently authenticated physical plant may retain the
+        // existing airborne combo through the native contact reconstruction.
+        // Keep the actual observed pose separate; this neither awards a trick
+        // nor changes native scoring/state. The subsequent real landing settles.
+        if(wallplant_hold && pose==SkatePose::riding && previous_==SkatePose::air &&
+           model_.state().combo_active && !failed_section_ && std::isfinite(dt) && dt>=0 && dt<=.25f) {
+            model_.tick(dt);scoring_.poll(model_);return false;
+        }
         if(manual_episode && balance_kind(pose)==BalanceKind::manual && !failed_section_ && !manual_putdown_) {
             model_.begin_balance(BalanceKind::manual);
             model_.manual_transition(observed_revert);

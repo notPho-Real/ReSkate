@@ -1,0 +1,67 @@
+// Actual player entry points with a nonactuating clock and publication boundary.
+#include "Extension/Skater/skater_animation.h"
+#include "Extension/Skater/owned_playback_hold.h"
+#include <atomic>
+#include <iostream>
+#include <mutex>
+#include <stdexcept>
+
+namespace dingosdk::skater_animation {
+namespace {
+struct Plan {
+    std::optional<Play> play;
+    bool allowed{true};
+    double controlled_until{},started{};
+    float display_radians{},from{};
+    std::optional<float> held;
+    std::uint64_t serial{},hold_deadline{},hold_released_at{};
+} plan_draft;
+struct Live { std::atomic<std::uintptr_t> component{1}; } current;
+Live& live(){return current;}
+bool hooked=true;
+std::uint64_t serial{},borrowed_play{},clock_ms=1000;
+std::atomic<std::uint64_t> controlled_ticket{},finished_serial{};
+std::mutex playback_evidence_mutex;
+PlaybackEvidence playback_observed;
+unsigned publications{};
+void publish(){++publications;}
+double now_seconds() noexcept {return static_cast<double>(clock_ms)/1000;}
+std::uint64_t GetTickCount64(){return clock_ms;}
+void check(bool value,const char* why){if(!value)throw std::runtime_error(why);}
+}
+@handoff_playing@
+@handoff_can_play@
+@handoff_try_hold@
+@handoff_release_play@
+
+void test_handoff() {
+    auto clip=std::make_shared<Clip>();
+    clip->joints=1;clip->times={0,1};clip->frames.resize(2);
+    Play request;request.clip=clip;request.at=.5f;
+    plan_draft.play=request;plan_draft.held=.25f;
+    plan_draft.serial=serial=borrowed_play=17;
+    plan_draft.controlled_until=.9;plan_draft.display_radians=1.2f;
+    controlled_ticket.store(17);
+    check(can_play(),"Expired externally clocked playback must release the idle player");
+    check(!try_hold(request,clock_ms),"Expired hold admission must be refused");
+    check(!publications && controlled_ticket.load()==17 && plan_draft.display_radians==1.2f,
+        "Refused hold must preserve the previous plan");
+    const auto ticket=try_hold(request,clock_ms+200);
+    check(ticket==18 && publications==1 && playing(),"A new held clip must survive the old controlled deadline");
+    check(!controlled_ticket.load() && plan_draft.controlled_until==0 && plan_draft.display_radians==0,
+        "New hold inherited an expired controlled lease or display turn");
+    check(plan_draft.held==request.at && plan_draft.hold_deadline==1200 && !plan_draft.hold_released_at,
+        "Held pose and expiry must be published together");
+    check(!try_hold(request,clock_ms+300) && publications==1,"A live hold cannot be replaced");
+    check(!release_play(ticket-1),"An old ticket cannot release the new hold");
+    clock_ms=1050;check(release_play(ticket),"The current hold may begin blending out");
+    const auto published=publications;
+    check(release_play(ticket) && publications==published,"Repeated release cannot restart the blend");
+    clock_ms=1210;check(!playing(),"Released hold must expire independently of client updates");
+}
+}
+int main(){
+    try {dingosdk::skater_animation::test_handoff();}
+    catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
+    std::cout<<"Controlled-to-held playback handoff and expiry passed\n";
+}

@@ -1,4 +1,6 @@
 #include "no_bail.h"
+#include "Extension/ArcadeMode/arcade_native_wall_contact.h"
+#include "client_source_spawn.h"
 #include "Extension/Skater/skater_events.h"
 #include "Engine/Game/Input/controller_bindings.h"
 #include "Engine/Core/Hooks/hooks.h"
@@ -2050,6 +2052,7 @@ std::uint32_t choose_state(std::uintptr_t selector, std::uint32_t current) {
     // transitions can still run. Some contact tests return Wipeout directly;
     // retain the current state only for that result, never ordinary Offboard.
     const bool filtered = filter_requests(selector, &Owner::selector);
+    const auto wallplant_ticket=apply_arcade_wallplant_before_selection(selector,current);
     auto next = protection().choose_original(selector, current);
     LastError error;
     if (force_wipeout && next != wipeout_physics_state) {
@@ -2081,9 +2084,13 @@ std::uint32_t choose_state(std::uintptr_t selector, std::uint32_t current) {
         }
     }
     track_spin(selector, chosen);
+    finish_arcade_wallplant_selection(wallplant_ticket,selector,current,chosen);
     return chosen;
 }
 void skeleton_response(std::uintptr_t rig, float seconds, bool wipeout) {
+    static thread_local std::uint64_t sequence{};
+    const auto callback=++sequence;
+    observe_arcade_wallplant_native_response(rig,wipeout,callback,0);
     // The state post-update can raise another request after the selector ran.
     // Filter at this consumer, then let native constraints and recovery run.
     if (filter_requests(rig, &Owner::rig)) wipeout = false;
@@ -2101,7 +2108,9 @@ void skeleton_response(std::uintptr_t rig, float seconds, bool wipeout) {
                 if (listener) listener(skater, seconds, wipeout);
         }
     }
+    observe_arcade_wallplant_native_response(rig,wipeout,callback,1);
     protection().skeleton_original(rig, seconds, wipeout);
+    observe_arcade_wallplant_native_response(rig,wipeout,callback,2);
 }
 bool clear_contact_output(std::uintptr_t contacts) noexcept {
     if (contacts < 0x10000 || contacts > highest - body_contact_output_offset) return false;
@@ -2135,6 +2144,7 @@ void publish_animation(std::uintptr_t core) {
     // unchanged: forcing it true used to put the skater into a stumbling state.
     (void)filter_requests(core, &Owner::core);
     protection().publish_original(core);
+    arcade_mode::native_wall_contact::finish_publication(core);
     filter_contact_animation(core);
     // Sample the game's own failed-landing/runout result at its publication
     // boundary. It may be true for only one physics frame, between mode ticks.

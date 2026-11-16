@@ -13,7 +13,7 @@ enable_testing()
 foreach(test native_score_snapshot native_score_progress native_score_presentation native_score_rows custom_score input_session neutral_flip_release air_motion_proof launch_descriptor
              input_pattern_dispatch manual_step manual_balance_entry native_spin_integration native_readiness rail_pop
              grind_transition_lifetime grind_change native_grab manual_throw native_orientation playback held_flip manual footplant ground_grab fingerflip trickpedia trickpedia_lifetime
-             wallplant contact_owner control_state input_consolidation)
+             wallplant wallplant_hold wallplant_combo contact_owner static_world_owner control_state input_consolidation)
     add_executable(arcade_${test} "${reskate_root}/Extension/ArcadeMode/Test/arcade_${test}_tests.cpp")
     target_include_directories(arcade_${test} PRIVATE "${reskate_root}")
     if(MSVC)
@@ -32,3 +32,22 @@ endif()
 add_test(NAME arcade_wallplant_disabled COMMAND arcade_wallplant_disabled)
 
 add_subdirectory("${reskate_root}/Extension/ArcadeMode/Test/custom_flatland" custom_flatland)
+
+# Exercise the integrated enabled runtime as well as its disabled counterpart.
+add_executable(arcade_wallplant_runtime
+    "${reskate_root}/Extension/ArcadeMode/Test/arcade_wallplant_runtime_tests.cpp")
+set_property(TARGET arcade_wallplant_runtime PROPERTY CXX_STANDARD 23)
+target_include_directories(arcade_wallplant_runtime BEFORE PRIVATE
+    "${reskate_root}/Extension/ArcadeMode/Test/RuntimeBoundary" "${reskate_root}")
+target_compile_definitions(arcade_wallplant_runtime PRIVATE DINGOSDK_ARCADE_WALLPLANTS)
+add_test(NAME arcade_wallplant_runtime COMMAND arcade_wallplant_runtime)
+add_executable(arcade_wallplant_animation
+    "${reskate_root}/Extension/ArcadeMode/Test/arcade_wallplant_animation_tests.cpp"
+    "${reskate_root}/Extension/Skater/arm_reach.cpp")
+target_include_directories(arcade_wallplant_animation PRIVATE "${reskate_root}")
+target_link_libraries(arcade_wallplant_animation PRIVATE casper_animation_core)
+add_test(NAME arcade_wallplant_animation COMMAND arcade_wallplant_animation)
+if(MSVC)
+    target_compile_options(arcade_wallplant_runtime PRIVATE /W4 /WX /permissive- /EHsc)
+    target_compile_options(arcade_wallplant_animation PRIVATE /W4 /WX /permissive- /EHsc)
+endif()

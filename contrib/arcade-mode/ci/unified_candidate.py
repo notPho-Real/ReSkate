@@ -6,6 +6,13 @@ import re
 import sys
 
 
+def expected_features(source):
+    enabled = source.get("sources", {}).get("rc4", {}).get("enabled")
+    if type(enabled) is not bool or source.get("game_build") != 20260929 or source.get("accepted") is not False:
+        raise ValueError("Experimental candidate must declare its RC4 gate and supported build")
+    return {"wallplants": enabled, "game_build": 20260929}
+
+
 def create(directory, source_manifest):
     source = json.loads(source_manifest.read_text())
     provenance = json.loads((directory / "provenance.json").read_text())
@@ -17,8 +24,8 @@ def create(directory, source_manifest):
         raise ValueError("Invalid candidate identity")
     if provenance["source_sha"] != sha or provenance["dll_sha256"] != digest:
         raise ValueError("Candidate provenance differs")
-    if features != {"wallplants": False, "game_build": 20260929}:
-        raise ValueError("Pre-RC4 candidate must compile wallplants OFF for build 20260929")
+    if features != expected_features(source):
+        raise ValueError("Compiled features differ from the candidate source manifest")
     source.update(source_sha=sha, dll_sha256=digest, gameplay_fingerprint=fingerprint,
                   features=features, run_id=provenance["run_id"], validation=provenance["validation"],
                   hardware_acceptance="pending; inherited evidence is historical, not candidate acceptance")
@@ -27,4 +34,9 @@ def create(directory, source_manifest):
 
 
 if __name__ == "__main__":
-    create(Path(sys.argv[1]), Path(__file__).resolve().parents[1] / "unified-sources.json")
+    manifest = Path(__file__).resolve().parents[1] / "unified-sources.json"
+    if sys.argv[1:] == ["--wallplant-cmake-option"]:
+        features = expected_features(json.loads(manifest.read_text()))
+        print("-DDINGOSDK_ARCADE_WALLPLANTS=" + ("ON" if features["wallplants"] else "OFF"))
+    else:
+        create(Path(sys.argv[1]), manifest)

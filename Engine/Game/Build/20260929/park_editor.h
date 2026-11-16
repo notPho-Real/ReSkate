@@ -73,6 +73,12 @@ inline constexpr std::array<Fingerprint, 4> surface_contracts{
      {0x25fa1d0,
       {0x48, 0x89, 0x5c, 0x24, 0x08, 0x57, 0x48, 0x83, 0xec, 0x20, 0x48, 0x8b, 0xfa, 0x48, 0x8b, 0xd9,
        0x33, 0xd2, 0x48, 0x39, 0x51, 0x08, 0x48, 0x0f, 0x45, 0xd1, 0x48, 0x8b, 0xcf, 0xe8, 0xbe, 0x93}}}};
+// Synchronous query 0x2664c00 acquires reader counters at +0x9d0 (0x2664f75)
+// and +0x9d4 (0x2665014). A pre-decrement value 1..0x1000000 admits a reader;
+// other values wait for a writer. Allocation 0x2659460 uses the calling TLS
+// block (+0x5b8), so each completed result must be popped on that same worker.
+inline constexpr std::uintptr_t query_readers = 0x9d0, query_secondary_readers = 0x9d4;
+inline constexpr std::uint32_t query_reader_limit = 0x1000000;
 // Query filters for that ray request (request + 0x20). The wrapper passes it through
 // 0x2664c00 to 0x2627bd0's query-category mask, and a candidate shape is tested only
 // when its categories AND this mask are nonzero. camera is the filter the native

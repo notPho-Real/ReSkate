@@ -237,6 +237,29 @@ void wallplant_contact_handoff() {
             input.poll(now,{buttons},e,adapter.request?adapter:sink.adapter());
         }
     };
+    // The native collision callback must not require another physical pad poll.
+    for (unsigned fault=0;fault<9;++fault) {
+        Fixture f;f.poll(0,0);f.poll(10,0x1000);
+        const auto press=f.input.history().events().back();
+        const auto events=f.input.history().events().size();
+        f.e.surface={7,f.e.native_context.physics_step,true,true,false,false,0,f.e.native_context.generations};
+        if(fault==1)f.e.surface.can_plant=false;
+        if(fault==2)f.e.gameplay=false;
+        if(fault==3)f.e.conflict=true;
+        if(fault==4)++f.e.native_context.generations.owner;
+        if(fault==5)++f.e.native_context.airborne_episode;
+        if(fault==6)f.e.native_context.airborne=false;
+        if(fault==7)f.input.cancel_air_episode(true);
+        const auto request=f.input.claim_wallplant_contact(fault==8?161:101,f.e);
+        check((request.action==InputAction::wall_command)==(fault==0),
+              "collision callback requires a real fresh journal A, eligible wall and unchanged airborne owner");
+        if(!fault)check(request.input_sequence==press.sequence && request.physical_pressed_at==10,
+                       "collision callback preserves the original A identity and press time");
+        check(f.input.history().events().size()==events && f.sink.calls==0,
+              "collision claim neither manufactures a pad event nor dispatches unrelated input");
+        check(f.input.claim_wallplant_contact(fault==8?162:102,f.e).action==InputAction::none,
+              "collision callback cannot consume the same press twice or revive rejected lineage");
+    }
     for(const auto delay:{1u,34u,149u,150u,151u})for(bool released:{false,true}) {
         Fixture f;f.poll(0,0);f.poll(10,0x1000);
         const auto press=f.input.history().events().back();

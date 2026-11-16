@@ -203,16 +203,17 @@ public:
     std::int32_t authored_air_followup(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) ? sessions_[0].authored_air_followup(now,InputNativeContext::from_frame(frame)) : 0;
     }
-    bool acknowledge_wallplant(std::uint64_t now,const NativeInputFrame& proof,
-                               std::uint64_t input_sequence) noexcept {
+    // Caller holds the authenticated live physical hold. consumed_at is the
+    // immutable command issue time, never a replacement input/sample clock.
+    bool acknowledge_wallplant_entry(std::uint64_t now,const NativeInputFrame& proof,
+                               std::uint64_t input_sequence,std::uint64_t consumed_at) noexcept {
         const auto current=native_context(now);
         const auto source=InputNativeContext::from_frame(proof);
         const auto observed=InputNativeContext::from_frame(current);
         if (!admitted(0,now) || !current.valid || !proof.valid || current.owner!=proof.owner ||
-            current.owner_generation!=proof.owner_generation || !source.fresh(now) || !observed.follows(source) ||
-            !current.airborne || current.airborne_episode!=proof.airborne_episode || current.air_departure!=proof.air_departure)
+            current.owner_generation!=proof.owner_generation || !wallplant_entry_lineage(source,observed,now,consumed_at))
             return false;
-        return sessions_[0].acknowledge_wallplant(now,source,input_sequence);
+        return sessions_[0].acknowledge_wallplant_entry(now,source,observed,input_sequence,consumed_at);
     }
     bool released_pop_active(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) && sessions_[0].released_pop_active(now,InputNativeContext::from_frame(frame));
@@ -243,6 +244,17 @@ public:
             sessions_[user].initial_ground_acquisition(now,InputNativeContext::from_frame(native));
     }
     bool busy(unsigned user) const noexcept { return user < sessions_.size() && sessions_[user].busy(); }
+    bool wallplant_controls_unowned(unsigned user,std::uint64_t accepted_input=0) const noexcept {
+        return user<sessions_.size() && sessions_[user].wallplant_controls_unowned(accepted_input);
+    }
+    InputRequest claim_wallplant_contact(std::uint64_t now,const NativeInputFrame& frame,
+                                        InputSurfaceState surface) noexcept {
+        const auto current=native_context(now);
+        if (!admitted(0,now) || !current.valid || !frame.valid || current.owner!=frame.owner ||
+            current.physics_step!=frame.physics_step || current.owner_generation!=frame.owner_generation ||
+            current.sampled_at!=frame.sampled_at) return {};
+        return sessions_[0].claim_wallplant_contact(now,InputNativeContext::from_frame(frame),surface);
+    }
     NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, std::int16_t rx, std::int16_t ry,
             bool game_input, bool may_start, bool may_push = false, float speed = 0,

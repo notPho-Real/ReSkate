@@ -1,6 +1,9 @@
 #include "display_turn.h"
 #include "skater_animation.h"
 #include "Extension/AnimationStudio/board_geometry.h"
+#include "body_pose.h"
+#include "body_contact.h"
+#include "owned_playback_hold.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
 #include "Engine/Game/Build/20260929/native_skater.h"
@@ -99,22 +102,6 @@ Joint joint_of(const NativeBone& b) noexcept {
 constexpr std::uint32_t board_bones = 16;
 constexpr std::size_t board_mount = 2;
 Joint board_parent(const std::array<NativeBone, board_bones>& b) noexcept { return compose(joint_of(b[0]), joint_of(b[1])); }
-
-// The body: Hips (7) and every joint below it. A clip replaces these only, never the placement
-// joints the game moves the skater with, nor the board's bones in the skater's rig.
-const std::array<bool, skeleton_joints>& body_joints() {
-    static const auto mask = [] {
-        std::array<bool, skeleton_joints> m{};
-        for (std::uint16_t i = 0; i < skeleton_joints; ++i)
-            for (int at = i; at >= 0; at = parent(static_cast<std::uint16_t>(at)))
-                if (at == hips_joint) {
-                    m[i] = true;
-                    break;
-                }
-        return m;
-    }();
-    return mask;
-}
 
 // ---- a clip on the floor (Play::floor; from Animation Studio, PR 297) -------------------------------------
 // The board under the feet, as when riding. The game's clips leave the board where the animators had it,
@@ -226,11 +213,13 @@ struct Plan {
     float from{};               // the clip's seconds at `started`
     std::optional<float> held;  // paused at these seconds of the clip
     std::uint64_t serial{};
+    std::uint64_t hold_deadline{},hold_released_at{};
     std::vector<Replacement> replacements;
     bool allowed{};
     float record_seconds{}; // > 0: record this long, from the next update
     std::uint64_t record_serial{};
     std::optional<arm_reach::Goal> reach;
+    double pose_until{};
     double reach_until{}, joints_until{}; // now_seconds() until which the reach holds, and the joints are read
     Shown reach_shown{};
     std::optional<carry::Goal> carry;       // carry(), until carry_until
@@ -277,6 +266,12 @@ std::array<PreviewSample, 2> preview_samples;
 // The joints asked for as last evaluated (joint()), for the client thread.
 std::mutex joints_mutex;
 std::vector<std::pair<std::uint16_t, Joint>> joints_now;
+std::uintptr_t joints_component{};
+double joints_at{};
+std::uint64_t joints_sequence{};
+std::mutex pose_mutex;
+PoseObservation pose_now;
+double pose_at{};
 // The client thread's: each joint asked for and when it was last.
 std::vector<std::pair<std::uint16_t, double>> joints_asked;
 std::mutex plan_mutex;
@@ -292,6 +287,25 @@ void publish() {
     plan_now = std::move(next);
 }
 std::atomic<std::uint64_t> finished_serial{}; // the play the animation thread saw finish
+std::mutex playback_evidence_mutex;
+PlaybackEvidence playback_observed;
+bool observe_playback(std::uint64_t ticket,unsigned phase,float time=0) {
+    if(!ticket)return false;
+    std::lock_guard lock(playback_evidence_mutex);
+    auto& evidence=playback_observed;
+    if(evidence.ticket!=ticket)return false;
+    if(phase==0 && std::isfinite(time)) {
+        if(!evidence.samples)evidence.first_sample=time;
+        evidence.last_sample=time;
+        if(evidence.samples!=UINT64_MAX)++evidence.samples;
+    } else if(phase==1 && evidence.writes!=UINT64_MAX)++evidence.writes;
+    else if(phase==2) {
+        if(evidence.draws!=UINT64_MAX)++evidence.draws;
+        evidence.feet_valid=false;
+        evidence.contact.reset();
+    }
+    return true;
+}
 std::mutex recorded_mutex;
 std::shared_ptr<const Clip> recorded; // under recorded_mutex
 std::atomic<bool> record_running{};
@@ -384,11 +398,30 @@ struct Pending {
     std::vector<NativeBone> game; // [game_first, game_first + size)
     std::uint32_t game_first{};
     std::uintptr_t game_buffer{}, game_interface{};
+    std::uint64_t play_ticket{}, written_ticket{};
+    std::uint64_t contact_ticket{};
+    std::optional<Vec3> contact_anchor;
+    std::optional<Quat> contact_rotation;
+    std::optional<arm_reach::Placed> contact_attempt;
+    Vec3 left_foot{}, right_foot{};
+    std::uintptr_t feet_component{};
+    bool feet_valid{};
+    bool contact_reachable{};
+    bool contact_body_frame_applied{};
+    std::optional<PlaybackEvidence::Contact> contact_evidence;
     void clear_pose() {
         bones.clear();
         deltas.clear();
         replay.clear();
         written.clear();
+        sample = {};
+        play_ticket = 0;
+        contact_ticket = 0;
+        contact_anchor.reset();
+        contact_rotation.reset();
+        contact_attempt.reset();
+        contact_evidence.reset();
+        feet_valid = contact_reachable = contact_body_frame_applied = false;
     }
 };
 Pending& pending() {
@@ -589,10 +622,11 @@ void on_animation(std::uintptr_t component) noexcept {
         const double now = now_seconds();
         const bool reaching = snap->reach && now < snap->reach_until;
         const bool joints_wanted = now < snap->joints_until && !snap->joints_read.empty();
+        const bool pose_wanted = now < snap->pose_until ||
+            now < native_pose_until.load(std::memory_order_acquire);
         const bool posing = !snap->offsets.empty() && now < snap->offsets_until;
         const bool carrying = snap->carry && now < snap->carry_until;
         const bool in_room = room_shown.load(std::memory_order_acquire);
-        const bool pose_wanted = now < native_pose_until.load(std::memory_order_acquire);
         if (!busy && !reaching && !carrying && !joints_wanted && !posing && !in_room && !pose_wanted &&
             (!snap->allowed || (!snap->play && snap->replacements.empty()))) {
             std::lock_guard lock(pending().mutex);
@@ -646,6 +680,13 @@ void on_animation(std::uintptr_t component) noexcept {
         if (!room_shown.load(std::memory_order_acquire)) l.room_written_valid = false;
         l.pose.resize(layout.count);
         for (std::size_t i = 0; i < layout.count; ++i) l.pose[i] = joint_of(l.bones[i]);
+        if (pose_wanted && std::all_of(l.pose.begin(), l.pose.end(), anim_studio::finite)) {
+            std::lock_guard lock(pose_mutex);
+            pose_now.joints = l.pose;
+            pose_now.component = component;
+            ++pose_now.sequence;
+            pose_at = now;
+        }
         if (snap->play) {
             auto& pr = probe();
             std::lock_guard probe_lock(pr.mutex);
@@ -714,6 +755,11 @@ void on_animation(std::uintptr_t component) noexcept {
                 const float after = (run - length) / std::max(p.speed, 0.05f);
                 weight = std::min(weight, blend > 0 ? 1 - std::clamp(after / blend, 0.0f, 1.0f) : 0.0f);
                 if (weight <= 0) finished_serial.store(snap->serial, std::memory_order_release);
+            }
+            if(snap->held && snap->hold_deadline) {
+                const auto fading=owned_hold_weight(GetTickCount64(),snap->hold_deadline,snap->hold_released_at,blend);
+                weight=std::min(weight,fading);
+                if(fading<=0)finished_serial.store(snap->serial,std::memory_order_release);
             }
         } else if (snap->allowed && !snap->replacements.empty() && air) {
             // A game trick with a replacement: the clip plays on the body from the takeoff, blended in
@@ -799,17 +845,8 @@ void on_animation(std::uintptr_t component) noexcept {
                 board_target = compose(placement, rel);
                 board_weight = weight;
             }
-            const auto& body = body_joints();
-            for (std::size_t i = 0; i < std::min<std::size_t>(layout.count, clip->joints); ++i) {
-                if (!body[i]) continue;
-                auto& j = l.pose[i];
-                const auto& c = l.custom[i];
-                const float joint_weight = weight * clip->joint_weight(i);
-                j.rotation = slerp(j.rotation, c.rotation, joint_weight);
-                if (clip->keeps_position(i) && !(i == hips_joint && snap->play &&
-                    clip == snap->play->clip.get() && snap->display_radians != 0)) continue; // the skater's own build
-                for (std::size_t k = 0; k < 3; ++k) j.position[k] += (c.position[k] - j.position[k]) * joint_weight;
-            }
+            blend_body_pose(l.pose, l.custom, *clip, weight,
+                snap->play && clip == snap->play->clip.get() && snap->display_radians != 0);
             first = 2;
             last = layout.count;
         }
@@ -884,6 +921,9 @@ void on_animation(std::uintptr_t component) noexcept {
                     if (const auto w = anim_studio::world(pose, index); anim_studio::finite(w)) placed.emplace_back(index, w);
             std::lock_guard lock(joints_mutex);
             joints_now.swap(placed);
+            joints_component=component;
+            joints_at=at;
+            ++joints_sequence;
         }
         // In the room the placement is written too (it is the room's), and nothing else need change.
         if (in_room) {
@@ -919,6 +959,7 @@ void on_animation(std::uintptr_t component) noexcept {
             else p.replay = snap->offsets;
             p.replay_weight = snap->offsets_weight;
             p.at = at;
+            p.play_ticket=0;
         } else if (last > first) {
             for (std::size_t i = first; i < last; ++i)
                 if (!finite(l.pose[i])) throw std::runtime_error("a clip made a broken pose; nothing was written");
@@ -950,6 +991,8 @@ void on_animation(std::uintptr_t component) noexcept {
                     p.sample = {snap->serial, 0, snap->play->clip, t,
                         l.base.load(std::memory_order_acquire),
                         native_pose_entity.load(std::memory_order_acquire), 0};
+                p.play_ticket=snap->play && clip==snap->play->clip.get() ? snap->serial : 0;
+                observe_playback(p.play_ticket,0,t);
             }
             if (clip) {
                 auto& pr = probe();
@@ -1098,6 +1141,12 @@ void on_render(std::uintptr_t animation_interface) noexcept {
         auto& p = pending();
         std::lock_guard lock(p.mutex);
         p.game.clear(); p.drawn_sample={}; // only ever what this render wrote over
+        p.written_ticket=0;
+        p.feet_valid=false;
+        p.contact_reachable=false;
+        p.contact_body_frame_applied=false;
+        p.contact_evidence.reset();
+        p.contact_attempt.reset();
         const auto count = [](int Probe::*n) {
             auto& pr = probe();
             std::lock_guard probe_lock(pr.mutex);
@@ -1183,11 +1232,101 @@ void on_render(std::uintptr_t animation_interface) noexcept {
                 std::memcpy(current[i].position.data(), p.bones[i].position.data(), 12);
             }
         }
+        // Physics can change placement between animation evaluation and draw.
+        // Resolve an owned held endpoint against the placement read here, then
+        // restore these render-only rotations through the existing on_drawn path.
+        const auto contact_plan=plan();
+        if(p.play_ticket && p.deltas.empty() && p.first==2 && p.last==skeleton_joints &&
+           contact_plan->serial==p.play_ticket && contact_plan->allowed && contact_plan->held &&
+           contact_plan->hold_deadline && contact_plan->play && contact_plan->play->contact) {
+            const auto& play=*contact_plan->play;
+            const auto elapsed=static_cast<float>(now_seconds()-contact_plan->started);
+            const float entering=play.blend>0?std::clamp(elapsed/play.blend,0.f,1.f):1.f;
+            const float weight=std::min(entering,owned_hold_weight(GetTickCount64(),contact_plan->hold_deadline,
+                contact_plan->hold_released_at,play.blend));
+            std::array<NativeBone,2> placement{};
+            if(weight>0 && peek(layout.buffer,placement.data(),sizeof(placement))) {
+                thread_local std::array<Joint,skeleton_joints> rendered;
+                for(std::size_t i=0;i<placement.size();++i)rendered[i]=joint_of(placement[i]);
+                // A levelled held contact owns its one blend from the current
+                // native draw pose, not from the earlier animation blend.
+                for(std::size_t i=0;i<current.size();++i)
+                    rendered[i+2]=joint_of(play.contact->level_body?p.game[i]:current[i]);
+                if(p.contact_ticket!=p.play_ticket) {
+                    p.contact_ticket=p.play_ticket;
+                    const auto foot=world(rendered,play.contact->joint);
+                    p.contact_rotation.reset();
+                    p.contact_anchor=!play.contact->level_body && finite(foot)?arm_reach::plane_point(foot.position,
+                        play.contact->point,play.contact->normal):std::nullopt;
+                    if(play.contact->frame && !play.contact->level_body) {
+                        const auto target=held_contact_target(rendered,*play.clip,play.at,
+                            play.contact->joint,*play.contact->frame,play.contact->point,play.contact->normal,play.contact->level_body);
+                        p.contact_anchor=target?std::optional(target->position):std::nullopt;
+                        if(target)p.contact_rotation=target->rotation;
+                    }
+                }
+                if(play.contact->level_body && play.contact->frame) {
+                    std::optional<arm_reach::Placed> anchor;
+                    if(p.contact_anchor && p.contact_rotation)
+                        anchor=arm_reach::Placed{*p.contact_anchor,*p.contact_rotation};
+                    p.contact_body_frame_applied=blend_held_surface_contact(rendered,*play.clip,play.at,
+                        play.contact->joint,*play.contact->frame,play.contact->point,play.contact->normal,weight,anchor,&p.contact_attempt);
+                    p.contact_reachable=p.contact_body_frame_applied;
+                    if(p.contact_reachable) {
+                        p.contact_anchor=anchor->position;p.contact_rotation=anchor->rotation;
+                    }
+                }
+                // The limb-only path retains its existing endpoint. Levelled
+                // contacts above commit their endpoint only after a full solve.
+                if(p.contact_anchor && !play.contact->level_body) {
+                    const auto reached=arm_reach::reach_joint(rendered,play.contact->joint,*p.contact_anchor,weight,p.contact_rotation);
+                    p.contact_reachable=reached.valid && reached.reached;
+                }
+                if(p.contact_reachable)
+                    for(std::size_t i=0;i<current.size();++i) {
+                        current[i].rotation=rendered[i+2].rotation;
+                        std::memcpy(current[i].position.data(),rendered[i+2].position.data(),12);
+                    }
+            }
+        }
         if (poke(layout.buffer + p.first * sizeof(NativeBone), current.data(), current.size() * sizeof(NativeBone))) {
             p.drawn_sample=p.sample;
             p.game_first = p.first;
             p.game_buffer = layout.buffer;
             p.game_interface = animation_interface;
+            p.written_ticket=p.play_ticket;
+            const bool tracked=observe_playback(p.written_ticket,1);
+            // Read only the two placement joints not owned by this clip. The
+            // remaining transforms are the exact values just written above.
+            // Publish this measurement only after the matching draw callback.
+            if(tracked && p.first==2 && p.last==skeleton_joints && p.deltas.empty()) {
+                std::array<NativeBone,2> placement{};
+                if(peek(layout.buffer,placement.data(),sizeof(placement))) {
+                    thread_local std::array<Joint,skeleton_joints> rendered;
+                    for(std::size_t i=0;i<placement.size();++i)rendered[i]=joint_of(placement[i]);
+                    for(std::size_t i=0;i<current.size();++i)rendered[i+2]=joint_of(current[i]);
+                    const auto left=world(rendered,left_foot_joint);
+                    const auto right=world(rendered,right_foot_joint);
+                    if(finite(left) && finite(right)) {
+                        p.left_foot=left.position;p.right_foot=right.position;
+                        p.feet_component=component;p.feet_valid=true;
+                        const auto measured_target=p.contact_attempt?std::optional(p.contact_attempt->position):p.contact_anchor;
+                        if(contact_plan->serial==p.written_ticket && contact_plan->play && contact_plan->play->contact &&
+                           contact_plan->play->contact->frame && measured_target) {
+                            const auto& contact=*contact_plan->play->contact;
+                            const auto foot=world(rendered,contact.joint);
+                            if(finite(foot)) {
+                                const auto normal=rotate(foot.rotation,contact.frame->normal);
+                                auto reference=foot.position;
+                                for(std::size_t k=0;k<3;++k)reference[k]-=normal[k]*contact.frame->clearance*foot.scale[0];
+                                const auto target_error=std::hypot(foot.position[0]-(*measured_target)[0],
+                                    foot.position[1]-(*measured_target)[1],foot.position[2]-(*measured_target)[2]);
+                                p.contact_evidence=PlaybackEvidence::Contact{contact.joint,reference,normal,target_error,p.contact_reachable,p.contact_body_frame_applied};
+                            }
+                        }
+                    }
+                }
+            }
         } else {
             p.game.clear();
         }
@@ -1209,10 +1348,24 @@ void on_drawn(std::uintptr_t animation_interface) noexcept {
             p.copied_at = now_seconds();
             p.drawn_sample = {};
         }
-        if (!p.game.empty() && animation_interface == p.game_interface &&
-            poke(p.game_buffer + p.game_first * sizeof(NativeBone), p.game.data(), p.game.size() * sizeof(NativeBone)))
-            p.written.clear(); // A completed restore makes a later matching native value genuine, not an old overlay.
+        if (!p.game.empty() && animation_interface == p.game_interface) {
+            observe_playback(p.written_ticket,2);
+            if(p.written_ticket && p.feet_valid && live().component.load(std::memory_order_acquire)==p.feet_component) {
+                std::lock_guard evidence_lock(playback_evidence_mutex);
+                if(playback_observed.ticket==p.written_ticket && playback_observed.component==p.feet_component) {
+                    playback_observed.feet_drawn_at=GetTickCount64();
+                    playback_observed.left_foot=p.left_foot;
+                    playback_observed.right_foot=p.right_foot;
+                    playback_observed.feet_valid=true;
+                    playback_observed.contact=p.contact_evidence;
+                }
+            }
+            if(poke(p.game_buffer + p.game_first * sizeof(NativeBone), p.game.data(), p.game.size() * sizeof(NativeBone)))
+                p.written.clear(); // The restored native pose must not be mistaken for our previous overlay.
+        }
         p.game.clear();
+        p.written_ticket=0;
+        p.feet_valid=false;
     } catch (...) {
     }
     SetLastError(error);
@@ -1296,6 +1449,7 @@ void show_in_room(bool on) noexcept {
 void play(std::optional<Play> clip) {
     controlled_ticket.store(0,std::memory_order_release);
     borrowed_play = 0;
+    plan_draft.hold_deadline=plan_draft.hold_released_at=0;
     plan_draft.controlled_until = 0;
     plan_draft.display_radians = 0;
     plan_draft.play = std::move(clip);
@@ -1312,7 +1466,56 @@ std::uint64_t try_play(Play clip) {
         clip.loop || clip.paused || serial == UINT64_MAX) return 0;
     play(std::move(clip));
     borrowed_play = plan_draft.serial;
+    {
+        std::lock_guard lock(playback_evidence_mutex);
+        playback_observed={};playback_observed.ticket=borrowed_play;
+        playback_observed.component=live().component.load(std::memory_order_acquire);
+    }
     return borrowed_play;
+}
+std::uint64_t try_hold(Play clip,std::uint64_t deadline) {
+    if(!can_play() || !owned_hold_deadline(GetTickCount64(),deadline) || !clip.clip || clip.clip->empty() ||
+       !std::isfinite(clip.clip->duration()) || clip.clip->duration()<=0 ||
+       !std::isfinite(clip.at) || clip.at<0 || clip.at>clip.clip->duration() ||
+       !std::isfinite(clip.speed) || clip.speed<=0 || !std::isfinite(clip.blend) || clip.blend<0 || clip.blend>1 ||
+       clip.loop || serial==UINT64_MAX)return 0;
+    if(clip.contact && (clip.contact->joint>=clip.clip->joints || clip.contact->joint<2 ||
+       !std::all_of(clip.contact->point.begin(),clip.contact->point.end(),
+           [](float value){return std::isfinite(value) && std::abs(value)<1e6f;}) ||
+       !arm_reach::plane_point(clip.contact->point,clip.contact->point,clip.contact->normal) ||
+       (clip.contact->frame && !arm_reach::valid_contact_frame(*clip.contact->frame))))return 0;
+    // Publish the pause and its expiry together; no intermediate unbounded
+    // paused plan is ever visible to the animation thread.
+    controlled_ticket.store(0,std::memory_order_release);
+    plan_draft.controlled_until=0;
+    plan_draft.display_radians=0;
+    clip.paused=true;borrowed_play=0;plan_draft.play=std::move(clip);
+    plan_draft.started=now_seconds();plan_draft.from=plan_draft.play->at;
+    plan_draft.held=plan_draft.from;plan_draft.serial=++serial;
+    plan_draft.hold_deadline=deadline;plan_draft.hold_released_at=0;
+    publish();borrowed_play=plan_draft.serial;
+    {
+        std::lock_guard lock(playback_evidence_mutex);
+        playback_observed={};playback_observed.ticket=borrowed_play;
+        playback_observed.component=live().component.load(std::memory_order_acquire);
+    }
+    return borrowed_play;
+}
+bool release_play(std::uint64_t ticket) {
+    const auto released=owned_hold_release(ticket,borrowed_play,plan_draft.serial,plan_draft.hold_deadline,
+        plan_draft.held.has_value(),plan_draft.hold_released_at,GetTickCount64());
+    if(!released)return false;
+    if(!plan_draft.hold_released_at) {
+        plan_draft.hold_released_at=*released;publish();
+    }
+    return true;
+}
+std::optional<PlaybackEvidence> playback_evidence(std::uint64_t ticket) noexcept {
+    try {
+        std::lock_guard lock(playback_evidence_mutex);
+        if(ticket && playback_observed.ticket==ticket)return playback_observed;
+    } catch(...) {}
+    return std::nullopt;
 }
 bool can_play() noexcept {
     return hooked && plan_draft.allowed && live().component.load(std::memory_order_acquire) && !playing();
@@ -1403,6 +1606,7 @@ std::optional<float> play_time() {
 void seek(float seconds) {
     if (!plan_draft.play || !plan_draft.play->clip) return;
     borrowed_play = 0;
+    plan_draft.hold_deadline=plan_draft.hold_released_at=0;
     controlled_ticket.store(0,std::memory_order_release);
     plan_draft.controlled_until = 0;
     plan_draft.display_radians = 0;
@@ -1419,6 +1623,7 @@ void seek(float seconds) {
 void pause(bool paused) {
     if (!plan_draft.play || !plan_draft.play->clip) return;
     borrowed_play = 0;
+    plan_draft.hold_deadline=plan_draft.hold_released_at=0;
     controlled_ticket.store(0,std::memory_order_release);
     plan_draft.controlled_until = 0;
     plan_draft.display_radians = 0;
@@ -1436,8 +1641,11 @@ void pause(bool paused) {
     publish();
 }
 bool playing() noexcept {
+    if(plan_draft.play && plan_draft.held && plan_draft.hold_deadline &&
+       owned_hold_weight(GetTickCount64(),plan_draft.hold_deadline,plan_draft.hold_released_at,
+           plan_draft.play->blend)<=0)return false;
     return plan_draft.play.has_value() && finished_serial.load(std::memory_order_acquire) != plan_draft.serial &&
-        (!plan_draft.controlled_until || now_seconds() < plan_draft.controlled_until);
+        (plan_draft.controlled_until == 0 || now_seconds() < plan_draft.controlled_until);
 }
 void pose(std::vector<PoseOffset> offsets, float weight, Shown shown) {
     plan_draft.offsets = std::move(offsets);
@@ -1499,6 +1707,30 @@ std::optional<arm_reach::Placed> hand(arm_reach::Hand side) {
     const auto at = joint(arm_reach::chain(side).back());
     if (!at) return std::nullopt;
     return arm_reach::Placed{at->position, at->rotation, at->scale[0]};
+}
+std::optional<JointObservation> joint_observation(std::uint16_t index) {
+    (void)joint(index); // Keep the existing bounded subscription alive.
+    const auto now=now_seconds();
+    std::lock_guard lock(joints_mutex);
+    if(!joints_component || joints_component!=live().component.load(std::memory_order_acquire) ||
+       !joints_sequence || now<joints_at)return {};
+    for(const auto& [at,w]:joints_now)
+        if(at==index)return JointObservation{w,joints_component,now-joints_at,joints_sequence};
+    return {};
+}
+std::optional<PoseObservation> pose_observation() {
+    const auto now = now_seconds();
+    if (plan_draft.pose_until < now + 1.0) {
+        plan_draft.pose_until = now + 2.0;
+        publish();
+    }
+    std::lock_guard lock(pose_mutex);
+    if (!pose_now.component || pose_now.component != live().component.load(std::memory_order_acquire) ||
+        !pose_now.sequence || now < pose_at || now - pose_at > .1 ||
+        pose_now.joints.size() != skeleton_joints) return {};
+    auto result = pose_now;
+    result.age = now - pose_at;
+    return result;
 }
 void set_replacements(std::vector<Replacement> list) {
     plan_draft.replacements = std::move(list);

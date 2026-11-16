@@ -8,6 +8,7 @@
 #include "Extension/Skater/no_bail.h"
 #include <windows.h>
 #include <array>
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdio>
@@ -23,18 +24,23 @@ namespace {
 //    (state 103) of about 0.20 s; an ollie crouches for 0.08 s and launches elsewhere;
 //  - a boneless calls it from 0x47691f8 while the foot is planted (state 602);
 //  - a flat-ground ollie calls it from 0x4824f7f (Engine/Game/Build/20260929/launches.h).
-// The no comply's call is launches.h's grind_pop_call, which pops out of grinds go through too.
+// The no comply and grind pop share this native call site.
 namespace launches = addr::launches;
-constexpr std::uintptr_t set_trajectory = launches::set_trajectory, no_comply_call = launches::grind_pop_call,
-                         boneless_call = launches::boneless_call, ollie_call = launches::ollie_call;
+constexpr auto set_trajectory = game::build::v20260929::trajectory::set.rva;
+constexpr auto set_trajectory_prefix = game::build::v20260929::trajectory::set.bytes;
+constexpr auto no_comply_call = game::build::v20260929::launches::grind_pop_call;
+constexpr auto boneless_call = game::build::v20260929::launches::boneless_call;
+constexpr auto ollie_call = game::build::v20260929::launches::ollie_call;
 // An ollie (riding or out of a manual) launches from 0x4824f7f (ollie_call) with the state 103 after 100.
 constexpr std::uint32_t crouch_state = 103, pop_state = 200, plant_state = 602;
 constexpr float no_comply_crouch = 0.12f; // seconds: between an ollie's crouch and a no comply's
 constexpr std::size_t velocity_y = 0x84 / sizeof(float);
 
 using SetTrajectory = void (*)(std::uintptr_t, float *);
+using ShapeLaunch = void (*)(std::uintptr_t);
 struct Hooked {
     std::atomic<SetTrajectory> original{};
+    std::atomic<ShapeLaunch> shape_original{};
     std::uintptr_t base{};
     std::atomic<float> no_comply{1}, boneless{1}, manual{1};
     std::atomic<std::uint64_t> manual_until{}; // GetTickCount64: the skater was in a manual until about then
@@ -43,6 +49,7 @@ struct Hooked {
     std::atomic<std::uint32_t> launch_trick{0xff}; // CurrentFlipTrick as the trainer read it last tick
     std::atomic<std::uintptr_t> trick_at{};        // where the game keeps that number (0: not known)
     std::atomic<TrajectoryModifier> modifier{};
+    std::atomic<NativeWorldTrajectoryBridge> world_bridge{};
     std::array<std::atomic<float>, 64> flip_launch{}; // least upward launch speed by trick, m/s; 0: the game's own
     // The last few launches, for the trainer's log line: written by the physics thread, read
     // by the client tick.
@@ -66,6 +73,39 @@ struct Hooked {
 Hooked &hooked() {
     static auto *value = new Hooked;
     return *value;
+}
+// One synchronous setter call may supply an already resolved world-space
+// velocity. Other launches and recursive/native fallback queries keep their
+// own shaping. This permission never survives the setter call.
+struct WorldTrajectoryRequest {
+    std::uintptr_t object{};
+    std::array<float,3> velocity{};
+    bool observed{}, preserved{};
+    std::array<float,3> shaped{};
+};
+thread_local WorldTrajectoryRequest world_trajectory_request;
+void shape_launch_hook(std::uintptr_t trajectory) {
+    const auto original=hooked().shape_original.load(std::memory_order_acquire);
+    if(!original)return;
+    auto& request=world_trajectory_request;
+    const bool preserve=request.object && request.object==trajectory && !request.observed;
+    if(preserve)request.observed=true;
+    original(trajectory);
+    if(!preserve)return;
+    // Keep native classification/configuration side effects. Replace only the
+    // paired launch/reference velocities before genuine collision queries.
+    // Leaving the held reference speed would generate candidates for a different
+    // departure even though the requested velocity itself was correct.
+    // Never repair selected candidates or write a second body impulse.
+    __try {
+        auto* velocity=reinterpret_cast<float*>(trajectory+game::build::v20260929::trajectory::requested_velocity);
+        auto* reference=reinterpret_cast<float*>(trajectory+game::build::v20260929::trajectory::reference_velocity);
+        std::copy_n(velocity,3,request.shaped.begin());
+        std::copy(request.velocity.begin(),request.velocity.end(),velocity);
+        std::copy(request.velocity.begin(),request.velocity.end(),reference);
+        request.preserved=std::equal(request.velocity.begin(),request.velocity.end(),velocity) &&
+            std::equal(request.velocity.begin(),request.velocity.end(),reference);
+    } __except (EXCEPTION_EXECUTE_HANDLER) { request.preserved=false; }
 }
 // The trick the game has in mind right now (the trainer's own reading is a tick old: out of a manual or a grind the
 // trick is often chosen in the tick of the pop).
@@ -93,6 +133,43 @@ bool call_guarded(SetTrajectory function, std::uintptr_t trajectory, float *para
         return false;
     }
 }
+bool route_native_world_trajectory(std::uintptr_t trajectory, float* parameters,
+        std::uintptr_t caller) noexcept {
+    namespace native=game::build::v20260929::trajectory;
+    auto& h=hooked();
+    const auto bridge=h.world_bridge.load(std::memory_order_acquire);
+    const auto original=h.original.load(std::memory_order_acquire);
+    if(!bridge || !h.ready || !original || !h.shape_original.load(std::memory_order_acquire) ||
+       !trajectory || !parameters || world_trajectory_request.object)return false;
+    NativeWorldTrajectoryOverride offered{};
+    offered.caller=caller;
+    NativeTrajectoryParameters packet{};
+    __try {
+        // Never spend a receipt on a setter that native pending work will refuse.
+        if(*reinterpret_cast<const std::uint8_t*>(trajectory+native::query_pending))return false;
+        std::memcpy(packet.values.data(),parameters,native::parameter_bytes);
+    } __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
+    if(!bridge(trajectory,offered,false))return false;
+    const bool valid=offered.receipt && std::all_of(offered.velocity.begin(),offered.velocity.end(),
+        [](float value){return std::isfinite(value) && std::abs(value)<1000;});
+    if(valid) {
+        std::copy(offered.velocity.begin(),offered.velocity.end(),packet.values.begin()+native::parameter_velocity/sizeof(float));
+        std::copy(offered.velocity.begin(),offered.velocity.end(),packet.values.begin()+native::parameter_reference_velocity/sizeof(float));
+        world_trajectory_request={trajectory,offered.velocity,false,false,{}};
+    }
+    // The caller still owns the native packet options, collision queries and
+    // subsequent selector. A granted exit replaces this call's paired velocities.
+    const bool called=call_guarded(original,trajectory,valid?packet.values.data():parameters);
+    const auto result=world_trajectory_request;
+    world_trajectory_request={};
+    offered.submitted=valid && called && result.observed && result.preserved;
+    (void)bridge(trajectory,offered,true);
+    if(offered.submitted)logging::log(logging::Level::info,logging::Channel::skater,
+        "Native trajectory world exit: object={} receipt={} caller={} route=native_departure shaped=[{},{},{}] query_input=[{},{},{}] candidate_acceptance_verified=false",
+        trajectory,offered.receipt,caller,result.shaped[0],result.shaped[1],result.shaped[2],
+        result.velocity[0],result.velocity[1],result.velocity[2]);
+    return true;
+}
 // After a physics update: a pop that has to go higher after all is launched again, from where it started (it is a tick
 // or two old), with the higher upward speed. Writing the trajectory object does nothing (measured): the setter has to run.
 void raise_step() noexcept {
@@ -108,6 +185,7 @@ void raise_step() noexcept {
 void set_trajectory_hook(std::uintptr_t trajectory, float *parameters) {
     auto &h = hooked();
     const auto caller = reinterpret_cast<std::uintptr_t>(_ReturnAddress()) - h.base;
+    if(route_native_world_trajectory(trajectory,parameters,caller-5))return;
     if (const auto modifier = h.modifier.load(std::memory_order_acquire); modifier && parameters) {
         float velocity[3]{parameters[velocity_y - 1], parameters[velocity_y], parameters[velocity_y + 1]};
         modifier(caller - 5, trajectory, velocity);
@@ -204,7 +282,7 @@ bool known_bytes(std::uintptr_t at, const unsigned char *bytes, std::size_t size
 }
 bool known_code(std::uintptr_t base) {
     __try {
-        return std::memcmp(reinterpret_cast<const void *>(base + set_trajectory), launches::set_trajectory_prefix.data(), launches::set_trajectory_prefix.size()) == 0 &&
+        return std::memcmp(reinterpret_cast<const void *>(base + set_trajectory), set_trajectory_prefix.data(), set_trajectory_prefix.size()) == 0 &&
                std::memcmp(reinterpret_cast<const void *>(base + no_comply_call), launches::grind_pop_call_prefix.data(), launches::grind_pop_call_prefix.size()) == 0 &&
                std::memcmp(reinterpret_cast<const void *>(base + boneless_call), launches::boneless_call_prefix.data(), launches::boneless_call_prefix.size()) == 0;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -212,6 +290,70 @@ bool known_code(std::uintptr_t base) {
     }
 }
 } // namespace
+
+bool prepare_native_trajectory(std::uintptr_t base, std::uintptr_t rig,
+                               NativeTrajectoryParameters& parameters) noexcept {
+    namespace native = game::build::v20260929::trajectory;
+    auto& h = hooked();
+    if (!base || base != h.base || !h.ready || !rig || !h.original.load(std::memory_order_acquire)) return false;
+    if (!known_bytes(base + native::initialize.rva, native::initialize.bytes.data(), native::initialize.bytes.size()) ||
+        !known_bytes(base + native::observe_rig.rva, native::observe_rig.bytes.data(), native::observe_rig.bytes.size()) ||
+        !known_bytes(base + native::select_result.rva, native::select_result.bytes.data(), native::select_result.bytes.size())) return false;
+    __try {
+        reinterpret_cast<void (*)(float*)>(base + native::initialize.rva)(parameters.values.data());
+        reinterpret_cast<void (*)(std::uintptr_t, float*)>(base + native::observe_rig.rva)(rig, parameters.values.data());
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+bool consume_ready_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory) noexcept {
+    namespace native = game::build::v20260929::trajectory;
+    auto& h = hooked();
+    if (!base || base != h.base || !h.ready || !trajectory ||
+        !h.original.load(std::memory_order_acquire) ||
+        !known_bytes(base + native::select_result.rva, native::select_result.bytes.data(), native::select_result.bytes.size())) return false;
+    __try {
+        if (*reinterpret_cast<const std::uint8_t*>(trajectory + native::query_pending)) {
+            // The original selector checks the candidate completion byte before
+            // consuming a result. A pending flag alone does not mean unfinished.
+            reinterpret_cast<bool (*)(std::uintptr_t, bool)>(base + native::select_result.rva)(trajectory, true);
+        }
+        return *reinterpret_cast<const std::uint8_t*>(trajectory + native::query_pending) == 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+bool submit_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
+                              NativeTrajectoryParameters& parameters, bool preserve_world_velocity) noexcept {
+    namespace native = game::build::v20260929::trajectory;
+    auto& h = hooked();
+    const auto original = h.original.load(std::memory_order_acquire);
+    if (!base || base != h.base || !h.ready || !trajectory || !original || world_trajectory_request.object ||
+        (preserve_world_velocity && !h.shape_original.load(std::memory_order_acquire)) ||
+        !known_bytes(base + native::select_result.rva, native::select_result.bytes.data(), native::select_result.bytes.size())) return false;
+    std::array<float,3> velocity{};
+    std::copy_n(parameters.values.begin()+native::parameter_velocity/sizeof(float),3,velocity.begin());
+    if(preserve_world_velocity && !std::all_of(velocity.begin(),velocity.end(),
+        [](float value){return std::isfinite(value) && std::abs(value)<1000;}))return false;
+    auto packet=parameters;
+    if(preserve_world_velocity)
+        std::copy(velocity.begin(),velocity.end(),packet.values.begin()+native::parameter_reference_velocity/sizeof(float));
+    bool submitted{};
+    __try {
+        if (*reinterpret_cast<const std::uint8_t*>(trajectory + native::query_pending)) return false;
+        // Use the verified original, without reapplying trick height modifiers
+        // or retaining this packet as a new ground pop for raise_flight.
+        if(preserve_world_velocity)world_trajectory_request={trajectory,velocity,false,false,{}};
+        submitted=call_guarded(original,trajectory,preserve_world_velocity?packet.values.data():parameters.values.data());
+        if(preserve_world_velocity)submitted=submitted && world_trajectory_request.observed && world_trajectory_request.preserved;
+        const auto request=world_trajectory_request;
+        world_trajectory_request={};
+        if(!submitted)return false;
+        if(preserve_world_velocity)logging::log(logging::Level::info,logging::Channel::skater,
+            "Native trajectory world exit: object={} shaped=[{},{},{}] query_input=[{},{},{}] candidate_acceptance_verified=false",
+            trajectory,request.shaped[0],request.shaped[1],request.shaped[2],
+            request.velocity[0],request.velocity[1],request.velocity[2]);
+        reinterpret_cast<bool (*)(std::uintptr_t, bool)>(base + native::select_result.rva)(trajectory, true);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { world_trajectory_request={};return false; }
+}
 
 bool start_trick_heights(std::uintptr_t base) noexcept {
     auto &h = hooked();
@@ -233,7 +375,19 @@ bool start_trick_heights(std::uintptr_t base) noexcept {
             return false;
         }
         h.original.store(reinterpret_cast<SetTrajectory>(original), std::memory_order_release);
-        if (hook_enable(target) != HookOk) return false;
+        namespace native=game::build::v20260929::trajectory;
+        if(!known_bytes(base+native::shape_launch.rva,native::shape_launch.bytes.data(),native::shape_launch.bytes.size()) ||
+           !known_bytes(base+native::reference_speed_contract.rva,native::reference_speed_contract.bytes.data(),native::reference_speed_contract.bytes.size()) ||
+           !known_bytes(base+native::departure_velocity_pair.rva,native::departure_velocity_pair.bytes.data(),native::departure_velocity_pair.bytes.size()) ||
+           !known_bytes(base+native::shape_launch_call,native::shape_launch_call_prefix.data(),native::shape_launch_call_prefix.size()))return false;
+        auto* shape_target=reinterpret_cast<void*>(base+native::shape_launch.rva);
+        void* shape_original{};
+        if(hook_prepare(shape_target,reinterpret_cast<void*>(&shape_launch_hook),&shape_original)!=HookOk || !shape_original)return false;
+        h.shape_original.store(reinterpret_cast<ShapeLaunch>(shape_original),std::memory_order_release);
+        {
+            HookBatch batch;
+            if(hook_enable(shape_target)!=HookOk || hook_enable(target)!=HookOk)return false;
+        }
         set_physics_step_callback(&raise_step);
         h.ready = true;
         logging::write(logging::Level::info, logging::Channel::skater, "Trainer: no comply and boneless heights ready.");
@@ -393,5 +547,8 @@ bool take_trick_launch(TrickLaunch &out) noexcept {
 }
 void set_trajectory_modifier(TrajectoryModifier modifier) noexcept {
     hooked().modifier.store(modifier, std::memory_order_release);
+}
+void set_native_world_trajectory_bridge(NativeWorldTrajectoryBridge bridge) noexcept {
+    hooked().world_bridge.store(bridge,std::memory_order_release);
 }
 } // namespace dingosdk::trainer

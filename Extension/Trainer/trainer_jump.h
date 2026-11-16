@@ -3,6 +3,8 @@
 // jump-trajectory setter with a fixed upward speed, and no tuning value is read for it:
 // the trainer multiplies that speed as the trajectory is set.
 #include <cstdint>
+#include <array>
+#include "Engine/Game/Build/20260929/trajectory.h"
 
 namespace dingosdk::trainer {
 enum class Trick : std::uint8_t { none, no_comply, boneless };
@@ -49,4 +51,34 @@ bool take_trick_launch(TrickLaunch &out) noexcept;
 // nullptr for none. Requires start_trick_heights.
 using TrajectoryModifier = void (*)(std::uintptr_t caller_rva, std::uintptr_t trajectory, float (&velocity)[3]) noexcept;
 void set_trajectory_modifier(TrajectoryModifier modifier) noexcept;
+// Physics-thread bridge to the already verified native setter. The caller owns
+// the local rig and trajectory, and must revalidate that ownership before submit.
+// Preparation reads the current rig; it never replays an earlier launch packet.
+struct NativeTrajectoryParameters {
+    alignas(32) std::array<float, game::build::v20260929::trajectory::parameter_bytes / sizeof(float)> values{};
+};
+bool prepare_native_trajectory(std::uintptr_t base, std::uintptr_t rig,
+                               NativeTrajectoryParameters& parameters) noexcept;
+// Consume an already completed native query once. An unfinished query remains
+// pending and is refused; this never clears its flag or submits another query.
+bool consume_ready_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory) noexcept;
+// Explicit world-space exits supply both native launch and reference-speed
+// records and retain that velocity through native pop shaping.
+// Collision candidate generation and selection remain native and can reject or
+// alter the result. True is submission evidence, never physical acceptance.
+bool submit_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
+                              NativeTrajectoryParameters& parameters, bool preserve_world_velocity = false) noexcept;
+// Supply an owned world-space exit to a launch the game is already submitting.
+// The bridge grants one receipt on entry and receives its submission outcome
+// synchronously. It must validate ownership and deadline; this API does not
+// submit an extra query, select a result, or write physical bodies.
+struct NativeWorldTrajectoryOverride {
+    std::array<float,3> velocity{};
+    std::uint64_t receipt{};
+    bool submitted{};
+    std::uintptr_t caller{}; // Original setter call site, supplied by the hook.
+};
+using NativeWorldTrajectoryBridge = bool (*)(std::uintptr_t trajectory,
+    NativeWorldTrajectoryOverride& request, bool completed) noexcept;
+void set_native_world_trajectory_bridge(NativeWorldTrajectoryBridge bridge) noexcept;
 } // namespace dingosdk::trainer

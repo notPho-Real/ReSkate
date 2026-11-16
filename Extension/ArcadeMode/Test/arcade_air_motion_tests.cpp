@@ -23,6 +23,43 @@ struct Fixture {
 };
 }
 int main() {
+    {
+        Fixture f;
+        f.sample(1000,100);
+        f.sample(1034,201);
+        f.sample(1067,100); // Collision reconstruction precedes the owned hold.
+        f.controller.yield_ordinary_motion();
+        // Ordinary motion is not stepped while the native hold owns the body.
+        f.frame.velocity_y=12.7f;
+        const auto release=f.sample(1100,201);
+        check(!release.vertical && !release.horizontal,
+              "yield retires the contact ground basis before the next air sample");
+    }
+    for(unsigned hz:{30u,60u,120u}) {
+        Fixture f;
+        f.frame.dt=1.f/hz;
+        f.sample(1000,100);
+        f.sample(1034,201);
+        f.controller.yield_ordinary_motion();
+        f.frame.retained_air_contact=true;
+        for(std::uint64_t now=1067;now<1227;now+=1000/hz) {
+            const auto held=f.sample(now,100);
+            check(!held.vertical && !held.horizontal,"owned contact100 cannot acquire ordinary motion during the hold");
+        }
+        f.frame.retained_air_contact=false;
+        f.frame.velocity_y=12.484282f;
+        const auto released=f.sample(1230,201);
+        check(!released.vertical && !released.horizontal,
+              "contact100 release cannot re-arm ledge gravity or speed limits over the native trajectory");
+        f.frame.velocity_y=15.679077f;
+        const auto later=f.sample(1263,201);
+        check(!later.vertical && !later.horizontal,"later native acceleration does not transfer motion ownership");
+        f.frame.velocity_y=0;
+        check(f.sample(1300,100).ready,"genuine later ground restores ordinary controls");
+        f.intent.release_sequence=1;f.intent.release_at=1333;
+        f.sample(1333,103);
+        check(f.sample(1366,200).vertical,"fresh grounded Ollie still acquires ordinary launch after landing");
+    }
     for(unsigned hz:{30u,60u,120u})for(unsigned delay:{0u,17u,33u,66u,100u}) {
         NativeCharge charge;charge.admit_setup(1000,1000,LaunchDescriptor::ordinary(),true);
         auto released=charge.semantic_release(1100,true,true,false,1000,1100,

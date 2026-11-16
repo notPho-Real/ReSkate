@@ -1,4 +1,4 @@
-# Unified RC5 — experimental Casper integration
+# Unified RC5 — experimental integrated Arcade candidate
 
 The authoritative source checkpoint is `unified-sources.json`. Each runtime and
 Deck artifact carries `candidate.json`, generated from that checkpoint and the
@@ -24,14 +24,14 @@ This branch does not publish to the accepted Arcade update channel.
 - Move Trickpedia and RC4 test targets into the optimized reusable CI graph;
   retain independent Windows preflight, native-menu lifetime, full upstream,
   installer/updater, provenance, security and release-eligibility gates.
-- Stage RC4 at its exact pin with `DINGOSDK_ARCADE_WALLPLANTS=OFF`. The native
-  animation file remains excluded from the runtime target. The shared board-contact
-  reader is compiled for Casper's independently fingerprinted, opt-in surface
-  material observation; this does not enable the wallplant rig hook or rebound.
-  The disabled wallplant runtime has no native dependencies, produces no input
-  permissions or receipts, and cannot issue a body transaction. RC4 policy tests
-  still exercise the staged implementation. The gate is part of the gameplay
-  fingerprint.
+- Integrate RC4 at `dce382823f0cefb05d1e60c6b3713e6991ce9412`. Candidate CI
+  reads its compiled wallplant option from `unified-sources.json`; packaging
+  rejects either enabled/disabled mismatch. The ordinary CMake default stays OFF.
+  Preserve Casper's independent material capture, per-joint animation weights,
+  controlled playback clock, display turn and native render restoration. Share
+  the same player with wallplant holds and clear expired controlled state before
+  a new held submission. Both enabled and dependency-free disabled runtime
+  regressions remain required.
 - Enable upstream development tools in this experimental CI build so existing
   observation and regression tooling is retained. Release acceptance is unchanged.
 
@@ -43,14 +43,22 @@ fingerflip actors, and selected one-footer Into/Loop/Exit sequences. They do not
 establish blanket acceptance of all contexts, scoring, timing or stance cases.
 See `research/rc3-gameplay-status.md` and the canonical Trickpedia evidence.
 
-Trickpedia contains 136 canonical entries at this checkpoint, with no entry
-claiming full native verification. Native replacement, controller search/Back and
-same-session OFF restoration still require the exclusive hardware walkthrough.
-The source fingerprint changes on integration; historical evidence is retained
-without certifying changed code. A passing build is not gameplay acceptance.
+Arcade guidance uses the original Skatepedia cards and their input sections;
+it does not replace the native page. The canonical registry supplies mappings
+and small status notes. Native navigation, Back and same-session OFF restoration
+still require the final candidate walkthrough.
 
-RC4 has native contact evidence but no accepted rebound. Its owner retains the
-mechanic. The combined candidate requires a separately coordinated exclusive Deck session.
+The pre-wallplant candidate `0b247367` passed required CI and visibly rendered
+x10 in the original score circle during its Mega Park HIL session. Its held
+Casper still displayed Manual. The subsequent row-retention correction passes
+its focused old-source negative control, but custom-name rendering remains
+unverified. Do not mistake a model containing the text for a visible label.
+
+RC4's exact source has separate native straight/angled hold-and-release,
+flip/Manual follow-up, repeated-input, unrequested-collision and Arcade OFF
+evidence. This is historical evidence for that source, not acceptance of the
+merged RC5 DLL. The combined candidate still requires exact-source compilation
+and a coordinated exclusive Deck regression session before owner testing.
 
 ## Install and rollback
 
@@ -67,19 +75,12 @@ The public updater remains on its existing channel; do not promote this branch.
 
 ## Next deliberate checkpoint
 
-After the RC4 owner proves native contact and outward/upward rebound, compare that
-tested source against `343518f0`; merge only its verified delta and supporting
-changes into this same branch. Retain the registry controls and supported upstream
-hooks. Update the source checkpoint and compiled-feature manifest policy, enable
-the CMake option, rerun affected gameplay/Trickpedia tests and every integration
-gate, then package a new exact-source candidate. Preserve this pre-RC4 package as
-the immediate rollback. No scheduled or uncontrolled merging is authorized.
-
-Every checkpoint must record new commits, conflicts, affected features, tests and
-superseded artifacts. CI supplies exact run evidence; native acceptance requires
-an explicitly coordinated exclusive slot on Mega Park with loaded-DLL identity,
-native cadence, independent motion/actor evidence and OFF/negative controls.
-
+Finish the integrated source checks before one consolidated Windows build.
+Validate the resulting exact candidate on the Deck: custom names and integer
+multipliers, bank/bail settlement, wallplant follow-ups, Casper transitions,
+Manual/revert/rail flip and grab exits, camera follow, native Skatepedia and
+Arcade OFF. Preserve failed evidence and all rollback artifacts. A build or
+inherited device receipt does not establish the merged candidate's acceptance.
 
 ## Casper integration checkpoint
 

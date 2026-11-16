@@ -2,12 +2,17 @@
 #include "Extension/ArcadeMode/arcade_native_input_state.h"
 #include "Extension/ArcadeMode/arcade_surface_geometry_native.h"
 #include "Extension/ArcadeMode/arcade_wallplant_runtime.h"
+#include "Extension/ArcadeMode/arcade_native_wall_contact.h"
 #include "Extension/Objects/ParkEditor/park_editor_internal.h"
 #include "Extension/Customization/local_customization_runtime.h"
 #include "Extension/Skater/no_bail.h"
 #include "Engine/Game/Build/20260929/puppet_cost.h"
 #include "runtime_internal.h"
 #include "Engine/Game/Build/20260929/local_placements.h"
+#include "Engine/Game/Build/20260929/placement_adapters.h"
+#include "Engine/Game/Build/20260929/skater_movement.h"
+#include "Engine/Game/Build/20260929/skater_state.h"
+#include "Engine/Game/Build/20260929/skater_body.h"
 #include "Extension/Objects/local_placements_runtime.h"
 #include "Extension/Objects/teleport_transform.h"
 #include "Extension/Objects/ParkEditor/park_editor_runtime.h"
@@ -22,6 +27,8 @@
 #include "Engine/Game/Build/20260929/remote_collision.h"
 #include "Engine/Game/Build/20260929/world_layers.h"
 #include "Extension/World/local_world_layers.h"
+#include "Engine/Game/World/physics_query_context.h"
+#include <intrin.h>
 
 namespace dingosdk {
 using namespace profile_runtime;
@@ -200,6 +207,7 @@ using namespace arcade_mode;
 // self_construct/self_fields/self_attach and skater_identity/query_identity.
 // No traffic/car-grab behavior or legacy-pointer-to-ECS conversion is used.
 constexpr std::array surface_self_contracts{
+ game::build::v20260929::skater_body::body_transform_contract,
  game::build::Fingerprint{0xf88670,{0x48,0x89,0x5c,0x24,0x10,0x48,0x89,0x6c,0x24,0x18,0x56,0x57,0x41,0x55,0x41,0x56,0x41,0x57,0x48,0x81,0xec,0xf0,0x00,0x00,0x00,0x44,0x0f,0xb7,0x05,0xff,0x85,0x2f}},
  game::build::Fingerprint{0x104bee0,{0x48,0x89,0x5c,0x24,0x08,0x57,0x48,0x83,0xec,0x20,0x48,0x8d,0x05,0x8f,0x18,0x13,0x05,0x48,0x89,0x51,0x08,0x48,0x89,0x01,0x48,0x8b,0xf9,0x4c,0x89,0x41,0x10,0x49}},
  game::build::Fingerprint{0x105d0c3,{0x4c,0x8b,0x4e,0x20,0x4c,0x8b,0xc3,0x89,0x4c,0x24,0x20,0x48,0x8b,0xc8,0xe8,0xda,0xda,0xfc,0xff,0x48,0x8b,0x08,0x48,0x89,0x4e,0x18,0x4c,0x85,0x76,0x18,0x4c,0x89}}};
@@ -245,79 +253,228 @@ bool read_surface_self(std::uintptr_t context,const NoBailSkater& owner,SurfaceS
     !memory::read(after[2],after_incarnation)||after_incarnation!=incarnation)return false;
  next.component=component;next.query=query;result=next;return true;
 }
+// Source-backed deck support only: placement_physics.cpp uses this exact
+// board part0 position. It does not establish articulated-body collision bounds.
+struct SurfaceBoardSupport {
+ std::uintptr_t wrapper{},physics{},parts{};
+ SurfaceGeometryVector point{},up{},velocity{};
+ bool operator==(const SurfaceBoardSupport&)const=default;
+};
+bool read_surface_board_support(const NoBailSkater& owner,SurfaceBoardSupport& out) noexcept {
+ try{
+  namespace adapter=game::build::v20260929::placement_adapters;
+  namespace movement=game::build::v20260929::skater_movement;
+  namespace state=game::build::v20260929::skater_state;
+  const auto read=[&](SurfaceBoardSupport& value) {
+   std::uintptr_t identity{};std::uint32_t count{};
+   std::array<float,16> transform{};
+   const bool valid=memory::read(owner.core+movement::skater_board,value.wrapper)&&value.wrapper&&
+    memory::read(value.wrapper+adapter::board_physics,value.physics)&&value.physics&&
+    memory::read(value.physics,identity)&&identity==owner.base+state::board_physics_vtable&&
+    memory::read(value.physics+adapter::board_parts,value.parts)&&value.parts&&
+    memory::read(value.parts,count)&&count==adapter::board_part_count&&
+    memory::read(value.parts+adapter::parts_owner,identity)&&identity==value.physics&&
+    memory::read(value.parts+adapter::parts_position,value.point)&&surface_geometry_detail::finite(value.point)&&
+    memory::read(value.parts+game::build::v20260929::skater_body::body_transform_offset,transform)&&
+    memory::read(value.parts+state::body_velocity_offset,value.velocity)&&
+    surface_geometry_detail::finite(value.velocity);
+   value.up={transform[4],transform[5],transform[6]};
+   return valid&&surface_geometry_detail::finite(value.up);
+  };
+  NoBailSkater before{},after{};SurfaceBoardSupport first{},second{};
+  if(!no_bail_skater(before)||before!=owner||!read(first)||!read(second)||first!=second||
+     !no_bail_skater(after)||after!=owner)return false;
+  out=first;return true;
+ }catch(...){return false;}
+}
 struct SurfaceCallback {
  std::unique_lock<std::recursive_mutex>& native_lock;
  std::unique_lock<std::recursive_mutex>& world_lock;
  DWORD thread{};std::uintptr_t client{};NoBailSkater owner;SurfaceSelf self;
  SurfaceGeometryContext context;editor::NativeSurfaceApi surface;editor::NativePickingApi picking;
  bool entered{};
+ SurfaceBoardSupport board_support{};
+ const char* failure{"not_checked"};
+ std::uint64_t collision_serial{},motion_serial{};
+ NativeInputFrame motion_frame{};
 };
-bool surface_callback_current(void* user,const SurfaceGeometryContext& context) noexcept {
+bool surface_callback_current_impl(void* user,const SurfaceGeometryContext& context,bool wallplant) noexcept {
  try{
-  const auto& c=*static_cast<SurfaceCallback*>(user);auto& local=local_runtime();auto& world=world_layers_runtime();
+  auto& c=*static_cast<SurfaceCallback*>(user);auto& local=local_runtime();auto& world=world_layers_runtime();
+  c.failure="callback_guard";
   const auto& editor=park_editor_detail::editor_state();
+  if(context.phase==SurfaceGeometryPhase::collision_response || context.phase==SurfaceGeometryPhase::motion_admission){
+   c.failure="collision_scope";
+   if(context.phase==SurfaceGeometryPhase::motion_admission) {
+    if(!wallplant_runtime::motion_current(c.motion_serial,c.motion_frame))return false;
+   } else if(!native_wall_contact::collision_current(c.collision_serial,c.owner))return false;
+   const auto now=GetTickCount64();const auto gate=surface_client_gate;
+   if(gate.client!=c.client||gate.base!=context.owner[0]||gate.context!=context.client_context||
+      now<gate.sampled_at||now-gate.sampled_at>InputTiming::native_sample_lease_ms)return false;
+   c.failure="collision_worker_context";
+   if(!physics_query_context::current(context.owner[0],c.client,
+       static_cast<std::uintptr_t>(__readgsqword(0x58)),context.client_context,context.world,
+       []<class T>(std::uintptr_t address,T& value){return memory::read(address,value);}))return false;
+  }
   if(!c.entered||!c.native_lock.owns_lock()||!c.world_lock.owns_lock()||c.thread!=GetCurrentThreadId()||
-     cosmetic_runtime().update_thread!=c.thread||!local.active||local.base!=context.owner[0]||context!=c.context||
+     (context.phase!=SurfaceGeometryPhase::collision_response&&context.phase!=SurfaceGeometryPhase::motion_admission&&cosmetic_runtime().update_thread!=c.thread)||
+     !local.active||local.base!=context.owner[0]||context!=c.context||
      world.root_generation!=context.world_generation||!world.model.ready||
      std::none_of(world.nodes.begin(),world.nodes.end(),[&](const auto& node){return node.second.generation==context.world_generation&&node.second.context==world.context;})||
      !editor.surface_api.ready||!editor.picking_api.ready||editor.surface_api.world!=c.surface.world||editor.surface_api.ray!=c.surface.ray||
      editor.surface_api.scope_allocator!=c.surface.scope_allocator||editor.surface_api.release!=c.surface.release||
      editor.picking_api.hit_body!=c.picking.hit_body||editor.picking_api.body_valid!=c.picking.body_valid||editor.picking_api.body_entity!=c.picking.body_entity)return false;
   std::array<std::uintptr_t,2> client_context{};auto& placements=placements_runtime();
+  c.failure="client_context";
   if(!placements.context)return false;
   placements.context(client_context.data());if(client_context[0]!=context.client_context)return false;
   std::uintptr_t actual{};NoBailSkater owner{};SurfaceSelf self;
-  if(!memory::read(c.client+8,actual)||actual!=context.client_context||!no_bail_skater(owner)||owner!=c.owner||
-     !read_surface_self(context.client_context,owner,self)||self!=c.self||self.entity!=context.self_entity)return false;
-  const auto frame=surface_geometry_native_frame(GetTickCount64());const auto current=InputNativeContext::from_frame(frame);
-  return frame.valid&&frame.owner==NativeInputOwner{context.owner[0],context.owner[1],context.owner[2],context.owner[3],context.owner[4]}&&
-   context.self_generation==frame.owner_generation&&current.fresh(GetTickCount64())&&context.native.fresh(GetTickCount64())&&
-   current.generations==context.native.generations&&current.air_episode()==context.native.air_episode()&&current.airborne==context.native.airborne&&
-   current.physics_step>=context.native.physics_step&&current.sampled_at>=context.native.sampled_at;
+  c.failure="client_pointer";
+  if(!memory::read(c.client+8,actual)||actual!=context.client_context)return false;
+  c.failure="native_owner";
+  if(!no_bail_skater(owner)||owner!=c.owner)return false;
+  if(wallplant&&c.board_support.parts){
+   SurfaceBoardSupport board;c.failure="board_support_changed";
+   if(!read_surface_board_support(owner,board)||board!=c.board_support)return false;
+  }
+  c.failure="native_self";
+  if(!read_surface_self(context.client_context,owner,self)||self!=c.self||self.entity!=context.self_entity)return false;
+  const char* frame_reason{};
+  const auto frame=wallplant?wallplant_surface_geometry_native_frame(&frame_reason):
+   surface_geometry_native_frame(GetTickCount64(),&frame_reason);
+  const auto current=InputNativeContext::from_frame(frame);
+  c.failure=frame_reason;
+  if(!frame.valid)return false;
+  c.failure="frame_owner_changed";
+  if(frame.owner!=NativeInputOwner{context.owner[0],context.owner[1],context.owner[2],context.owner[3],context.owner[4]})return false;
+  c.failure="frame_owner_generation";if(context.self_generation!=frame.owner_generation)return false;
+  c.failure="frame_stale";if(!current.fresh(GetTickCount64()))return false;
+  c.failure="query_frame_stale";if(!context.native.fresh(GetTickCount64()))return false;
+  c.failure="frame_generations";if(current.generations!=context.native.generations)return false;
+  c.failure="frame_episode";if(current.air_episode()!=context.native.air_episode())return false;
+  c.failure="frame_airborne";if(current.airborne!=context.native.airborne)return false;
+  c.failure="frame_clock";if(current.physics_step<context.native.physics_step||current.sampled_at<context.native.sampled_at)return false;
+  c.failure="current";
+  return true;
  }catch(...){return false;}
 }
+bool surface_callback_current(void* user,const SurfaceGeometryContext& context) noexcept {
+ return surface_callback_current_impl(user,context,false);
 }
-void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
- PreserveError preserve;arcade_mode::invalidate_surface_geometry();
- if(!arcade_mode::enabled())return;
+bool wallplant_surface_callback_current(void* user,const SurfaceGeometryContext& context) noexcept {
+ return surface_callback_current_impl(user,context,true);
+}
+}
+static void update_arcade_surface_geometry(std::uintptr_t client,bool collision_response,
+        std::uint64_t motion=0,const NativeInputFrame* motion_frame=nullptr,
+        wallplant_runtime::MotionDiagnostic* diagnostic=nullptr) noexcept {
+ const bool worker=collision_response || motion;
+ PreserveError preserve;if(!worker)arcade_mode::invalidate_surface_geometry();
+ const auto probe=wallplant_runtime::geometry_probe();
+ const auto note=[&](unsigned stage,const char* reason){
+  if(diagnostic)diagnostic->geometry_reason=reason?reason:"motion_frame_unavailable";
+  if(!motion)wallplant_runtime::geometry_event(probe,stage,reason);
+ };
+ note(0,"client_entry");
+ if(!arcade_mode::enabled()){note(1,"disabled");return;}
  try{
-  auto& local=local_runtime();std::unique_lock native(local.native_mutex);
-  auto& world=world_layers_runtime();std::unique_lock lifetime(world.lifetime_mutex);
-  if(!local.active||cosmetic_runtime().update_thread!=GetCurrentThreadId()||!world.model.ready||!world.root_generation)return;
-  const auto frame=arcade_mode::surface_geometry_native_frame(GetTickCount64());NoBailSkater owner{};
-  if(!frame.valid||!no_bail_skater(owner)||frame.owner!=NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig}||owner.base!=local.base)return;
+  auto& local=local_runtime();std::unique_lock native(local.native_mutex,std::defer_lock);
+  auto& world=world_layers_runtime();std::unique_lock lifetime(world.lifetime_mutex,std::defer_lock);
+  // Native worker callbacks never wait for another thread's lifetime locks.
+  // Their invocation scope and current worker TLS are checked before queries.
+  if(worker){if(!native.try_lock()||!lifetime.try_lock()){note(15,"collision_query_busy");return;}}
+  else {native.lock();lifetime.lock();}
+  if(!local.active||(!worker&&cosmetic_runtime().update_thread!=GetCurrentThreadId())||
+     !world.model.ready||!world.root_generation){note(2,"local_world_guard");return;}
+  if(worker){
+   const auto now=GetTickCount64();const auto gate=surface_client_gate;
+   if((collision_response&&!probe.contact)||!gate.client||gate.base!=local.base||now<gate.sampled_at||
+      now-gate.sampled_at>InputTiming::native_sample_lease_ms){note(16,"collision_client_lease");return;}
+   client=gate.client;
+  }
+  const char* frame_reason{};
+  const auto ordinary_frame=arcade_mode::surface_geometry_native_frame(GetTickCount64(),&frame_reason);
+  const auto admission=motion ?
+   (motion_frame && wallplant_runtime::motion_current(motion,*motion_frame) ? WallplantSurfaceFrame{*motion_frame,true}:WallplantSurfaceFrame{}) :
+   wallplant_surface_frame(ordinary_frame,probe.contact!=0,[&] {
+   note(3,frame_reason);
+   return arcade_mode::wallplant_surface_geometry_native_frame(&frame_reason);
+  },[&](const NativeInputFrame& current) {
+   if(wallplant_runtime::geometry_probe_current(probe,current))return true;
+   frame_reason="retained_contact_changed";return false;
+  });
+  const auto& frame=admission.frame;NoBailSkater owner{};
+  if(!frame.valid){note(probe.contact?14u:3u,frame_reason);return;}
+  if(admission.wallplant_only)note(13,"retained_frame_acquired");
+  if(!no_bail_skater(owner)||frame.owner!=NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig}||owner.base!=local.base){note(4,"native_owner");return;}
+  if(collision_response&&!native_wall_contact::collision_current(probe.raw,owner)){note(17,"collision_scope");return;}
   static std::uintptr_t validated_base{};static bool self_ready{};
+  static editor::NativeSurfaceApi motion_surface_api{};
   if(validated_base!=local.base){
+   motion_surface_api=editor::surface_api(local.base,true);
    validated_base=local.base;self_ready=std::all_of(surface_self_contracts.begin(),surface_self_contracts.end(),[&](const auto& contract){
     std::array<unsigned char,32> bytes{};return memory::read_bytes(local.base+contract.rva,bytes.data(),bytes.size())&&bytes==contract.bytes;});
   }
   auto& placements=placements_runtime();const auto& editor=park_editor_detail::editor_state();
   std::array<std::uintptr_t,2> context{};std::uintptr_t actual{};
-  if(!self_ready||!placements.context||!editor.surface_api.ready||!editor.picking_api.ready)return;
+  if(!self_ready||!placements.context||!editor.surface_api.ready||!editor.picking_api.ready){note(5,"contracts_api");return;}
   placements.context(context.data());
-  if(!context[0]||!memory::read(client+8,actual)||actual!=context[0])return;
-  SurfaceSelf self;if(!read_surface_self(context[0],owner,self))return;
-  const auto physics_world=editor.surface_api.world(context[0]);if(!physics_world)return;
+  if(!context[0]||!memory::read(client+8,actual)||actual!=context[0]){note(6,"client_context");return;}
+  const auto physics_world=editor.surface_api.world(context[0]);if(!physics_world){note(8,"physics_world");return;}
+  if(worker&&!physics_query_context::current(local.base,client,
+      static_cast<std::uintptr_t>(__readgsqword(0x58)),context[0],physics_world,
+      []<class T>(std::uintptr_t address,T& value){return memory::read(address,value);})){note(18,"collision_worker_context");return;}
+  SurfaceSelf self;if(!read_surface_self(context[0],owner,self)){note(7,"native_self");return;}
   SurfaceGeometryContext origin{{owner.base,owner.entity,owner.core,owner.context,owner.rig},InputNativeContext::from_frame(frame),
-   context[0],physics_world,world.root_generation,self.entity,frame.owner_generation,SurfaceGeometryPhase::client};
-  surface_client_gate={client,local.base,context[0],GetTickCount64()};
+   context[0],physics_world,world.root_generation,self.entity,frame.owner_generation,
+   motion?SurfaceGeometryPhase::motion_admission:collision_response?SurfaceGeometryPhase::collision_response:SurfaceGeometryPhase::client};
+  if(!worker)surface_client_gate={client,local.base,context[0],GetTickCount64()};
   SurfaceCallback callback{native,lifetime,GetCurrentThreadId(),client,owner,self,origin,editor.surface_api,editor.picking_api,true};
+  if(collision_response)callback.collision_serial=probe.raw;
+  if(motion){callback.motion_serial=motion;callback.motion_frame=frame;}
   SurfaceGeometryNativeApi api;api.base=local.base;api.surface=callback.surface;
   api.picking={callback.picking.hit_body,callback.picking.body_valid,callback.picking.body_entity,callback.picking.ready};
   api.user=&callback;api.now=[](void*)noexcept->std::uint64_t{return GetTickCount64();};api.current=&surface_callback_current;api.read_bytes=&memory::read_bytes;
+  if(admission.wallplant_only)api.current=&wallplant_surface_callback_current;
+  api.current_failure=[](void* user)noexcept{return static_cast<SurfaceCallback*>(user)->failure;};
   alignas(16) std::array<float,12> pose{};
-  if(!placements.pose||placements.pose(pose.data(),self.query.data())!=pose.data()||!surface_callback_current(&callback,origin))return;
+  if(!placements.pose||placements.pose(pose.data(),self.query.data())!=pose.data()){note(9,"native_pose");return;}
+  if(!api.current(&callback,origin)){note(10,callback.failure);return;}
   SurfaceGeometryRequest request;
   constexpr std::array<std::array<float,2>,5> offsets{{{0,0},{-.25f,0},{.25f,0},{0,-.25f},{0,.25f}}};
   for(std::size_t i=0;i<5;++i)request.segments[i]={{pose[8]+offsets[i][0],pose[9]+.75f,pose[10]+offsets[i][1]},
    {pose[8]+offsets[i][0],pose[9]-2.f,pose[10]+offsets[i][1]}};
   auto sample=query_surface_geometry(api,origin,request);
   if(sample.valid&&!revalidate_surface_geometry(api,origin,sample))sample={};
-  publish_surface_geometry(sample);
-  wallplant_runtime::publish_geometry(api,origin,frame,{pose[8],pose[9],pose[10]},sample);
+  if(!admission.wallplant_only&&!collision_response)publish_surface_geometry(sample);
+  auto wallplant_api=api;wallplant_api.current=&wallplant_surface_callback_current;
+  if(motion) {
+   if(!motion_surface_api.contact_ready){note(19,"motion_contact_contracts");return;}
+   wallplant_api.surface=motion_surface_api;
+  }
+  const SurfaceGeometryVector root{pose[8],pose[9],pose[10]};
+  std::array<SurfaceGeometryVector,1> board_offsets{};
+  std::span<const SurfaceGeometryVector> supports;
+  // The existing callback owns all native queries. A failed support read is
+  // passed as missing evidence; it cannot silently enable an unchecked anchor.
+  if((motion||probe.contact)&&read_surface_board_support(owner,callback.board_support)){
+   board_offsets[0]=surface_geometry_detail::sub(callback.board_support.point,root);
+   supports=board_offsets;
+  }
+  note(11,"before_publish");
+  if(motion)
+   wallplant_runtime::publish_motion_geometry(motion,wallplant_api,origin,frame,root,
+    callback.board_support.up,callback.board_support.velocity,sample,supports,diagnostic);
+  else wallplant_runtime::publish_geometry(wallplant_api,origin,frame,root,sample,supports);
   callback.entered=false;
- }catch(...){arcade_mode::invalidate_surface_geometry();}
+ }catch(...){note(12,"exception");arcade_mode::invalidate_surface_geometry();}
 }
+void query_arcade_wallplant_motion_geometry(std::uint64_t token,const arcade_mode::NativeInputFrame& frame,
+        wallplant_runtime::MotionDiagnostic* diagnostic) noexcept {
+ if(token)update_arcade_surface_geometry(0,false,token,&frame,diagnostic);
+}
+void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {update_arcade_surface_geometry(client,false);}
+void query_arcade_wallplant_collision_geometry() noexcept {update_arcade_surface_geometry(0,true);}
 
 // Scope/table/selected-pose reuse: davad00/ReSkate (GPL-3.0),
 // 992e35fddb5bcef914e2ec20b13e9316393b6763, traffic_vehicle_provider.cpp.

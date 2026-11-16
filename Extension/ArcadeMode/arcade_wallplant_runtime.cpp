@@ -3,6 +3,7 @@
 #include "arcade_surface_geometry_native.h"
 #include "arcade_native_wall_contact.h"
 #include "arcade_wallplant_animation.h"
+#include "arcade_wallplant_hold.h"
 #include "Engine/Core/Log/logging.h"
 #include <Windows.h>
 #include <atomic>
@@ -17,8 +18,9 @@ struct Candidate {
     Hit hit{};
     SurfaceGeometrySample wall{},ground{};
     SurfaceGeometryVector root{};
+    SurfaceGeometryAnchor anchor{};
     float clearance{};
-    std::uint64_t published_at{};
+    std::uint64_t published_at{},motion{};
     bool valid{};
 };
 std::mutex mutex;
@@ -28,16 +30,116 @@ Raw raw{};
 NativeInputFrame raw_frame{};
 Candidate candidate{};
 WallplantPress pending{};
-WallplantCommand in_flight{},receipt{},play_pending{};
+WallplantCommand in_flight{},receipt{};
+WallplantHoldContinuity hold,combo_bridge;
+WallplantCommand hold_play{},hold_stop{},grind_exclusion{};
+Hit held_hit{};
+SurfaceGeometrySample held_wall{};
+bool held_motion{},motion_wall_near{};
+struct MotionScope {std::uint64_t serial{},started{};NativeInputFrame frame{};};
+thread_local MotionScope motion_scope{};
+std::uint64_t motion_serial{};
+std::uint64_t hold_play_started{},grind_exclusion_started{};
 std::uint64_t contact_identity{},last_raw{},last_used_contact{},last_success_at{},last_handled_input{};
 bool grounded{},takeoff{},separated{},contact_active{},permitted{},animation_ready{};
 std::atomic<bool> interrupt{};
+std::atomic<bool> stop_pose{};
+std::atomic<std::uint64_t> pending_writer_input{};
+std::atomic<bool> retained_contact_hint{};
 // Diagnostic receipts only: bounded for the process lifetime and emitted once
 // per stage/contact. This lock never acquires the runtime lock or calls native code.
 std::mutex diagnostic_mutex;
 struct DiagnosticSeen {std::uint64_t contact{},stages{};};
-std::array<DiagnosticSeen,6> diagnostic_seen{};
+std::array<DiagnosticSeen,7> diagnostic_seen{};
 unsigned diagnostic_count{};
+unsigned query_diagnostic_count{};
+DiagnosticSeen writer_seen{};
+unsigned writer_diagnostic_count{};
+DiagnosticSeen prepublish_seen{};
+unsigned prepublish_count{};
+DiagnosticSeen retained_writer_seen{};
+unsigned retained_writer_count{};
+struct RetainedPhaseRow {
+    WriterProbe probe{};
+    std::uint64_t now{},pending{};
+    std::uintptr_t core{};
+    unsigned stage{};
+    const char* reason{};
+    std::uint32_t state{};
+    bool known{};
+};
+std::array<RetainedPhaseRow,128> retained_writer_rows{};
+unsigned retained_writer_read{};
+std::atomic<bool> retained_writer_queued{};
+std::array<MotionDiagnostic,128> motion_rows{};
+unsigned motion_count{},motion_read{},motion_dropped{},motion_reported_dropped{};
+std::atomic<bool> motion_queued{};
+void flush_motion_diagnostics() noexcept {
+    if(!motion_queued.load(std::memory_order_acquire))return;
+    try {
+        for(;;) {
+            MotionDiagnostic row{};unsigned dropped{};
+            {
+                std::lock_guard lock(diagnostic_mutex);
+                if(motion_read==motion_count) {
+                    dropped=motion_dropped-motion_reported_dropped;
+                    motion_reported_dropped=motion_dropped;
+                    motion_queued.store(false,std::memory_order_release);
+                    if(!dropped)return;
+                } else row=motion_rows[motion_read++];
+            }
+            if(dropped) {
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE WALLPLANT MOTION: dropped_at_first_overflow={} capacity=128 further_receipts_suppressed=true.",dropped);
+                return;
+            }
+            const auto& f=row.native;const auto& t=row.trace;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE WALLPLANT MOTION: begin={} end={} token={} reason={} geometry={} owner={} owner_generation={} step={} frame_ms={} state={} dt={} request={} animation={} query={} context={} ray={} hits={} start={},{},{} end={},{},{} value={}.",
+                row.started,row.finished,row.token,row.reason,row.geometry_reason,f.owner.core,
+                f.owner_generation,f.physics_step,f.sampled_at,f.state,f.physics_seconds,row.request_word,row.animation,
+                t.reason,t.context_reason,t.ray,t.hits,t.start[0],t.start[1],t.start[2],t.end[0],t.end[1],t.end[2],t.value);
+        }
+    } catch(...) {}
+}
+void flush_retained_phases() noexcept {
+    if(!retained_writer_queued.load(std::memory_order_acquire))return;
+    try {
+        for(;;) {
+            RetainedPhaseRow row{};
+            {
+                std::lock_guard lock(diagnostic_mutex);
+                if(retained_writer_read==retained_writer_count) {
+                    retained_writer_queued.store(false,std::memory_order_release);return;
+                }
+                row=retained_writer_rows[retained_writer_read++];
+            }
+            const auto& p=row.probe;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE WALLPLANT PHASE: ms={} stage={} reason={} input_snapshot={} pending_now={} contact={} raw={} callback_core={} owner_generation={} step={} frame_ms={} frame_state={} state_known={} state={}.",
+                row.now,row.stage,row.reason,p.input,row.pending,p.contact,p.raw,row.core,
+                p.native.owner_generation,p.native.physics_step,p.native.sampled_at,
+                p.native.state,row.known,row.state);
+        }
+    } catch(...) {}
+}
+void diagnose_query(const char* query,const SurfaceGeometryTrace& trace,const Raw& source,
+        const NativeInputFrame& f,std::uint64_t identity) noexcept {
+    try {
+        std::lock_guard lock(diagnostic_mutex);
+        if(query_diagnostic_count>=64)return;
+        ++query_diagnostic_count;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT QUERY: query={} reason={} context_reason={} ms={} step={} state={} owner_generation={} contact={} raw={} ray={} attempt={} hits={} shape_world={} shape={} generation={} entity={} start={},{},{} end={},{},{} point={},{},{} value={} anchor_root={},{},{} anchor_body={},{},{} anchor_target={},{},{} anchor_displacement={}.",
+            query,trace.reason,trace.context_reason,GetTickCount64(),f.physics_step,f.state,f.owner_generation,identity,source.serial,
+            trace.ray,trace.attempt,trace.hits,trace.shape.world,trace.shape.index,trace.shape.generation,trace.entity,
+            trace.start[0],trace.start[1],trace.start[2],trace.end[0],trace.end[1],trace.end[2],
+            trace.point[0],trace.point[1],trace.point[2],trace.value,
+            trace.anchor_root[0],trace.anchor_root[1],trace.anchor_root[2],
+            trace.anchor_body[0],trace.anchor_body[1],trace.anchor_body[2],
+            trace.anchor_target[0],trace.anchor_target[1],trace.anchor_target[2],trace.anchor_displacement);
+    } catch(...) {}
+}
 void diagnose(unsigned phase,unsigned stage,const char* reason,const Raw& source,
         const NativeInputFrame& f,std::uint64_t now,std::uint64_t identity,
         std::uint64_t flags=0,float value=0,float extra=0,
@@ -78,6 +180,15 @@ bool fresh(const NativeInputFrame& f,std::uint64_t now) noexcept {
     return f.valid && f.owner.valid() && f.owner_generation && f.physics_step &&
         now>=f.sampled_at && now-f.sampled_at<=InputTiming::native_sample_lease_ms;
 }
+bool same_command(const WallplantCommand& a,const WallplantCommand& b,bool anchored) noexcept {
+    return a && b && a.input_sequence==b.input_sequence && a.contact==b.contact &&
+        a.issued_at==b.issued_at && wallplant_same_observation(a.native,b.native) &&
+        a.native.physics_seconds==b.native.physics_seconds && a.geometry==b.geometry && a.body==b.body &&
+        a.point==b.point && a.normal==b.normal && a.contact_normal==b.contact_normal &&
+        a.before==b.before && a.after==b.after && a.incoming==b.incoming &&
+        a.reflected==b.reflected && a.hold_forward==b.hold_forward &&
+        (!anchored || (a.anchor_verified && b.anchor_verified && a.anchor==b.anchor));
+}
 bool raw_wall(const Hit& h) noexcept {
     // Mobility and full body/shape association exclude live skaters and moving
     // objects. Category bits are observed, never interpreted as guessed IDs.
@@ -86,8 +197,32 @@ bool raw_wall(const Hit& h) noexcept {
         h.kind!=4 && h.kind!=5 && h.kind!=8 && h.kind!=11 &&
         std::isfinite(h.normal[1]) && std::abs(h.normal[1])<=.1f;
 }
+bool query_current(const SurfaceGeometrySample& wall) noexcept {
+    SurfaceGeometryWorldOwner owner{};
+    return wall.valid && wall.world_owner.value &&
+        native_wall_contact::static_world_owner(wall.body,owner) && owner==wall.world_owner;
+}
+bool scoped_motion(std::uint64_t token,const NativeInputFrame& frame,std::uint64_t now) noexcept {
+    // AIR preparation runs inside the original update; its observation was
+    // published after the preceding update. Budget this callback from entry,
+    // while keeping the unchanged observation under its separate native lease.
+    return token && token==motion_scope.serial && wallplant_same_observation(motion_scope.frame,frame) &&
+        now>=motion_scope.started && fresh(frame,now) && std::isfinite(frame.physics_seconds) && frame.physics_seconds>0 &&
+        double(now-motion_scope.started)<=std::ceil(double(frame.physics_seconds)*1000);
+}
+bool candidate_current() noexcept {
+    return candidate.contact.motion_query?
+        (scoped_motion(candidate.motion,candidate.contact.native,GetTickCount64()) && query_current(candidate.wall)):
+        native_wall_contact::current(candidate.hit,candidate.contact.geometry.world);
+}
+bool held_current(const WallplantCommand& command) noexcept {
+    return held_motion?query_current(held_wall):native_wall_contact::current(held_hit,command.geometry.world);
+}
 bool ready(std::uint64_t now,const NativeInputFrame& f) noexcept {
-    if(!permitted || !animation_ready || !takeoff || !candidate.valid || pending.sequence || in_flight ||
+    // The alternative admits only during the native motion call. Collision
+    // publications and the optional pose cannot authorize a late plant.
+    if(!candidate.contact.motion_query || !scoped_motion(candidate.motion,f,now) ||
+       !permitted || hold.active() || !takeoff || !candidate.valid || pending.sequence || in_flight ||
        !fresh(f,now) || !flight(candidate.contact.native,f) || !flight(observed,f) ||
        now<candidate.published_at || now-candidate.published_at>InputTiming::native_sample_lease_ms ||
        now<candidate.contact.sampled_at || now-candidate.contact.sampled_at>InputTiming::native_sample_lease_ms ||
@@ -95,7 +230,7 @@ bool ready(std::uint64_t now,const NativeInputFrame& f) noexcept {
        now<candidate.ground.queried_at || now-candidate.ground.queried_at>InputTiming::native_sample_lease_ms)return false;
     if(last_used_contact && (candidate.contact.identity==last_used_contact || !separated ||
        now<last_success_at || now-last_success_at<WallplantParameters::reference_prototype().repeat_ms))return false;
-    return native_wall_contact::current(candidate.hit,candidate.contact.geometry.world);
+    return candidate_current();
 }
 WallplantFrame frame(std::uint64_t now,const NativeInputFrame& f,SurfaceGeometryVector velocity) noexcept {
     WallplantFrame out{};out.native=f;out.geometry=candidate.contact.geometry;
@@ -105,34 +240,81 @@ WallplantFrame frame(std::uint64_t now,const NativeInputFrame& f,SurfaceGeometry
     out.takeoff_observed=takeoff;out.clearance_known=candidate.valid;out.separated=separated;
     return out;
 }
-void withdraw() noexcept {
-    candidate={};raw={};raw_frame={};pending={};in_flight={};play_pending={};
+void hold_rejected(const WallplantCommand& command,const NativeInputFrame& frame,
+        std::uint64_t now,const char* reason) noexcept {
+    logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE WALLPLANT HOLD REJECTION: occurrence={} contact={} ms={} reason={} permitted={} valid={} state={} owner={} owner_generation={} action_generation={} step={} sampled={} episode={} departure={} flip_known={} flip={} selection={}.",
+        command.input_sequence,command.contact,now,reason,permitted,frame.valid,frame.state,
+        frame.owner.core,frame.owner_generation,frame.action_generation,frame.physics_step,frame.sampled_at,
+        frame.airborne_episode,frame.air_departure,frame.flip_known,frame.flip_id,frame.selection_object);
+}
+void withdraw(const char* reason,const NativeInputFrame* frame=nullptr) noexcept {
+    if(pending.sequence)diagnose(6,0,reason,raw,frame?*frame:observed,GetTickCount64(),contact_identity,
+        0,0,0,pending.sequence,pending.pressed_at);
+    retained_contact_hint.store(false,std::memory_order_release);
+    candidate={};raw={};raw_frame={};pending={};in_flight={};
+    if(hold.active()) {
+        hold_stop=hold.command();
+        hold_rejected(hold.command(),frame?*frame:observed,GetTickCount64(),reason);
+    }
+    hold.cancel(reason);combo_bridge.cancel(reason);hold_play={};held_hit={};held_wall={};held_motion=false;motion_wall_near=false;
+    pending_writer_input.store(0,std::memory_order_release);
     takeoff=grounded=separated=contact_active=animation_ready=false;policy.cancel();
 }
 }
 
+void motion_diagnostic(const MotionDiagnostic& diagnostic) noexcept {
+    // Called after scope retirement. Never reads game memory or updates policy.
+    try {
+        auto row=diagnostic;row.finished=GetTickCount64();
+        std::lock_guard lock(diagnostic_mutex);
+        if(motion_count<motion_rows.size())motion_rows[motion_count++]=row;
+        else {
+            if(motion_dropped!=UINT_MAX)++motion_dropped;
+            if(motion_reported_dropped)return;
+        }
+        motion_queued.store(true,std::memory_order_release);
+    } catch(...) {}
+}
 void cancel() noexcept {
-    {std::lock_guard lock(mutex);permitted=false;withdraw();observed={};last_handled_input=0;receipt={};}
+    {std::lock_guard lock(mutex);permitted=false;withdraw("cancel");observed={};last_handled_input=0;receipt={};}
     interrupt.store(true,std::memory_order_release);
     native_wall_contact::enable(false);
 }
 void interrupt_animation() noexcept {interrupt.store(true,std::memory_order_release);}
 void tick(std::uintptr_t base,bool gameplay) noexcept {
+    flush_retained_phases();
+    flush_motion_diagnostics();
     const bool active=gameplay && native_wall_contact::start(base);
     native_wall_contact::enable(active);
     if(interrupt.exchange(false,std::memory_order_acq_rel)) {
         wallplant_animation::cancel();
-        std::lock_guard lock(mutex);play_pending={};
+        // X/B may interrupt the optional pose. Physical cancellation is owned
+        // by cancel(), native ownership/state checks and the hold deadline.
+        std::lock_guard lock(mutex);hold_play={};
     }
+    if(stop_pose.exchange(false,std::memory_order_acq_rel))wallplant_animation::cancel();
     wallplant_animation::tick(active);
-    NativeInputFrame f{};WallplantCommand play{};
+    NativeInputFrame f{};WallplantCommand play{},stop{};std::uint64_t started{},expires{};
     {
         std::lock_guard lock(mutex);permitted=active;
-        if(!active){withdraw();observed={};return;}
-        f=observed;play=play_pending;play_pending={};
+        if(!active){withdraw("inactive");observed={};return;}
+        f=observed;
+        stop=hold_stop;hold_stop={};
+        play=hold_play;hold_play={};started=hold_play_started;
+        expires=hold.target_expiry();
+        if(!hold.active() || hold.command().input_sequence!=play.input_sequence)play={};
     }
+    if(stop)wallplant_animation::release(skater(stop.native.owner),stop.input_sequence);
     if(play) {
-        const bool accepted=flight(play.native,f) && wallplant_animation::request(skater(play.native.owner),play.input_sequence);
+        bool accepted=!interrupt.load(std::memory_order_acquire) && !stop_pose.load(std::memory_order_acquire) &&
+            wallplant_animation::begin_hold(skater(play.native.owner),play.input_sequence,started,expires,play.point,play.contact_normal,play.hold_forward);
+        bool still_held{};
+        {std::lock_guard lock(mutex);still_held=hold.active() && same_command(hold.command(),play,true) &&
+            hold.started_at()==started && hold.target_active(GetTickCount64());}
+        if(accepted && (!still_held || interrupt.load(std::memory_order_acquire) || stop_pose.load(std::memory_order_acquire))) {
+            wallplant_animation::cancel();accepted=false;
+        }
         logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE WALLPLANT VISUAL: occurrence={} requested={} approximation=true native_actor_verified=false native_scoring_verified=false.",
             play.input_sequence,accepted);
@@ -160,12 +342,27 @@ void observe_physics(const NativeInputFrame& f) noexcept {
             (same?1ull:0ull)|(permitted?2ull:0ull)|(takeoff?4ull:0ull)|
             (contacts.serial==last_raw?8ull:0ull),contacts.seconds,f.physics_seconds);
     };
-    if(!same) {withdraw();last_used_contact=last_success_at=0;policy.reset();}
+    if(!same) {withdraw("physics_continuity",&f);last_used_contact=last_success_at=0;policy.reset();}
     if(!f.valid || !f.owner.valid()) {retention(0,"invalid_frame");observed={};return;}
+    if(hold.active()) {
+        const auto active_command=hold.command();
+        if(permitted && hold.observe(f,GetTickCount64()) &&
+           held_current(hold.command())) {
+            observed=f;return;
+        }
+        if(!hold.active())hold_rejected(active_command,f,GetTickCount64(),hold.reason());
+        hold_stop=active_command;withdraw("hold_observation",&f);stop_pose.store(true,std::memory_order_release);
+    }
+    if(combo_bridge.active()) {
+        if(!combo_bridge.observe(f,GetTickCount64()) || f.airborne)combo_bridge.cancel("released_air_or_invalid");
+        else {observed=f;return;}
+    }
     if(!f.airborne) {
         retention(1,"not_airborne");
-        withdraw();grounded=!f.rail_family && (f.state==100 || f.state==103);observed=f;
-        interrupt.store(true,std::memory_order_release);return;
+        withdraw("physics_not_airborne",&f);grounded=!f.rail_family && (f.state==100 || f.state==103);observed=f;
+        // Authenticated hold/release continuity returned above. Ordinary
+        // ground observations still stop any owned pose.
+        stop_pose.store(true,std::memory_order_release);return;
     }
     if(same && grounded && !observed.airborne)takeoff=true;
     grounded=false;observed=f;
@@ -175,16 +372,92 @@ void observe_physics(const NativeInputFrame& f) noexcept {
     if(contacts.sampled_at<preceding_at){retention(4,"raw_before_preceding_frame");return;}
     if(!std::isfinite(contacts.seconds) || contacts.seconds<=0 ||
        !AirMotion::same_velocity(contacts.seconds,f.physics_seconds)){retention(5,"physics_seconds");return;}
-    if(!wall){separated=true;contact_active=false;return;}
+    if(!wall){if(!motion_wall_near)separated=true;contact_active=false;retained_contact_hint.store(false,std::memory_order_release);return;}
     if(!contact_active) {
-        if(contact_identity==UINT64_MAX){withdraw();return;}
+        if(contact_identity==UINT64_MAX){withdraw("contact_overflow",&f);return;}
         ++contact_identity;
     }
     contact_active=true;raw=contacts;raw_frame=f;
+    retained_contact_hint.store(true,std::memory_order_release);
     retention(6,"retained");
 }
-void publish_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
-        const NativeInputFrame& f,SurfaceGeometryVector root,const SurfaceGeometrySample& ground) noexcept {
+bool retain_collision_before_response(const NativeInputFrame&,std::uint64_t) noexcept {
+    // Original collision processing is already under way. This branch plants
+    // at motion preparation and never converts a pending bail into a plant.
+    return false;
+}
+std::uint64_t begin_motion(const NativeInputFrame& f,std::uint64_t now) noexcept {
+    std::lock_guard lock(mutex);
+    if(motion_scope.serial || !permitted || !takeoff || hold.active() || pending.sequence || in_flight ||
+       !fresh(f,now) || f.state!=201 || !wallplant_same_observation(observed,f) ||
+       motion_serial==UINT64_MAX)return 0;
+    candidate={};motion_scope={++motion_serial,now,f};return motion_scope.serial;
+}
+bool motion_current(std::uint64_t token,const NativeInputFrame& f) noexcept {
+    std::lock_guard lock(mutex);
+    return permitted && scoped_motion(token,f,GetTickCount64()) && wallplant_same_observation(observed,f);
+}
+void end_motion(std::uint64_t token) noexcept {
+    std::lock_guard lock(mutex);
+    if(!token || motion_scope.serial!=token)return;
+    if(candidate.motion==token) {
+        candidate={};pending={};in_flight={};pending_writer_input.store(0,std::memory_order_release);
+    }
+    motion_scope={};
+}
+void publish_motion_geometry(std::uint64_t token,const SurfaceGeometryNativeApi& supplied,
+        const SurfaceGeometryContext& ctx,const NativeInputFrame& f,SurfaceGeometryVector root,
+        SurfaceGeometryVector up,SurfaceGeometryVector velocity,const SurfaceGeometrySample& ground,
+        std::span<const SurfaceGeometryVector> supports,MotionDiagnostic* diagnostic) noexcept {
+    const auto note=[&](const char* reason){if(diagnostic)diagnostic->geometry_reason=reason;};
+    auto* trace=diagnostic?&diagnostic->trace:nullptr;
+    note("motion_geometry_guard");
+    if(!supplied.now || !supplied.current || supports.empty() || supports.size()>32 ||
+       ctx.phase!=SurfaceGeometryPhase::motion_admission || !motion_current(token,f))return;
+    auto api=supplied;
+    api.static_world_owner=[](void*,const SurfaceGeometryBody& shape,SurfaceGeometryWorldOwner& owner) noexcept {
+        return native_wall_contact::static_world_owner(shape,owner);
+    };
+    api.local_component_owner=[](void*,const SurfaceGeometryContext& context,const SurfaceGeometryBody& shape,
+            SurfaceGeometryWorldOwner& owner) noexcept {
+        return native_wall_contact::local_component_owner(shape,context.owner[1],owner);
+    };
+    auto board=root;for(unsigned axis=0;axis<3;++axis)board[axis]+=supports.front()[axis];
+    note("motion_wall");
+    const auto wall=query_motion_wall(api,ctx,board,up,velocity,f.physics_seconds,trace);
+    if(!wall.valid) {
+        std::lock_guard lock(mutex);
+        if(scoped_motion(token,f,api.now(api.user))) {motion_wall_near=false;separated=true;}
+        return;
+    }
+    note("wall_identity");
+    if(!query_current(wall))return;
+    note("clearance");
+    auto clearance=ground;
+    if(!clearance.fresh_for(ctx,api.now(api.user)))clearance=query_surface_geometry(api,ctx,wallplant_clearance_request(root));
+    const auto height=root[1]-clearance.point[1];
+    if(!clearance.valid || !revalidate_surface_geometry(api,ctx,clearance) ||
+       !std::isfinite(height) || height<WallplantParameters::reference_prototype().minimum_height)return;
+    note("anchor");
+    const auto anchor=query_wallplant_anchor(api,ctx,wall.body,wall.point,wall.query_normal,root,supports.front(),supports,trace);
+    if(!anchor.valid || !revalidate_surface_geometry(api,ctx,wall))return;
+    note("motion_publication_guard");
+    const auto now=api.now(api.user);
+    std::lock_guard lock(mutex);
+    if(!permitted || !takeoff || hold.active() || pending.sequence || in_flight ||
+       !scoped_motion(token,f,now) || !wallplant_same_observation(observed,f) ||
+       !wall.fresh_for(ctx,now) || !clearance.fresh_for(ctx,now) || contact_identity==UINT64_MAX)return;
+    Candidate result{};result.wall=wall;result.ground=clearance;result.root=root;result.anchor=anchor;
+    result.clearance=height;result.published_at=now;result.motion=token;result.valid=true;
+    auto& contact=result.contact;contact.native=f;contact.geometry=ctx;contact.body=wall.body;
+    contact.point=wall.point;contact.normal=wall.query_normal;contact.approach_velocity=velocity;
+    contact.identity=++contact_identity;contact.sampled_at=wall.queried_at;
+    contact.motion_query=contact.static_world=true;
+    motion_wall_near=true;candidate=result;note("published");
+}
+void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const SurfaceGeometryContext& ctx,
+        const NativeInputFrame& f,SurfaceGeometryVector root,const SurfaceGeometrySample& ground,
+        std::span<const SurfaceGeometryVector> verified_support_offsets) noexcept {
     Raw source{};NativeInputFrame origin{};std::uint64_t identity{};
     {
         std::lock_guard lock(mutex);candidate={};
@@ -194,12 +467,25 @@ void publish_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryC
         }
         source=raw;origin=raw_frame;identity=contact_identity;
     }
+    // Map collision owners are native world objects, not necessarily ECS
+    // entities. Opt in only here, after real airborne collision retention.
+    auto api=supplied_api;
+    api.static_world_owner=[](void*,const SurfaceGeometryBody& shape,SurfaceGeometryWorldOwner& owner) noexcept {
+        return native_wall_contact::static_world_owner(shape,owner);
+    };
+    api.local_component_owner=[](void*,const SurfaceGeometryContext& context,
+            const SurfaceGeometryBody& shape,SurfaceGeometryWorldOwner& owner) noexcept {
+        return native_wall_contact::local_component_owner(shape,context.owner[1],owner);
+    };
     const auto geometry=[&](unsigned stage,const char* reason,std::uint64_t now,
             std::uint64_t flags=0,float value=0,float extra=0) {
         diagnose(1,stage,reason,source,f,now,identity,flags,value,extra);
     };
+    if(verified_support_offsets.empty() || verified_support_offsets.size()>32) {
+        geometry(15,"anchor_support_unavailable",GetTickCount64());return;
+    }
     if(!api.now || !api.current){geometry(1,"geometry_api",GetTickCount64());return;}
-    const auto now=api.now(api.user);
+    auto now=api.now(api.user);
     if(!source.valid || !identity || !fresh(f,now) || source.owner!=skater(f.owner) ||
        (source.state!=200 && source.state!=201) || now<source.sampled_at ||
        now-source.sampled_at>InputTiming::native_sample_lease_ms || !ctx.fresh(now)) {
@@ -209,8 +495,15 @@ void publish_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryC
     }
     auto clearance_ground=ground;
     const bool ground_reused=clearance_ground.fresh_for(ctx,now);
-    if(!ground_reused)
-        clearance_ground=query_surface_geometry(api,ctx,wallplant_clearance_request(root));
+    if(!ground_reused) {
+        SurfaceGeometryTrace trace;
+        clearance_ground=query_surface_geometry(api,ctx,wallplant_clearance_request(root),&trace);
+        if(!clearance_ground.valid)diagnose_query("clearance",trace,source,f,identity);
+    }
+    // A fallback stamps its own query time after the initial admission check.
+    // Validate at the actual current clock, not against an earlier millisecond
+    // which would misclassify a successful fresh query as a future observation.
+    now=api.now(api.user);
     if(!clearance_ground.fresh_for(ctx,now)) {
         geometry(3,"ground_freshness",now,(clearance_ground.valid?1ull:0ull)|(ground_reused?2ull:0ull)|
             (clearance_ground.context.native.fresh(now)?4ull:0ull)|
@@ -235,13 +528,34 @@ void publish_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryC
             geometry(8,"approach",now,0,approach,speed);continue;
         }
         const SurfaceGeometryBody shape{hit.shape.world,hit.shape.index,hit.shape.generation};
-        const auto wall=query_wall_geometry(api,ctx,shape,hit.point,hit.normal);
+        SurfaceGeometryTrace trace;
+        const auto wall=query_wall_geometry(api,ctx,shape,hit.point,hit.normal,source.velocity,source.seconds,&trace);
+        now=api.now(api.user);
+        if(!wall.valid)diagnose_query("wall",trace,source,f,identity);
         if(!wall.valid){geometry(9,"broad_wall",now);continue;}
+        SurfaceGeometryTrace anchor_trace;
+        // The callback's first support is the revalidated native board part0.
+        // Use the corroborated wall plane, not the solver's displaced contact.
+        const auto anchor=query_wallplant_anchor(api,ctx,shape,wall.point,wall.query_normal,root,
+            verified_support_offsets.front(),verified_support_offsets,&anchor_trace);
+        diagnose_query("anchor",anchor_trace,source,f,identity);
+        if(!anchor.valid) {
+            geometry(16,"anchor_clearance",api.now(api.user));continue;
+        }
         if(!native_wall_contact::current(hit,ctx.world)){geometry(10,"hit_current_after_query",now);continue;}
         if(!api.current(api.user,ctx)){geometry(11,"world_current_after_query",now);continue;}
+        now=api.now(api.user);
+        // Native queries/revalidation may advance time. Preserve every original
+        // timestamp and reject expired contact/frame/geometry at publication.
+        if(!fresh(f,now) || now<source.sampled_at ||
+           now-source.sampled_at>InputTiming::native_sample_lease_ms ||
+           !clearance_ground.fresh_for(ctx,now) || !wall.fresh_for(ctx,now)) {
+            geometry(14,"publication_freshness",now);continue;
+        }
         Candidate result{};result.hit=hit;result.wall=wall;result.ground=clearance_ground;result.root=root;
+        result.anchor=anchor;
         result.clearance=clearance;result.published_at=now;result.valid=true;
-        auto& c=result.contact;c.native=origin;c.geometry=ctx;c.body=shape;c.point=hit.point;
+        auto& c=result.contact;c.native=origin;c.geometry=ctx;c.body=shape;c.point=wall.point;
         c.normal=hit.normal;c.approach_velocity=source.velocity;c.identity=identity;
         c.sampled_at=source.sampled_at;c.collision=c.static_world=true;
         std::lock_guard lock(mutex);
@@ -256,7 +570,7 @@ InputSurfaceState surface(std::uint64_t now,const NativeInputFrame& f) noexcept 
     std::lock_guard lock(mutex);
     const bool eligible=ready(now,f);
     // Pure copies of the existing gates: no extra native identity queries.
-    const std::uint64_t flags=(permitted?1ull:0ull)|(animation_ready?2ull:0ull)|(takeoff?4ull:0ull)|
+    const std::uint64_t flags=(permitted?1ull:0ull)|2ull|(takeoff?4ull:0ull)|
         (candidate.valid?8ull:0ull)|(!pending.sequence?16ull:0ull)|(!in_flight?32ull:0ull)|
         (fresh(f,now)?64ull:0ull)|(flight(candidate.contact.native,f)?128ull:0ull)|
         (flight(observed,f)?256ull:0ull)|
@@ -290,36 +604,92 @@ InputDisposition request(const InputRequest& request,std::uint64_t now,const Nat
        now<request.physical_pressed_at || now-request.physical_pressed_at>InputTiming::native_sample_lease_ms)
         {disposition(2,"request_provenance");return InputDisposition::cancelled;}
     pending={context(f),request.input_sequence,request.physical_pressed_at,true};
+    pending_writer_input.store(pending.sequence,std::memory_order_release);
     disposition(3,"pending_accepted");
     return InputDisposition::started;
 }
-WallplantCommand consume(std::uint64_t now,const NativeInputFrame& f,SurfaceGeometryVector velocity) noexcept {
+WallplantCommand consume(std::uint64_t now,const NativeInputFrame& f,SurfaceGeometryVector velocity,
+        std::uint64_t expected_input,const WallplantReconstructionProof* reconstruction,
+        const WallplantCollisionResponseProof* collision) noexcept {
     std::lock_guard lock(mutex);
     if(!pending.sequence)return {};
+    // A selector handoff is valid only before another original physics
+    // observation. Do not consume a replacement input or renew its AIR frame.
+    if(expected_input && (pending.sequence!=expected_input || !wallplant_same_observation(f,observed)))return {};
     const auto press=pending;pending={};
+    pending_writer_input.store(0,std::memory_order_release);
     const auto consumption=[&](unsigned stage,const char* reason) {
         diagnose(5,stage,reason,raw,f,now,contact_identity,0,0,0,press.sequence,press.pressed_at);
     };
     if(!ready(now,f)){consumption(0,"consume_not_ready");return {};}
+    if(collision && (reconstruction || collision->raw!=raw.serial || collision->sampled_at!=raw.sampled_at ||
+       !native_wall_contact::collision_current(collision->raw,skater(f.owner)))) {
+        consumption(3,"collision_scope_changed");return {};
+    }
     auto current_frame=frame(now,f,velocity);
-    in_flight=policy.step(current_frame,candidate.contact,press);
-    consumption(in_flight?2u:1u,in_flight?"command_ready":"policy_empty");
+    WallplantPolicyDecision decision{};
+    in_flight=policy.step(current_frame,candidate.contact,press,reconstruction,&decision,collision);
+    if(in_flight) {
+        in_flight.anchor=candidate.anchor.target;
+        in_flight.anchor_verified=candidate.anchor.valid;
+        if(!in_flight.anchor_verified)in_flight={};
+    }
+    diagnose(5,in_flight?2u:1u,decision.reason,raw,f,now,contact_identity,
+        (decision.reconstruction?1u:0u)|(decision.collision_response?2u:0u),
+        decision.current_normal,decision.target_normal,press.sequence,press.pressed_at);
     return in_flight;
 }
 bool current(const WallplantCommand& command,std::uint64_t now,const NativeInputFrame& f,SurfaceGeometryVector velocity) noexcept {
     std::lock_guard lock(mutex);
     return permitted && candidate.valid && in_flight && command.input_sequence==in_flight.input_sequence &&
         flight(command.native,f) && fresh(f,now) &&
-        native_wall_contact::current(candidate.hit,candidate.contact.geometry.world) &&
+        candidate_current() &&
         policy.current(command,frame(now,f,velocity),candidate.contact);
 }
 void completed(const WallplantCommand& command,bool applied) noexcept {
     std::lock_guard lock(mutex);
     if(!command || !in_flight || command.input_sequence!=in_flight.input_sequence)return;
     in_flight={};
-    if(!applied)return;
-    receipt=command;play_pending=command;last_used_contact=command.contact;
-    last_success_at=command.issued_at;separated=false;animation_ready=false;
+    // Legacy failure retirement only. Success requires the owned hold/release
+    // transaction; a writer cannot bypass that phase by reporting completion.
+    (void)applied;
+}
+bool begin_hold(const WallplantCommand& command,std::uint64_t& now) noexcept {
+    std::lock_guard lock(mutex);
+    now=GetTickCount64();
+    if(!permitted || hold.active() || !command || !in_flight || !candidate.valid ||
+       !command.anchor_verified || !surface_geometry_detail::finite(command.anchor) ||
+       !same_command(command,in_flight,true) ||
+       !candidate_current() || !hold.begin(command,now))return false;
+    held_hit=candidate.hit;held_wall=candidate.wall;held_motion=candidate.contact.motion_query;in_flight={};hold_play=command;hold_play_started=now;
+    combo_bridge.cancel();last_used_contact=command.contact;last_success_at=now;
+    grind_exclusion=command;grind_exclusion_started=now;
+    separated=false;animation_ready=false;return true;
+}
+bool hold_current(const WallplantCommand& command,std::uint64_t& now,const NativeInputFrame& live,bool* stale_query) noexcept {
+    std::lock_guard lock(mutex);
+    now=GetTickCount64();
+    if(stale_query)*stale_query=false;
+    if(!hold.active() || !same_command(command,hold.command(),true))return false;
+    const bool contact_current=permitted && held_current(command);
+    if(contact_current) {
+        if(hold.stale_query(live,now)) {
+            if(stale_query)*stale_query=true;
+            return false;
+        }
+        if(hold.observe(live,now))return true;
+    }
+    hold_rejected(command,live,now,!permitted?"not_permitted":!contact_current?"contact_changed":hold.reason());
+    hold_stop=command;hold.cancel("hold_invalid");hold_play={};held_hit={};return false;
+}
+void finish_hold(const WallplantCommand& command,bool released,std::uint64_t now) noexcept {
+    std::lock_guard lock(mutex);
+    now=GetTickCount64();
+    if(!hold.active() || !same_command(command,hold.command(),true))return;
+    released=released && hold.release_due(now);
+    if(released){receipt=hold.command();combo_bridge=hold;(void)combo_bridge.release_bridge(now);}
+    hold_stop=hold.command();hold.cancel(released?"released":"cancelled");hold_play={};held_hit={};
+    if(!released)return;
     logging::log(logging::Level::info,logging::Channel::skater,
         "ARCADE WALLPLANT REBOUND: occurrence={} contact={} owner={} owner_generation={} episode={} departure={} step={} before={},{},{} after={},{},{} point={},{},{} normal={},{},{} applied=true native_scoring_verified=false combo_continuity_verified=false animation_verified=false.",
         command.input_sequence,command.contact,command.native.owner.core,command.native.owner_generation,
@@ -327,21 +697,139 @@ void completed(const WallplantCommand& command,bool applied) noexcept {
         command.before[0],command.before[1],command.before[2],command.after[0],command.after[1],command.after[2],
         command.point[0],command.point[1],command.point[2],command.normal[0],command.normal[1],command.normal[2]);
 }
+WallplantCommand held_command() noexcept {std::lock_guard lock(mutex);return hold.command();}
+std::uint64_t hold_started_at() noexcept {std::lock_guard lock(mutex);return hold.started_at();}
+bool preserves_combo(const NativeInputFrame& frame,std::uint64_t now) noexcept {
+    std::lock_guard lock(mutex);
+    now=GetTickCount64();
+    auto proof=hold.active()?hold:combo_bridge;
+    return permitted && proof.active() && proof.observe(frame,now) && frame.state==100 && !frame.airborne;
+}
+bool excludes_grind(const NativeInputFrame& frame,std::uint64_t now) noexcept {
+    std::lock_guard lock(mutex);
+    return permitted && grind_exclusion && frame.valid && frame.owner==grind_exclusion.native.owner &&
+        frame.owner_generation==grind_exclusion.native.owner_generation && now>=grind_exclusion_started &&
+        now-grind_exclusion_started<200;
+}
 WallplantCommand latest_completed() noexcept {std::lock_guard lock(mutex);return receipt;}
+GeometryProbe geometry_probe() noexcept {
+    if(!retained_contact_hint.load(std::memory_order_acquire))return {};
+    std::lock_guard lock(mutex);
+    if(!permitted || !takeoff || !contact_active || !raw.valid || !contact_identity || !fresh(raw_frame,GetTickCount64()))return {};
+    return {contact_identity,raw.serial,raw_frame};
+}
+bool geometry_probe_current(const GeometryProbe& probe,const NativeInputFrame& frame) noexcept {
+    std::lock_guard lock(mutex);
+    const auto now=GetTickCount64();
+    return permitted && takeoff && contact_active && raw.valid && probe.contact==contact_identity &&
+        probe.raw==raw.serial && wallplant_same_observation(probe.native,raw_frame) &&
+        fresh(raw_frame,now) && fresh(frame,now) && flight(raw_frame,frame);
+}
+void geometry_event(const GeometryProbe& probe,unsigned stage,const char* reason) noexcept {
+    if(!probe.contact || !probe.raw || stage>=64)return;
+    try {
+        Raw source{};NativeInputFrame frame{};
+        {
+            std::lock_guard lock(mutex);
+            if(probe.contact!=contact_identity || probe.raw!=raw.serial || !raw.valid)return;
+            source=raw;frame=raw_frame;
+        }
+        std::lock_guard lock(diagnostic_mutex);
+        if(prepublish_count>=128)return;
+        if(prepublish_seen.contact!=probe.contact)prepublish_seen={probe.contact,0};
+        const auto bit=std::uint64_t{1}<<stage;
+        if(prepublish_seen.stages&bit)return;
+        prepublish_seen.stages|=bit;++prepublish_count;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT PREPUBLISH: ms={} stage={} reason={} contact={} raw={} source={} source_serial={} raw_ms={} frame_ms={} step={} state={} owner_generation={}.",
+            GetTickCount64(),stage,reason,probe.contact,probe.raw,static_cast<unsigned>(source.source),
+            source.source_serial,source.sampled_at,frame.sampled_at,frame.physics_step,frame.state,frame.owner_generation);
+    } catch(...) {}
+}
+WriterProbe writer_probe() noexcept {
+    if(!pending_writer_input.load(std::memory_order_acquire))return {};
+    std::lock_guard lock(mutex);
+    return {pending.sequence,candidate.contact.identity,candidate.motion?0:raw.serial,observed,candidate.motion};
+}
+WriterProbe retained_writer_probe() noexcept {
+    if(!retained_contact_hint.load(std::memory_order_acquire))return {};
+    std::lock_guard lock(mutex);
+    if(!permitted || !takeoff || !contact_active || !raw.valid || !contact_identity || !fresh(raw_frame,GetTickCount64()))return {};
+    return {pending.sequence,contact_identity,raw.serial,raw_frame};
+}
+void retained_writer_event(const WriterProbe& probe,unsigned stage,const char* reason,
+        std::uint32_t state,bool state_known,std::uintptr_t core) noexcept {
+    if(!probe.contact || !probe.raw || core!=probe.native.owner.core || stage>=64)return;
+    const auto now=GetTickCount64();
+    const auto pending_now=pending_writer_input.load(std::memory_order_acquire);
+    try {
+        std::lock_guard lock(diagnostic_mutex);
+        if(retained_writer_count>=128)return;
+        if(retained_writer_seen.contact!=probe.contact)retained_writer_seen={probe.contact,0};
+        const auto bit=std::uint64_t{1}<<stage;
+        if(retained_writer_seen.stages&bit)return;
+        retained_writer_seen.stages|=bit;
+        retained_writer_rows[retained_writer_count++]={probe,now,pending_now,core,stage,reason,state,state_known};
+        retained_writer_queued.store(true,std::memory_order_release);
+    } catch(...) {}
+}
+void writer_event(const WriterProbe& probe,unsigned stage,const char* reason,
+        std::uint32_t state,bool state_known,std::uintptr_t core) noexcept {
+    if(!probe.input || core!=probe.native.owner.core || stage>=64)return;
+    try {
+        std::lock_guard lock(diagnostic_mutex);
+        if(writer_diagnostic_count>=96)return;
+        if(writer_seen.contact!=probe.input)writer_seen={probe.input,0};
+        const auto bit=std::uint64_t{1}<<stage;
+        if(writer_seen.stages&bit)return;
+        writer_seen.stages|=bit;++writer_diagnostic_count;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT WRITER: ms={} stage={} reason={} input={} contact={} raw={} callback_core={} owner={} owner_generation={} step={} frame_ms={} frame_state={} state_known={} state={}.",
+            GetTickCount64(),stage,reason,probe.input,probe.contact,probe.raw,core,probe.native.owner.core,
+            probe.native.owner_generation,probe.native.physics_step,probe.native.sampled_at,probe.native.state,state_known,state);
+    } catch(...) {}
+}
 }
 #else
-// The pre-RC4 candidate has no contact hooks, animation loading, input ownership,
+// A build with the experimental feature disabled has no contact hooks or input ownership,
 // geometry queries or rebound transactions. Enabling requires a new exact-source build.
 namespace dingosdk::arcade_mode::wallplant_runtime {
 void tick(std::uintptr_t, bool) noexcept {}
 void observe_physics(const NativeInputFrame&) noexcept {}
+void motion_diagnostic(const MotionDiagnostic&) noexcept {}
+std::uint64_t begin_motion(const NativeInputFrame&,std::uint64_t) noexcept { return 0; }
+bool motion_current(std::uint64_t,const NativeInputFrame&) noexcept { return false; }
+void end_motion(std::uint64_t) noexcept {}
+void publish_motion_geometry(std::uint64_t,const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
+    const NativeInputFrame&,SurfaceGeometryVector,SurfaceGeometryVector,SurfaceGeometryVector,
+    const SurfaceGeometrySample&,std::span<const SurfaceGeometryVector>,MotionDiagnostic*) noexcept {}
+bool retain_collision_before_response(const NativeInputFrame&,std::uint64_t) noexcept { return false; }
+bool begin_hold(const WallplantCommand&,std::uint64_t&) noexcept { return false; }
+bool hold_current(const WallplantCommand&,std::uint64_t&,const NativeInputFrame&,bool* stale) noexcept {
+    if(stale)*stale=false;
+    return false;
+}
+void finish_hold(const WallplantCommand&,bool,std::uint64_t) noexcept {}
+WallplantCommand held_command() noexcept { return {}; }
+std::uint64_t hold_started_at() noexcept { return 0; }
+bool preserves_combo(const NativeInputFrame&,std::uint64_t) noexcept { return false; }
+bool excludes_grind(const NativeInputFrame&,std::uint64_t) noexcept { return false; }
+WriterProbe writer_probe() noexcept { return {}; }
+WriterProbe retained_writer_probe() noexcept { return {}; }
+void retained_writer_event(const WriterProbe&,unsigned,const char*,std::uint32_t,bool,std::uintptr_t) noexcept {}
+void writer_event(const WriterProbe&,unsigned,const char*,std::uint32_t,bool,std::uintptr_t) noexcept {}
+GeometryProbe geometry_probe() noexcept { return {}; }
+bool geometry_probe_current(const GeometryProbe&,const NativeInputFrame&) noexcept { return false; }
+void geometry_event(const GeometryProbe&,unsigned,const char*) noexcept {}
+
 void publish_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
-    const NativeInputFrame&, SurfaceGeometryVector, const SurfaceGeometrySample&) noexcept {}
+    const NativeInputFrame&, SurfaceGeometryVector, const SurfaceGeometrySample&, std::span<const SurfaceGeometryVector>) noexcept {}
 InputSurfaceState surface(std::uint64_t, const NativeInputFrame&) noexcept { return {}; }
 InputDisposition request(const InputRequest&, std::uint64_t, const NativeInputFrame&) noexcept {
     return InputDisposition::unsupported;
 }
-WallplantCommand consume(std::uint64_t, const NativeInputFrame&, SurfaceGeometryVector) noexcept { return {}; }
+WallplantCommand consume(std::uint64_t, const NativeInputFrame&, SurfaceGeometryVector,
+    std::uint64_t,const WallplantReconstructionProof*,const WallplantCollisionResponseProof*) noexcept { return {}; }
 bool current(const WallplantCommand&, std::uint64_t, const NativeInputFrame&, SurfaceGeometryVector) noexcept { return false; }
 void completed(const WallplantCommand&, bool) noexcept {}
 WallplantCommand latest_completed() noexcept { return {}; }
