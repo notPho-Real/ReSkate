@@ -6,8 +6,9 @@ This candidate is not hardware accepted. Development stays on
 Latest compiled checkpoint: `5ae5778627a7dbe0bf3153eb7b36b471bdd5aa1b`, including
 the owner-reported Manual lifetime/endpoints, Casper support and static wall
 ownership corrections. All nine required CI gates and strict package verification
-pass; exact-candidate native acceptance is pending. The Deck remains on the
-owner's f002 playtest installation until a fresh exclusive handoff.
+pass; exact-candidate native acceptance is pending. Following the owner and
+peer handoff, exact5ae is installed and its mapped DLL is verified in
+San Vansterdam. Gameplay acceptance remains separate from startup evidence.
 The preceding
 exact `986fb8c0` DLL completed five scoped physical doubles at 30 Hz and one at
 60 Hz, including native airborne release and supported landing. Its zero-phase
@@ -32,12 +33,12 @@ Current feedback and source work:
 
 | Feature | State | Evidence | Next action |
 | --- | --- | --- | --- |
-| Casper stance/support | Implemented and compiled; native pending | Native admitted Manual/Nose support now matches its actual wheel contact; seed and active playback remain bound to owner, episode and stance | Exact-candidate native stance trials |
+| Casper stance/support | Implemented and compiled; regular/Nose entry observed in San Van | Native admitted Manual/Nose support now matches its actual wheel contact; seed and active playback remain bound to owner, episode and stance | Exact-candidate native stance trials |
 | Manual endpoints | Implemented and compiled; native pending | Regular backward lean bails; forward puts down; Nose reverses. Typed HUD label is independent of endpoint direction. Old regression fails, focused sanitizer suites pass | Verify actual native falling, not just a queued bail |
 | Manual after plain landing | Implemented and compiled; native pending | Production-composed short-flight landing regression fails before correction; airborne retention no longer grants timeless old pressure on four-wheel landing | Owner replay with physical and HUD evidence |
 | Manual without meter | Implemented and compiled; native pending | Fresh independent native history/contact can readmit after proved physical exit. Old production-composed cases fail; stale labels, same failed section, owner change and duplicate frames remain rejected | Replay trick-to-Manual landing with exact DLL |
-| Main-map Casper/wallplants | Static entity wall routing compiled; native cause remains unverified | No map-name allowlist found. Geometry1631/static-owner48 checks pass; independent static/allocation/entity proof and self exclusion retained | Verify San Vansterdam free skate with exact candidate |
-| Manual acceptance duration | Updated to two seconds |173 offline checks; entry and exit gates, freshness, owner/contact/stance, scoring and landing requirements retained | Use the new inactive recipe at the next authorized native session |
+| Main-map Casper/wallplants | Casper entry observed; wall routing compiled and native pending | No map-name allowlist found. Geometry1631/static-owner48 checks pass; independent static/allocation/entity proof and self exclusion retained | Verify San Vansterdam free skate with exact candidate |
+| Manual acceptance duration | Two seconds; slow native observation recorded below |173 offline checks; entry and exit gates, freshness, owner/contact/stance, scoring and landing requirements retained | Use the new inactive recipe at the next authorized native session |
 
 The new native Manual hold threshold is **two qualified seconds**, superseding
 ten seconds for future acceptance. Existing ten-second recordings and offline
@@ -127,19 +128,29 @@ Verification receipt SHA-256:
 `d4cff5287038ecc7730002a001731d86189e10525c7314bbb0b79384e7212d73`.
 Local verified package: `artifacts/rc51-owner-feedback-ready-5ae57786`.
 
-This is implemented, compiled and installable, not native observed, repeatable
-or accepted. The owner still has f002 installed with all 137 rollback sets;
-a fresh exclusive handoff is pending. The inactive update procedure passes
-73 offline checks and preserves existing generated HUD files as well as the
-prior DLL, settings and installation receipt. No hardware authority is granted
-by those checks.
+This is implemented, compiled and installed for owner testing. The owner
+explicitly granted Deck access, and the other RC5 chat confirmed exclusive
+handoff. The update procedure passed73 offline checks. Its initial installation
+transport timed out; no automatic reinstall was attempted. Independent read-only
+verification confirmed exact5ae, no pending transaction, all137 prior rollback
+sets unchanged, and a138th backup containing the exact prior f002 DLL, settings,
+receipt and four-file HUD pack. Current settings and HUD files were preserved.
+Evidence: `artifacts/rc51-owner-playtest-5ae57786/verify_install_outcome.json`.
+
+A subsequent launch verified the actual mapped DLL hash before and after a
+passive observation, the pinned game executable, and stable San Vansterdam
+native root/sublevel identity. Five owner-validated physical samples were
+collected; the character was on foot with the map open, so they prove neither
+Manual nor Casper execution. Evidence: `native_startup.json` in the same folder.
+The owner clarified that the main-map failure occurs everywhere in free skate,
+not at a specific landmark. Gameplay repeatability and acceptance remain pending.
 
 After an authorized update, rollback requires both game and launcher stopped,
 then restoring the exact prior DLL/settings/receipt from the newly verified
 `.arcade-rc51-rollback-f0025f3e-before-5ae57786-owner-playtest` backup. Confirm the
 recorded hashes and preserve all older rollback sets and the stock backup.
-That new backup is planned, not yet created; installation must first verify
-the current device, game, files and rollback inventory.
+The new backup exists and its prior-file hashes and HUD copy were independently
+verified. Preserve all138 rollback sets. Never restore while either process runs.
 
 Remaining independent acceptance work: two-second Manual lifetime and
 trick-to-Manual meter acquisition, directional native bails/putdowns, all
@@ -147,6 +158,57 @@ supported Casper stance/support combinations, and physical wallplant rebound
 in San Vansterdam free skate and Mega Park. Main-map causality and durable
 native banking remain unverified. The other RC5.1 acceptance gaps below remain
 separate from this correction set.
+
+## Scoped exact-candidate city observations — November 16
+
+All receipts below are in `artifacts/rc51-owner-playtest-5ae57786`, using the
+exact5ae DLL and stable native San Vansterdam BAM identity at Blue Light Beach.
+The owner reported failures everywhere; this spot is one scoped test location.
+
+* `bound_manual_scoped.json`: a correctly routed natural Up→Down gesture
+  produced native Manual intent1, selected rear support0x4000, real contacts,
+  board pitch and a visible balance bar. Independent review found71 coherent
+  rows spanning2.01147009 seconds, maxgap36.98ms, with stable owner/stance.
+  Speed was0.00088–0.417m/s: slow/stationary evidence, not moving-hold acceptance.
+  `bound_manual_scoped-independent-analysis.json` preserves qualification.
+  The regular positive endpoint requested putdown, followed by native intent
+  release and four-wheel contact. Sparse frame timing does not prove the exact
+  meter disappearance boundary or continuous HUD rendering.
+* `casper_city_corrected_guard.json`: after independently established Manual,
+  X→Y produced a renderer-acknowledged Casper execution credit, visible Casper
+  label/x2 and authored pose. For the first2.046 seconds after trial start,
+  72 samples retained native100, Manual intent1, rear support and the same owner.
+  `casper_city_corrected_guard-support-review.json` records independent review.
+* `casper_city_nose.json`: native Nose Manual intent2/support0x8000 preceded
+  Casper execution credit and visible authored pose/label/x2. The positive Nose
+  endpoint subsequently produced native balance-bail admission, native100→504,
+  sampled bail causes and a rendered physical fall. This is one positive Nose
+  entry and one scoped bail observation, not repeatability or all-stance acceptance.
+
+The native physical and cached step were both approximately1/30s. These external
+samples do not prove callback continuity or exact collision-board/foot geometry.
+Custom execution credit is bounded by actual controlled playback acknowledgement;
+model settlement remains explicitly `native_bank_verified=false`. No durable
+native bank, Casper Flip, switch/fakie coverage, wallplant rebound, trick-to-Manual
+landing bar or moving-hold acceptance is claimed.
+
+Retained setup failures: the startup log had rotated before an initial remount
+guard; an unbound virtual controller caused `multiple_connected`; a later
+binding observer stopped at log rotation before the gesture. The existing
+explicit controller lease resolved routing. A diagnostic-only Casper guard
+initially checked the push bit in contact word1 rather than production word0;
+retained rows reproduce that false refusal, and four offline positive/negative
+checks validate the corrected mapping. No gameplay code or admission requirement
+was weakened for these trials. Native Y held1s with Arcade OFF established riding
+for setup; Arcade ON and automatic routing were restored afterward.
+
+Final handback: normal close stopped both game and launcher. The independent
+`final_install_verify.json` reconfirmed the installed5ae DLL, all138 rollback
+sets and unchanged settings/HUD files. `owner-handoff.json` links each receipt
+by hash. The candidate remains installed at the owner's request; automated
+authority is revoked in `handoff-authority.json` and `hardware-returned.json`.
+The other RC5 chat was notified to leave the Deck for owner testing until a
+fresh exclusive handoff. These records do not promote the accepted channel.
 
 ## Baseline and provenance
 
