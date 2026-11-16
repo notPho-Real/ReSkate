@@ -82,8 +82,15 @@ class ReadOnlySettingsSource(unittest.TestCase):
         entry = (ROOT / '.github/workflows/arcade-dev.yml').read_text()
         self.assertIn('uses: ./.github/workflows/arcade-validation.yml', entry)
         workflow = (ROOT / '.github/workflows/arcade-validation.yml').read_text()
-        required = workflow.split('  windows-test-diagnostic:', 1)[0]
-        configure = next(line for line in required.splitlines() if 'run: cmake --preset' in line)
+        required_job = re.search(
+            r'^  windows-tests:\n(.*?)(?=^  [a-z][a-z0-9-]*:|\Z)',
+            workflow, re.MULTILINE | re.DOTALL)
+        self.assertIsNotNone(required_job)
+        required = required_job.group(1)
+        configure_lines = re.findall(
+            r'^\s*(?:run:\s*)?cmake --preset [^\n]+', required, re.MULTILINE)
+        self.assertEqual(len(configure_lines), 1)
+        configure = configure_lines[0]
         for option in ('DINGOSDK_BUILD_PARK_EDITOR_TESTS', 'DINGOSDK_BUILD_ARCADE_MODE_TESTS'):
             self.assertIn('-D' + option + '=ON', configure)
         compile_line = next(line for line in required.splitlines() if 'run: cmake --build' in line)
