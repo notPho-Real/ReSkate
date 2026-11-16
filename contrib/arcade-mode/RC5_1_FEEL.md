@@ -3,12 +3,14 @@
 This candidate is not hardware accepted. Development stays on
 `arcade-stage-rc51-feel`; the accepted updater and historical builds are unchanged.
 
-Latest compiled checkpoint: `986fb8c014e6d4afc5c4f7034df56130ec104d49`.
-All required CI gates and package verification pass; this DLL is not yet native
-accepted. Earlier ae9 trials retained two physical doubles and one physical
-single despite a preserved held request. Reliability remains unresolved.
-Newer source `c038d602` fixes a separate queued-grab handoff and awaits Windows
-compilation. Hardware outcomes and restoration receipts are recorded below.
+Latest compiled checkpoint: `36d615ceeec306aa8cfb400a15a436925914a599`, including
+the queued-grab handoff correction. All required CI gates and strict package
+verification pass; this DLL has not undergone native acceptance. The preceding
+exact `986fb8c0` DLL completed five scoped physical doubles at 30 Hz and one at
+60 Hz, including native airborne release and supported landing. Its zero-phase
+recovery path and durable native banking remain unverified. Earlier ae9 failures
+are retained. Newer source `aff7a33b` corrects held initiating Y blocking a grab
+after rail pop; regressions pass, Windows and native validation remain pending.
 
 ## Baseline and provenance
 
@@ -37,14 +39,15 @@ explicitly tied to this candidate's exact DLL.
 | Priority / feature | Current implementation and evidence | Defect / expected improvement | Effort | Dependencies / acceptance | State / next action |
 | --- | --- | --- | --- | --- | --- |
 | 0: CI admission | Required Windows/Linux source contract | YAML reader aborts before packaging; retain all assertions with block syntax | XS | Required preflight and packaging gates | Existing RC5 fixes reused; exact ae9c827e passes 140 preflight and 132 upstream integration tests, compilation and package verification |
-| 0: Windows compilation | Integrated contact contract included before platform headers | Four masks require undeclared Windows `LONG`; make their existing signed 32-bit type explicit | XS | Header-first compilation and contact-response regression | Reuse RC5 `e9872dc3` as `9345cc0a`; Windows build and package pass at ae9c827e; later phase-read source awaits compilation |
+| 0: Windows compilation | Integrated contact contract included before platform headers | Four masks require undeclared Windows `LONG`; make their existing signed 32-bit type explicit | XS | Header-first compilation and contact-response regression | Reuse RC5 `e9872dc3` as `9345cc0a`; Windows build and package pass at ae9c827e; phase-read source compiled in986fb8c0 |
 | 1: Rotation/prewind | Existing native LS spin, flight owner and ground chord; RC3 native rotation observations | Short prewind suppresses initial AIR rotation until ground chord interval expires | S | Proved native flight; both shoulders/cadences, no ground yaw, release and switch landing | Implemented; 32535ec4 short-window LB/RB native response observed; repeated switch acceptance pending |
 | 2: Input responsiveness / grabs | Existing directional/repeated-B registry and native grab adapter | Second B before first grab admission loses repeated variant; retain physical prefix independently of native readiness | S | Same owner/action/flight, original edge window and deadlines; actual actor/exit/landing | Queued-prefix correction implemented; old-source regression fails; HIL pending |
 | 2: Delayed grab recognition | Existing physical journal and native-air cutoffs | Two B edges before client readiness replay singles in reverse order; recognize the pair once | S | Both original edges, 250 ms repeat limit, second-edge +200 ms deadline, no stale replay | Implemented; 32535ec4 Method actor advancement/release/physical landing observed once |
-| 2: Queued grab after pop retirement | Existing released-pop queue proof already preserves the first B | Auxiliary admission rejected its retired action stamp; use the already-qualified current lineage and retain B2 recognition | S | Valid timely AIR, exact owner/pop/stance, native adapter admission and second-edge +200 ms | c038d602 implemented; old-header regression and 46/46 sanitizer suites pass; Windows and exact-DLL native tests pending |
+| 2: Queued grab after pop retirement | Existing released-pop queue proof already preserves the first B | Auxiliary admission rejected its retired action stamp; use the already-qualified current lineage and retain B2 recognition | S | Valid timely AIR, exact owner/pop/stance, native adapter admission and second-edge +200 ms | c038d602 implemented; old-header regression and 46/46 sanitizer suites pass; exact36d615ce full Windows CI/package verified; native tests pending |
+| 2: Grab after held-Y rail pop | Existing rail setup retires its initiating Y; exact released-pop and native grab occurrence proofs exist | Raw Y still blocked both native grab permission gates, losing the next B | S | Original owner/flight, unchanged 2,500 ms bound, fresh Y/repress negatives; repeated native actor/exit/landing | aff7a33b implemented; failing-old regression, focused checks, 46/46 shared sanitizer suites and peer review pass; Windows/native pending |
 | 2: Repeated-input expiry | Existing request policy and deadline gate | `39ef1c70` stores a repeat deadline but inherits an unbounded ordinary policy; enforce the new repeat's physical-edge window | S | Fresh native observations and unavailable admission through exact second-edge +200 ms | Negative regression reproduces the defect; new repeated paths bounded; ordinary first-request policy preserved |
 | 2: Pre-AIR repeated X | Existing released-pop journal and bounded dependency queue | Preserve physical repeats through late first-action readiness | S | Same owner/pop, immutable first-AIR bounds, actual native actor and board rotation | Exact ae9c827e preserves all three immediate-pair requests beyond 200 ms; physical doubles 2/3 at 30 Hz, with a retained post-request execution failure |
-| 2: Queued double flip | Existing held-flip adapter and queue eligibility | Matching native observation can disappear before held actor entry | S | Actual actor/preparation/rotation, current owner and phase; no cached phase or renewed deadline | Source18de7d3a reuses existing zero-only owner-validated phase reread; focused and 46/46 shared tests pass, Windows/native effect pending; exact failure cause unproven |
+| 2: Queued double flip | Existing held-flip adapter and queue eligibility | Matching native observation can disappear before held actor entry | S | Actual actor/preparation/rotation, current owner and phase; no cached phase or renewed deadline | Source18de7d3a compiled in986fb8c0; scoped doubles5/5 at30Hz and1/1 at60Hz with native release/landing; zero-reread path unobserved, causal effect and full acceptance unproven |
 | 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S verification; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | ae9 full corridor/native braking prerequisite passed once; brief physical Manual corroborated, but entry speed exceeded the unchanged test margin. Ten-second hold/revert chain pending; shorten ordinary setup push and fix final diagnostic drain offline |
 | 4: Camera | Shortest yaw, rigid orbit, native pivot, elapsed duplicate sampling and restoration already fixed | Reverse restart remains inconclusive; exact candidate switch/revert follow pending | S verification | Sequence C and OFF, root/motion unchanged | Exact 2427231d right/up orbit and neutral recenter observed with complete camera captures and stable body heading; switch/revert follow and OFF restoration remain pending |
 | 5: Ollie/movement | Native release, charge, launch descriptors and bounded push budget already implemented | No new source-proved tuning defect; short/held jumps and momentum need comparative evidence | S verification / M tuning | Native cadence, trajectory, catch/contact, collision/bail controls | Preserve coherent current parameters; measure before tuning |
@@ -926,3 +929,54 @@ Authority is revoked, with no pending hardware actions. Returned receipt:
 `1123126c478c5a75fb49cfeb8b94c5ada8caca7626a5a6ec6e62c459ed67092a`.
 Restoration receipt:
 `8af305cd31bd80526c7154b5d1011998b47166b043972f35aaefa56cf621a8fa`.
+
+## Exact 986fb8c0 native repeated-flip comparison
+
+Exact source `986fb8c014e6d4afc5c4f7034df56130ec104d49` and DLL SHA-256 `65e59c3bde3abe98935e87298c0a7912e08f56956bfa850451b395592307f215` ran on the pinned game build in `skate3_megapark`. This is the packaged checkpoint from CI run `43845046801`; the exclusive hardware operator was root. Independent local analysis reused the existing full and dense board-motion evaluators.
+
+The finite immediate repeated-X recipe produced five scoped doubles in five executed 30 Hz repeats and one in one executed 60 Hz comparison. Each had a fresh reset, complete source-103 capture, matching source/owner/board body, native base actor ID2 and admitted held actor ID2 with actual advancement, sampled extra count1, approximately two physical board rotations, airborne native held-state exit and a supported ground landing. Endframes show **Double Kickflip Clean**, **LINE224**.
+
+| Trial | Measured input callback Hz | Complete capture, zero drops | Turns: dense / full | Dense maximum gap (ms) | Native held exit before supported landing (ms) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| flip30_immediate1 | 30.003530 | 377/377 | -1.991518 / -1.991492 | 13.063 | 265.744 |
+| flip30_immediate2 | 30.014124 | 382/382 | -1.991519 / -1.991514 | 12.326 | 210.520 |
+| flip30_immediate3 | 29.971791 | 380/380 | -1.991520 / -1.990643 | 14.927 | 252.643 |
+| flip30_immediate4 | 30.003530 | 380/380 | -1.991519 / -1.995557 | 15.408 | 227.635 |
+| flip30_immediate5 | 30.045953 | 377/377 | -1.991518 / -1.994730 | 11.978 | 186.324 |
+| flip60_immediate1 | 59.282925 | 717/717 | -1.994810 / -1.990552 | 11.130 | 214.204 |
+
+Native physics and cache steps were 1/30 for the five 30 Hz trials and 1/60 for the 60 Hz trial. Held actor advancement was 2.0011625 ticks at 30 Hz and 1.0005813 at 60 Hz. Actual release is established by native held state becoming false in AIR201, with held intent/preparation false and count1 still present, before four stable sampled ground contacts in state100. The release command acknowledgment alone was not used as proof: trials2 and4 logged no loop acknowledgment at withdrawal but later directly sampled count1 and airborne native exit. A dedicated catch actor was not independently traced.
+
+All six logged only known phase100 held-observation loss at landing. None logged STATE RECHECK, so the transient-zero phase recovery path remains unobserved. These results do not prove that the new read correction caused the improved six-trial outcome, and bounded diagnostics do not enumerate every callback refusal. External physical samples remain non-atomic; agreeing dense/full unwraps reduce sampling concern without establishing continuous observation.
+
+Each terminal ModelSettlement is kind1, points224, actions2, custom_points0, explicitly model_only=true and native_bank_verified=false. Rendered clean labels and the model total do not establish durable native bank authority.
+
+The earlier ae9c827e comparison remains retained: two physical doubles out of three 30 Hz trials, with the third preserving the second input/request but producing only one physical turn and no held actor advancement. Its cause was not visible in the older telemetry. The newer scoped success does not erase that failure or establish exhaustive reliability.
+
+The second 60 Hz trial was prepared but **not executed**: the exclusive slot lacked enough remaining time for a fresh reset and bounded trial. No additional cadence or control outcome is inferred. Normal shutdown stopped game and launcher. Exact prior971c DLL/settings/receipt were restored, only four session-generated HUD files removed, all133 rollback sets preserved and authority revoked. Return receipt SHA-256: `d121e8ec2f4cb69412ab706b79b21610907c11ccfaddfaf7ecca631673add144`; restoration: `6765d66e057dc7e42116ff628cb371acb308c77ac00dc50caed40cd72051056e`.
+
+Independent evidence: `artifacts/rc51-native-phase-hil-986fb8c0/flip-six-trial-independent-ledger.json`, SHA-256 `40d40c97b793c637c7b4e7762b308660cba347cf7f504ee000a671c244a5ac58`. Per-trial `*-independent-summary.json` files retain original receipt and evaluator hashes, physical release rows, diagnostics and rendered-frame references. The sixth summary hash is `eca3e5e490cfa8f41e3f9622d60b7f90e18c5f018747f5370e8277153060e1a4`.
+
+## Compiled queued-grab checkpoint36d615ce
+
+Exact source `36d615ceeec306aa8cfb400a15a436925914a599` passes [full CI43854205335](https://github.com/notPho-Real/ReSkate/actions/runs/43854205335): all9 required gates,140 preflight and132 integration tests. DLL SHA-256 `60e97c42fd070f71bbb0aa06af902ed1086fb194144c17d24a63ed610a96129b`,45,610,496 bytes. Strict archive, PE, source provenance, embedded DLL and installer checks pass; verification SHA-256 `1c886857f34b255354850ace5a9a3f5ec67d53baa119558efa7d7c3091b672a5`.
+
+[Experimental Deck package](https://github.com/notPho-Real/ReSkate/actions/runs/43854205335/artifacts/14223285849), runtime artifact14221623307 and integration artifact14221952710 bind the same source. Installer SHA-256 `6fd0227e6b76b2c3d6b5c19893667e01fad48a1ad6a0b99ab422386268097981`. Local verified package: `artifacts/rc51-grab-retirement-ready-36d615ce`. Native acceptance is pending;986 observations do not verify this later DLL. Preserve prior files and use the existing exact-hash transactional rollback procedure above.
+
+Initial reduced push run43853451468 was cancelled before packaging; unchanged source was dispatched with full integration as43854205335. The reduced run is retained as evidence and was not accepted by the strict verifier. No test or packaging requirement was relaxed.
+
+### Retired rail input preserves the next native grab — aff7a33b
+
+Source: `aff7a33bff6d94f68f7f59a36fb2080193a78725`.
+
+An admitted rail pop already retired its initiating Y command, allowing continued AIR actions while that physical Y remained held. Native grab permission construction and the session admission gate still rejected raw Y, so a fresh B could lose its intended native grab. The composed regression reproduces this with a qualified released rail lease; releasing Y later does not recover the consumed B.
+
+Both gates now use one read-only proof of that exact initiating Y hold. Initial admission requires the existing released rail-pop lease. After grab entry retires the pop selector, continuation requires the existing native grab occurrence callback with matching owner, flight and request lineage. Request success grants no native completion or score. The original2,500ms pop bound remains fixed; polling or grab admission cannot extend it.
+
+Physical Y release clears the exception. Ordinary Y+B, a fresh Y after setup, release/repress, second A, owner changes, stale observations, focus/OFF, landing/bail, missing native grab continuity and expiry remain negative. Fresh native observations test the inclusive2,500ms boundary and rejection at2,501ms.
+
+Validation: the old-header behavioral regression compiles and fails as expected (the compatibility seam models the original top-level raw-Y gate). Focused ASan/UBSan checks pass with warnings as errors:1,456rail,20,796grab,6,517session plus648takeoff and326jump-idle, and2,068held-flip checks. The established sanitizer graph rebuilt and passed46/46; JUnit is retained. Root and independent camera review found no blocker.
+
+Status: implemented, reviewed and committed; Windows compilation and exact-DLL native gameplay remain pending. Native occurrence observations in portable tests are explicit independent fixtures, not inferred from request success. Earlier986 hardware results cannot verify this later change. The next batched Windows checkpoint must preserve exact source/DLL provenance and validate repeated held-Y rail-pop→B execution, native actor advancement, release and physical landing before this is called gameplay-verified. No accepted release channel change is authorized by this note.
+
+Evidence directory: `artifacts/rc51-retired-rail-y-checks/`; see `build-necessity.json`, `red-results.json`, `green-results.json` and `targeted-junit.xml`.
