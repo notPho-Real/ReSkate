@@ -1,7 +1,17 @@
 #pragma once
+#include "Engine/Game/Skater/physics_state_read.h"
 #include <cstdint>
 
 namespace dingosdk::arcade_mode {
+// Footplant and ground-grab observers share current native phase publication.
+// Their separate input owners still decide which known phases are admissible.
+template<class ReadState,class SameOwner>
+bool sample_ground_input_phase(unsigned& state,ReadState&& read_state,SameOwner&& same_owner) noexcept {
+    // Only zero receives one exact-owner reread; no earlier phase is retained.
+    const auto current=game::skater::read_current_physics_state(read_state,same_owner);
+    state=current.state;
+    return current.known();
+}
 enum class GroundGrab : std::uint8_t { none, frontside, backside, double_grab, coffin };
 struct GroundGrabObservation {
     bool valid{}, can_grab{}, left{}, right{}, coffin{}, actor_advanced{};

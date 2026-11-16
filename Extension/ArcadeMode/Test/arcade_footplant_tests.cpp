@@ -39,6 +39,42 @@ void recognition() {
 FootplantObservation observation(std::uint64_t now,std::uint64_t step) {
     FootplantObservation out{};out.valid=true;out.state=100;out.sampled_at=now;out.step=step;return out;
 }
+void phase_read_lifetime() {
+    for(auto kind:{Footplant::no_comply,Footplant::boneless})for(unsigned phase:{100u,103u,602u}) {
+        if((kind==Footplant::no_comply && phase==602) || (kind==Footplant::boneless && phase==103))continue;
+        FootplantInput input;auto native=observation(100,1);
+        check(input.start(kind,100,native),"phase regression starts original footplant input");
+        input.poll(100,native,true);native=observation(134,2);unsigned reads{},owners{};
+        native.valid=sample_ground_input_phase(native.state,[&](std::uint32_t& value) noexcept {
+            value=reads++?phase:0u;return true;
+        },[&]() noexcept {++owners;return true;});
+        check(input.poll(134,native,true).owned && reads==2 && owners==2 && !input.entered(),
+            "same-owner zero then admissible phase cannot withdraw active footplant input or manufacture entry");
+    }
+    for(unsigned failure=0;failure<9;++failure) {
+        FootplantInput input;auto native=observation(100,1);
+        check(input.start(Footplant::no_comply,100,native),"negative phase fixture starts a bounded original owner");
+        input.poll(100,native,true);native=observation(134,2);unsigned reads{},owners{};
+        native.valid=sample_ground_input_phase(native.state,[&](std::uint32_t& value) noexcept {
+            const auto index=reads++;value=index?100u:0u;
+            if(failure==0)value=0;
+            if(failure==1 || (failure==2 && index==1))return false;
+            if(failure>=5)value=failure==5?200u:failure==6?300u:failure==7?504u:403u;
+            return true;
+        },[&]() noexcept {return ++owners!=(failure==3?1u:failure==4?2u:99u);});
+        check(!input.poll(134,native,true).owned && !input.active(),
+            "persistent zero, read failure, changed owner or block and known air/bail/rail end ground input");
+        check(reads<=(failure==1 || failure==3 || failure>=5?1u:2u),
+            "ground observer retries only one zero and never a failed read or known contrary state");
+    }
+    for(unsigned phase:{100u,103u,602u,200u,300u,504u}) {
+        unsigned result{},reads{},owners{};
+        check(sample_ground_input_phase(result,[&](std::uint32_t& value) noexcept {
+            ++reads;value=phase;return true;
+        },[&]() noexcept {++owners;return false;}) && result==phase && reads==1 && owners==0,
+            "known native phases retain their value and the original single-read path");
+    }
+}
 void native_entry() {
     for (unsigned hz:{30u,60u,120u}) for (Footplant kind:{Footplant::no_comply,Footplant::boneless}) {
         FootplantInput input;auto native=observation(100,1);
@@ -118,4 +154,4 @@ void session() {
     check(native.count==1,"held A and its later release cannot start another footplant");
 }
 }
-int main(){recognition();native_entry();session();std::cout<<"Native footplant input tests passed\n";}
+int main(){phase_read_lifetime();recognition();native_entry();session();std::cout<<"Native footplant input tests passed\n";}

@@ -74,6 +74,15 @@ std::uintptr_t block_for(const NoBailSkater& skater) noexcept {
     }
     return 0;
 }
+bool ground_owner_matches(const NoBailSkater& expected,std::uintptr_t block) noexcept {
+    NoBailSkater actual{};
+    return no_bail_skater(actual) && actual==expected && block_for(actual)==block;
+}
+bool current_ground_phase(const NoBailSkater& expected,std::uintptr_t block,unsigned& phase) noexcept {
+    return sample_ground_input_phase(phase,[&](std::uint32_t& value) noexcept {
+        return read(expected.context+contract::physics_state,value);
+    },[&]() noexcept {return ground_owner_matches(expected,block);});
+}
 template<class T> bool state(std::uintptr_t block,unsigned index,T& value) noexcept {
     const auto& asset=assets[index];std::uint32_t handle{},valid{};
     if (!guid_is(asset.object,asset.guid) || !read(asset.object+contract::handle,handle) ||
@@ -89,7 +98,7 @@ FootplantObservation observe(const NoBailSkater& skater,std::uint64_t now,std::u
     FootplantObservation out{};NoBailSkater current{};
     if (!permitted.load() || !ready.load() || !no_bail_skater(current) || current!=skater) return out;
     const auto block=block_for(skater);
-    if (!block || !read(skater.context+contract::physics_state,out.state)) return out;
+    if (!block || !current_ground_phase(skater,block,out.state)) return out;
     out.valid=true;out.sampled_at=now;out.step=step;
     out.can_no_comply=flag(block,0);out.no_comply=flag(block,1);out.boneless=flag(block,2);
     out.left_hand=flag(block,3);out.right_hand=flag(block,4);
@@ -111,7 +120,7 @@ GroundGrabObservation observe_grab(const NoBailSkater& skater,std::uint64_t now,
     // missing pages or failed reads never become a false Coffin observation.
     const bool coffin_unallocated=guid_is(assets[9].object,assets[9].guid) &&
         read(assets[9].object+contract::handle,coffin_handle) && !coffin_handle;
-    if (!block || !read(skater.context+contract::physics_state,out.state) ||
+    if (!block || !current_ground_phase(skater,block,out.state) ||
         !state(block,6,can) || !state(block,7,left) || !state(block,8,right) ||
         (!coffin_unallocated && !state(block,9,coffin)) ||
         can>1 || left>1 || right>1 || coffin>1) return out;
@@ -141,9 +150,10 @@ int ground_actor_index(std::uintptr_t actor) noexcept {
 bool ground_actor_owner(std::uintptr_t view) noexcept {
     NoBailSkater current{};unsigned state{};
     if(!permitted.load() || !grab_ready.load() || !grab_lease.active() ||
-        !no_bail_skater(current) || current!=grab_owner ||
-        !read(current.context+contract::physics_state,state) || state!=100)return false;
-    const auto block=block_for(current);return block && view==block+contract::state_view;
+        !no_bail_skater(current) || current!=grab_owner)return false;
+    const auto block=block_for(current);
+    return block && view==block+contract::state_view &&
+        current_ground_phase(current,block,state) && state==100;
 }
 bool settings(std::uint64_t now,bool require_sample) noexcept {
     if(require_sample)settings_mask=0;

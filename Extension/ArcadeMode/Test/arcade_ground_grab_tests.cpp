@@ -19,6 +19,41 @@ void native_actor_families() {
 GroundGrabObservation observation(std::uint64_t now,std::uint64_t step) {
     GroundGrabObservation out{};out.valid=true;out.state=100;out.sampled_at=now;out.step=step;return out;
 }
+void phase_read_lifetime() {
+    for(auto kind:{GroundGrab::frontside,GroundGrab::backside,GroundGrab::double_grab,GroundGrab::coffin}) {
+        GroundGrabInput input;auto native=observation(100,1);
+        check(input.start(kind,100,native),"phase regression starts original ground input");
+        input.poll(100,native,true);native=observation(134,2);unsigned reads{},owners{};
+        native.valid=sample_ground_input_phase(native.state,[&](std::uint32_t& value) noexcept {
+            value=reads++?100u:0u;return true;
+        },[&]() noexcept {++owners;return true;});
+        check(input.poll(134,native,true).owned && reads==2 && owners==2 && !input.acknowledged(),
+            "same-owner zero then ground cannot withdraw active ground input or acknowledge an actor");
+    }
+    for(unsigned failure=0;failure<9;++failure) {
+        GroundGrabInput input;auto native=observation(100,1);
+        check(input.start(GroundGrab::frontside,100,native),"negative phase fixture starts a bounded original owner");
+        input.poll(100,native,true);native=observation(134,2);unsigned reads{},owners{};
+        native.valid=sample_ground_input_phase(native.state,[&](std::uint32_t& value) noexcept {
+            const auto index=reads++;value=index?100u:0u;
+            if(failure==0)value=0;
+            if(failure==1 || (failure==2 && index==1))return false;
+            if(failure>=5)value=failure==5?200u:failure==6?300u:failure==7?504u:403u;
+            return true;
+        },[&]() noexcept {return ++owners!=(failure==3?1u:failure==4?2u:99u);});
+        check(!input.poll(134,native,true).owned && !input.active(),
+            "persistent zero, read failure, changed owner or block and known air/bail/rail end ground input");
+        check(reads<=(failure==1 || failure==3 || failure>=5?1u:2u),
+            "ground observer retries only one zero and never a failed read or known contrary state");
+    }
+    for(unsigned phase:{100u,103u,602u,200u,300u,504u}) {
+        unsigned result{},reads{},owners{};
+        check(sample_ground_input_phase(result,[&](std::uint32_t& value) noexcept {
+            ++reads;value=phase;return true;
+        },[&]() noexcept {++owners;return false;}) && result==phase && reads==1 && owners==0,
+            "known native phases retain their value and the original single-read path");
+    }
+}
 void native_entry() {
     for(unsigned hz:{30u,60u,120u})for(auto kind:{GroundGrab::frontside,GroundGrab::backside,GroundGrab::double_grab,GroundGrab::coffin}) {
         GroundGrabInput input;auto native=observation(100,1);
@@ -147,4 +182,4 @@ void session() {
     }
 }
 }
-int main(){native_entry();original_entry_before_loop();native_actor_families();session();std::cout<<"Native ground grab input tests passed\n";}
+int main(){phase_read_lifetime();native_entry();original_entry_before_loop();native_actor_families();session();std::cout<<"Native ground grab input tests passed\n";}
