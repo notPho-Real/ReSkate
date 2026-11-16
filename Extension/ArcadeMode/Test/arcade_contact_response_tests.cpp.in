@@ -1,5 +1,6 @@
 // Compose the actual collector lifetime and response consumer. Native reads
 // are controlled here; these tests cannot establish gameplay acceptance.
+#include "Engine/Game/Build/20260929/no_bail.h"
 #include "Extension/ArcadeMode/arcade_native_wall_contact.h"
 #include "Extension/ArcadeMode/arcade_wallplant.h"
 #include "Engine/Game/Build/20260929/arcade_wall_contact.h"
@@ -9,7 +10,6 @@
 #else
 using LONG=std::int32_t;
 #endif
-#include "Engine/Game/Build/20260929/no_bail.h"
 #include "Engine/Game/Build/20260929/skater_state.h"
 #include <atomic>
 #include <algorithm>

@@ -1,3 +1,5 @@
+// Contact guards must parse their contracts before platform headers.
+#include "Engine/Game/Build/20260929/no_bail.h"
 #include "Extension/ArcadeMode/arcade_contact_owner.h"
 #include <cstdlib>
 #include <cstring>
