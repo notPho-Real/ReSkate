@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "branch": "dev",
-  "milestone": "Integrated RC4 wallplants, Casper and native Arcade presentation; candidate acceptance pending",
+  "branch": "arcade-stage-rc51-feel",
+  "milestone": "RC5.1 short-prewind and queued repeated-grab responsiveness; candidate acceptance pending",
   "game_build": 20260929,
   "accepted": false,
   "sources": {
@@ -44,6 +44,6 @@
     }
   },
   "fork_main_reference": "355bf71e284ad1c29e32ea81cafdef901d74c513",
-  "checkpoint": "Tested RC4 source integrated into the existing upstream/Casper development line. Prior source evidence is historical; final exact-source integration and native acceptance remain required.",
+  "checkpoint": "RC5.1 derives from unified dev 713249fa and reuses CI corrections 8d5a184a and 1bbb02f0. Immediate native AIR spin and queued repeated-B recognition use existing ownership and admission. Prior source evidence is historical; exact-source integration and native acceptance remain required.",
   "candidate_identity": "candidate.json in the same-run runtime and installer artifacts binds this manifest to the source commit, DLL SHA-256, gameplay fingerprint and compiled feature gate"
 }
