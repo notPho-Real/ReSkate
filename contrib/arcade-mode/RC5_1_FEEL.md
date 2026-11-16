@@ -3,14 +3,17 @@
 This candidate is not hardware accepted. Development stays on
 `arcade-stage-rc51-feel`; the accepted updater and historical builds are unchanged.
 
-Latest compiled checkpoint: `36d615ceeec306aa8cfb400a15a436925914a599`, including
-the queued-grab handoff correction. All required CI gates and strict package
-verification pass; this DLL has not undergone native acceptance. The preceding
+Latest compiled checkpoint: `f0025f3ed25d2d4912ab90b66c36826af1a1490b`, including
+the queued-grab handoff and held-Y rail-pop grab corrections. All nine required
+CI gates and strict package verification pass; native acceptance is pending.
+The preceding
 exact `986fb8c0` DLL completed five scoped physical doubles at 30 Hz and one at
 60 Hz, including native airborne release and supported landing. Its zero-phase
 recovery path and durable native banking remain unverified. Earlier ae9 failures
-are retained. Newer source `aff7a33b` corrects held initiating Y blocking a grab
-after rail pop; regressions pass, Windows and native validation remain pending.
+are retained. The exact `36d615ce` corridor and native brake passed once; its
+Manual trial was inconclusive because the observer stopped before recording
+physical entry. The corrected observer passes 421 offline checks; these are
+not native Manual evidence.
 
 ## Baseline and provenance
 
@@ -44,11 +47,11 @@ explicitly tied to this candidate's exact DLL.
 | 2: Input responsiveness / grabs | Existing directional/repeated-B registry and native grab adapter | Second B before first grab admission loses repeated variant; retain physical prefix independently of native readiness | S | Same owner/action/flight, original edge window and deadlines; actual actor/exit/landing | Queued-prefix correction implemented; old-source regression fails; HIL pending |
 | 2: Delayed grab recognition | Existing physical journal and native-air cutoffs | Two B edges before client readiness replay singles in reverse order; recognize the pair once | S | Both original edges, 250 ms repeat limit, second-edge +200 ms deadline, no stale replay | Implemented; 32535ec4 Method actor advancement/release/physical landing observed once |
 | 2: Queued grab after pop retirement | Existing released-pop queue proof already preserves the first B | Auxiliary admission rejected its retired action stamp; use the already-qualified current lineage and retain B2 recognition | S | Valid timely AIR, exact owner/pop/stance, native adapter admission and second-edge +200 ms | c038d602 implemented; old-header regression and 46/46 sanitizer suites pass; exact36d615ce full Windows CI/package verified; native tests pending |
-| 2: Grab after held-Y rail pop | Existing rail setup retires its initiating Y; exact released-pop and native grab occurrence proofs exist | Raw Y still blocked both native grab permission gates, losing the next B | S | Original owner/flight, unchanged 2,500 ms bound, fresh Y/repress negatives; repeated native actor/exit/landing | aff7a33b implemented; failing-old regression, focused checks, 46/46 shared sanitizer suites and peer review pass; Windows/native pending |
+| 2: Grab after held-Y rail pop | Existing rail setup retires its initiating Y; exact released-pop and native grab occurrence proofs exist | Raw Y still blocked both native grab permission gates, losing the next B | S implementation; M native harness integration | Original owner/flight, unchanged 2,500 ms bound, fresh Y/repress negatives; repeated native actor/exit/landing | aff7a33b implemented; old-source regression, 46/46 sanitizer and Windows suites, full f002 CI/package pass. Current native guard must bind owned rail segment/contact before held-Y trials |
 | 2: Repeated-input expiry | Existing request policy and deadline gate | `39ef1c70` stores a repeat deadline but inherits an unbounded ordinary policy; enforce the new repeat's physical-edge window | S | Fresh native observations and unavailable admission through exact second-edge +200 ms | Negative regression reproduces the defect; new repeated paths bounded; ordinary first-request policy preserved |
 | 2: Pre-AIR repeated X | Existing released-pop journal and bounded dependency queue | Preserve physical repeats through late first-action readiness | S | Same owner/pop, immutable first-AIR bounds, actual native actor and board rotation | Exact ae9c827e preserves all three immediate-pair requests beyond 200 ms; physical doubles 2/3 at 30 Hz, with a retained post-request execution failure |
 | 2: Queued double flip | Existing held-flip adapter and queue eligibility | Matching native observation can disappear before held actor entry | S | Actual actor/preparation/rotation, current owner and phase; no cached phase or renewed deadline | Source18de7d3a compiled in986fb8c0; scoped doubles5/5 at30Hz and1/1 at60Hz with native release/landing; zero-reread path unobserved, causal effect and full acceptance unproven |
-| 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S verification; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | ae9 full corridor/native braking prerequisite passed once; brief physical Manual corroborated, but entry speed exceeded the unchanged test margin. Ten-second hold/revert chain pending; shorten ordinary setup push and fix final diagnostic drain offline |
+| 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S observer correction; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | Exact36 corridor/native braking passes; shorter-approach Manual is inconclusive after startup backlog/truncation guard rejection. Lossless startup draining passes421 offline checks; ten-second physical hold remains pending |
 | 4: Camera | Shortest yaw, rigid orbit, native pivot, elapsed duplicate sampling and restoration already fixed | Reverse restart remains inconclusive; exact candidate switch/revert follow pending | S verification | Sequence C and OFF, root/motion unchanged | Exact 2427231d right/up orbit and neutral recenter observed with complete camera captures and stable body heading; switch/revert follow and OFF restoration remain pending |
 | 5: Ollie/movement | Native release, charge, launch descriptors and bounded push budget already implemented | No new source-proved tuning defect; short/held jumps and momentum need comparative evidence | S verification / M tuning | Native cadence, trajectory, catch/contact, collision/bail controls | Preserve coherent current parameters; measure before tuning |
 | 6: HUD/scoring | Native-plus-custom combo model, integer ring and retained native stack entries | 39ef1c70 rendered Casper/Casper Flip names and x10 in the separate RC5 HUD session | S verification / M if binding defect remains | Sequence F, actual rendered names, banking/bail/OFF; RC5 chat owns HUD investigation | Native rendered names and OFF cleanup observed on 39ef1c70; integrated 32535ec4 full chain pending |
@@ -989,3 +992,142 @@ Evidence directory: `artifacts/rc51-retired-rail-y-checks/`; see `build-necessit
 Only the five new fixture owners move to scoped heap storage. Inputs, assertions, production code and stack limits are unchanged. The helper frame falls to9,264 bytes; the same constrained-stack probe and all1,456 rail checks pass with sanitizers and optimized compilation. Root and independent review pass; corrected Windows CI remains required. Evidence: `artifacts/rc51-rail-pop-stack-checks/`.
 
 A separate third-X audit retains36 production-correct cases across30/60/120Hz, both stances, Kickflip/Heelflip and three readiness phases. All preserve the working double under the real one-shot bridge contract;2,212 sanitizer checks pass. An earlier permissive callback fixture could accept a second submission, but production native lease rules reject it. That fixture is retained with its limitation, not treated as a second native actor. Triple execution remains an M lifecycle gap; see `artifacts/rc51-third-x-audit/audit.md`.
+
+## Verified package: f0025f3e
+
+Exact source `f0025f3ed25d2d4912ab90b66c36826af1a1490b` passes
+[CI 43862368489](https://github.com/notPho-Real/ReSkate/actions/runs/43862368489):
+all nine required gates, 46 targeted Windows tests, 140 preflight tests and 132
+upstream integration tests. The corrected rail test passes on Windows. Runtime
+compilation and strict archive, PE, provenance and embedded installer checks pass;
+release publication was skipped. The preceding failed/cancelled run remains
+retained and supplies no accepted package.
+
+[Experimental Deck installer](https://github.com/notPho-Real/ReSkate/actions/runs/43862368489/artifacts/14225183664),
+[runtime](https://github.com/notPho-Real/ReSkate/actions/runs/43862368489/artifacts/14225453738),
+[test results](https://github.com/notPho-Real/ReSkate/actions/runs/43862368489/artifacts/14225388256).
+DLL size: 45,611,520 bytes. DLL SHA-256:
+`5e4d3b6e98b7d15f4fc13e3956dd6a226d6cd151ef044ef1d4a5e8e130199ddb`.
+Installer SHA-256 (`Install-ReSkate-Arcade.desktop`):
+`87857520d7842fa0f9e4abe4291a0a501f77501e34f123f90a5dd8829ed5de5d`.
+Verification receipt SHA-256:
+`ca06a6539a296224be4dfc076a75a5233f2bb24c843503826d4d7a9e752a1023`.
+Local package: `artifacts/rc51-rail-grab-ready-f0025f3e`.
+
+This is compiled and installable, not native accepted. Use the stopped-state
+transactional installation/rollback procedure above. Preserve the prior DLL,
+settings, receipt and every rollback set. Neither this package nor its installer
+changes the accepted release channel.
+
+The exact DLL was subsequently loaded in native-verified Mega Park. Its first
+corridor prerequisite failed the unchanged upper speed bound; no Manual trial
+ran. See the retained failure and restoration below. Loading the package does
+not qualify its rail-grab correction or the full gameplay sequences.
+
+## Exact36 Manual prerequisite and observer failure
+
+The exact36 DLL completed a 15.042929-second west-corridor baseline at measured
+59.6302 Hz, with native/cache steps of 1/60. One owner and stance persisted;
+the maximum independently qualified sample gap was 101.662 ms, inside the
+unchanged 150 ms bound. Native braking after Arcade OFF stopped in 2.224810
+seconds over 5.702026 metres to 0.000465 m/s; a later sample remained stopped.
+The acquisition capture has 27 dropped rows and is not complete callback proof.
+Physical telemetry and a post-stop frame establish braking; video ends earlier.
+
+The subsequent shorter-push Manual trial is **inconclusive**. The first log
+collection rejected its backlog/truncation guard, which checks offsets and the
+existing 1 MiB per-file unread bound.
+The only retained physical row precedes trial start. A later Manual label and
+score sample cannot establish physical entry, delivery, a qualified lifetime
+gate or a ten-second hold. Final diagnostic collection also rejected rename
+continuity. No retry was performed; the failure remains retained.
+
+Evidence: `artifacts/rc51-manual-approach-hil-36d615ce`. Independent baseline
+analysis SHA-256: `cdd34c693bf85cb1b80738f4220c5755328ea925489315d05f6831eacb3d2e1a`;
+Manual analysis: `897ca44d2551ad5df87d1dcec8d2c78a2194367535f20ef37345e8cd389d7843`.
+Normal shutdown stopped game and launcher. Exact prior971c DLL/settings/receipt
+were restored, four exact generated HUD files removed and all134 rollback sets
+preserved. Authority was revoked. Return receipt:
+`7d62156a6b463533fe78d1ad8d57c85a25dd3a4a587bca400884af751735d499`;
+restoration: `69233863dd2d13eb5afa1f9fecc343a9cdc7ce47e4d2d5091e129cc99f921f48`.
+
+The offline correction drains the original unread log baseline during serialized
+console setup, before collector creation, and starts the collector before the
+existing warmup. Pretrial reads cannot qualify or renew live balance evidence.
+No bytes are discarded and all loss, rotation, owner, speed and time bounds
+remain intact. Lossless punctuation compaction keeps the generated Manual loader
+below its unchanged limit, with full AST equality and compilation assertions.
+All421 offline checks pass. Retained-identity loaders are 64,140/64,131/64,127
+bytes; fresh device identities must be regenerated and checked before transport.
+The executed36 scaffold is unchanged. Frozen proposal manifest:
+`artifacts/rc51-manual-startup-drain-proposal/FINAL-combined-provenance.json`,
+SHA-256 `809a585e22a1407194e450717621ca44b2a94dd0dd23809608fcb3b39ff618d0`.
+Exact failing offsets were not retained, so the startup-backlog cause remains
+source-supported inference; this correction supplies no native Manual result.
+
+## Remaining independent acceptance work
+
+Held-Y rail-grab testing needs the existing owned fixture, segment, physical
+contact and current-owner guards integrated into its wait. Historical rail-grab
+success released Y before the pop and cannot verify this change. The isolated
+hold-preserving wait proposal passes95 offline checks and fails closed without
+that native guard; it is not a ready hardware recipe. This is an M integration
+dependency, documented in `artifacts/rc51-held-y-rail-hil-audit/readiness.md`.
+
+Native banking remains a separate M evidence gap. The score buffer deliberately
+leaves owner verification false. Existing settlement contracts require verified
+payload ownership, canonical occurrence identities, award semantics, complete
+event health and matching native terminal meaning. Rendered totals, model
+settlement and successful receipt publication do not prove durable native credit.
+Reuse `research/score-replay-contracts.json`; do not add a competing score model.
+
+Next independent work remains exact-candidate Manual lifetime and transitions,
+switch/revert camera and restoration, native grab lifecycle/rail handoffs, and
+the existing Casper/wallplant chains. Triple flips and new environment mechanics
+remain deferred behind these foundational acceptance gaps.
+
+## Exact f002 corridor speed failure and restored hardware
+
+The independently reviewed inactive scaffold passed651 offline checks and bound
+the corrected observer to f002, a fresh exclusive slot and the prior134 rollback
+inventory. Its manifest SHA-256 is
+`9894d865d39c92a4e89fb1d375198664b4efde4bc04ea595d67a55e38037518e`.
+Fresh stopped-state preflight passed; the exact loaded DLL and native
+`skate3_megapark` descriptor were verified. Actual-identity loaders measured
+64,003 bytes for the baseline and64,127 for each prepared Manual trial.
+
+The first baseline failed at3.513706119 seconds: forward speed8.0183258 m/s
+exceeded the unchanged8 m/s test bound. The preceding accepted sample was
+7.9939847 m/s. Retained post-start samples show native state100, one owner and
+regular stance;120 qualified and7 unavailable samples have a maximum qualified
+gap of114.085491 ms. No coherent wrong contact mask or sampled bail establishes
+an obstruction at the failure. These are bounded external samples, not atomic
+or continuous physics proof.
+
+The ordinary push recipe matched the preceding36 baseline: stick forward at0.1
+seconds, release at0.8. Actual input duration was697.526 ms versus700.030 ms;
+measured native callback cadence was59.5625 Hz versus59.6302 Hz, both with native
+and cached1/60 steps. Nevertheless, speed was about1 m/s higher early in this
+trial. The retained evidence does not establish the cause or a runtime regression.
+No production tuning or test-limit widening follows from this observation.
+
+Replay aborted and neutralized input. No native brake segment,15-second route
+completion or Manual attempt occurred; both prepared m1/m2 trials remained
+unexecuted. Acquisition evidence has35 known ordinal holes and no terminal
+record, so complete capture and total loss are unknown. The startup observer
+correction was not exercised by a Manual attempt.
+
+Evidence directory: `artifacts/rc51-manual-startup-hil-f0025f3e`. Independent
+analysis SHA-256:
+`28e7c0e06209df0cbf28fdec082a27ffeca68d6179481daeddb828210156d8ec`.
+Normal shutdown stopped game and launcher; four exact generated HUD files were
+removed. Exact prior971c DLL/settings/receipt were restored and all135 rollback
+sets preserved. Authority is revoked, with no queued hardware actions.
+Return receipt SHA-256:
+`b3d02e21c6eb2d14ae5b4fddc444356829dc32761ec94dafcea2223e0adb197a`;
+restoration: `4a7fdfde7241c717371f6d548b14e6338e05d391dd0e430563196c79aa8c3bf7`.
+
+Next independent setup work aligns the baseline's initial ordinary push with
+the already shorter Manual approach. Preserve the original failed attempt,
+all physical/time/speed bounds, native braking and fresh-reset requirements.
+This is test setup work; no new runtime build is needed for it.
