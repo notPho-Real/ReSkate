@@ -17,7 +17,8 @@ NativeRows& native_rows() { static auto* value = new NativeRows; return *value; 
 bool has_native_rows() { const auto& n=native_rows(); return !n.rows.empty() || !n.requested.empty(); }
 void forget_native_rows() { auto& n=native_rows(); n.manager=0;n.root={};n.rows.clear(); }
 struct NativeStackRow { std::vector<std::byte> bytes; Widget widget; std::string name; };
-std::vector<NativeStackRow> native_stack_rows(Hud& h, const Context& c, Value root) {
+std::vector<NativeStackRow> native_stack_rows(Hud& h, const Context& c, Value root,
+    std::vector<NativeStackRow>* retained = nullptr) {
     unsigned count{},stride{};
     const auto bytes=c.array(c.path(root,{score::trick_list,corner::stack_items}),64,count,stride);
     require(stride==menu_data::stack_item.size && bytes.size()==std::size_t{count}*stride,
@@ -31,7 +32,10 @@ std::vector<NativeStackRow> native_stack_rows(Hud& h, const Context& c, Value ro
         std::memcpy(&row.widget,row.bytes.data()+h.content_at,sizeof row.widget);
         if(std::any_of(owned.begin(),owned.end(),[&](const NativeRow& ours){
             return row.widget.data.handle==ours.row.model.handle && row.widget.blueprint==h.row_blueprint;
-        }))continue;
+        })) {
+            if(retained)retained->push_back(std::move(row));
+            continue;
+        }
         // Names only anchor presentation ordering; no score is inferred here.
         if(row.widget.data.handle && row.widget.blueprint==h.row_blueprint) {
             const Value model{row.widget.data.handle,c.type_of(row.widget.data.handle)};
@@ -70,7 +74,8 @@ void update_native_rows(Hud& h,const Context& c,bool allowed,double now) {
     }
     if(n.root.handle && n.root.handle!=h.game_root.handle)clear_native_rows(h,c);
     n.manager=c.manager;n.root=h.game_root;
-    const auto native=native_stack_rows(h,c,n.root);
+    std::vector<NativeStackRow> retained;
+    const auto native=native_stack_rows(h,c,n.root,&retained);
     const auto type=row_type_now(h,c,now);
     if(!type)return;
     // Keep removed models alive until publication has removed their references.
@@ -123,7 +128,15 @@ void update_native_rows(Hud& h,const Context& c,bool allowed,double now) {
         for(std::size_t i=0;i<=native.size();++i) {
             // Caller order is oldest first; native stack order is newest first.
             for(std::size_t j=next.size();j>0;--j)if(positions[j-1]==i) {
-                const auto item=bytes_of(c,next[j-1].row.item);bytes.insert(bytes.end(),item.begin(),item.end());
+                const auto& row=next[j-1].row;
+                const auto live=std::find_if(retained.begin(),retained.end(),[&](const NativeStackRow& item){
+                    return item.widget.data.handle==row.model.handle && item.widget.blueprint==h.row_blueprint;
+                });
+                // Once attached, the stack owns this item's transition state
+                // and resolved references. Reusing the creation template would
+                // overwrite those updates and republish unchanged history.
+                const auto item=live!=retained.end()?live->bytes:bytes_of(c,row.item);
+                bytes.insert(bytes.end(),item.begin(),item.end());
             }
             if(i<native.size())bytes.insert(bytes.end(),native[i].bytes.begin(),native[i].bytes.end());
         }

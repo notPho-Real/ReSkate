@@ -449,3 +449,26 @@ its measured width and the stack-supplied Index. Its Visible, font and RawText
 inputs come through the standard label binding. A text/style copy alone therefore
 does not prove visibility; the next bounded capture must inspect the actual row
 and its stack transition alongside rendered frames.
+
+The consolidated candidate passed its required CI checks (134 Windows preflight
+tests and 130 upstream integration tests) and was tested in Mega Park at a
+measured 59.54 callbacks per second. The original score circle visibly rendered
+x10, with 1,092 subtotal and 10,920 line points after the flatland chain. This
+verifies the multiplier listener-context correction on the exact candidate.
+
+Custom names still failed rendered acceptance: an isolated held Casper displayed
+Manual even though the native stack contained Casper with the same label styling
+and resolved transition as its native neighbor. The session stopped after that
+failure; the previous installation and all 127 rollback sets were verified
+before revoking transport. No full gameplay or owner-readiness claim follows
+from this partial result.
+
+A subsequent offline regression exposed an additional publication defect:
+custom entries were rebuilt from their creation templates on each update,
+discarding any live stack transition or resolved-reference changes. Augmentation
+now retains the current owned entry bytes, as it already did for native entries;
+the creation template is used only when the entry is absent. Sanitized tests
+cover idle updates, insertion, native refresh, cleanup and partial failures.
+The previous implementation fails the new live-state preservation assertion.
+This correction still needs rendered validation; it does not establish that
+the missing-name defect is resolved.

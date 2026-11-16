@@ -90,8 +90,20 @@ int main(){using namespace dingosdk::score_line;
     require(c.label_styles.at(20)==42 && c.label_styles.at(21)==43,"native label styling changed");
     const auto made=c.made,published=c.published;update_native_rows(h,c,true,1010);
     require(c.made==made && c.published==published,"unchanged native history rebuilt every tick");
+    // A bound widget resolves its references and advances its own state after
+    // publication. Neither an idle tick nor a new row may reset that state.
+    Widget live{};std::memcpy(&live,c.stack.data(),sizeof live);
+    live.data.record=12345;std::memcpy(c.stack.data(),&live,sizeof live);
+    c.stack[40]=std::byte{63};
+    const unsigned resolved_transition=123;std::memcpy(c.stack.data()+44,&resolved_transition,4);
+    const std::vector<std::byte> live_item(c.stack.begin(),c.stack.begin()+48);
+    update_native_rows(h,c,true,1015);
+    require(c.published==published && std::equal(live_item.begin(),live_item.end(),c.stack.begin()),
+        "live custom item state was reset from its creation template");
     request({{1,"Casper",1},{2,"Casper Flip",1}},1020);update_native_rows(h,c,true,1020);
     require(shown(c)==std::vector<std::string>{"Casper Flip","Casper","Manual","Kickflip"},"custom chronological ordering lost");
+    require(std::equal(live_item.begin(),live_item.end(),c.stack.begin()+48),
+        "adding a custom trick reset an existing live item");
     c.native({22,20,21});const auto refreshed=c.stack;update_native_rows(h,c,true,1030);
     require(shown(c)==std::vector<std::string>{"Heelflip","Casper Flip","Casper","Manual","Kickflip"},"new native trick not above preceding custom tricks");
     c.names[20]="Pop Shove-It";c.native({20,21});update_native_rows(h,c,true,1040);
