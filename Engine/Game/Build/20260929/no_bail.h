@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include "arcade_native_probe.h"
 #include "Engine/Game/Build/fingerprint.h"
 
@@ -128,9 +129,9 @@ inline constexpr std::array<Fingerprint, 3> body_contact_contracts{{
 }};
 inline constexpr std::uintptr_t body_contact_output_offset = 0xfb8;
 inline constexpr std::uintptr_t body_contact_context_offset = 0x13c4;
-inline constexpr LONG body_contact_context_mask = 0x400000;
+inline constexpr std::int32_t body_contact_context_mask = 0x400000;
 inline constexpr std::uintptr_t animation_request_offset = 0x13d4;
-inline constexpr LONG animation_request_mask = 0x08000000;
+inline constexpr std::int32_t animation_request_mask = 0x08000000;
 // These collision producers set context+13c4 bit 15 immediately before
 // recording the cause. Animation reads that request independently of the cause
 // collector; cancel both at these verified call sites, leaving other flags alone.
@@ -151,7 +152,7 @@ inline constexpr std::array<ImpactBail, 3> impact_bail_calls{{
         0x00,0x00,0x00,0x80,0x00,0x00,0x49,0x8b,0x4e,0x08,0xe8,0x81,0x94,0xf5,0xff,0x48}}, 14, 0x47fa79f},
 }};
 inline constexpr std::uintptr_t impact_request_offset = 0x13c4;
-inline constexpr LONG impact_request_mask = 0x8000;
+inline constexpr std::int32_t impact_request_mask = 0x8000;
 // uint32(selector, current): core+0x440 owns the selector, selector+8 is
 // core+0x3c0's context. The caller remaps WipeoutGround (300) to Offboard (504).
 // Filter 300 before that remap; 504 also means ordinary walking, so allow it.
@@ -160,7 +161,7 @@ inline constexpr std::uint32_t wipeout_physics_state = 300;
 // +13d4 bit 7 (bit 8 is the dismount request). While a S.K.A.T.E. player waits for their
 // turn on foot (throwdown_relay.h), the request is dropped before the selector reads it.
 inline constexpr std::uint32_t offboard_physics_state = arcade_native_probe::offboard_state;
-inline constexpr LONG mount_request_mask = 0x80;
+inline constexpr std::int32_t mount_request_mask = 0x80;
 inline constexpr Fingerprint mount_request_test_contract{0x4746a94, {
     0x48,0x8b,0x53,0x08,0xf6,0x82,0xd4,0x13,0x00,0x00,0x80,0x0f,0x84,0x6f,0xf4,0xff,
     0xff,0x48,0x8b,0x82,0xb0,0x0d,0x00,0x00,0x48,0x85,0xc0,0x74,0x15,0x48,0x83,0xe0}};
