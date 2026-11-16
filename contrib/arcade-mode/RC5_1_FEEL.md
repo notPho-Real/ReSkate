@@ -54,6 +54,24 @@ Final readmission review also reproduced stale neutral-release suppression after
 
 Combined offline validation:46/46 shared targeted tests,21/21 production-composed lifecycle/HUD tests,12/12 native-input consumer tests,7,010 standalone rendered HUD checks and285 balance lifecycle checks pass. The clarified trick-to-Manual landing adds48 cases/792 checks covering both prior/current support types, immediate/delayed history and stale-history rejection. New source remains uncompiled on Windows until CI below is recorded. Test-only clarification was compiled separately after the21-test checkpoint.
 
+The first combined Windows checkpoint, source `727ef18c664f1b42adccdd08825f185a7f6aa8eb`,
+failed [CI43927214085](https://github.com/notPho-Real/ReSkate/actions/runs/43927214085)
+while generating the Manual consumer rollback fixtures. The consumer generator
+still matched the old fixed idle-flip declaration after the landing fixture
+gained an explicit flip selector. The earlier local12-test consumer result
+predated that fixture edit and cannot validate the final combination. Preserve
+this failure; correct and regenerate the consumer suite before the next build.
+No package from this run is accepted. Full failed preflight log SHA-256:
+`220a6f8f9e0af62feb735c76b8beefa9edf91705fa4e9ffc6b47c44fc0f6075c`.
+
+The consumer adapter now preserves the supplied flip selector outside its
+explicit air-mode override. Fresh generation, compilation and all12 consumer
+tests pass, including five rollback controls and six source-correspondence
+checks. A24-case matrix exercises both selector paths and their native
+selection/crouch fields. CMake also tracks the transitive episode and score
+fixture inputs. Gameplay source and required assertions are unchanged by this
+CI correction; replacement Windows compilation remains required.
+
 
 ## Baseline and provenance
 

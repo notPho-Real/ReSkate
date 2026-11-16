@@ -19,9 +19,11 @@ foreach(variant current rollback-no-reservation rollback-admitted-only rollback-
         DEPENDS "${reservation_generator}"
             "${reservation_root}/Extension/ArcadeMode/Test/manual_lifecycle/generate.py"
             "${reservation_root}/Extension/ArcadeMode/Test/manual_lifecycle/fixture.cpp.in"
+            "${reservation_root}/Extension/ArcadeMode/Test/manual_lifecycle/score_fixture.cpp.in"
             "${reservation_root}/Extension/ArcadeMode/arcade_mode.cpp"
             "${reservation_root}/Extension/ArcadeMode/arcade_balance_hud.cpp"
             "${reservation_root}/Extension/ArcadeMode/arcade_manual_acquisition.h"
+            "${reservation_root}/Extension/ArcadeMode/arcade_manual_episode.h"
             "${reservation_root}/Extension/ArcadeMode/arcade_ground_motion_step.h"
             "${reservation_root}/Extension/Skater/client_noclip.cpp"
         VERBATIM)

@@ -76,8 +76,8 @@ def generate(root,variant='current'):
     once(' {1,false,GestureContext::ground,{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}},',
          ' {2,false,GestureContext::ground,{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}},\n {1,false,GestureContext::ground,{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}},')
     once('bool corrupt_manual_delivery{};', 'bool fixture_air_mode2{},corrupt_manual_delivery{};')
-    once('const NativeFlipSelection flip{idle_known,-1};',
-         'const NativeFlipSelection flip{idle_known,fixture_air_mode2&&(state==103||state==200)?1:-1,fixture_air_mode2?16u:0u};')
+    once('const NativeFlipSelection flip{idle_known,flip_id};',
+         'const NativeFlipSelection flip{idle_known,fixture_air_mode2&&(state==103||state==200)?1:flip_id,fixture_air_mode2?16u:0u};')
     once('raw.crouch_mode=state==103?0:1;', 'raw.crouch_mode=state==103?0:(fixture_air_mode2&&state==200?2:1);')
     once('bool auto_kick_enabled(){return true;}','bool automatic_kick=true;bool auto_kick_enabled(){return automatic_kick;}')
     once('namespace dingosdk {void cancel_balance_bail()noexcept{}std::uint64_t request_balance_bail(const NoBailSkater&)noexcept{return 1;}}',r'''
@@ -212,6 +212,19 @@ def generate(root,variant='current'):
     cases=r'''
     unsigned coupling_checks{},source_step{};
     void expect(bool value,const char* why){++coupling_checks;check(value,why);}
+    void fixture_selection_cases(){
+     for(bool mode2:{false,true})for(unsigned state:{100u,103u,200u,201u})for(std::int32_t selected:{-1,1,2}){
+      reset_case();fixture_air_mode2=mode2;
+      observe(.017f,state==100||state==103?0xc000u:0u,state,true,true,selected);
+      const auto expected=mode2&&(state==103||state==200)?1:selected;
+      expect(latest.valid&&latest.flip_known&&latest.flip_id==expected,
+             "consumer fixture preserves supplied flip selection outside its explicit air mode override");
+      expect(latest.selection_object==(mode2?16u:0u),"consumer fixture preserves air mode selection ownership");
+      expect(raw.crouch_mode==(state==103?0u:(mode2&&state==200?2u:1u)),
+             "consumer fixture preserves native crouch mode override");
+     }
+     fixture_air_mode2=false;
+    }
     void physical_step(unsigned hz,unsigned contacts,unsigned state=100){
      clock_ms=1000+static_cast<std::uint64_t>(std::llround(1000.0*++source_step/hz));
      const float seconds=1.f/static_cast<float>(hz);scalar_seconds=seconds;observe(seconds,contacts,state);client(seconds,history());
@@ -523,7 +536,7 @@ def generate(root,variant='current'):
      reset_case();
     }
     '''
-    once('int main(){','void controller_conflicts();void native_axis_cases();void coupling_cases();\nint main(){\n native_axis_cases();coupling_cases();controller_conflicts();')
+    once('int main(){','void fixture_selection_cases();void controller_conflicts();void native_axis_cases();void coupling_cases();\nint main(){\n fixture_selection_cases();native_axis_cases();coupling_cases();controller_conflicts();')
     # Insert exact native guard and scalar blocks before the new test main, after
     # their ordinary fixture services and owner variables have been declared.
     once('void coupling_cases();',baseline_scalar+'\n'+candidate_scalar+'\nvoid coupling_cases();')
