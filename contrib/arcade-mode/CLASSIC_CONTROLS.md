@@ -54,6 +54,13 @@ native physics frame. This consumes one opportunity, retains the original
 deadline and cannot outlive the admitted frame's 150ms observation lease.
 Changed owner, pop, stance, object, flight, skipped frames or stale observations
 cancel that allowance; native actor admission still decides execution.
+If first action readiness arrives after the repeat deadline, only the same
+already-queued pre-AIR pair can use the original first-AIR observation lease.
+Both edges must precede that first AIR, which must occur less than 500ms after
+the admitted pop release. Parent admission and its one successor opportunity
+must both remain strictly within first AIR +150ms. The timestamp never renews;
+the resulting outer limit is less than 650ms after the original pop. Ordinary
+airborne repeats retain their 200ms deadline. This adds no fixed input delay.
 A qualified ordinary first flip can instead follow its exact admitted pop through
 native setup; owner, pop withdrawal and landing checks still cancel it. These
 windows add no fixed wait and do not establish native trick completion.

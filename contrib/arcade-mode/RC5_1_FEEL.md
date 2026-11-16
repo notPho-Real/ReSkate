@@ -546,3 +546,62 @@ Manual/revert lifetime and chains, immediate single grabs and rail followups,
 full grab lifecycle/scoring, camera switch/revert/OFF restoration, wallplant
 continuation and full flatland sequences. Broader environmental mechanics remain
 behind those foundational gates.
+
+## Follow-up: bounded first-AIR readiness and model terminals
+
+Gameplay correction `1d017e95e111b7d386591ff2d501f0ada4fdcfe0` addresses the
+retained7b23 late-first case within the existing queue. It copies the producer's
+already-established first-AIR timestamp into the input context. Only the exact
+pre-AIR physical pair, still queued behind its matching parent on the same pop,
+can qualify when the child has expired but has not been cancelled. Both physical
+edges must precede first AIR. First AIR must fall inside the existing500ms
+released-pop corridor; parent admission and the one immediate successor
+opportunity must remain inside the original first-AIR150ms lease. The endpoint
+is never anchored to a later poll or acceptance, and the original second-X+200ms
+deadline is not rewritten. This late path is strictly shorter than650ms after
+the original release. The previously tested timely-parent path is unchanged.
+
+Actual parent `started`, the pre-adapter child snapshot, all native ownership,
+orientation, episode, actor and cancellation gates remain mandatory. Duplicate
+polls do not renew the allowance; a skipped frame, stale proof, changed first-AIR
+timestamp or failed successor retires it. Ordinary airborne repetition keeps its
+original timing. This is one bounded dependency contract with timely and late
+qualification, not a retry-until-success mechanism.
+
+The old source compiles and fails the composed late-readiness regression.
+The corrected code passes2,035 held-flip checks,6,517 session checks,
+648 takeoff cases,326 jump-idle cases,9,174 dispatch checks and20,740 grab checks
+with ASan/UBSan and warnings as errors. Combined regressions retain the earlier
+190→224ms boundary and the new first-AIR1324/base-ready1381/successor1415 case,
+with the physical child deadline1370 unchanged. Half-open149/150ms and499/500ms
+boundaries, changed timestamps, missing or reentrant parents, context/owner
+withdrawal and native-adapter negatives are covered. Independent diff review
+found no blocking issue. Receipts:
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-first-air-dependency-checks`.
+Native success of this correction remains unverified until its exact DLL runs.
+
+Diagnostic correction `20ce768944aa63a62f1037112774d2c790bf9427` reports actual
+model terminal sequence, kind, total points, action count and custom subtotal,
+including native-only terminals with zero custom points. It reuses the current
+one-shot sequence guard and bounded worker queue. Existing custom-score rows and
+scoring behavior are unchanged. Every formatted row explicitly states
+`model_only=true native_bank_verified=false`; observation time does not claim a
+native execution step or durable banking authority.
+
+The exact old production block fails a native-only terminal regression; the new
+block passes11 bank/bail, one-shot, mixed-score, formatter and reset checks.
+Typed telemetry tests exercise real model bank/bail outcomes, invalid records and
+zero-action terminals. Focused ASan/UBSan checks pass4,240 telemetry and2,656
+controller checks plus the existing custom-score and camera/storage suites.
+The local ABI measurement shows unchanged1,016-byte client variants and the
+same64-row queue; no portable ABI guarantee is inferred from that measurement.
+Receipt:
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-model-settlement-checks/receipt.json`.
+These changes are batched for one necessary runtime checkpoint; they do not
+retroactively pass the7b23 failed gameplay or Manual baseline.
+
+The rebuilt shared sanitizer graph passes 46/46 suites in 17.57s, including
+enabled/disabled wallplants and Casper. JUnit: `rc51-targeted/rc51-first-air-targeted.xml`
+under the SSD build directory. The final provenance edit also passes both existing
+candidate-manifest tests. Build necessity and exact regression receipts are
+retained with the first-AIR task; Windows and native results remain pending.
