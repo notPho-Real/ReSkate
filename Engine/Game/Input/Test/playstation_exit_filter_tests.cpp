@@ -10,7 +10,7 @@ int main(){
    Layout{PlayStationPad::dualsense,1,64,1,5,6,9,0},Layout{PlayStationPad::dualsense,0x31,78,2,6,7,10,0x6ae46ece},Layout{PlayStationPad::dualsense,1,78,1,8,9,6,0},Layout{PlayStationPad::dualsense,1,78,1,5,6,9,0}}){
   std::array<std::uint8_t,80> bytes;bytes.fill(0xa5);auto* report=bytes.data()+1;report[0]=l.id;report[l.stick]=10;report[l.left]=100;report[l.right]=200;report[l.shoulder]=0x2c;
   // Bluetooth simple reports have zero padding; longer USB reports retain sensor bytes.
-  if(l.kind==PlayStationPad::dualsense && l.id==1 && l.left==8)std::fill(report+10,report+l.size,0);
+  if(l.kind==PlayStationPad::dualsense && l.id==1 && l.left==8)std::fill(report+10,report+l.size,std::uint8_t{});
   const auto before=bytes;
   check(!filter_playstation_exit_report(l.kind,report,l.size,[](auto&){}),"inactive filter preserves every report byte including CRC");check(bytes==before,"no-op callback has no writeback");
   unsigned calls{};
