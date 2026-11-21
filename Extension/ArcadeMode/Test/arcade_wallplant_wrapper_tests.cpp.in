@@ -6,6 +6,7 @@
 #include "Engine/Game/Build/20260929/skater_body.h"
 #include "Engine/Game/Build/20260929/rigid_bodies.h"
 #include "Engine/Game/Build/20260929/skater_state.h"
+#include "Engine/Game/Build/20260929/no_bail.h"
 #include "Engine/Game/Abi/orientation_target.h"
 #include "Extension/Trainer/trainer_jump.h"
 #include <atomic>
@@ -104,6 +105,9 @@ struct Watch {
 } watch;
 Watch& state_watch(){return watch;}
 constexpr std::uint32_t wipeout_physics_state=504;
+constexpr auto offboard_physics_state=dingosdk::game::build::v20260929::no_bail::offboard_physics_state;
+// Native ragdoll side effects are outside this chooser/writer ordering fixture.
+void ragdoll_on_foot(std::uintptr_t selector){event("foot_ragdoll",selector);}
 constexpr unsigned wanted_wipeout_reason=1;
 std::uint64_t GetTickCount64(){return 100;}
 bool protected_owner(std::uintptr_t,std::uintptr_t Owner::*){return false;}
@@ -135,6 +139,7 @@ void reset(){
  events.clear();wallplant_handoff()={};native_calls=chooser_calls=writes=0;
  arcade_mode::wallplant_runtime::retained={};arcade_mode::wallplant_runtime::retained_phases.clear();
  native_result=100;reenter=false;admit=true;
+ wanted_value.until=0;watch.selector=0;watch.causes=0;
  wallplant_hold_core.store(0);hold_releases=0;release_hold=begin_hold_on_write=false;
  native_state.velocity_update_original.store(native_update);
  physics_step_callback.store(callback);
@@ -144,6 +149,18 @@ std::size_t find(const char* name,std::size_t start=0){
  return events.size();
 }
 void run(){
+ for(const auto current:{201u,offboard_physics_state})for(unsigned request=0;request<4;++request){
+  reset();admit=false;watch.selector=request==3?8:9;watch.causes=1;
+  wanted_value.until=(request==1 || request==3)?101:request==2?100:0;
+  const auto chosen=choose_state(9,current);
+  const bool asked=request==1;
+  check(chosen==(asked?wipeout_physics_state:native_result) && chooser_calls==1,
+        "upstream wipeout request preserves one original chooser call and expiry/owner checks");
+  const auto ragdolls=std::count_if(events.begin(),events.end(),[](const Event& e){return e.name=="foot_ragdoll";});
+  check(ragdolls==(asked && current==offboard_physics_state?1:0),
+        "only a fresh requested on-foot wipeout reaches the upstream ragdoll boundary");
+  check(writes==0 && native_calls==0,"on-foot bail routing grants no Arcade body write");
+ }
  {
   reset();
   auto& scope=arcade_mode::wallplant_runtime::retained;
