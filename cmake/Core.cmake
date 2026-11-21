@@ -92,7 +92,7 @@ endif()
 
 # Read access to the installed game's cas archives.
 add_library(dingosdk_game_archives STATIC Engine/Vfs/game_archives.cpp Engine/Vfs/game_bundles.cpp
-    Engine/Vfs/item_thumbnails.cpp Engine/Vfs/game_textures.cpp)
+    Engine/Vfs/item_thumbnails.cpp Engine/Vfs/game_textures.cpp Engine/Vfs/game_map.cpp)
 target_link_libraries(dingosdk_game_archives PUBLIC dingosdk_native_db dingosdk_frostbite)
 
 if(WIN32)
@@ -107,6 +107,11 @@ if(WIN32)
         Engine/Vfs/mod_merge_combine.cpp
         Engine/Vfs/mod_merge_overrides.cpp
         Engine/Vfs/mod_merge_conflicts.cpp
+        Engine/Vfs/mod_merge_layout.cpp
+        Engine/Vfs/mod_merge_left_out.cpp
+        Engine/Vfs/mod_items.cpp
+        Engine/Vfs/mod_vram.cpp
+        Engine/Vfs/mod_merge_scan.cpp
         Engine/Vfs/mod_merge_scan_cache.cpp
         Engine/Vfs/mod_merge_textures.cpp
         Engine/Vfs/mod_merge_grid.cpp
@@ -146,6 +151,7 @@ add_library(dingosdk_plugins STATIC
     Extension/Plugins/plugin_manifest.cpp
     Extension/Plugins/plugin_approval.cpp
     Extension/Plugins/plugin_listing.cpp
+    Extension/Plugins/plugin_server_scope.cpp
     Extension/Plugins/plugin_vm.cpp
     Extension/Plugins/plugin_api.cpp
     Extension/Plugins/plugin_api_ui.cpp
@@ -162,6 +168,9 @@ add_library(dingosdk_plugins STATIC
     Extension/Plugins/plugin_content.cpp
     Extension/Plugins/plugin_api_effects.cpp
     Extension/Plugins/plugin_api_viewmodel.cpp
+    Extension/Plugins/plugin_api_files.cpp
+    Extension/Plugins/plugin_api_picture.cpp
+    Extension/Plugins/plugin_zip_file.cpp
     Extension/Plugins/plugin_effects.cpp
     # The throwdown kit's store and the plugins' modes, which the plugin host and the game's
     # native UI share (kit::flag is the game's: Extension/Throwdowns/native_flag_session.cpp).
@@ -174,8 +183,17 @@ add_library(dingosdk_plugins STATIC
     Extension/Skater/pose_place.cpp
     Extension/Skater/pose_replay.cpp
     Extension/Plugins/plugin_wave.cpp)
-target_link_libraries(dingosdk_plugins PUBLIC dingosdk_json dingosdk_console_core PRIVATE dingosdk_luau dingosdk_launcher_support)
+target_link_libraries(dingosdk_plugins PUBLIC dingosdk_json dingosdk_console_core PRIVATE dingosdk_luau dingosdk_launcher_support dingosdk_miniz)
 if(WIN32)
     target_sources(dingosdk_plugins PRIVATE Extension/Plugins/plugin_discovery.cpp)
     target_link_libraries(dingosdk_plugins PUBLIC dingosdk_mod_list)
+    # reskate.picture's renderer: WIC reads and writes the pictures, DirectWrite reads the fonts.
+    target_sources(dingosdk_plugins PRIVATE Extension/Plugins/plugin_picture.cpp)
+    target_link_libraries(dingosdk_plugins PRIVATE windowscodecs dwrite ole32)
+    # Plugins' own fonts, which DirectWrite alone reads: reskate.picture's texts, and the metrics and
+    # glyphs of the texts plugins draw on the overlay, which reads them too
+    # (Extension/UI/Overlay/plugin_fonts.cpp), so it is a library of its own.
+    add_library(dingosdk_plugin_font STATIC Extension/Plugins/plugin_font.cpp)
+    target_link_libraries(dingosdk_plugin_font PRIVATE dwrite)
+    target_link_libraries(dingosdk_plugins PRIVATE dingosdk_plugin_font)
 endif()

@@ -42,13 +42,52 @@ bool challenge_panel_owns_input() noexcept {
     return challenge_native_panel.load(std::memory_order_relaxed);
 }
 // Keys kept from the game (hide_game_keys): their presses are dropped from every way it reads the
-// keyboard. Releases pass, so a key the game saw go down still comes up.
+// keyboard. Releases pass, so a key the game saw go down still comes up. The mouse's buttons are
+// kept the same way, by their virtual keys: out of the raw packets, the polled state and the
+// window's messages.
 std::array<std::atomic<std::uint64_t>, 4> hidden_keys{};
 bool key_hidden(unsigned key) noexcept {
     return key < 256 && !overlay_input_access && (hidden_keys[key / 64].load(std::memory_order_relaxed) >> (key % 64) & 1) != 0;
 }
 namespace {
-bool hidden_press(const RAWKEYBOARD& keyboard) noexcept { return !(keyboard.Flags & RI_KEY_BREAK) && key_hidden(keyboard.VKey); }
+// A raw keyboard packet the game is not to have: a hidden key's press, and its release too when the
+// game never had the press. (Only presses were kept back, and every release went through: Skate
+// takes any key going up for the player being on the keyboard, and left its controller way of
+// taking input each time a hidden key was let go, seen 2026-11-16: a plugin handing those keys to
+// the game as a controller had the game going back and forth between the two many times a second.)
+bool hidden_press(const RAWKEYBOARD& keyboard) noexcept {
+    static std::array<std::atomic<bool>, 256> game_has{};
+    const unsigned key = keyboard.VKey;
+    if (key >= game_has.size()) return false;
+    if (!(keyboard.Flags & RI_KEY_BREAK)) {
+        if (key_hidden(key)) return true;
+        game_has[key].store(true, std::memory_order_relaxed);
+        return false;
+    }
+    const bool had = game_has[key].exchange(false, std::memory_order_relaxed);
+    return key_hidden(key) && !had;
+}
+// The presses of hidden buttons taken out of a raw mouse packet; its movement, wheel and releases stay.
+void hide_mouse_presses(RAWMOUSE& mouse) noexcept {
+    static constexpr std::array<unsigned, 5> keys{VK_LBUTTON, VK_RBUTTON, VK_MBUTTON, VK_XBUTTON1, VK_XBUTTON2};
+    static constexpr std::array<unsigned, 5> downs{RI_MOUSE_BUTTON_1_DOWN, RI_MOUSE_BUTTON_2_DOWN, RI_MOUSE_BUTTON_3_DOWN,
+                                                   RI_MOUSE_BUTTON_4_DOWN, RI_MOUSE_BUTTON_5_DOWN};
+    for (std::size_t i = 0; i < keys.size(); ++i)
+        if ((mouse.usButtonFlags & downs[i]) && key_hidden(keys[i])) mouse.usButtonFlags = static_cast<USHORT>(mouse.usButtonFlags & ~downs[i]);
+}
+// While a plugin holds the pointer for a view of its own (read_mouse_look's hold), the game is not
+// told that the mouse moved: Skate takes any mouse movement for the player being on mouse and
+// keyboard, lets the raw mouse go and shows its pointer, and takes the next controller input for the
+// player being back on the controller (seen 2026-11-16: with a plugin walking the skater by a
+// stand-in controller and the mouse turning its view, the game went from one to the other many
+// times a second, and the view stuck and jumped with it). The movement is taken out of the packet;
+// true when nothing is left in it for the game (no button either), so that it is not handed over.
+bool held_mouse_packet(RAWMOUSE& mouse) noexcept {
+    if (overlay_input_access || GetTickCount64() >= state().pointer_held_until.load(std::memory_order_relaxed)) return false;
+    mouse.lLastX = 0;
+    mouse.lLastY = 0;
+    return mouse.usButtonFlags == 0;
+}
 // The DirectInput keyboard's scan code (DIK_) of a hidden key.
 bool scan_hidden(DWORD scan) noexcept {
     const auto key = MapVirtualKeyW(scan, MAPVK_VSC_TO_VK_EX);
@@ -96,7 +135,7 @@ struct InputCaptureHooks {
     std::atomic<unsigned> hid_unavailable{};
     Hook register_raw;
     Hook async_key, key, keyboard, raw_data, raw_buffer, capture, release_capture, cursor, show_cursor, physical_cursor, cursor_position;
-    std::array<Hook, 5> xinput_state, xinput_extended, xinput_keystroke;
+    std::array<Hook, 5> xinput_state, xinput_extended, xinput_keystroke, xinput_capabilities;
     // Hooks other programs put in front of those, hooked in turn (keep_xinput_capture_first).
     static constexpr std::size_t front_slots = 8;
     std::array<Hook, front_slots> xinput_front;
@@ -143,8 +182,10 @@ void neutral_hid(const InputCaptureHooks::HidRead& read, DWORD size) {
     // the game's handle for this: 2.0.4 did, as the pad was first read.)
     const bool bluetooth = playstation_bluetooth(size);
     if (!parse_playstation_report(read.kind, bluetooth, bytes, size)) return;
+    // (Which layout a DualSense's report 0x01 has is told as the parser tells it, by what is in the
+    // report: playstation_report.h dualsense_usb_layout.)
     const bool sense_full = read.kind == PlayStationPad::dualsense &&
-        (bytes[0] == 0x31 || (bytes[0] == 1 && !bluetooth));
+        (bytes[0] == 0x31 || (bytes[0] == 1 && dualsense_usb_layout(bytes, size, bluetooth)));
     const unsigned offset = bytes[0] == 0x31 ? 2 : bytes[0] == 0x11 ? 3 : 1;
     auto* data = bytes + offset;
     if(!capture) {
@@ -163,9 +204,9 @@ void neutral_hid(const InputCaptureHooks::HidRead& read, DWORD size) {
     refresh_playstation_bluetooth_crc(bytes, size);
     static std::atomic<bool> reported{};
     if (capture && !reported.exchange(true)) logging::printf(logging::Level::info, logging::Channel::input,
-        "Native PlayStation HID report neutralized; overlay retains its independent input stream. (%s over %s, report 0x%02x of %lu bytes, "
-        "the game's buffer %lu.)", read.kind == PlayStationPad::dualsense ? "DualSense" : "DualShock 4",
-        bluetooth ? "Bluetooth" : "USB", bytes[0], size, read.capacity);
+        "Native PlayStation HID report neutralized; overlay retains its independent input stream. (%s over %s by its length, report 0x%02x "
+        "of %lu bytes in the %s layout, the game's buffer %lu.)", read.kind == PlayStationPad::dualsense ? "DualSense" : "DualShock 4",
+        bluetooth ? "Bluetooth" : "USB", bytes[0], size, sense_full ? "DualSense" : "DualShock 4", read.capacity);
 }
 void dark_pop_hide_hat(std::uint8_t& byte) noexcept;
 // Dark Pop: the hat nibble of a PlayStation report the game read, hidden the same way as the XInput D-pad.
@@ -174,7 +215,8 @@ void hide_hid_dpad(const InputCaptureHooks::HidRead& read, DWORD size) {
     auto* bytes = static_cast<std::uint8_t*>(read.buffer);
     const bool bluetooth = playstation_bluetooth(size);
     if (!parse_playstation_report(read.kind, bluetooth, bytes, size)) return;
-    const bool sense_full = read.kind == PlayStationPad::dualsense && (bytes[0] == 0x31 || (bytes[0] == 1 && !bluetooth));
+    const bool sense_full = read.kind == PlayStationPad::dualsense &&
+        (bytes[0] == 0x31 || (bytes[0] == 1 && dualsense_usb_layout(bytes, size, bluetooth)));
     const unsigned offset = bytes[0] == 0x31 ? 2 : bytes[0] == 0x11 ? 3 : 1;
     auto* data = bytes + offset;
     auto& hat = data[sense_full ? 7 : 4];
@@ -198,6 +240,8 @@ void invalidate_hid_filter() noexcept {
 void hide_hid_buttons(const InputCaptureHooks::HidRead& read, DWORD size) {
     const auto hidden = mode_hidden_buttons.load(std::memory_order_relaxed);
     if (!hidden || overlay_input_access || !read.buffer || size > read.capacity || read.kind == PlayStationPad::none) return;
+    // A playing script's presses (the room walk's) pass, as they do on XInput, where the scripted pad is answered first.
+    if (stand_in_connected()) return;
     (void)hide_playstation_buttons(read.kind, playstation_bluetooth(size), static_cast<std::uint8_t*>(read.buffer), size, hidden);
 }
 // The gamepad filter (DingoSDKOverlaySetGamepadFilter) on the game's own native PlayStation
@@ -252,6 +296,19 @@ void handle_hid(const InputCaptureHooks::HidRead& read, DWORD size) noexcept {
     }
     hide_hid_dpad(read, size);
     hide_hid_buttons(read, size);
+    // A scripted press (the character room's walk: RB from page to page) reaches a PlayStation pad the game reads itself too,
+    // as it reaches XInput, ahead of any hold: such a player's game never polls XInput, so the walk's presses went nowhere and
+    // the room did not open.
+    WORD scripted{};
+    if (!overlay_input_access && read.buffer && size <= read.capacity && scripted_buttons(scripted)) {
+        if (auto scripted_pad = parse_playstation_report(read.kind, bluetooth, bytes, size)) {
+            scripted_pad->buttons = scripted;
+            if (replace_playstation_report(read.kind, bluetooth, bytes, size, *scripted_pad)) refresh_playstation_bluetooth_crc(bytes, size);
+            static std::atomic<bool> reported{};
+            if (!reported.exchange(true)) logging::write(logging::Level::info, logging::Channel::input,
+                "A scripted pad press reached a native PlayStation HID read.");
+        }
+    }
 }
 // Local operation objects correlate the initiating wrapper and result polls.
 // IOCP packets have no such token: they are admitted only by observed port/key
@@ -673,7 +730,17 @@ UINT WINAPI captured_raw_data(HRAWINPUT input, UINT command, LPVOID data, PUINT 
         const bool mouse = raw->header.dwType == RIM_TYPEMOUSE && result >= offsetof(RAWINPUT, data) + sizeof(RAWMOUSE);
         const bool keyboard =
             raw->header.dwType == RIM_TYPEKEYBOARD && result >= offsetof(RAWINPUT, data) + sizeof(RAWKEYBOARD);
-        if(keyboard && (challenge_menu_key(raw->data.keyboard.VKey) || hidden_press(raw->data.keyboard))) {
+        if (mouse) hide_mouse_presses(raw->data.mouse);
+        // (A hidden key, and the held pointer's movement: the read fails, as for a packet that is gone.
+        // Handed over as an empty keyboard packet, as it was, it still told Skate the keyboard was in use.)
+        // (Asked once a packet: hidden_press keeps count of which presses the game has had.)
+        const bool hidden_key = keyboard && hidden_press(raw->data.keyboard);
+        if (!block_polled_input() && ((hidden_key && !challenge_menu_key(raw->data.keyboard.VKey)) ||
+                                      (mouse && held_mouse_packet(raw->data.mouse)))) {
+            std::memset(data, 0, result);
+            return UINT(-1);
+        }
+        if(keyboard && (challenge_menu_key(raw->data.keyboard.VKey) || hidden_key)) {
             raw->data.keyboard={};raw->data.keyboard.VKey=255;
             raw->data.keyboard.Flags=RI_KEY_BREAK;raw->data.keyboard.Message=WM_KEYUP;
         } else if (!block_polled_input()) {
@@ -819,12 +886,24 @@ UINT WINAPI captured_raw_buffer(PRAWINPUT data, PUINT size, UINT header_size) {
             const bool mouse = record->header.dwType == RIM_TYPEMOUSE && bytes >= offsetof(RAWINPUT, data) + sizeof(RAWMOUSE);
             const bool keyboard =
                 record->header.dwType == RIM_TYPEKEYBOARD && bytes >= offsetof(RAWINPUT, data) + sizeof(RAWKEYBOARD);
-            if(keyboard && (challenge_menu_key(record->data.keyboard.VKey) || hidden_press(record->data.keyboard))) {
+            if (mouse) hide_mouse_presses(record->data.mouse);
+            // (A hidden key, and the held pointer's movement, are taken out of the buffer: see held_mouse_packet.)
+            // (Asked once a packet: hidden_press keeps count of which presses the game has had.)
+            const bool hidden_key = keyboard && hidden_press(record->data.keyboard);
+            const bool withheld = !capture && ((hidden_key && !challenge_menu_key(record->data.keyboard.VKey)) ||
+                                               (mouse && held_mouse_packet(record->data.mouse)));
+            if(!withheld && keyboard && (challenge_menu_key(record->data.keyboard.VKey) || hidden_key)) {
                 record->data.keyboard={};record->data.keyboard.VKey=255;
                 record->data.keyboard.Flags=RI_KEY_BREAK;record->data.keyboard.Message=WM_KEYUP;
             }
             if (!capture) {
-                if ((mouse || keyboard) && !overlay_input_access) held_input().seen(*record);
+                if (!withheld) {
+                    if ((mouse || keyboard) && !overlay_input_access) held_input().seen(*record);
+                    if (write != reinterpret_cast<std::uintptr_t>(record))
+                        std::memmove(reinterpret_cast<void*>(write), record, bytes);
+                    write = align(write + bytes);
+                    ++kept;
+                }
             } else if ((mouse || keyboard) && held_input().release_only(*record)) {
                 // Kept records move forward over the dropped ones, in the same layout.
                 if (write != reinterpret_cast<std::uintptr_t>(record))
@@ -834,7 +913,7 @@ UINT WINAPI captured_raw_buffer(PRAWINPUT data, PUINT size, UINT header_size) {
             }
             record = reinterpret_cast<RAWINPUT*>(next);
         }
-        if (capture) return kept;
+        return kept; // (what is left: all of it, when nothing was withheld)
     }
     return capture ? 0 : result;
 }
@@ -1125,6 +1204,23 @@ DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
     return result;
 }
 // Controller capture xinput publication end.
+template<std::size_t I>
+DWORD WINAPI captured_capabilities(DWORD user, DWORD flags, XINPUT_CAPABILITIES* output) {
+    const auto result = original<DWORD(WINAPI*)(DWORD, DWORD, XINPUT_CAPABILITIES*)>(input_hooks().xinput_capabilities[I])(user, flags, output);
+    // The stand-in pad is connected while a script plays (the character room's walk): a game that has no controller reads
+    // only pads it has seen arrive (scripted_pad.h, wake_controller_reads).
+    if (result != ERROR_SUCCESS && user == 0 && output && stand_in_connected()) {
+        *output = {};
+        output->Type = XINPUT_DEVTYPE_GAMEPAD;
+        output->SubType = XINPUT_DEVSUBTYPE_GAMEPAD;
+        output->Gamepad.wButtons = 0xF3FF;
+        output->Gamepad.bLeftTrigger = output->Gamepad.bRightTrigger = 0xFF;
+        output->Gamepad.sThumbLX = output->Gamepad.sThumbLY = output->Gamepad.sThumbRX = output->Gamepad.sThumbRY = static_cast<SHORT>(0xFFC0);
+        output->Vibration.wLeftMotorSpeed = output->Vibration.wRightMotorSpeed = 0xFF;
+        return ERROR_SUCCESS;
+    }
+    return result;
+}
 template<std::size_t I>
 DWORD WINAPI captured_keystroke(DWORD user, DWORD reserved, PXINPUT_KEYSTROKE output) {
     const auto result = original<DWORD(WINAPI*)(DWORD, DWORD, PXINPUT_KEYSTROKE)>(
@@ -1436,6 +1532,8 @@ bool install_input_capture() {
         reinterpret_cast<void*>(captured_xinput<2, true>), reinterpret_cast<void*>(captured_xinput<3, true>), reinterpret_cast<void*>(captured_xinput<4, true>)};
     const std::array<void*, 5> strokes{reinterpret_cast<void*>(captured_keystroke<0>), reinterpret_cast<void*>(captured_keystroke<1>),
         reinterpret_cast<void*>(captured_keystroke<2>), reinterpret_cast<void*>(captured_keystroke<3>), reinterpret_cast<void*>(captured_keystroke<4>)};
+    const std::array<void*, 5> capabilities{reinterpret_cast<void*>(captured_capabilities<0>), reinterpret_cast<void*>(captured_capabilities<1>),
+        reinterpret_cast<void*>(captured_capabilities<2>), reinterpret_cast<void*>(captured_capabilities<3>), reinterpret_cast<void*>(captured_capabilities<4>)};
     const std::array names{L"xinput1_4.dll", L"xinput1_3.dll", L"xinput9_1_0.dll", L"xinput1_2.dll", L"xinput1_1.dll"};
     std::vector<void*> seen;
     for (std::size_t i = 0; i < names.size(); ++i) {
@@ -1450,6 +1548,11 @@ bool install_input_capture() {
         if (!hook_export(h.xinput_state[i], "XInputGetState", states[i]) ||
             !hook_export(h.xinput_extended[i], MAKEINTRESOURCEA(100), extended[i]) ||
             !hook_export(h.xinput_keystroke[i], "XInputGetKeystroke", strokes[i])) return false;
+        // Answers as XInput does, except for the stand-in pad while a script plays (captured_capabilities). Not needed for
+        // the rest of the capture, so one that cannot be hooked is said and passed over.
+        if (!hook_export(h.xinput_capabilities[i], "XInputGetCapabilities", capabilities[i]))
+            dingosdk::logging::printf(dingosdk::logging::Level::warning, dingosdk::logging::Channel::input,
+                "XInputGetCapabilities is not hooked (module %zu): the character room's walk may not reach a game with no controller.", i);
     }
     const auto direct = LoadLibraryExW(L"dinput8.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
     if (direct) {
@@ -1471,6 +1574,10 @@ namespace dingosdk::overlay {
 // every caller uses this one.)
 void set_plugin_dialog_active(bool active) noexcept { detail::state().plugin_dialog_visible.store(active); }
 bool interface_open() noexcept { return detail::interactive_visible(detail::state()); }
+bool text_entry_open() noexcept {
+    const auto& s = detail::state();
+    return s.chat_visible.load() || s.console_visible.load() || s.hub_typing.load() || s.item_search_visible.load();
+}
 void hide_game_buttons(std::uint16_t buttons) noexcept { detail::mode_hidden_buttons.store(buttons, std::memory_order_relaxed); }
 void capture_challenge_menu_input(bool active,bool native_panel,bool opening_key_down) noexcept {
     detail::challenge_menu_release.store(game::owned_menu_release_latch(
@@ -1487,7 +1594,17 @@ void hold_game_buttons(std::uint16_t held) noexcept { detail::mode_held_buttons.
 void pause_game_input(bool paused) noexcept {
     detail::mode_input_paused_until.store(paused ? GetTickCount64() + 500 : 0, std::memory_order_relaxed);
 }
-bool key_down(int virtual_key) noexcept { detail::OverlayInputAccess access; return (GetAsyncKeyState(virtual_key) & 0x8000) != 0; }
+// (A mouse button: Windows' own state of it stops while Skate takes the mouse raw, its controller
+// mode, so the buttons the raw packets last said are down count too, while those are coming.)
+bool key_down(int virtual_key) noexcept {
+    detail::OverlayInputAccess access;
+    if ((GetAsyncKeyState(virtual_key) & 0x8000) != 0) return true;
+    const unsigned bit = virtual_key == VK_LBUTTON ? 1u : virtual_key == VK_RBUTTON ? 2u : virtual_key == VK_MBUTTON ? 4u : 0u;
+    if (!bit) return false;
+    const auto& s = detail::state();
+    const auto time = s.raw_mouse_time.load();
+    return time && GetTickCount64() < time + 10000 && (s.raw_mouse_buttons.load() & bit) != 0;
+}
 int take_mouse_wheel() noexcept { return detail::mode_mouse_wheel.exchange(0, std::memory_order_relaxed); }
 }
 

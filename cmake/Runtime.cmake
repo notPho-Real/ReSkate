@@ -284,6 +284,7 @@ add_library(dingosdk_runtime SHARED
     Extension/Travel/local_location_travel.cpp
     Extension/World/local_park_rotation.cpp
     Extension/World/local_world_layers.cpp
+    Extension/World/time_of_day_lighting.cpp
     Extension/World/visual_environment.cpp
     Extension/World/local_population_controls.cpp
     Extension/World/native_route_lookahead.cpp
@@ -303,6 +304,7 @@ add_library(dingosdk_runtime SHARED
     Extension/Boot/ea_service_block.cpp
     Extension/Boot/eadp_errors_arena.cpp
     Extension/Boot/descriptor_heap_size.cpp
+    Extension/Rendering/frame_generation_retain.cpp
     Extension/Boot/game_fatal_dump.cpp)
 
 # The research tools that are whole files (cmake/ProjectOptions.cmake, DINGOSDK_DEV_TOOLS): `ui dump`
