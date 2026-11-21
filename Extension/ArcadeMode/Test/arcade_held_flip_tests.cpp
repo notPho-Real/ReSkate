@@ -235,6 +235,59 @@ void queued_first_repetition() {
     }
 }
 void preair_queued_repetition() {
+    // The recorded native launch remains in setup until about release+220ms.
+    // Both real X edges can therefore arrive after the old 160ms preload but
+    // before AIR. Preserve each edge instead of recovering only the latest X.
+    for(unsigned hz:{30u,60u,120u})
+    for(std::int16_t direction:{std::int16_t{0},std::int16_t{-25000},std::int16_t{25000}})
+    for(bool switched:{false,true}) {
+        auto h=std::make_unique<Route>();h->bridge_accept=false;h->switched=switched;
+        const auto dt=(1000u+hz-1)/hz;
+        h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
+        h->poll(1051,{0x1000},100,1);h->poll(1085,{},100,1);
+        h->poll(1136,{},100,1);h->poll(1204,{},103,1);
+        h->poll(1255,{0x4000,direction,0},103,1,false);
+        h->poll(1255+dt,{},103,1,false);
+        const auto second=1255+2*dt;h->poll(second,{0x4000},103,1,false);
+        check(!h->bridge_calls && !h->repeats,"late setup X pair waits for independently observed AIR");
+        h->poll(second+dt,{},200,1,false);h->bridge_accept=true;
+        h->poll(second+2*dt,{},201,1,false);
+        const auto id=direction>0?3:2;
+        const auto out=h->poll(second+3*dt,{},201,1,false,0,false,false,id);
+        check(h->bridge_calls==1 && h->requested==id && h->repeats==1 && out.authored_playback,
+              "X pair after160ms retains both physical edges through the same native pop");
+        check(h->repeated_request.physical_pressed_at==second &&
+              h->repeated_request.deadline==second+InputTiming::readiness_ms &&
+              h->repeated_request.pop_release_at==1085 && !h->repeated_request.unbounded,
+              "late setup pair retains the exact original repeat deadline and released pop");
+    }
+    for(unsigned fault=0;fault<13;++fault) {
+        auto h=std::make_unique<Route>();h->bridge_accept=false;
+        if(fault==12)h->admission.normal_flip={};
+        h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
+        h->poll(1051,{0x1000},100,1);h->poll(1085,{},100,1);
+        h->poll(1136,{},100,1);h->poll(1204,{},103,1);
+        h->poll(1255,{0x4000},103,1,false);h->poll(1272,{},103,1,false);
+        h->poll(1289,{0x4000},103,1,false);
+        if(fault==0)++h->owner.rig;
+        if(fault==1)h->admission.gameplay=false;
+        if(fault==2)h->admission.external_owner=true;
+        if(fault==3)h->switched=true;
+        if(fault==4)h->selection_object=32;
+        if(fault==5)h->held_available=false;
+        if(fault==11) {
+            for(unsigned at=1323;at<1585;at+=34)h->poll(at,{},103,1,false);
+            h->poll(1585,{},103,1,false); // Original pop has expired at500ms.
+        }
+        const auto air=fault==11?1602u:1306u;
+        h->poll(air,{},200,1,false);
+        h->poll(air+17,fault==8?PhysicalInputSample{0x1000}:PhysicalInputSample{},
+            (fault==6 || fault==8)?100:fault==7?300:201,1,false);
+        h->bridge_accept=true;
+        h->poll(air+34,{},201,1,fault==9);
+        h->poll(air+51,{},201,1,fault==9,0,false,false,fault==10?3:2);
+        check(!h->repeats,"late setup pair preserves owner, focus, conflict, stance, selector, native actor, landing, bail, new A, Prepare and pop expiry gates");
+    }
     for(unsigned hz:{30u,60u,120u})for(unsigned phase:{100u,103u})
     for(std::int16_t direction:{std::int16_t{0},std::int16_t{-25000},std::int16_t{25000}})
     for(bool switched:{false,true}) {

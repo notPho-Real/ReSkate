@@ -773,8 +773,12 @@ public:
             if (environment.auxiliary_enabled && (grab_pressed || (environment.named_grabs && !environment.deferred_grabs)))
                 recognize_grab(now, environment);
         }
+        // A verified native pop can still be in setup after the generic
+        // preload ends. Record each X edge throughout that same bounded pop;
+        // waiting until AIR would collapse a rapid pair to its latest edge.
         if (environment.context == InputContext::ground && takeoff &&
-            now-takeoff<=InputTiming::takeoff_preload_ms)
+            (now-takeoff<=InputTiming::takeoff_preload_ms ||
+             (environment.native_pop_transition && now-takeoff<InputTiming::direction_ms)))
             recognize_flip(now,environment,flip_release);
         recognize_wallplant_edge(now,environment);
         if (grab_pressed) direction_ = 0;
@@ -1378,7 +1382,8 @@ private:
         InputForm form{}; std::int16_t defined_direction{};
         const InputRequest* queued_prefix=nullptr;
         const bool preload=takeoff_release_at_ && now>=takeoff_release_at_ &&
-            now-takeoff_release_at_<=InputTiming::takeoff_preload_ms;
+            (now-takeoff_release_at_<=InputTiming::takeoff_preload_ms ||
+             (environment.native_pop_transition && now-takeoff_release_at_<InputTiming::direction_ms));
         const bool preair=environment.context==InputContext::ground && preload && environment.native_pop_transition;
         if(environment.native_held_flip && !active_flip_ && environment.native_context.required &&
             (environment.context==InputContext::air || preair))

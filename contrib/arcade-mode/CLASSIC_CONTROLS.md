@@ -37,9 +37,11 @@ In production, a neutral airborne X press immediately recognizes a basic
 Kickflip request without waiting for release. A valid direction matched before
 or with that press takes precedence; a direction arriving after recognition
 cannot replace the request, even while X remains held. Release cannot repeat it.
-A fresh neutral X after an admitted Ollie release can also be recognized during
-the existing 160ms takeoff preload, before AIR is observed. This belongs to that
-released pop; unrelated ground input cannot borrow it. Native readiness and
+A fresh neutral X after an admitted Ollie release can also be recognized before
+AIR is observed. The generic preload is160ms; independently verified native pop
+setup retains each physical X edge through that same pop's existing lifetime,
+strictly less than500ms from release. This belongs to that released pop;
+unrelated ground input cannot borrow it. Native readiness and
 exact result checks still gate execution. The separate compatibility policy
 retains the delayed held/released-face directional query for500ms; production
 does not delay its neutral default for that window.
