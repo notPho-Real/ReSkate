@@ -300,6 +300,7 @@ std::atomic<double> render_seed_until{};
 NativePose render_seed_sample; // native_pose_mutex
 PoseSeedStamp render_seed_stamp;
 double render_seed_at{};
+std::uintptr_t render_seed_holder{};
 std::shared_ptr<const Plan> render_seed_plan;
 // Remember the upstream mount's before/after pair so an unchanged buffer
 // cannot feed its previous visual mount back into a new native seed.
@@ -557,7 +558,7 @@ void capture_render_seed(std::uintptr_t component, std::uintptr_t holder, const 
     if (!pose_seed_current(owner, seed_owner(), at, now_seconds())) return;
     sample.sequence = render_seed_sample.sequence + 1;
     render_seed_sample = std::move(sample);
-    render_seed_stamp = owner; render_seed_at = at; render_seed_plan = snap;
+    render_seed_stamp = owner; render_seed_at = at; render_seed_plan = snap; render_seed_holder = holder;
 }
 
 // What other players get of the local skater: the same joints as the renderer.
@@ -1872,7 +1873,8 @@ std::optional<NativePose> native_render_pose() {
     if (!seed_plan_clear(*snap, now)) return std::nullopt;
     std::lock_guard lock(native_pose_mutex);
     if (!render_seed_sample.sequence || render_seed_plan != snap ||
-        !pose_seed_current(render_seed_stamp, seed_owner(), render_seed_at, now)) return std::nullopt;
+        !pose_seed_current(render_seed_stamp, seed_owner(), render_seed_at, now) ||
+        read<std::uintptr_t>(render_seed_stamp.component + addr::native_skater::component_animation_holder_offset).value_or(0) != render_seed_holder) return std::nullopt;
     auto sample = render_seed_sample;
     sample.age = now-render_seed_at;
     return sample;

@@ -47,6 +47,7 @@ std::atomic<double> room_restore_until{},render_seed_until{};
 NativePose render_seed_sample;
 PoseSeedStamp render_seed_stamp;
 double render_seed_at{},clock_now=10;
+std::uintptr_t render_seed_holder{};
 std::shared_ptr<const Plan> render_seed_plan,plan_now=std::make_shared<Plan>();
 std::shared_ptr<const Plan> plan(){return plan_now;}
 double now_seconds(){return clock_now;}
@@ -131,7 +132,7 @@ void test_seed(){
         }
         capture();check(!render_seed_sample.sequence,"Unstable, modified or stale rigs must not publish a seed");
     }
-    for(unsigned fault=0;fault<5;++fault){
+    for(unsigned fault=0;fault<6;++fault){
         reset();(void)native_render_pose();capture();
         switch(fault){
         case 0: ++native_pose_generation;break;
@@ -139,6 +140,7 @@ void test_seed(){
         case 2: plan_now=std::make_shared<Plan>();break;
         case 3: board_pose::modified=true;break;
         case 4: clock_now=9;break;
+        case 5: animation_holder+=0x1000;break;
         }
         check(!native_render_pose(),"Getter revalidates the published observation");
     }
