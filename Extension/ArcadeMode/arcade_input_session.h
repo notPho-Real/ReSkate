@@ -80,6 +80,7 @@ public:
     void reset() noexcept {
         input_.reset(); authored_.cancel(); manual_.cancel(); auxiliary_.cancel();
         held_flip_.cancel();held_flip_used_=false;held_flip_lineage_={};
+        held_request_sequence_=held_request_pressed_at_=0;
         held_prepare_seen_=held_prepare_retired_=false;
         footplant_=ground_grab_=false;
         push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false; air_followup_id_=0;
@@ -149,6 +150,7 @@ public:
         wallplant_owner_=proof.generations.owner;wallplant_sequence_=input_sequence;
         input_.retire_air_actions();authored_.cancel();auxiliary_.cancel();held_flip_.cancel();
         held_flip_used_=false;held_flip_lineage_={};air_action_=native_followup_=false;
+        held_request_sequence_=held_request_pressed_at_=0;
         air_followup_id_=0;air_actor_episode_={};grab_actor_=false;grab_actor_episode_={};grab_hold_button_=0;
         rail_release_.reset();takeoff_release_at_=0;takeoff_native_={};takeoff_jump_observed_=takeoff_from_rail_=false;
         retired_rail_y_={};
@@ -339,6 +341,7 @@ public:
         output.right_x = output.right_y = 0; // Physical right stick belongs to the camera.
         if (!air_action_) {
             held_flip_.cancel();held_flip_used_=false;held_flip_lineage_={};
+            held_request_sequence_=held_request_pressed_at_=0;
             held_prepare_seen_=held_prepare_retired_=false;
         }
         else if ((air_followup_id_==2 || air_followup_id_==3) && (!held_flip_used_ || held_flip_.active())) {
@@ -809,6 +812,26 @@ private:
             }
             if (request.form==InputForm::held_repeat) {
                 const auto id=static_cast<int>(held_flip_base(request.air.trick));
+                if(request.presses==3) {
+                    // Extend the already delivered held gesture, never replay
+                    // the one-shot base bridge or begin another native actor.
+                    const bool same_flight=air_action_ && held_flip_used_ &&
+                        air_followup_id_==id && launch_context_==GestureContext::ground &&
+                        admission.native_context.required && admission.native_context.fresh(now_) &&
+                        admission.native_context.air_episode()==air_actor_episode_ &&
+                        held_flip_continues(held_flip_lineage_,admission.native_context,now_,id) &&
+                        admission.native_context.flip.valid && !admission.external_owner &&
+                        admission.action_mode==ActionExperiment::classic && !request.nollie &&
+                        physical_.lt<=30 && physical_.rt<=30 && !(physical_.buttons&0xb030u) &&
+                        !manual_.busy() && !auxiliary_.busy() && authored_.busy();
+                    if((request.air.trick!=ArcadeTrick::triple_kickflip && request.air.trick!=ArcadeTrick::triple_heelflip) ||
+                        (request.direction!=4 && request.direction!=6) || !held_request_sequence_ ||
+                        request.parent_input_sequence!=held_request_sequence_ || request.input_sequence<=held_request_sequence_ ||
+                        request.physical_pressed_at<=held_request_pressed_at_ || request.physical_pressed_at>now_ ||
+                        !held_flip_.extend(now_,id,admission.held_flip,same_flight)) return InputDisposition::cancelled;
+                    out.held_flip_request=id;
+                    return InputDisposition::started;
+                }
                 // The native Prepare window consumes a gesture already in
                 // progress. Starting our multi-frame flick inside it missed
                 // HeldTrick admission in the 200ms hardware repeat and caused
@@ -841,6 +864,7 @@ private:
                         held_flip_.cancel();return InputDisposition::unsupported;
                     }
                     held_flip_used_=true;
+                    held_request_sequence_=request.input_sequence;held_request_pressed_at_=request.physical_pressed_at;
                     out.held_flip_request=id;
                     return InputDisposition::started;
                 }
@@ -1134,6 +1158,7 @@ private:
     UnifiedInput input_{};
     AuthoredPlayback authored_{};
     HeldFlipInput held_flip_{};
+    std::uint64_t held_request_sequence_{},held_request_pressed_at_{};
     bool held_flip_used_{};
     bool held_prepare_seen_{},held_prepare_retired_{};
     InputNativeContext held_flip_lineage_{};

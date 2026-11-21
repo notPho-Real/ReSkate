@@ -117,7 +117,8 @@ struct Route {
     InputSession session;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
     InputAdmission admission{};NativeInputFrame frame{};unsigned bridge_calls{},repeats{};
     std::int32_t requested{};std::vector<PreparedGesture> recipes;bool held_available{true},bridge_accept{true},switched{};
-    InputRequest repeated_request{};
+    InputRequest repeated_request{},third_request{};
+    bool one_shot_bridge{};
     std::uintptr_t selection_object{16};
     bool transient_phase_zero{};
     dingosdk::NativeOrientation native_orientation{true,false};
@@ -130,7 +131,7 @@ struct Route {
         admission.may_start=admission.inspected_stance=true;admission.action_mode=ActionExperiment::classic;
         admission.catalog=recipes;admission.held_flip.available=true;
         admission.normal_flip={this,[](void* p,std::int32_t id) noexcept {
-            auto& self=*static_cast<Route*>(p);if(!self.bridge_accept)return false;
+            auto& self=*static_cast<Route*>(p);if(!self.bridge_accept || (self.one_shot_bridge && self.bridge_calls))return false;
             ++self.bridge_calls;self.requested=id;return true;
         }};
     }
@@ -152,7 +153,9 @@ struct Route {
         const auto& d=session.diagnostic();
         for(std::size_t i=0;i<d.dispatched;++i)
             if(d.dispatch[i].request.form==InputForm::held_repeat && d.dispatch[i].disposition==InputDisposition::started) {
-                ++repeats;repeated_request=d.dispatch[i].request;
+                ++repeats;
+                if(d.dispatch[i].request.presses==3)third_request=d.dispatch[i].request;
+                else repeated_request=d.dispatch[i].request;
             }
         return out;
     }
@@ -164,6 +167,139 @@ struct Route {
         poll(1170,{},201,requested,false);
     }
 };
+void physical_triples() {
+    for(unsigned hz:{30u,60u,120u})for(unsigned stage:{0u,1u,2u})
+    for(std::int16_t direction:{std::int16_t{-25000},std::int16_t{25000}})
+    for(bool switched:{false,true}) {
+        auto h=std::make_unique<Route>();h->one_shot_bridge=true;h->bridge_accept=stage==2;h->switched=switched;
+        const auto dt=(1000u+hz-1)/hz;const int id=direction>0?3:2;
+        h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
+        h->poll(1051,{0x1000},100,1);h->poll(1085,{},100,1);
+        if(stage) {h->poll(1102,{},200,1,false);h->poll(1119,{},201,1,false);}
+        const auto first=stage?1153u:1102u,second=first+2*dt,third=first+4*dt;
+        const auto phase=stage?201u:103u;
+        h->poll(first,{0x4000,direction,0},phase,1,false,0,false,false,id);
+        h->poll(first+dt,{},phase,1,false,0,false,false,id);
+        h->poll(second,{0x4000},phase,1,false,0,false,false,id);
+        h->poll(second+dt,{},phase,1,stage==2,0,stage==2,stage==2,id);
+        h->poll(third,{0x4000},phase,1,stage==2,0,stage==2,stage==2,id);
+        if(!stage)h->poll(third+dt,{},200,1,false,0,false,false,id);
+        h->bridge_accept=true;
+        for(unsigned n=1;n<=4;++n)h->poll(third+(n+1)*dt,{},201,1,false,0,stage==2,stage==2,id);
+        check(h->bridge_calls==1 && h->repeats==2 && h->third_request.presses==3,
+            "third physical X upgrades the existing held owner without a second native base request");
+        check(h->third_request.parent_input_sequence==h->repeated_request.input_sequence &&
+            h->third_request.input_sequence>h->repeated_request.input_sequence &&
+            h->third_request.physical_pressed_at==third && h->third_request.deadline==third+InputTiming::readiness_ms &&
+            !h->third_request.unbounded,
+            "third edge retains its exact second parent and immutable physical admission deadline");
+        auto out=h->poll(third+6*dt,{},201,1,true,1,true,true,id);
+        check(out.authored_playback && !out.held_input_released && !out.held_actor_acknowledged,
+            "upgraded held input keeps native ownership through the first extra rotation");
+        out=h->poll(third+7*dt,{},201,1,true,2,true,true,id);
+        check(out.held_input_released && out.held_actor_acknowledged && !out.authored_playback,
+            "triple catches at two independently observed extra rotations and original actor advancement");
+        h->poll(third+8*dt,{},100,-1,false,2,false,false,id);
+        check(h->bridge_calls==1 && h->repeats==2,"landing cannot replay a consumed triple request");
+    }
+}
+void triple_boundaries() {
+    for(bool entered:{false,true}) {
+        HeldFlipInput input;HeldFlipObservation native{true,true,false,false,false,2,0,1000};
+        check(input.start(1000,2,native),"triple boundary begins the existing double gesture");
+        native.sampled_at=1050;native.holding=entered;native.actor_advanced=entered;
+        check(input.hold(1050,native,true),"entry observation belongs to the original hold");
+        native.sampled_at=1100;
+        check(input.extend(1100,2,native,true),"third input can upgrade admitted preparation or active native hold");
+        check(!input.extend(1100,2,native,true),"duplicate or fourth input cannot upgrade again");
+        const auto end=entered?2201u:1201u;native.sampled_at=end;
+        check(!input.hold(end,native,true) && !input.acknowledged(),
+            "third input never renews the original200ms entry or1200ms held lifetime");
+    }
+    for(unsigned fault=0;fault<9;++fault) {
+        HeldFlipInput input;HeldFlipObservation native{true,true,false,false,false,2,0,1000};
+        check(input.start(1000,2,native),"third rejection preserves a valid double start");
+        native.sampled_at=1034;native.holding=native.actor_advanced=true;
+        check(input.hold(1034,native,true),"third rejection starts from original native actor ownership");
+        auto third=native;third.sampled_at=1068;
+        if(fault==0)third.available=false;
+        if(fault==1)third.valid=false;
+        if(fault==2)third.id=3;
+        if(fault==3)third.sampled_at=900;
+        if(fault==4)third.extra_rotations=1;
+        if(fault==5)third.extra_rotations=std::nanf("");
+        if(fault==6)third.holding=false;
+        check(!input.extend(fault==7?999:1068,2,third,fault!=8),
+            "unqualified third cannot extend wrong, stale, caught, ended or foreign native input");
+        native.sampled_at=1102;native.extra_rotations=1;
+        check(!input.hold(1102,native,true) && input.acknowledged(),
+            "rejected extension leaves the original double catch unchanged");
+    }
+    for(float observed:{2.0f,3.0f})for(bool actor:{false,true}) {
+        HeldFlipInput input;HeldFlipObservation native{true,true,false,false,false,2,0,1000};
+        check(input.start(1000,2,native) && input.extend(1000,2,native,true),"native triple result has an admitted target only");
+        native.sampled_at=1034;native.holding=true;native.actor_advanced=actor;native.extra_rotations=observed;
+        check(!input.hold(1034,native,true) && input.acknowledged()==(actor && observed==2),
+            "target count without actor or an overshot rotation cannot acknowledge an exact triple");
+    }
+    // The existing timely-parent/successor exception belongs to the double.
+    // Its queued third has an independent half-open physical200ms deadline.
+    for(unsigned delivery:{1369u,1370u}) {
+        auto h=std::make_unique<Route>();h->one_shot_bridge=true;h->bridge_accept=false;
+        h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
+        h->poll(1051,{0x1000},100,1);h->poll(1085,{},100,1);
+        h->poll(1102,{0x4000,-25000},103,1,false);h->poll(1119,{},103,1,false);
+        h->poll(1136,{0x4000},103,1,false);h->poll(1153,{},103,1,false);
+        h->poll(1170,{0x4000},103,1,false);h->poll(1204,{},103,1,false);
+        h->poll(1250,{},200,1,false);h->poll(1286,{},201,1,false);
+        h->bridge_accept=true;h->poll(1320,{},201,1,false);
+        h->poll(1354,{},201,1,false,0,false,false,2);
+        check(h->repeats==1 && h->bridge_calls==1,"existing double retains its one successor beyond original second deadline");
+        h->poll(delivery,{},201,1,true,0,true,true,2);
+        check(h->repeats==(delivery==1369?2u:1u),"third expires at its own physical200ms deadline without borrowing double dependency");
+        const auto out=h->poll(delivery+17,{},201,1,true,1,true,true,2);
+        check(out.held_input_released==(delivery==1370) && out.held_actor_acknowledged==(delivery==1370),
+            "expired third preserves double catch while timely third keeps its original native hold");
+    }
+}
+void triple_cancellation() {
+    for(unsigned fault=0;fault<18;++fault) {
+        auto h=std::make_unique<Route>();h->one_shot_bridge=true;
+        h->first(fault==11?0:-25000);
+        h->poll(1187,{0x4000},201,2,false,0,false,false,2);
+        h->poll(1204,{},201,2,true,0,true,true,2);
+        check(h->repeats==1,"third negative starts with a live original double owner");
+        if(fault==0)++h->owner.rig;
+        if(fault==1)h->admission.gameplay=false;
+        if(fault==2)h->admission.external_owner=true;
+        if(fault==3)h->switched=true;
+        if(fault==4)h->selection_object=32;
+        if(fault==5)h->held_available=false;
+        if(fault==15)h->admission.action_mode=ActionExperiment::off;
+        const auto at=fault==16?1356u:1221u;
+        PhysicalInputSample pad{static_cast<std::uint16_t>(fault==8?0x5000: fault==12?0x6000:0x4000)};
+        if(fault==13)pad.lt=255;
+        if(fault==14)pad.rt=255;
+        const auto out=h->poll(at,pad,fault==6?100:fault==7?300:201,fault==17?4:2,true,
+            fault==9?1.0f:0.0f,true,true,fault==10?3:2,fault!=16);
+        check(!h->third_request.input_sequence && h->repeats==1,
+            "third rejects changed owner, focus, conflict, stance, object, observer, landing, bail, new A, catch, wrong actor, neutral binding, buttons and stale state");
+        if(fault==9)check(out.held_input_released && out.held_actor_acknowledged,
+            "count1 in the third-edge poll catches the established double before any extension");
+        if(fault==11) {
+            const auto caught=h->poll(at+17,{},201,2,true,1,true,true,2);
+            check(caught.held_input_released && caught.held_actor_acknowledged,"unmapped neutral third leaves native double unchanged");
+        }
+    }
+    auto h=std::make_unique<Route>();h->one_shot_bridge=true;h->first(-25000);
+    h->poll(1187,{0x4000},201,2,false,0,false,false,2);h->poll(1204,{},201,2,true,0,true,true,2);
+    h->poll(1221,{0x4000},201,2,true,0,true,true,2);h->poll(1238,{},201,2,true,0,true,true,2);
+    h->poll(1255,{0x4000},201,2,true,0,true,true,2);
+    check(h->repeats==2 && h->bridge_calls==1,"fourth X cannot start another held owner or native base");
+    h->poll(1272,{},201,2,true,1,true,true,2);
+    const auto caught=h->poll(1289,{},201,2,true,2,true,true,2);
+    check(caught.held_input_released && caught.held_actor_acknowledged,"fourth X cannot delay the exact triple catch");
+}
 void queued_first_repetition() {
     for(unsigned hz:{30u,60u,120u}) for(std::int16_t direction:{std::int16_t{0},std::int16_t{-25000},std::int16_t{25000}})
     for(bool switched:{false,true}) for(bool physics_retired:{false,true})
@@ -745,4 +881,4 @@ void physical_repetition() {
     }
 }
 }
-int main(){transient_phase_lifetime();native_phase_recheck();preair_late_parent_readiness();late_parent_dependency_boundaries();native_boundaries();preair_successor_dependency();successor_dependency_boundaries();composed_successor_negatives();preair_queued_repetition();queued_first_repetition();physical_repetition();std::cout<<checks<<" held-flip input checks passed; native animation observations are fixtures\n";}
+int main(){physical_triples();triple_boundaries();triple_cancellation();transient_phase_lifetime();native_phase_recheck();preair_late_parent_readiness();late_parent_dependency_boundaries();native_boundaries();preair_successor_dependency();successor_dependency_boundaries();composed_successor_negatives();preair_queued_repetition();queued_first_repetition();physical_repetition();std::cout<<checks<<" held-flip input checks passed; native animation observations are fixtures\n";}

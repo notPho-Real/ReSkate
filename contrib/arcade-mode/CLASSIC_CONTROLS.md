@@ -114,6 +114,13 @@ exists. A dash means this contract assigns no variant to that combination.
 | Down-Left | Varial Kickflip | 360 Flip | — |
 | Down-Right | Varial Heelflip | 360 Heelflip | — |
 
+Directional Triple Kickflip and Triple Heelflip extend the existing held double
+only when a fresh third X reaches that same owned flight before its catch. The
+third edge keeps its own200ms deadline; it cannot borrow the double's successor
+allowance or restart the native base actor. The original held-entry and lifetime
+limits remain unchanged. Neutral X retains its double-only mapping. These routes
+are implemented but require exact-candidate native triple acceptance.
+
 After releasing an ordinary Ollie, a prompt neutral X tap can wait through
 takeoff for native AIR readiness. This requires the admitted Ollie release and
 its observed native jump; an unrelated ground tap is not carried into a fall.

@@ -66,6 +66,14 @@ public:
             native.holding || native.extra_rotations!=0) return false;
         *this={};active_=true;id_=id;began_=now;return true;
     }
+    // A third physical edge may extend only this still-owned held gesture.
+    // Keep its original admission clock; a caught double cannot be restarted.
+    bool extend(std::uint64_t now,std::int32_t id,const HeldFlipObservation& native,bool same_flight) noexcept {
+        if (!active_ || target_!=1.0f || !same_flight || id!=id_ || !native.fresh(now) || native.id!=id_ ||
+            native.extra_rotations>=1 || now<began_ || now-began_>1200 ||
+            (!entered_ && now-began_>200) || (entered_ && !native.holding)) return false;
+        target_=2.0f;return true;
+    }
     bool hold(std::uint64_t now,const HeldFlipObservation& native,bool same_flight) noexcept {
         if (!active_) return false;
         if (!same_flight || !native.fresh(now) || native.id!=id_ || now<began_ || now-began_>1200) {
@@ -74,9 +82,10 @@ public:
         entered_=entered_ || native.holding;
         actor_=actor_ || native.actor_advanced;
         // The original native counter counts EXTRA rotations. Withdrawal at
-        // one requests the game's normal double catch, never writes a count.
-        if (native.extra_rotations>=1) {
-            acknowledged_=native.extra_rotations==1 && entered_ && actor_;
+        // the requested extra count asks for the original native catch. The
+        // target changes only after a third physical edge, never native state.
+        if (native.extra_rotations>=target_) {
+            acknowledged_=native.extra_rotations==target_ && entered_ && actor_;
             active_=false;return false;
         }
         // The original gesture must be recognized before EAT tests PrepareHeldFlip.
@@ -95,6 +104,7 @@ public:
 private:
     std::uint64_t began_{};
     std::int32_t id_{};
+    float target_{1.0f};
     bool active_{},entered_{},actor_{},acknowledged_{};
 };
 }

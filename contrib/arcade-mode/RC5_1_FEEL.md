@@ -3,6 +3,32 @@
 This candidate is not hardware accepted. Development stays on
 `arcade-stage-rc51-feel`; the accepted updater and historical builds are unchanged.
 
+## Native triple follow-on — November 20
+
+Directional third X now extends the already-owned Kickflip/Heelflip held loop to
+two extra rotations. It reuses the original native actor and counter, never
+writes a rotation or score, and never submits the base bridge twice. Exact
+second-request lineage, third-edge deadline, owner/stance/object continuity and
+the original200ms entry/1200ms lifetime remain required. Rejected or expired
+thirds preserve the double catch; caught doubles cannot reopen and fourth input
+cannot renew the hold. Neutral X remains double-only.
+
+The production-correct one-shot bridge regression fails before the change.
+Expanded sanitizer cases cover queued, admitted and active held thirds at
+30/60/120Hz, both stances, both variants, native catch, cancellation and the
+unchanged double dependency boundaries. Root and independent source review
+found no blocker. Windows compilation and exact-DLL native triple rotation,
+identity, release and landing remain required; retained native source controls
+establish the mechanism, not acceptance of this candidate.
+
+The separate Manual setup correction waits for settled non-pushing contact
+before its full fifteen-second corridor test. It retains all speed, geometry,
+owner, freshness, native brake and transport bounds;45 offline checks pass.
+It is an inactive fresh-payload transform, not a new hardware authorization.
+Its bounded video covers the complete setup/route/brake; five-second callback
+capture remains acquisition-only. Receipts remain on the SSD under
+`rc51-responsive-core-20261120/manual-setup`.
+
 ## Responsive core corrections — November 20
 
 The recovered wall-clearance package at `aab5517d` passes all nine CI gates and

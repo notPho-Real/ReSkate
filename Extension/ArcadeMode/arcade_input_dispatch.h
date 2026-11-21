@@ -91,7 +91,7 @@ struct InputRequest {
     std::uint64_t table_generation{}, table_expires_at{};
     InputFlipObservation waiting_flip{};
     std::uint64_t pop_release_at{}; // Qualified original release; recognition only, never AIR authority.
-    std::uint64_t parent_input_sequence{}; // Exact already-queued pre-AIR X, not a native completion.
+    std::uint64_t parent_input_sequence{}; // Exact prior X request, not a native completion.
     constexpr GrindChangeTarget grind_target() const noexcept {
         return action == InputAction::rail_change ? grind_change_target(variant) : GrindChangeTarget::none;
     }
@@ -794,10 +794,12 @@ public:
             }
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::flip) {
                 active_flip_ = event.request.form == InputForm::ordinary || (environment.native_held_flip &&
-                    (event.request.form == InputForm::neutral_press || event.request.form == InputForm::neutral_release));
+                    (event.request.form == InputForm::neutral_press || event.request.form == InputForm::neutral_release ||
+                     event.request.form == InputForm::held_repeat));
                 active_flip_count_ = active_flip_ ? event.request.presses : 0; flip_started_ = now;
-                if (environment.native_held_flip && active_flip_count_==1)
+                if (environment.native_held_flip && (active_flip_count_==1 || event.request.form==InputForm::held_repeat))
                     flip_started_=event.request.physical_pressed_at;
+                flip_input_sequence_=event.request.input_sequence;
                 flip_direction_ = event.request.direction; flip_source_ = event.request.direction_source; flip_nollie_ = event.request.nollie;
                 flip_generations_ = event.request.generations;
                 diagnostic_.flip_table_at = now;
@@ -1023,9 +1025,9 @@ private:
                 }
             }
         }
-        if(environment.policy.bounded_handoff && presses==2 &&
-            ((action==InputAction::grab && form==InputForm::ordinary && environment.native_grab_transition && !environment.deferred_grabs) ||
-             (action==InputAction::flip && form==InputForm::held_repeat)))
+        if(environment.policy.bounded_handoff &&
+            ((presses==2 && action==InputAction::grab && form==InputForm::ordinary && environment.native_grab_transition && !environment.deferred_grabs) ||
+             ((presses==2 || presses==3) && action==InputAction::flip && form==InputForm::held_repeat)))
             request.deadline=request.physical_pressed_at>limit-InputTiming::readiness_ms?
                 limit:request.physical_pressed_at+InputTiming::readiness_ms;
         if (contextual) {
@@ -1385,12 +1387,16 @@ private:
             (now-takeoff_release_at_<=InputTiming::takeoff_preload_ms ||
              (environment.native_pop_transition && now-takeoff_release_at_<InputTiming::direction_ms));
         const bool preair=environment.context==InputContext::ground && preload && environment.native_pop_transition;
-        if(environment.native_held_flip && !active_flip_ && environment.native_context.required &&
+        if(environment.native_held_flip && environment.native_context.required &&
             (environment.context==InputContext::air || preair))
             for(const auto& request:pending_.slots()) {
-                if(request.action!=InputAction::flip || request.presses!=1 || request.nollie ||
-                    (request.form!=InputForm::ordinary && request.form!=InputForm::neutral_press && request.form!=InputForm::neutral_release) ||
-                    (request.air.trick!=ArcadeTrick::kickflip && request.air.trick!=ArcadeTrick::heelflip) ||
+                const bool base=!active_flip_ && request.presses==1 &&
+                    (request.form==InputForm::ordinary || request.form==InputForm::neutral_press || request.form==InputForm::neutral_release) &&
+                    (request.air.trick==ArcadeTrick::kickflip || request.air.trick==ArcadeTrick::heelflip);
+                const bool repeat=request.presses==2 && request.form==InputForm::held_repeat &&
+                    (request.direction==4 || request.direction==6) &&
+                    (request.air.trick==ArcadeTrick::double_kickflip || request.air.trick==ArcadeTrick::double_heelflip);
+                if(request.action!=InputAction::flip || (!base && !repeat) || request.nollie ||
                     (preair && (request.pop_release_at!=takeoff_release_at_ || request.physical_pressed_at<takeoff_release_at_)) ||
                     now<request.physical_pressed_at ||
                     now-request.physical_pressed_at>InputTiming::extra_press_ms ||
@@ -1405,13 +1411,16 @@ private:
                     queued_prefix=&request;
             }
         const auto held_started=queued_prefix?queued_prefix->physical_pressed_at:flip_started_;
-        const bool held_child=environment.native_held_flip && active_flip_ && active_flip_count_==1 &&
-            !flip_nollie_ && (flip_direction_==0 || flip_direction_==4 || flip_direction_==6) &&
+        const bool held_child=environment.native_held_flip && active_flip_ &&
+            (active_flip_count_==1 || active_flip_count_==2) &&
+            !flip_nollie_ && ((active_flip_count_==1 && flip_direction_==0) || flip_direction_==4 || flip_direction_==6) &&
             now>=flip_started_ && now-flip_started_<=InputTiming::extra_press_ms;
         if (held_child || queued_prefix) {
             const std::array tokens{face};
             match=events_.history().match({tokens,InputTiming::extra_press_ms,ordinary_reject},now);
-            if (match && match.first_at>held_started) {presses=2;form=InputForm::held_repeat;}
+            if (match && match.first_at>held_started) {
+                presses=(queued_prefix?queued_prefix->presses:active_flip_count_)+1;form=InputForm::held_repeat;
+            }
             else match={};
         }
         const bool child = active_flip_count_ == 1 || (active_flip_count_ == 2 &&
@@ -1456,13 +1465,14 @@ private:
             ordinary_reject)) return false;
         auto selected = environment;
         if (presses > 1) selected.nollie = queued_prefix?queued_prefix->nollie:flip_nollie_;
-        if(queued_prefix && form==InputForm::held_repeat)selected.policy.bounded_handoff=true;
+        if(form==InputForm::held_repeat && (queued_prefix || presses==3))selected.policy.bounded_handoff=true;
         const auto inherited=queued_prefix?InputToken{queued_prefix->direction?queued_prefix->direction_source:InputSource::direction,queued_prefix->direction,InputEdge::press}:
             InputToken{flip_source_,flip_direction_,InputEdge::press};
+        InputRequest active_parent{};active_parent.input_sequence=flip_input_sequence_;
         enqueue(InputAction::flip, now, InputTiming::readiness_ms, selected, presses, 0, 0, 0,
             presses > 1 ? inherited : InputToken{}, &match,form,defined_direction,
             InputFootprintKind::unknown, presses > 1 ? queued_prefix?&queued_prefix->generations:&flip_generations_ : nullptr,
-            nullptr,preair?queued_prefix:nullptr);
+            nullptr,form==InputForm::held_repeat && presses==3?(queued_prefix?queued_prefix:&active_parent):preair?queued_prefix:nullptr);
         direction_ = 0; return true;
     }
     void recognize_surface(std::uint64_t now, InputEnvironment environment) noexcept {
@@ -1819,6 +1829,7 @@ private:
     std::uint64_t surface_generation_{}, surface_step_{}, crouch_at_{};
     std::uint64_t session_{1}, last_{}, last_event_{}, direction_at_{}, flip_started_{}, grab_pressed_at_{};
     std::uint64_t grab_choice_event_{};
+    std::uint64_t flip_input_sequence_{};
     ArcadeTrick grab_choice_{ArcadeTrick::double_grab};
     std::int16_t direction_{}, flip_direction_{}, grab_direction_{};
     InputSource direction_source_{InputSource::stick}, flip_source_{InputSource::stick}, grab_source_{InputSource::stick};
