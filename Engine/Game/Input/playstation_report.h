@@ -248,7 +248,8 @@ template<class Filter> bool filter_playstation_exit_report(PlayStationPad kind,
     if (pad.left_trigger==before->left_trigger && pad.right_trigger==before->right_trigger && pad.left_x==before->left_x) return false;
     std::uint8_t *sticks{},*shoulder{},*left{},*right{};
     const auto id=report[0];
-    if (kind==PlayStationPad::dualsense && ((id==0x01&&!bluetooth)||id==0x31)) {
+    // Write the same layout that the upstream parser identified, including long USB reads.
+    if (kind==PlayStationPad::dualsense && ((id==0x01&&dualsense_usb_layout(report,size,bluetooth))||id==0x31)) {
         auto* data=report+(id==0x31?2:1);sticks=data;left=data+4;right=data+5;shoulder=data+8;
     } else if(id==0x01) {sticks=report+1;shoulder=report+6;left=report+8;right=report+9;}
     else if(kind==PlayStationPad::dualshock4 && id==0x11) {sticks=report+3;shoulder=report+8;left=report+10;right=report+11;}

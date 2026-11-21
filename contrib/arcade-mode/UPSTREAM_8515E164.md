@@ -29,6 +29,15 @@ were retained. Source retention is not a native gameplay acceptance result.
 Upstream inserted `noclip_hold_flag()` before `debug_stop_noclip()`. The ground
 writer and Manual reservation test generators now stop at that new boundary,
 so they still compile the original body writer, not unrelated noclip helpers.
+The chooser wrapper fixture also models the new on-foot ragdoll boundary and
+checks fresh, expired and foreign-owner requests without granting a body write.
+
+Full integration found a DualSense exit-filter regression: upstream detects long
+USB reads from report contents, while the Arcade writer still chose offsets by
+length. The writer now uses the same upstream detector. The regression fixture
+uses real zero padding for simple Bluetooth reports and covers long USB reports,
+including preservation of unowned controls. The exit-filter test now also runs
+in Windows preflight.
 
 ## Facilities and ownership
 
