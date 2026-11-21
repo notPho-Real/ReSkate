@@ -1,3 +1,36 @@
+## Recovered interrupted wall-clearance checkpoint — November 20
+
+The interrupted “Polish and Expand Arcade Mode” thread continued beyond the
+previous notes. Its artifacts are under `/Volumes/ReSkateSSD/ReSkateWork/artifacts`,
+not this worktree's `artifacts` symlink. The earlier bounded selection note missed
+this unfinished package verification; it is superseded by this recovery.
+
+Source `aab5517dec915c05f1abcc7eef5ee8edf62fa5b2` completed CI43972957491:
+all nine required gates, 140 Windows preflight tests, 132 integration tests and
+Windows runtime compilation passed. On November 20 the existing strict verifier
+successfully checked archive hashes, PE, source provenance, test results and
+byte-identical embedded installer DLL. No CI was dispatched again.
+DLL SHA-256: `089946ee7049a997a5ea9172d7f729840f682e17fcb73fe0501889a5bbcc2b37`
+(45,613,056 bytes). Verified installer:
+`/Volumes/ReSkateSSD/ReSkateWork/artifacts/rc51-wall-clearance-ready-aab5517d/deck/Install-ReSkate-Arcade.desktop`.
+
+The earlier exact5ae Mega Park capture was retrieved before interruption. Its
+retained independent physical review records one 164 ms hold, 11 strictly
+post-release upward/outward consumed-velocity samples and 59 subsequent grounded
+samples, with unchanged owner. Compressed and raw capture hashes were rechecked
+on November 20. The capture footer reports one dropped row and incomplete event
+health; external samples are non-atomic. This supports one scoped physical
+hold/rebound/return to riding, not repeatability, banking or exact-aab acceptance.
+The repeat reset failed focus before sending input. No new hardware call occurred.
+
+The expired session has no final shutdown/handback receipt in the recovered
+artifact directory; current device/process/installation state is unknown.
+Do not reuse its expired authority or assume its old process identity is current.
+Next: obtain a fresh exclusive hardware handoff, inspect current device state,
+and validate the packaged clearance correction against the retained city failure
+using the established prerequisites. No new source defect is inferred from that
+pending acceptance. Allowance consumption is unavailable.
+
 ## Credit-constrained RC5.1 selection — 2026-11-20
 
 Reviewed clean source `aab5517dec915c05f1abcc7eef5ee8edf62fa5b2`, the RC5.1
