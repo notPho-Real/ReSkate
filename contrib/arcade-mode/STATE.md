@@ -31,26 +31,19 @@ and validate the packaged clearance correction against the retained city failure
 using the established prerequisites. No new source defect is inferred from that
 pending acceptance. Allowance consumption is unavailable.
 
-## Credit-constrained RC5.1 selection — 2026-11-20
+## Autonomous engineering restored — 2026-11-20
 
-Reviewed clean source `aab5517dec915c05f1abcc7eef5ee8edf62fa5b2`, the RC5.1
-owner-feedback evidence and remaining-work table, and the latest wall-clearance
-runtime correction/regressions. No unresolved XS/S gameplay correction was
-established by this bounded review. The recorded small source defects are
-already implemented; remaining native acceptance is not evidence of another
-source defect. Triple-flip execution, held-Y rail harness integration and native
-banking remain M-sized or evidence-dependent work and were not started.
+The owner superseded the prior credit-constrained selection policy. Continue
+ordinary implementation, regression tests, coherent commits, integrated builds
+and authorized native experiments without a one-feature, one-retry, complexity
+or allowance-percentage stopping rule. The source-first workflow, trusted runner,
+exclusive device ownership, exact candidate validation and rollback requirements
+remain in force. Experimental branches and packages are authorized; accepted
+branches, the public updater and release channel remain unchanged.
 
-No gameplay edit, new regression, test execution, compilation, CI or hardware
-operation occurred. Historical test results were not reclassified as fresh
-verification. Weekly allowance consumption is unavailable. Stop here under the
-credit-constrained policy; do not automatically continue the roadmap.
-
-Smallest next action: obtain one current reproducible player failure on the
-installed candidate, with its input sequence and expected/actual behavior, then
-match it against existing source contracts before selecting a correction.
-The existing wall-clearance correction still awaits batched Windows compilation
-and exact-candidate native acceptance; neither is authorized by this state note.
+The earlier bounded review made no gameplay change. Its history remains in Git;
+it does not restrict the current roadmap. Current native Manual acceptance again
+requires a ten-second physically qualified hold, per the owner's latest request.
 
 ## Joined finite controller observations — local follow-on, 2026-10-20
 

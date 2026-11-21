@@ -84,18 +84,17 @@ inherited device receipt does not establish the merged candidate's acceptance.
 
 ## Current native Manual acceptance duration
 
-The owner reduced the current native Manual acceptance hold from ten seconds to
-**two seconds** on November 16, 2026. Measure at least two seconds from qualified
+The owner's November 20, 2026 engineering request restores the native Manual
+acceptance hold to **ten seconds**. Measure at least ten seconds from qualified
 physical Manual entry, with continuous bounded contact, balance, stance, motion
 and score/HUD observations. Button-hold time, a queued request or a lingering
 label does not establish this interval. Keep existing owner, freshness, bail,
 landing, entry/exit and Arcade OFF checks unchanged.
 
-This updates future acceptance trials only. Preserve historical ten-second
-results, failures, pending observations and portable lifetime regressions as
-recorded; do not reinterpret them as two-second passes. The shorter requirement
-does not waive the current corridor prerequisite or establish native acceptance
-on a different DLL.
+This supersedes the November 16 two-second requirement for future acceptance
+trials. Preserve historical results, failures, pending observations and portable
+lifetime regressions as recorded. No duration change waives the approach
+prerequisites or establishes native acceptance on a different DLL.
 
 ## Casper integration checkpoint
 

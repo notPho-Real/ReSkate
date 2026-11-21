@@ -3,6 +3,31 @@
 This candidate is not hardware accepted. Development stays on
 `arcade-stage-rc51-feel`; the accepted updater and historical builds are unchanged.
 
+## Responsive core corrections — November 20
+
+The recovered wall-clearance package at `aab5517d` passes all nine CI gates and
+strict package verification. Two further production input defects are corrected:
+
+- Rapid X presses after the generic160ms preload were not recognized until AIR,
+  collapsing a pre-AIR pair into its latest edge. Recognition now follows the
+  existing verified released-pop lifetime (strictly under500ms). Native AIR,
+  actor admission, original repeat deadlines and physical double execution are
+  unchanged. Regression cases span30/60/120Hz, both stances and basic flip variants.
+- Manual recognition accepted analog diagonals, but held-flight and landing
+  checks required cardinal input. Both now use the existing Manual projection,
+  retaining held preparation and reserving vertical movement through acquisition.
+  Native contact still admits balance; neutral, shallow steering, opposing input,
+  exact D-pad policy, release/repress, owner loss and OFF retain their guards.
+
+Both regressions fail against the preceding production code and pass with the
+corrections under ASan/UBSan and warnings as errors. Candidate Windows compilation
+and native acceptance remain required. The owner's current Manual acceptance is
+a ten-second physically qualified hold, superseding the historical two-second
+requirement below. The trusted status runner currently cannot resolve
+`steamdeck.local`; no input, deployment or reuse of expired hardware authority
+occurred. Checkpoint receipts and packaging reside in the SSD artifact directory
+`rc51-responsive-core-20261120`.
+
 Latest compiled checkpoint: `5ae5778627a7dbe0bf3153eb7b36b471bdd5aa1b`, including
 the owner-reported Manual lifetime/endpoints, Casper support and static wall
 ownership corrections. All nine required CI gates and strict package verification
