@@ -23,7 +23,9 @@ struct State {
     std::uint64_t serial{},logical{},submitted{},ticket{},client_at{};
     std::shared_ptr<const anim_studio::Clip> clip;
     float time{};
-    bool enabled{true},ready{};
+    bool enabled{true},ready{},render_seed{};
+    std::uint64_t accepted_seed_sequence{},accepted_seed_ticket{};
+    double accepted_seed_age{};
     std::unique_ptr<CustomFlatland> trick;
     bool client_current() const noexcept {
         return client_at && context.now>=client_at && context.now-client_at<150;
@@ -88,11 +90,25 @@ void set_enabled(bool enabled) noexcept {
     native_wall_contact::enable_materials(false);
     if(enabled)s.observation={};
 }
+#if defined(DINGOSDK_DEV_TOOLS)
+void set_render_seed(bool enabled) noexcept {
+    auto& s=state();std::lock_guard lock(s.mutex);
+    if(s.render_seed==enabled)return;
+    if(s.trick)s.trick->cancel();
+    if(s.ticket)skater_animation::cancel_play(s.ticket);
+    s.ticket=s.submitted=s.logical=0;s.clip.reset();s.trick.reset();
+    s.executions={};s.ready=false;s.held_triggers=0;
+    s.seed_owner={};s.seed_generation=s.seed_episode=s.seed_step=s.seed_at=0;
+    s.render_seed=enabled;
+    s.accepted_seed_sequence=s.accepted_seed_ticket=0;s.accepted_seed_age=0;
+}
+#endif
 Status status() noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);
     return {s.enabled,s.ready && s.client_current(),
-        s.ticket && skater_animation::controlled_play_current(s.ticket),
-        s.trick?s.trick->phase():CustomFlatland::Phase::manual,s.observation};
+        s.ticket && skater_animation::controlled_play_current(s.ticket),s.render_seed,
+        s.trick?s.trick->phase():CustomFlatland::Phase::manual,s.observation,
+        s.accepted_seed_sequence,s.accepted_seed_ticket,s.accepted_seed_age};
 }
 CustomFlatlandBinding observe(CustomFlatlandContext context) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);observe_locked(s,context);
@@ -212,7 +228,7 @@ void tick(CustomFlatlandContext context) noexcept {
             // The first admitted Manual pose can still be finishing a push.
             // Reauthor once from the current native pose at actual submission,
             // including the exits, rather than freezing that earlier foot angle.
-            const auto seed=skater_animation::native_pose();
+            const auto seed=s.render_seed?skater_animation::native_render_pose():skater_animation::native_pose();
             if(!seed || !s.accepts_seed(*seed)) {
                 s.trick->cancel();s.ready=false;return;
             }
@@ -226,6 +242,7 @@ void tick(CustomFlatlandContext context) noexcept {
             s.ticket=skater_animation::try_play_controlled(std::move(play));
             if(!s.ticket){s.trick->cancel();s.ready=false;return;}
             s.submitted=s.logical;
+            s.accepted_seed_sequence=seed->sequence;s.accepted_seed_ticket=s.ticket;s.accepted_seed_age=seed->age;
         }
         if(s.ticket) {
             if(!skater_animation::seek_owned(s.ticket,s.time,s.trick->display_radians())) {
@@ -238,7 +255,7 @@ void tick(CustomFlatlandContext context) noexcept {
         if(!skater_animation::can_play())return;
         // native_pose() renews a short observation lease. Keep it awake while
         // ready so a later gesture has a current seed without delaying input.
-        const auto seed=skater_animation::native_pose();
+        const auto seed=s.render_seed?skater_animation::native_render_pose():skater_animation::native_pose();
         if(s.seed_current() && s.trick){s.ready=true;return;}
         // Require a pose evaluated after this independently admitted episode
         // was first seen. A cached pre-Manual pose cannot seed a new trick.

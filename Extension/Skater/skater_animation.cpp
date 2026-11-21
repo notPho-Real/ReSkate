@@ -4,6 +4,8 @@
 #include "body_pose.h"
 #include "body_contact.h"
 #include "owned_playback_hold.h"
+#include "pose_seed_stamp.h"
+#include "board_pose.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
 #include "Engine/Game/Build/20260929/native_skater.h"
@@ -294,6 +296,21 @@ std::vector<std::pair<std::uint16_t, double>> joints_asked;
 std::mutex plan_mutex;
 std::shared_ptr<const Plan> plan_now = std::make_shared<Plan>();
 Plan plan_draft; // the client thread's, published as plan_now
+std::atomic<double> render_seed_until{};
+NativePose render_seed_sample; // native_pose_mutex
+PoseSeedStamp render_seed_stamp;
+double render_seed_at{};
+std::shared_ptr<const Plan> render_seed_plan;
+// Remember the upstream mount's before/after pair so an unchanged buffer
+// cannot feed its previous visual mount back into a new native seed.
+std::mutex board_seed_mutex;
+struct BoardSeedUnderlay {
+    PoseSeedStamp owner;
+    std::uintptr_t buffer{};
+    std::array<NativeBone, board_bones> before{}, written{};
+    double at{};
+};
+BoardSeedUnderlay board_seed_underlay;
 std::shared_ptr<const Plan> plan() {
     std::lock_guard lock(plan_mutex);
     return plan_now;
@@ -461,6 +478,88 @@ PendingBoard& pending_board() {
     static auto* p = new PendingBoard;
     return *p;
 }
+PoseSeedStamp seed_owner() {
+    auto& l = live(); // Caller holds native_pose_mutex.
+    return {l.base.load(std::memory_order_acquire), native_pose_entity.load(std::memory_order_acquire),
+        l.component.load(std::memory_order_acquire), l.board_holder.load(std::memory_order_acquire),
+        native_pose_generation};
+}
+bool seed_plan_clear(const Plan& p, double now) {
+    return p.allowed && !board_pose::mount_modified() && !p.play && p.replacements.empty() && !record_running.load(std::memory_order_acquire) &&
+        !(p.reach && now < p.reach_until) && !(p.carry && now < p.carry_until) &&
+        !(p.board_mount && now < p.board_mount_until) &&
+        (p.offsets.empty() || now >= p.offsets_until) &&
+        (p.others_offsets.empty() || now >= p.others_until) &&
+        !room_shown.load(std::memory_order_acquire) &&
+        now >= room_restore_until.load(std::memory_order_acquire);
+}
+// Called before this render puts any overlay on the body. Read both rigs twice;
+// a partially updated native buffer is never published as an entry seed.
+void capture_render_seed(std::uintptr_t component, std::uintptr_t holder, const Pending& pending_pose) {
+    const double at = now_seconds();
+    if (at >= render_seed_until.load(std::memory_order_acquire)) return;
+    const auto snap = plan();
+    if (!seed_plan_clear(*snap, at) || !pending_pose.bones.empty() || !pending_pose.deltas.empty() ||
+        !pending_pose.replay.empty() || !pending_pose.written.empty()) return;
+    {
+        auto& board = pending_board();
+        std::lock_guard lock(board.mutex);
+        if (board.weight > 0) return;
+    }
+    PoseSeedStamp owner;
+    {
+        std::lock_guard lock(native_pose_mutex);
+        owner = seed_owner();
+    }
+    if (owner.component != component || !pose_seed_current(owner, owner, at, at)) return;
+    const auto body = multiplayer::read_native_pose_layout(peek, owner.base, holder, 512);
+    const auto board = multiplayer::read_native_pose_layout(peek, owner.base, owner.board_holder, 64);
+    if (!body.buffer || body.count != skeleton_joints || !board.buffer || board.count != board_bones) return;
+    thread_local std::array<NativeBone, skeleton_joints> bones, checked_body;
+    std::array<NativeBone, board_bones> deck{}, checked_board{};
+    {
+        // Serialize with our board writer. Native changes are caught by the
+        // second read; no engine lock or physics write is introduced here.
+        std::lock_guard lock(board_seed_mutex);
+        if (!peek(body.buffer, bones.data(), sizeof(bones)) ||
+            !peek(board.buffer, deck.data(), sizeof(deck)) ||
+            !peek(body.buffer, checked_body.data(), sizeof(checked_body)) ||
+            !peek(board.buffer, checked_board.data(), sizeof(checked_board)) ||
+            std::memcmp(bones.data(), checked_body.data(), sizeof(bones)) ||
+            std::memcmp(deck.data(), checked_board.data(), sizeof(deck))) return;
+        const auto& under = board_seed_underlay;
+        if (under.owner == owner && under.buffer == board.buffer &&
+            std::memcmp(&deck[1], &under.written[1], sizeof(NativeBone)*(board_bones-1)) == 0) {
+            if (!pose_seed_current(under.owner, owner, under.at, at)) return;
+            deck = under.before;
+        }
+    }
+    const auto body_after = multiplayer::read_native_pose_layout(peek, owner.base, holder, 512);
+    const auto board_after = multiplayer::read_native_pose_layout(peek, owner.base, owner.board_holder, 64);
+    if (body_after.buffer != body.buffer || body_after.count != body.count ||
+        board_after.buffer != board.buffer || board_after.count != board.count ||
+        read<std::uintptr_t>(component + addr::native_skater::component_animation_holder_offset).value_or(0) != holder || plan() != snap) return;
+    if (!seed_plan_clear(*snap, now_seconds())) return;
+    NativePose sample;
+    sample.joints.reserve(skeleton_joints);
+    for (const auto& bone : bones) {
+        const auto joint = joint_of(bone);
+        if (!finite(joint)) return;
+        sample.joints.push_back(joint);
+    }
+    for (std::size_t i = 0; i <= board_mount_joint; ++i)
+        if (!finite(joint_of(deck[i]))) return;
+    sample.board = relative(world(sample.joints, placement_joint),
+        compose(board_parent(deck), joint_of(deck[board_mount_joint])));
+    if (!finite(sample.board)) return;
+    sample.base = owner.base; sample.entity = owner.entity;
+    std::lock_guard lock(native_pose_mutex);
+    if (!pose_seed_current(owner, seed_owner(), at, now_seconds())) return;
+    sample.sequence = render_seed_sample.sequence + 1;
+    render_seed_sample = std::move(sample);
+    render_seed_stamp = owner; render_seed_at = at; render_seed_plan = snap;
+}
+
 // What other players get of the local skater: the same joints as the renderer.
 struct SentPose {
     std::mutex mutex;
@@ -646,7 +745,8 @@ void on_animation(std::uintptr_t component) noexcept {
         const bool joints_wanted = (now < snap->joints_until && !snap->joints_read.empty()) || now < snap->local_pose_until;
         const bool joints_asked_for = now < snap->joints_until && !snap->joints_read.empty();
         const bool pose_wanted = now < snap->pose_until ||
-            now < native_pose_until.load(std::memory_order_acquire);
+            now < native_pose_until.load(std::memory_order_acquire) ||
+            now < render_seed_until.load(std::memory_order_acquire);
         const bool posing = !snap->offsets.empty() && now < snap->offsets_until;
         const bool posing_others = !snap->others_offsets.empty() && now < snap->others_until;
         // (With a pose of their own for the others, the pose for everyone is this screen's alone.)
@@ -1252,6 +1352,7 @@ void on_render(std::uintptr_t animation_interface) noexcept {
         p.contact_body_frame_applied=false;
         p.contact_evidence.reset();
         p.contact_attempt.reset();
+        capture_render_seed(component, *holder, p);
         // The pose as the renderer is handed it, for a plugin that asks (drawn_pose): read before anything
         // here goes on it. A joint still holding what the last render put on it (the game did not set it
         // again) is given as it was before that.
@@ -1555,6 +1656,9 @@ void on_board_render(std::uintptr_t animation_interface, std::uintptr_t /*render
         board_before.animation_interface = 0;
         if (weight <= 0) holding = wrote = false;
         if (weight > 0) {
+            PoseSeedStamp owner;
+            { std::lock_guard lock(native_pose_mutex); owner = seed_owner(); }
+            std::lock_guard seed_lock(board_seed_mutex);
             const auto layout = multiplayer::read_native_pose_layout(peek, l.base.load(std::memory_order_acquire), bh, 64);
             std::array<NativeBone, board_bones> b{};
             if (layout.buffer && layout.count == board_bones && peek(layout.buffer, b.data(), sizeof(b))) {
@@ -1598,6 +1702,7 @@ void on_board_render(std::uintptr_t animation_interface, std::uintptr_t /*render
                 }
                 written = b;
                 wrote = true;
+                board_seed_underlay = {owner, layout.buffer, under, written, now_seconds()};
             }
         }
     } catch (...) {
@@ -1757,6 +1862,19 @@ std::optional<NativePose> native_pose() {
         native_pose_sample.entity != native_pose_entity.load(std::memory_order_acquire)) return std::nullopt;
     auto sample = native_pose_sample;
     sample.age = now-native_pose_at;
+    return sample;
+}
+std::optional<NativePose> native_render_pose() {
+    const double now = now_seconds();
+    render_seed_until.store(now + .15, std::memory_order_release);
+    prepare_playback();
+    const auto snap = plan();
+    if (!seed_plan_clear(*snap, now)) return std::nullopt;
+    std::lock_guard lock(native_pose_mutex);
+    if (!render_seed_sample.sequence || render_seed_plan != snap ||
+        !pose_seed_current(render_seed_stamp, seed_owner(), render_seed_at, now)) return std::nullopt;
+    auto sample = render_seed_sample;
+    sample.age = now-render_seed_at;
     return sample;
 }
 void prepare_playback() noexcept { playback_requested = true; }

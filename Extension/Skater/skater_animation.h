@@ -138,6 +138,11 @@ struct NativePose {
     std::uint64_t sequence{};
 };
 std::optional<NativePose> native_pose();
+// Body after native body physics, plus the board read alongside it in that
+// render callback. Refuses active overlays, changed buffers/owners and stale
+// samples. This is a stable repeated read, not an atomic physics/GPU frame.
+// Observation only: playback and cancellation still use the existing ticket.
+std::optional<NativePose> native_render_pose();
 // Who sees a pose, a carry or a reach: everyone (the pose drawn here and sent), only the other players
 // (sent, not drawn: you look through a camera your skater is seen holding), or only you (drawn, not sent).
 enum class Shown : std::uint8_t { everyone, others, me };

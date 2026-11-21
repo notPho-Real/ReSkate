@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include "Extension/Skater/pose_seed_stamp.h"
 using namespace dingosdk;
 using namespace dingosdk::arcade_mode;
 namespace {
@@ -15,7 +16,8 @@ std::uintptr_t material_base{};
 void check(bool ok,const char* why){++checks;if(!ok){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
 struct Player {
     std::uint64_t serial{},ticket{},now{},until{};
-    unsigned starts{},cancels{},replacements{},seed_reads{};
+    unsigned starts{},cancels{},replacements{},seed_reads{},render_seed_reads{};
+    bool render_seed_available{true};
     float seed_pitch{};
     double seed_age{.001};
     std::shared_ptr<const anim_studio::Clip> clip;
@@ -63,6 +65,11 @@ std::optional<NativePose> native_pose(){
     p.joints=flatland_pose_fixture();
     p.joints[10].rotation=anim_studio::from_euler({player.seed_pitch,0,0});
     p.age=player.seed_age;p.sequence=player.now;return p;
+}
+std::optional<NativePose> native_render_pose(){
+    ++player.render_seed_reads;
+    if(!player.render_seed_available)return {};
+    return native_pose();
 }
 }
 namespace {
@@ -455,6 +462,38 @@ void seed_and_pending(){
     player.occupied=false;
 }
 }
+void render_seed_identity(){
+    using namespace skater_animation;
+    const PoseSeedStamp owner{1,2,3,4,5};
+    check(pose_seed_current(owner,owner,10,10.149),"fresh render seed identity");
+    check(!pose_seed_current(owner,owner,10,10.15),"render seed expires at150ms");
+    check(!pose_seed_current(owner,owner,10,9.99),"clock reversal rejects render seed");
+    check(!pose_seed_current(owner,owner,10,std::numeric_limits<double>::quiet_NaN()),"invalid render seed clock");
+    for(unsigned field=0;field<5;++field) {
+        auto other=owner;
+        if(field==0)++other.base;
+        if(field==1)++other.entity;
+        if(field==2)++other.component;
+        if(field==3)++other.board_holder;
+        if(field==4)++other.generation;
+        check(!pose_seed_current(owner,other,10,10.01),"every ownership link rejects an old render seed");
+    }
+#if defined(DINGOSDK_DEV_TOOLS)
+    custom_flatland_runtime::set_render_seed(false);
+    const auto old_reads=player.render_seed_reads;
+    {Rig r;r.enter();r.hold();check(player.render_seed_reads==old_reads,"disabled experiment keeps original seed path");}
+    custom_flatland_runtime::set_render_seed(true);
+    check(custom_flatland_runtime::status().render_seed,"render seed opt-in is reported");
+    {Rig r;r.enter();r.hold();
+     check(player.render_seed_reads>old_reads && player.ticket,"rendered seed uses existing owned player");
+     custom_flatland_runtime::set_render_seed(false);
+     check(!player.ticket && !custom_flatland_runtime::status().ready,"switching seed cancels owned playback and preparation");}
+    {Rig r;custom_flatland_runtime::set_render_seed(true);player.render_seed_available=false;
+     r.next();r.tick();r.next();r.tick();
+     check(!custom_flatland_runtime::status().ready && !player.ticket,"missing rendered seed cannot acquire playback");}
+    player.render_seed_available=true;custom_flatland_runtime::set_render_seed(false);
+#endif
+}
 int main(){
     check(custom_flatland_runtime::status().enabled,"flatland defaults ON without a console command");
     custom_flatland_runtime::tick({});
@@ -474,4 +513,4 @@ int main(){
     const auto prepared=preparations;
     custom_flatland_runtime::tick(gameplay);
     check(preparations==prepared,"diagnostic OFF keeps flatland hooks idle");
-    both_native_manual_supports();executed_scoring();fresh_entry_seed();rejected_entry_seed();balance_range();moving_hold();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}
+    both_native_manual_supports();executed_scoring();fresh_entry_seed();rejected_entry_seed();balance_range();moving_hold();material_capture_lifetime();runtime_admission();held_rotation();held_rotation_exits();exit_trigger_boundaries();slice();replacement_loss();cleanup();seed_and_pending();render_seed_identity();std::cout<<checks<<" live adapter checks passed (simulated native endpoint)\n";}

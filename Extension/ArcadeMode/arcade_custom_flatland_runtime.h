@@ -18,11 +18,18 @@ struct Observation {
 };
 struct Status {
     bool enabled{}, ready{}, animation_current{};
+    bool render_seed{};
     CustomFlatland::Phase phase{};
     Observation observation{};
+    // Last accepted entry seed, not proof of a rendered frame.
+    std::uint64_t seed_sequence{}, seed_ticket{};
+    double seed_age{};
 };
 CustomExecutionBatch take_executions() noexcept;
 void set_enabled(bool) noexcept;
+#if defined(DINGOSDK_DEV_TOOLS)
+void set_render_seed(bool) noexcept;
+#endif
 Status status() noexcept;
 // Client thread performs animation calls; input/physics only touch the mailbox.
 void tick(CustomFlatlandContext) noexcept;

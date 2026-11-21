@@ -12,6 +12,8 @@ inline constexpr std::array<unsigned char, 18> animation_update_prefix{
 // Expected code of engine::board_render_pose.
 inline constexpr std::array<unsigned char, 15> board_render_pose_prefix{
     0x48,0x89,0x5c,0x24,0x18,0x48,0x89,0x74,0x24,0x20,0x57,0x48,0x83,0xec,0x60};
+// Animation holder used by the existing local body render listener.
+inline constexpr std::uintptr_t component_animation_holder_offset = 0xa0;
 // The evaluated render interface is embedded at this offset in its animation holder.
 inline constexpr std::uintptr_t render_animation_interface_offset = 0xc0;
 // Both the local and menu board allocate their animation holder in this entity block.

@@ -63,4 +63,8 @@ std::optional<std::array<Bone, bones>> read();
 void tick(std::uintptr_t base, std::uintptr_t component) noexcept;
 // From the render pose hook (native_skater.cpp), every skeleton handed to the renderer.
 void on_render_pose(std::uintptr_t animation_interface) noexcept;
+// A plugin is changing the local deck mount (bone2), so its current buffer
+// must not be treated as an unmodified native entry seed. After clear(), this
+// remains true until a native render replaces the last written mount.
+bool mount_modified();
 }

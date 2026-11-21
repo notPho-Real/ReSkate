@@ -64,6 +64,16 @@ void register_console_commands(Commands &registry) {
             row.surface_steps[0],row.surface_steps[1],row.surface_steps[2],row.surface_steps[3],row.surface_steps[4]));
     };
     registry.add(std::move(flatland));
+    auto seed = action("arcaderenderseed", "Unsaved rendered entry seed experiment; OFF by default",
+        Group::gameplay, {argument("on|off", Type::boolean, true)});
+    seed.run = [](const Model&, const Values& values, const Output& out) {
+        namespace flatland_runtime = arcade_mode::custom_flatland_runtime;
+        if (!values.empty()) flatland_runtime::set_render_seed(std::get<bool>(values[0]));
+        const auto status=flatland_runtime::status();
+        out(std::format("Rendered entry seed {}: ready {}, last accepted sequence {}, ticket {}, age {:.4f}s (not render proof)",
+            status.render_seed?"ON":"OFF",status.ready,status.seed_sequence,status.seed_ticket,status.seed_age));
+    };
+    registry.add(std::move(seed));
 #endif
     auto runtime_reset = action("arcaderuntimereset", "Reset transient Arcade state without changing runtime mode or saved preferences", Group::gameplay);
     runtime_reset.run = [](const Model&, const Values&, const Output& out) {

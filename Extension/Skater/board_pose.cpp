@@ -100,6 +100,8 @@ struct Shared {
     std::map<std::string, std::vector<int>, std::less<>> park_by;
     std::optional<Piece> piece;
     std::optional<std::array<Bone, bones>> drawn;
+    std::optional<Lane> written_mount;
+    std::uintptr_t written_mount_holder{};
     std::uintptr_t drawn_holder{}; // whose board `drawn` is: a map load or a new board leaves it behind
     std::map<int, std::pair<std::string, Vec3>> sized; // a bone's size, and who holds it
 };
@@ -224,6 +226,12 @@ void fly(Piece& p, const Quat& place_rotation, const Vec3& place_at, const std::
 }
 }
 
+bool mount_modified() {
+    auto& s = shared();
+    std::lock_guard lock(s.mutex);
+    return (s.written_mount && s.written_mount_holder == holder_now.load(std::memory_order_acquire)) || s.wanted.contains(2) || s.parked.contains(2) || s.sized.contains(2) ||
+        (s.piece && std::find(s.piece->bones.begin(), s.piece->bones.end(), 2) != s.piece->bones.end());
+}
 std::string set(std::string_view owner, int bone, const Bone& value, Space space) {
     if (bone < first_writable || bone >= bones) return "a board's bone is 2 to 15";
     if (!finite(value.position) || length(value.position) > 1000 ||
@@ -392,6 +400,14 @@ void on_render_pose(std::uintptr_t animation_interface) noexcept {
             SetLastError(error);
             return;
         }
+        // Clearing a plugin does not prove that the native animation replaced
+        // its last mount. Keep entry sampling blocked until that lane changes.
+        if (local && s.written_mount && (s.written_mount_holder != holder ||
+            std::memcmp(&lanes[2], &*s.written_mount, sizeof(Lane)) != 0))
+            s.written_mount.reset();
+        const bool changes_mount = local && (s.wanted.contains(2) || s.parked.contains(2) ||
+            s.sized.contains(2) || (s.piece &&
+            std::find(s.piece->bones.begin(), s.piece->bones.end(), 2) != s.piece->bones.end()));
         // Out of sight: far below the board, from where its animation put it.
         const auto away = [&](int b) {
             const Vec3 at{lanes[b].position[0], lanes[b].position[1], lanes[b].position[2]};
@@ -476,6 +492,13 @@ void on_render_pose(std::uintptr_t animation_interface) noexcept {
                 const auto world_at = add(p.at, rotate(p.facing, rel.second));
                 const auto [rotation, at] = from_world(world_rotation, world_at);
                 (void)store(bone_at(buffer, b), rotation, at);
+            }
+        }
+        if (changes_mount) {
+            Lane written{};
+            if (peek(bone_at(buffer, 2), &written, sizeof(written))) {
+                s.written_mount = written;
+                s.written_mount_holder = holder;
             }
         }
     } catch (...) {

@@ -1,0 +1,159 @@
+// The production capture and getter, with nonactuating native memory endpoints.
+#include "Extension/Skater/skater_animation.h"
+#include "Extension/Skater/pose_seed_stamp.h"
+#include "Engine/Game/Build/addresses.h"
+#include "Engine/Game/Build/20260929/native_skater.h"
+#include <algorithm>
+#include <atomic>
+#include <cstring>
+#include <functional>
+#include <iostream>
+#include <limits>
+#include <mutex>
+#include <stdexcept>
+
+namespace dingosdk {
+namespace board_pose { bool modified{}; bool mount_modified(){return modified;} }
+namespace multiplayer {
+struct Layout {std::uintptr_t buffer{};std::uint32_t count{};};
+Layout body_layout{0x40000,395}, board_layout{0x50000,16};
+unsigned layouts{};
+std::function<void(unsigned)> on_layout;
+template<class Read> Layout read_native_pose_layout(Read, std::uintptr_t, std::uintptr_t, unsigned limit) {
+    ++layouts;if(on_layout)on_layout(layouts);
+    return limit==512?body_layout:board_layout;
+}
+}
+namespace skater_animation {
+namespace {
+using namespace anim_studio;
+using NativeBone=pose_replay::NativeBone;
+@seed_transforms@
+struct Plan {
+    bool allowed{true};
+    std::optional<int> play,reach,carry,board_mount;
+    std::vector<int> replacements,offsets,others_offsets;
+    double reach_until{},carry_until{},board_mount_until{},offsets_until{},others_until{};
+};
+struct Live {
+    std::atomic<std::uintptr_t> base{0x10000},component{0x20000},board_holder{0x30000};
+} current;
+Live& live(){return current;}
+std::atomic<std::uintptr_t> native_pose_entity{0x60000};
+std::uint64_t native_pose_generation{1};
+std::mutex native_pose_mutex,board_seed_mutex;
+std::atomic<bool> record_running{},room_shown{};
+std::atomic<double> room_restore_until{},render_seed_until{};
+NativePose render_seed_sample;
+PoseSeedStamp render_seed_stamp;
+double render_seed_at{},clock_now=10;
+std::shared_ptr<const Plan> render_seed_plan,plan_now=std::make_shared<Plan>();
+std::shared_ptr<const Plan> plan(){return plan_now;}
+double now_seconds(){return clock_now;}
+struct Pending {std::vector<int> bones,deltas,replay,written;} pending;
+struct PendingBoard {std::mutex mutex;float weight{};} pending_deck;
+PendingBoard& pending_board(){return pending_deck;}
+struct BoardSeedUnderlay {
+    PoseSeedStamp owner;
+    std::uintptr_t buffer{};
+    std::array<NativeBone,board_bones> before{},written{};
+    double at{};
+} board_seed_underlay;
+std::array<NativeBone,skeleton_joints> body_memory;
+std::array<NativeBone,board_bones> board_memory;
+std::uintptr_t animation_holder=0x70000;
+unsigned reads{},preparations{};
+std::function<void(unsigned)> on_read;
+bool read_failure{};
+bool peek(std::uintptr_t address,void* out,std::size_t size) {
+    ++reads;if(on_read)on_read(reads);
+    if(read_failure)return false;
+    if(address==0x40000 && size==sizeof(body_memory)){std::memcpy(out,body_memory.data(),size);return true;}
+    if(address==0x50000 && size==sizeof(board_memory)){std::memcpy(out,board_memory.data(),size);return true;}
+    if(address==0x20000+addr::native_skater::component_animation_holder_offset && size==sizeof(animation_holder)){
+        std::memcpy(out,&animation_holder,size);return true;
+    }
+    return false;
+}
+template<class T> std::optional<T> read(std::uintptr_t address){
+    T out{};if(!peek(address,&out,sizeof(out)))return {};return out;
+}
+@seed_capture@
+void check(bool value,const char* why){if(!value)throw std::runtime_error(why);}
+void reset(){
+    current.base=0x10000;current.component=0x20000;current.board_holder=0x30000;
+    native_pose_entity=0x60000;native_pose_generation=1;
+    record_running=false;room_shown=false;room_restore_until=0;render_seed_until=0;
+    render_seed_sample={};render_seed_stamp={};render_seed_at=0;render_seed_plan.reset();
+    plan_now=std::make_shared<Plan>();clock_now=10;pending={};pending_deck.weight=0;
+    board_seed_underlay={};reads=0;preparations=0;on_read={};read_failure=false;
+    multiplayer::layouts=0;multiplayer::on_layout={};
+    multiplayer::body_layout={0x40000,skeleton_joints};multiplayer::board_layout={0x50000,board_bones};
+    board_pose::modified=false;animation_holder=0x70000;
+    NativeBone identity{};identity.scale={1,1,1,1};identity.rotation={0,0,0,1};
+    body_memory.fill(identity);board_memory.fill(identity);
+    body_memory[placement_joint].position={4,0,0,0};
+    board_memory[1].position={4,0,0,0};board_memory[2].position={0,.1f,0,0};
+}
+void capture(){capture_render_seed(0x20000,0x70000,pending);}
+}
+void prepare_playback() noexcept {++preparations;}
+@seed_getter@
+void test_seed(){
+    reset();capture();check(!reads,"Unrequested observer reads no native buffers");
+    check(!native_render_pose() && preparations==1,"First request opens observation without inventing a seed");
+    capture();const auto first=native_render_pose();
+    check(first && first->sequence==1 && first->joints.size()==skeleton_joints,"Stable native rigs publish one seed");
+    check(first->board.position[0]==0 && first->board.position[1]==.1f,"Board is relative to the rendered body placement");
+    check(body_memory[placement_joint].position[0]==4 && board_memory[2].position[1]==.1f,"Observer preserves source buffers");
+    clock_now=10.149;check(native_render_pose().has_value(),"Fresh seed remains available");
+    clock_now=10.151;check(!native_render_pose(),"Expired seed rejected");
+    for(unsigned fault=0;fault<17;++fault){
+        reset();(void)native_render_pose();
+        switch(fault){
+        case 0: read_failure=true;break;
+        case 1: on_read=[](unsigned n){if(n==3)body_memory[10].position[1]=1;};break;
+        case 2: on_read=[](unsigned n){if(n==4)board_memory[2].position[1]=1;};break;
+        case 3: multiplayer::on_layout=[](unsigned n){if(n==3)multiplayer::body_layout.buffer+=0x1000;};break;
+        case 4: multiplayer::on_layout=[](unsigned n){if(n==4)multiplayer::board_layout.count=15;};break;
+        case 5: on_read=[](unsigned n){if(n==4)++native_pose_generation;};break;
+        case 6: on_read=[](unsigned n){if(n==4)native_pose_entity=0x60010;};break;
+        case 7: on_read=[](unsigned n){if(n==4)plan_now=std::make_shared<Plan>();};break;
+        case 8: animation_holder+=0x1000;break;
+        case 9: pending.bones.push_back(1);break;
+        case 10: pending.written.push_back(1);break;
+        case 11: pending_deck.weight=1;break;
+        case 12: board_pose::modified=true;break;
+        case 13: on_read=[](unsigned n){if(n==4)board_pose::modified=true;};break;
+        case 14: record_running=true;break;
+        case 15: body_memory[10].position[0]=std::numeric_limits<float>::quiet_NaN();break;
+        case 16: on_read=[](unsigned n){if(n==4)clock_now+=.2;};break;
+        }
+        capture();check(!render_seed_sample.sequence,"Unstable, modified or stale rigs must not publish a seed");
+    }
+    for(unsigned fault=0;fault<5;++fault){
+        reset();(void)native_render_pose();capture();
+        switch(fault){
+        case 0: ++native_pose_generation;break;
+        case 1: current.board_holder=0x30010;break;
+        case 2: plan_now=std::make_shared<Plan>();break;
+        case 3: board_pose::modified=true;break;
+        case 4: clock_now=9;break;
+        }
+        check(!native_render_pose(),"Getter revalidates the published observation");
+    }
+    reset();(void)native_render_pose();
+    board_seed_underlay={seed_owner(),0x50000,board_memory,board_memory,9.99};
+    board_seed_underlay.before[2].position[1]=.2f;
+    capture();check(native_render_pose()->board.position[1]==.2f,"Previous visual mount must not feed back into a seed");
+    reset();(void)native_render_pose();
+    board_seed_underlay={seed_owner(),0x50000,board_memory,board_memory,9};
+    capture();check(!render_seed_sample.sequence,"Expired mount underlay cannot become a fresh seed");
+}
+}
+}
+int main(){
+    try{dingosdk::skater_animation::test_seed();}
+    catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
+    std::cout<<"Production rendered seed: stable reads, ownership, overlays, underlay and expiry passed\n";
+}

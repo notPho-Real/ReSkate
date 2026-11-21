@@ -95,12 +95,26 @@ the mount can outlive Arcade's 150 ms ticket heartbeat, and `cancel_play(ticket)
 does not revoke that separate mount lease. Plugin `poser_`/`mounter_` ownership
 also does not participate in the Arcade ticket arbitration.
 
-A safe implementation therefore needs a general, owner-tagged body/board render
-snapshot and tests for owner replacement, stale frames, expiry, and cancellation,
-or a general shared lease for pose/mount/clip operations. Adding that cross-thread
-ownership work during the merge would exceed a small reversible prototype.
-No new animation experiment is enabled in this integration. This preserves the
-clean integration instead of claiming an unverified visual improvement.
+The isolated development experiment now supplies native_render_pose(): a
+read-only, owner-tagged body/board seed captured before the body render overlay.
+It reads both native buffers twice, rejects changing layouts/owners and active
+overlays, and expires after 150 ms. The board mount's prior before/after pair
+prevents visual feedback. Plugin writes to the deck mount block the seed until
+native animation replaces that lane, even after the plugin clears its request.
+Repeated stable reads are not an atomic physics/GPU frame guarantee.
+
+The arcaderenderseed on command selects this seed for existing Casper clip
+authoring; off restores the original path. The unsaved switch defaults off,
+cancels the owned trick on change and adds no playback or mount lease. The
+command reports the last accepted seed and ticket; that is submission evidence,
+not rendering. The release configuration cannot enable the experiment.
+
+Focused tests compile the production observer with simulated memory endpoints
+and cover read failures, changed buffers/layouts/owners/plans, stale samples,
+overlay interference and mount feedback. Existing runtime and release tests
+cover entry, cancellation and the unchanged default. These checks do not prove
+a visible improvement; the exact Windows DLL still requires the bounded Deck
+comparison described below.
 
 ## Native acceptance procedure
 
