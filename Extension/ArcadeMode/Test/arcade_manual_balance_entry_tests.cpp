@@ -27,7 +27,7 @@ struct Pipeline {
     NativeGesture::Output output{};ManualObservationResult observation{};PhysicalBalanceSample modeled_balance{};std::uint64_t label_sequence{};
     explicit Pipeline(bool is_nose,unsigned interval,float board_speed=0):nose(is_nose),speed(board_speed),cadence(interval){input.enable(true);}
     unsigned wanted()const{return nose?0x8000u:0x4000u;}
-    void step(unsigned contacts,short y=0,bool label=false,unsigned state=100,bool pushing=false){
+    void step(unsigned contacts,short y=0,bool label=false,unsigned state=100,bool pushing=false,short x=0,std::uint16_t buttons=0){
         const auto frame=native.step(now,contacts,state,pushing);
         input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
         const auto physical=manual_acquisition_pose(frame);
@@ -54,7 +54,7 @@ struct Pipeline {
         if(combo.manual_putdown()||combo.failed_section())acquisition.reset();
         input.publish_balance_controls(admitted?InputBalanceControls::vertical(nose?InputBalanceKind::nose:InputBalanceKind::manual):InputBalanceControls{},frame);
         const auto control=manual_input_pose(pose,pushing,admitted,physical);
-        output=input.poll(0,now,0,0,y,0,0,true,false,false,speed,false,false,false,now,false,{},false,true,control,
+        output=input.poll(0,now,buttons,x,y,0,0,true,false,false,speed,false,false,false,now,false,{},false,true,control,
             false,false,false,false,true,false,0,0,ActionExperiment::classic,true,true,admitted);
         if(exiting&&!output.authored_playback&&!output.action.owned)output.right_x=output.right_y=0;
         acquisition.observe(now,frame,output.manual,true);ground.observe(now,frame,output.manual,true);
@@ -278,6 +278,51 @@ void held_air_landing(){
         "extended hold cannot survive release/repress, actor withdrawal, OFF, owner loss, stale delivery, unavailable input or another flight");
  }
 }
+void diagonal_air_preparation(){
+ for(bool nose:{false,true})for(unsigned cadence:{8u,17u,34u})for(short x:{short{-21000},short{21000}}){
+  Pipeline p(nose,cadence);
+  const auto direction=static_cast<short>(nose?24000:-24000);
+  p.step(0,0,false,200);
+  p.step(0,static_cast<short>(-direction),false,200,false,x);
+  p.step(0,direction,false,200,false,x);
+  const auto recognized=p.output.manual.recognized_at;
+  check(p.output.manual.owns&&p.output.manual.held_air&&p.output.suppress_reverse,
+        "a recognized diagonal final stroke remains held and reserves its native vertical movement");
+  while(p.now<recognized+1400){
+   p.step(0,direction,false,200,false,x);
+   check(p.output.manual.owns&&p.output.manual.held_air&&p.output.suppress_reverse&&
+         p.output.manual.recognized_at==recognized,
+         "diagonal landing preparation keeps the same flight and recognition beyond the tap deadline");
+  }
+  p.step(0xc000u,direction,false,100,false,x);
+  check(p.output.manual.owns&&p.output.suppress_reverse&&!p.admitted,
+        "two-truck settling reserves diagonal entry pressure without inventing Manual contact");
+  p.step(p.wanted(),direction,false,100,false,x);
+  check(p.admitted&&p.output.manual.confirmed&&!p.output.suppress_reverse,
+        "matching native landing admits balance and releases preparation-only movement reservation");
+ }
+ for(bool nose:{false,true})for(unsigned fault=0;fault<7;++fault){
+  Pipeline p(nose,17);
+  const auto direction=static_cast<short>(nose?24000:-24000);
+  p.step(0,0,false,200);
+  p.step(0,static_cast<short>(-direction),false,200,false,21000);
+  p.step(0,direction,false,200,false,21000);
+  check(p.output.manual.held_air,"negative control begins from an actual admitted diagonal preparation");
+  if(fault==5)p.input.enable(false);
+  if(fault==6)++p.native.owner.rig;
+  const auto y=static_cast<short>(fault==0?0:fault==1?(nose?15000:-15000):fault==3?-direction:direction);
+  const auto x=static_cast<short>(fault==1?32000:21000);
+  const auto buttons=static_cast<std::uint16_t>(fault==2?(nose?9u:10u):fault==4?0x4000u:0u);
+  p.step(0,y,false,200,false,x,buttons);
+  check(!p.output.manual.held_air&&!p.output.suppress_reverse,
+        "neutral shallow steering diagonal D-pad opposite input unrelated trick OFF and owner loss release preparation reservation");
+  if(fault<=3){
+   p.step(0,direction,false,200,false,21000);
+   check(!p.output.manual.held_air,
+         "repressing a released diagonal cannot renew the original continuously-held lease");
+  }
+ }
+}
 void held_landing_clock(){
  for(bool nose:{false,true})for(unsigned client_delay:{0u,100u})for(unsigned age:{1199u,1200u,1201u}){
   Native n;GroundManualBalance balance;auto delivered=command(nose);delivered.from_air=true;
@@ -349,4 +394,4 @@ void revert_contact_guards(){
 }
 
 }
-int main(){revert_contact_guards();landing_phase_handoff();composed();guards();air_guards();held_air_landing();held_landing_clock();std::cout<<checks<<" basic ground Manual balance entry checks passed\n";}
+int main(){diagonal_air_preparation();revert_contact_guards();landing_phase_handoff();composed();guards();air_guards();held_air_landing();held_landing_clock();std::cout<<checks<<" basic ground Manual balance entry checks passed\n";}

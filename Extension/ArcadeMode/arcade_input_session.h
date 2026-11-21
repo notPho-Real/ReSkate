@@ -594,7 +594,7 @@ public:
         // native LY (Down selects the ordinary ground reverse/revert path).
         // Actual confirmed balance retains its existing correction writer.
         if (manual.owns_stick && manual_.from_air() && (!manual.confirmed || !admission.manual_balance_admitted) &&
-            InputEvents::normalize(physical,now,true,admission.input_policy).direction==(manual_.requested()<0?2:8))
+            manual_direction_held(manual_.requested()))
             output.suppress_reverse=true;
         output.manual = {diagnostic.stick, diagnostic.pad,
             diagnostic.stick_first, diagnostic.pad_first, manual_.requested(), diagnostic.stick_at,
@@ -1112,11 +1112,19 @@ private:
             native.air_departure>manual_air_episode_.departure && native.air_departure-manual_air_episode_.departure==1;
         return same_flight || first_landing;
     }
+    bool manual_direction_held(int direction) const noexcept {
+        if (!direction) return false;
+        // Keep the admitted throw's interpretation through delivery. Requiring
+        // an exact cardinal here releases a diagonal that recognition accepted
+        // and lets its vertical movement select native reverse on landing.
+        if (admission_.input_policy.manual_axis_projection)
+            return InputEvents::manual_vertical(physical_)==direction;
+        return InputEvents::normalize(physical_,now_,true,admission_.input_policy).direction==(direction<0?2:8);
+    }
     bool held_air_manual(int direction=0) const noexcept {
         if (!direction) direction=manual_.requested();
         if (!direction || !manual_flight_continues()) return false;
-        const auto physical=InputEvents::normalize(physical_,now_,true,admission_.input_policy);
-        return physical.direction==(direction<0?2:8);
+        return manual_direction_held(direction);
     }
     struct RevertLink {int direction{};std::uint64_t started{},confirmed_at{},owner{};
         std::uint32_t stance{};std::uint64_t recognition{},step{},contact{};bool issued{};
