@@ -60,7 +60,7 @@ def generate(root,variant='current'):
     commit=module.between(noclip,'        const auto commit_motion = [&](bool linear,bool angular) {',
                           '        const auto release_turn = ')
     body_writer=module.between(noclip,'template<class Parts,class Vectors,class Flags,class Completed>',
-                               '\n}\nvoid debug_stop_noclip')
+                               '\n}\nstd::atomic<bool>& noclip_hold_flag')
 
     def once(old,new):
         nonlocal source

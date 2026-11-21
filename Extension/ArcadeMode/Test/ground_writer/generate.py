@@ -18,7 +18,7 @@ def generate(root):
         'OBSERVER': between(mode, 'GroundWriterEvidence begin_ground_writer_observation(', 'bool set_input_capture('),
         'ANGULAR_OBSERVER': between(mode, '// Angular writer observation begin. Every field', '// Angular writer observation end.'),
         'ANGULAR_BOUNDARIES': between(mode, '    // Angular receipt boundaries are separate', '    // Angular receipt boundaries end.'),
-        'BODY_WRITE': between(client, 'template<class T> void body_write(', '\n}\nvoid debug_stop_noclip'),
+        'BODY_WRITE': between(client, 'template<class T> void body_write(', '\n}\nstd::atomic<bool>& noclip_hold_flag'),
         'FOLLOWUP_PUBLICATION': between(client, '    a.native_launch_id.store(', '    a.launch.store('),
         'COMMIT': between(client, '        const auto commit_motion = ', '        const auto release_turn = '),
         'ANGULAR_RELEASE': between(client, '        const auto release_turn = ', '        if (!intent.enabled) {'),

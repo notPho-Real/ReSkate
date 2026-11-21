@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "branch": "arcade-stage-rc51-feel",
-  "milestone": "RC5.1 owner-feedback corrections compiled and packaged; exact-candidate native acceptance pending",
+  "branch": "arcade-stage-upstream-8515e164",
+  "milestone": "Official upstream 8515e164 integration; exact-candidate CI and native acceptance recorded separately",
   "game_build": 20260929,
   "accepted": false,
   "sources": {
@@ -32,7 +32,7 @@
     "upstream": {
       "repository": "Dingo-Shenanigans/ReSkate",
       "ref": "main",
-      "sha": "355bf71e284ad1c29e32ea81cafdef901d74c513",
+      "sha": "8515e164e5e0d7b3eda497f5a187fc5735170778",
       "newer_than_requested": false
     },
     "casper": {
@@ -74,5 +74,13 @@
     "dll_sha256": "af4ca57f79139b2bb520d01222293ba3baf626e99e050141c87e7fcd44435063",
     "package_verified": true,
     "verification_sha256": "d4cff5287038ecc7730002a001731d86189e10525c7314bbb0b79384e7212d73"
+  },
+  "upstream_integration": {
+    "arcade_base": "7abb02fabed9c96e0157fbd5691df003b29e2b11",
+    "merge_commit": "3fa99ea3ad54285518f84aadbfe3ee1534fb9ec3",
+    "method": "regular two-parent merge",
+    "native_accepted": false,
+    "animation_experiment_enabled": false,
+    "assessment": "contrib/arcade-mode/UPSTREAM_8515E164.md"
   }
 }
