@@ -3,10 +3,11 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current compiled checkpoint `6f132763` passed all nine required gates in
-[CI 45031833140](https://github.com/notPho-Real/ReSkate/actions/runs/45031833140),
-with 148 Windows preflight and 136 integration tests and a verified experimental
-installer. The exact prior installation was restored after its native batch.
+Current compiled checkpoint `fbb09e16` passed all nine required gates in
+[CI 45076961332](https://github.com/notPho-Real/ReSkate/actions/runs/45076961332),
+including Windows preflight, full runtime integration and experimental Deck
+packaging. Native observations below belong to the earlier `6f132763` batch,
+after which the exact prior installation was restored; they do not verify `fbb09e16`.
 
 The Mega Park trial observed a **3.301-second sampled physical Manual hold**:
 97 of 100 observations qualified, with a maximum 107ms qualified gap, stable
@@ -21,7 +22,7 @@ the second push flag appeared before automatic X resumed. The cause remains
 unresolved. The neutral hold passes 2,371 sanitizer and 203 production publication
 checks; those checks establish input ownership, not native stance execution.
 
-The next source batch also withholds scalar speed assistance throughout that
+The compiled `fbb09e16` batch also withholds scalar speed assistance throughout that
 same stance reservation (244 production-path checks). Existing DEV Pivot rows
 now retain current board/hips bases through the original 1100ms observation
 window, including after rejection. Owner/episode loss, release and OFF close
