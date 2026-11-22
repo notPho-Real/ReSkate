@@ -14,11 +14,13 @@
 #include "Extension/ArcadeMode/arcade_native_events.h"
 #include "Extension/ArcadeMode/arcade_native_readiness.h"
 #include "Extension/ArcadeMode/arcade_gesture.h"
+#include "Extension/ArcadeMode/arcade_trigger_input.h"
 #include "Extension/ArcadeMode/arcade_controller_route.h"
 #include "Extension/ArcadeMode/arcade_playback_packet.h"
 #include "Extension/ArcadeMode/arcade_input_telemetry.h"
 #include "Extension/ArcadeMode/arcade_balance_hud_lease.h"
 #include "Extension/Skater/no_bail.h"
+#include "Extension/Skater/skater_physics.h"
 #include "Extension/ArcadeMode/arcade_camera.h"
 #include "Extension/ArcadeMode/arcade_camera_input.h"
 #include <mutex>
@@ -70,8 +72,14 @@ std::array<PlaybackPacket,4> playback_packets;NativeControllerRoute controller_r
 @@PACKET_RETIRE@@
 std::atomic<std::uint64_t> action_eligible_until{},manual_eligible_until{},manual_prepare_until{},manual_release_until{};
 NativeInputReadiness native_readiness;std::atomic<SkatePose> manual_observed{SkatePose::unknown};std::atomic<bool>manual_balance_admitted{};
-struct Telemetry{template<class T>void client(const T&){}void pad(const PadTelemetry&){}bool client_dropped()const{return false;}}input_telemetry;
+struct Telemetry{template<class T>void client(const T&){}void pad(const PadTelemetry&){}bool client_dropped()const{return false;}void client_lost(){}
+#if defined(DINGOSDK_DEV_TOOLS)
+ std::vector<ManualPivotEvidence> pivots;
+ void client(const ManualPivotEvidence& row){pivots.push_back(row);}
+#endif
+}input_telemetry;
 NativeInputFrame capture_native_frame{};std::array<std::uint32_t,8> capture_native_words{};float capture_physics_dt{};
+ManualEpisode::PivotMotion capture_manual_pivot_motion{};
 struct Correlation{bool schema4_enabled{};bool observational()const{return false;}bool schema4()const{return schema4_enabled;}std::uint64_t capture_id()const{return 7;}void lost(){}void end(std::uint64_t,NativeInputFrame,bool,void(*)(),bool){}template<class Sink>void event(CaptureCorrelationEvidence,const NativeInputFrame&,std::uint64_t,Sink){}}input_capture_correlation;
 struct CaptureManualJoinFixture{std::uint64_t request{},owner_generation{},publication{};bool from_air{},model_seen{},publication_seen{},render_seen{},exit_seen{};unsigned route{},exit_reason{};NativeInputOwner owner{};}capture_manual_join;
 std::uint64_t capture_admission_sequence{},capture_termination_sequence{},capture_hud_publication_sequence{};
@@ -118,6 +126,12 @@ InputSurfaceState surface(std::uint64_t,const NativeInputFrame&)noexcept{return 
 bool current(const WallplantCommand&,std::uint64_t,const NativeInputFrame&,SurfaceGeometryVector)noexcept{return false;}
 }
 // Manual fixtures supply no custom-animation receipt or motion authority.
+namespace dingosdk::arcade_mode::vert_runtime {
+void cancel()noexcept{}
+InputSurfaceState surface(std::uint64_t,const NativeInputFrame&,InputSurfaceState other)noexcept{return other;}
+TriggerDecision qualify(void*,const TriggerPress&,const InputNativeContext&,std::uint64_t)noexcept{return {};}
+InputDisposition request(const InputRequest&,std::uint64_t,const NativeInputFrame&)noexcept{return InputDisposition::unsupported;}
+}
 namespace dingosdk::arcade_mode::custom_flatland_runtime {
 CustomExecutionBatch take_executions()noexcept{return {};}
 void cancel()noexcept{}
@@ -140,6 +154,7 @@ InputAdapter grind_adapter{}; // Native backend cannot execute in this fixture.
 const CustomFlatlandBinding flatland_binding{}; // No custom animation owner is supplied by manual fixtures.
 HeldFlipObservation held_flip{}; // No native held-flip evidence is supplied by manual tests.
 namespace dingosdk::arcade_mode::native_grind {void cancel()noexcept{}}
+namespace dingosdk::arcade_mode::native_grab {void refresh(const NoBailSkater&,std::uint64_t,bool,bool)noexcept{}}
 namespace dingosdk::logging{
 enum class Level{info};enum class Channel{skater};
 template<class... Args>void log(Level,Channel,const char*,Args&&...){}
@@ -147,13 +162,14 @@ template<class... Args>void log(Level,Channel,const char*,Args&&...){}
 @@SET_ENABLED@@
 NoBailSkater owner{1,2,3,4,5};NativeRequestSample raw;NativeInputFrame latest;
 bool corrupt_manual_delivery{};NativeOrientation orientation{true,false};
-void observe(float seconds,unsigned contacts,unsigned state=100,bool valid=true,bool idle_known=true,std::int32_t flip_id=-1){
+void observe(float seconds,unsigned contacts,unsigned state=100,bool valid=true,bool idle_known=true,std::int32_t flip_id=-1,const skater_physics::Step& foot={}){
  if(trial_hz)seconds=1.f/static_cast<float>(trial_hz);
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  if(hud_hz)seconds=1.f/hud_hz;
 #endif
  raw.valid=valid;raw.state=state;raw.crouch_mode=state==103?0:1;raw.words[1]=contacts;
  const auto now=clock_ms;const auto sample=raw;const NativeFlipSelection flip{idle_known,flip_id};const bool wipeout=false;
+ // Legacy handoff fixtures supply no physical board/pelvis observations.
  std::lock_guard lock(ollie_mutex);
 @@OBSERVER@@latest=frame;arcade_input.publish_authority(now,frame.owner_generation,1,true);
 }
@@ -195,10 +211,14 @@ NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,
 // No plant owns controls in this ordinary Manual fixture.
 const bool plant_holding=false;
 const auto gameplay_buttons=buttons;
+const unsigned char physical_left_trigger=0,physical_right_trigger=physical_rt;
+const bool grab_permitted=false;
+struct GrabRequestContext{NoBailSkater owner;std::uint64_t episode;bool held;};
+const GrabRequestContext grab_context{owner,grind_frame.airborne_episode,(physical_buttons&0x2000u)!=0};
 @@POLL@@
  if(corrupt_manual_delivery)result.right_y=0;
 @@DELIVERY@@
- const bool reference=false;const unsigned char physical_right_trigger=physical_rt;
+ const bool reference=false;
 @@HOP@@
  if(releasing_manual&&!result.authored_playback&&!action.owned)result.right_x=result.right_y=0;
  return result;
@@ -974,7 +994,15 @@ void manual_handoff_native_boundaries(){
  for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(unsigned duration:{300u,1900u,5500u})for(unsigned missing=0;missing<9;++missing){
   const unsigned dt=1000/hz;raw.words[0]=0;qualified(nose,dt,300);
   const auto id=manual_episode.serial();const auto began=clock_ms;
-  check(remap(0,0,0,255).action.owned,"native handoff negative control begins from independently admitted manual and RT");
+  arcade_input.set_recognition_capture(0,true);
+  const auto pivot_request=remap(0,0,0,255);
+  const auto* recognized=arcade_input.input_diagnostic(0);
+  check(latest.airborne_episode && !latest.airborne && recognized && recognized->recognition_count==1 &&
+      recognized->recognition[0].request.action==InputAction::manual_pivot &&
+      !recognized->recognition[0].request.air_episode.number,
+      "landed Manual Pivot owns current balance rather than retaining its expired airborne queue gate");
+  arcade_input.set_recognition_capture(0,false);
+  check(pivot_request.action.owned,"native handoff negative control begins from independently admitted manual and RT");
   while(clock_ms-began<duration){
    tick(dt,missing==0?100:101,0xc000);remap();
   }
@@ -998,6 +1026,57 @@ void manual_handoff_native_boundaries(){
   check((!refused.manual.owns || refused.manual.request==(nose?1:-1))&&!refused.manual.revert.ack_at,
       "physical handoff rejects absent101, pushing owner, interrupted transition, owner loss, bail, offboard, grind and an original-step gap even with a score label");
   check(manual_episode.serial()==id,"failed native handoff never creates a replacement manual episode");
+ }
+}
+void manual_pivot_physical_production(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(unsigned fault:{0u,1u,2u}){
+  const unsigned dt=1000/hz;qualified(nose,dt,300);
+#if defined(DINGOSDK_DEV_TOOLS)
+  input_telemetry.pivots.clear();
+#endif
+  trial_hz=hz;trial_start=clock_ms;trial_frame=0;
+  const auto episode=manual_episode.serial();const auto multiplier=combo_session.model().state().multiplier;
+  const unsigned support=nose?0x8000u:0x4000u;
+  const auto motion=[](float angle,unsigned state){
+   skater_physics::Step step{};step.state=state;
+   const auto pose=[](float yaw){skater_physics::Step::Pose p{};
+    const float c=std::cos(yaw),s=std::sin(yaw);
+    p.transform={c,0,-s,0,0,1,0,0,s,0,c,0,0,0,0,1};return p;};
+   step.board_reference=pose(angle);step.poses[23]=pose(angle+.4f);return step;
+  };
+  advance_trial(dt);observe(dt/1000.f,support,100,true,true,-1,motion(0,100));client(dt/1000.f,history());remap();
+  check(remap(0,0,0,255).action.owned&&manual_episode.pivot_evidence().status==ManualEpisode::PivotStatus::tracking,
+      "production RT admission captures the exact original board and pelvis motion for Pivot evidence");
+  const auto began=clock_ms;
+  while(clock_ms-began<500){
+   advance_trial(dt);const float angle=fault==2?0.f:3.141592654f*std::min(1.f,(clock_ms-began)/500.f);
+   observe(dt/1000.f,fault==1?0xc000u:support,101,true,true,-1,motion(angle,101));
+   client(dt/1000.f,history());remap(0,0,0,255);
+  }
+  orientation.fakie=!orientation.fakie;
+  for(unsigned settle=0;settle<5;++settle){
+   advance_trial(dt);observe(dt/1000.f,support,100,true,true,-1,motion(fault==2?0.f:3.141592654f,100));
+   client(dt/1000.f,history());remap(0,0,0,255);
+  }
+  const auto& evidence=manual_episode.pivot_evidence();
+  check((evidence.status==ManualEpisode::PivotStatus::observed)==(fault==0),
+      "production physical Pivot needs both board and body half-turn plus uninterrupted single-truck support");
+#if defined(DINGOSDK_DEV_TOOLS)
+  check(input_telemetry.pivots.size()==2&&input_telemetry.pivots[0].status==1&&
+      input_telemetry.pivots[1].status==(fault==0?3u:2u),
+      "production Pivot emits only its start and final status, never one telemetry row per physics/input poll");
+  const auto& receipt=input_telemetry.pivots.back();
+  check(receipt.transition==evidence.transition&&receipt.episode==episode&&
+      receipt.started_ms==input_telemetry.pivots.front().native_ms&&
+      receipt.start_step==input_telemetry.pivots.front().physics_step&&
+      receipt.sequence==input_telemetry.pivots.front().sequence+1&&
+      receipt.board_radians==evidence.board_radians&&receipt.body_radians==evidence.body_radians,
+      "production telemetry preserves actual Pivot proof identity and measured signed rotation through successor settlement");
+#endif
+  check(manual_episode.serial()==episode&&manual_balance_admitted.load()&&balance_hud_pending()&&
+      combo_session.model().state().combo_active&&combo_session.model().state().multiplier==multiplier,
+      "physical Pivot verification cannot fabricate scoring or prevent ordinary successor balance restoration");
+  trial_hz=0;
  }
 }
 void manual_revert_production(){
@@ -1069,6 +1148,8 @@ void manual_revert_production(){
    for(unsigned proof=0;proof<2;++proof){advance_trial(dt);observe(dt/1000.f,nose?0x8000u:0x4000u);client(dt/1000.f,history());verify_left(remap(0,0,0,255));}
    check(manual_episode.pose()==(nose?SkatePose::nose_manual:SkatePose::manual)&&manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
       "delivered successor owns original manual balance and HUD after consecutive original contact while native LS may still run");
+   check(manual_episode.pivot_evidence().status!=ManualEpisode::PivotStatus::observed,
+      "label and fakie handoff without physical transforms cannot certify Pivot");
    if(rapid&&link==0){
     remap(); // Real RT release then press before the next original physics step.
     continue;
@@ -1596,7 +1677,7 @@ int main(){
  manual_handoff_native_boundaries();
  manual_ground_contact_bounce();
  manual_revert_successor_contact_bounce();
- manual_revert_production();
+ manual_pivot_physical_production();manual_revert_production();
  manual_revert_contact_publication_gap();
  manual_revert_without_native_transition();
  manual_native_revert_freshness();

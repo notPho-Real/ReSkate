@@ -13,7 +13,7 @@ struct Route {
     ArcadeInput input{true}; NativeInputState producer; NativeInputReadiness readiness;
     NativeInputOwner owner{1,2,3,4,5}; NativeInputFrame frame{};
     std::vector<PreparedGesture> recipes;
-    unsigned starts{},recognized{}; bool exact_clock{},nollie{},switched{};NativeFlipRequest normal_flip{};
+    unsigned starts{},recognized{}; bool exact_clock{},switched{};NativeFlipRequest normal_flip{};
     NativeGesture::Output output{};
     Route() {
         for(const unsigned id:{1u,2u,3u,4u,5u,6u,7u,8u,9u,13u,36u,37u})
@@ -21,7 +21,7 @@ struct Route {
                 std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
         input.enable(true);input.set_recognition_capture(0,true);
         for(const unsigned id:{16u,22u,25u,39u})recipes.emplace_back(static_cast<std::uint8_t>(id),true,GestureContext::ground,
-            std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
+            std::vector<AuthoredStickStep>{{0,0,32767},{18,28000,-28000},{21,0,0},{24,0,0}});
     }
     NativeGesture::Output poll(std::uint64_t now,PhysicalInputSample pad={},std::uint32_t state=201,
             std::int32_t selection=-1,std::uint32_t mode=2,bool gameplay=true) {
@@ -33,12 +33,27 @@ struct Route {
         input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
         const auto admit=readiness.sample(now,frame);
         output=input.poll(0,now,pad.buttons,pad.x,pad.y,0,0,gameplay,admit.start,false,0,false,false,
-            true,exact_clock?now*60/1000:now/17,nollie,recipes,admit.mirror_x,false,frame.airborne?SkatePose::air:SkatePose::riding,
-            false,false,false,false,admit.flip_ready,false,0,0,ActionExperiment::classic,admit.action,admit.stance_known,false,normal_flip);
+            true,exact_clock?now*60/1000:now/17,false,recipes,admit.mirror_x,false,frame.airborne?SkatePose::air:SkatePose::riding,
+            false,false,false,false,admit.flip_ready,false,pad.lt,pad.rt,ActionExperiment::classic,admit.action,admit.stance_known,false,normal_flip);
         starts+=output.requested_id?1u:0u;
         const auto* diagnostic=input.input_diagnostic(0);
         recognized+=static_cast<unsigned>(diagnostic->recognition_count);
         return output;
+    }
+    void prepare_air(bool nollie) {
+        if(nollie) {
+            poll(600,{},100,-1,1);
+            poll(610,{0,0,0,255},100,-1,1);poll(620,{},100,-1,1);
+            check(poll(630,{classic_a},100,-1,1).requested_id==16,"catalog fixture selects Nollie through physical LT tap and A");
+            poll(640,{classic_a},100,16,1);poll(650,{},100,16,1);
+            poll(670,{},200,16);poll(690,{},201,16);
+            // The initial pop has completed into a sampled native Nollie
+            // Kickflip and idle. A later X must exercise the authored recipe,
+            // not the owned-pop bridge (which has independent asset proofs).
+            poll(710,{},201,17);
+            for(unsigned at=730;at<1000;at+=20)poll(at);
+        }
+        poll(1000);starts=recognized=0;
     }
 };
 void neutral_once() {
@@ -327,7 +342,7 @@ void native_transition_requests() {
 void frontfoot_impossible_inputs() {
     for(unsigned hz:{30u,60u,120u})for(bool analog:{false,true})for(bool nollie:{false,true})for(bool switched:{false,true}) {
         const auto dt=1000u/hz;
-        auto h=std::make_unique<Route>();h->nollie=nollie;h->switched=switched;h->poll(1000);
+        auto h=std::make_unique<Route>();h->switched=switched;h->prepare_air(nollie);
         const PhysicalInputSample chord{static_cast<std::uint16_t>(analog?0x4080:0x4084),
             static_cast<std::int16_t>(analog?-25000:0),0};
         const auto out=h->poll(1000+dt,chord);
@@ -342,10 +357,10 @@ void frontfoot_impossible_inputs() {
         check(h->starts==1,"holding or releasing alternate Impossible cannot repeat it");
     }
     for(bool nollie:{false,true}) {
-        auto h=std::make_unique<Route>();h->nollie=nollie;
+        auto h=std::make_unique<Route>();
         const auto id=nollie?39:37;
         h->recipes.erase(std::remove_if(h->recipes.begin(),h->recipes.end(),[&](const auto& recipe){return recipe.native_id==id;}),h->recipes.end());
-        h->poll(1000);const auto out=h->poll(1010,{0x4084});
+        h->prepare_air(nollie);const auto out=h->poll(1010,{0x4084});
         check(out.unsupported && !out.requested_id && !out.authored_playback,
             "missing alternate Impossible gesture cannot substitute ordinary Impossible or Kickflip");
     }
@@ -367,7 +382,7 @@ void frontside_shove_inputs() {
     for(bool full_turn:{false,true})
     for(unsigned hz:{30u,60u,120u})for(bool analog:{false,true})for(bool nollie:{false,true})for(bool switched:{false,true}) {
         const auto dt=1000u/hz;
-        auto h=std::make_unique<Route>();h->nollie=nollie;h->switched=switched;h->poll(1000);
+        auto h=std::make_unique<Route>();h->switched=switched;h->prepare_air(nollie);
         const auto id=full_turn?(nollie?25:13):(nollie?22:7);
         const auto trick=full_turn?ArcadeTrick::fs_shove_it_360:ArcadeTrick::fs_pop_shove_it;
         const PhysicalInputSample chord{static_cast<std::uint16_t>(analog?0x4080:full_turn?0x4081:0x4082),0,
@@ -400,9 +415,9 @@ void frontside_shove_inputs() {
     }
     for(bool full_turn:{false,true})for(bool nollie:{false,true}) {
         auto h=std::make_unique<Route>();
-        h->nollie=nollie;const auto missing=full_turn?(nollie?25:13):(nollie?22:7);
+        const auto missing=full_turn?(nollie?25:13):(nollie?22:7);
         h->recipes.erase(std::remove_if(h->recipes.begin(),h->recipes.end(),[&](const auto& recipe){return recipe.native_id==missing;}),h->recipes.end());
-        h->poll(1000);const auto out=h->poll(1010,{static_cast<std::uint16_t>(full_turn?0x4081:0x4082)});
+        h->prepare_air(nollie);const auto out=h->poll(1010,{static_cast<std::uint16_t>(full_turn?0x4081:0x4082)});
         check(out.unsupported && !out.requested_id && !out.authored_playback,
             "missing exact frontside gesture cannot substitute a backside shove or Impossible");
     }

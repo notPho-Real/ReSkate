@@ -50,8 +50,10 @@ def generate(root,variant='current'):
                                    '        // Neutral is the existing native manual release recipe.')
     native_current=module.function(mode,'bool native_manual_contact_current(')
     noclip=(TREE/'Extension/Skater/client_noclip.cpp').read_text()
+    # Keep the complete scalar branch, ending before independent air planning.
+    resistance_end='        } else if (ground_step.status == arcade_mode::GroundStepStatus::unavailable) a.ground_resistance.reset();\n'
     resistance=module.between(noclip,'        const bool braking = (requests & 4u) != 0 || ((requests & 2u) != 0 &&\n',
-                             '        a.ground_output=a.ground_yaw.step(')
+                             resistance_end)+resistance_end
     resistance_current=resistance
     resistance=resistance.replace('        // A real Manual RS holder reserves vertical input before balance proof\n        // catches up. Reservation only withdraws ordinary scalar assistance.\n','')
     resistance=resistance.replace('controls_current && (balancing || !intent.ground_controls.manual_vertical_reserved) &&\n            (physics', 'controls_current && (physics')

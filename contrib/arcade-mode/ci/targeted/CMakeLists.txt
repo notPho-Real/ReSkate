@@ -18,8 +18,8 @@ add_test(NAME arcade_unified_candidate
         "${reskate_root}/contrib/arcade-mode/ci/test_unified_candidate.py")
 # Existing production-header tests, not copied implementations. No runtime DLL,
 # asset downloads, Cargo, package or publishing permissions in this fast lane.
-foreach(test native_score_snapshot native_score_progress native_score_presentation native_score_rows custom_score input_session neutral_flip_release air_motion_proof launch_descriptor
-             input_pattern_dispatch manual_step manual_balance_entry native_spin_integration native_readiness rail_pop
+foreach(test vert_air native_score_snapshot native_score_progress native_score_presentation native_score_rows custom_score input_session neutral_flip_release air_motion_proof launch_descriptor
+             input_pattern_dispatch input_events trigger_input trigger_dispatch setup_selection setup_session stance_input manual_step manual_balance_entry native_spin_integration native_readiness rail_pop
              grind_transition_lifetime grind_change native_grab manual_throw native_orientation playback held_flip manual footplant ground_grab fingerflip trickpedia trickpedia_lifetime
              wallplant wallplant_hold wallplant_combo contact_owner static_world_owner control_state input_consolidation)
     add_executable(arcade_${test} "${reskate_root}/Extension/ArcadeMode/Test/arcade_${test}_tests.cpp")

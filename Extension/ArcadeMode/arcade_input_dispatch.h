@@ -4,13 +4,14 @@
 #include "arcade_native_grab_lease.h"
 #include "arcade_input_policy.h"
 #include "arcade_held_flip.h"
+#include "arcade_setup_selection.h"
 #include <limits>
 #include <memory>
 
 namespace dingosdk::arcade_mode {
 enum class InputAction : std::uint8_t {
     none, crouch, ollie_release, flip, grab, rail_request, revert, manual, nose_manual,
-    balance_branch_one, balance_branch_two, balance_variant, lip_request, balance_return, rail_change, lip_change, wall_command, transfer_command, rail_select, lip_select, board_toggle, ground_turn, jump_variant, ground_grab
+    balance_branch_one, balance_branch_two, balance_variant, lip_request, balance_return, rail_change, lip_change, wall_command, transfer_command, rail_select, lip_select, board_toggle, ground_turn, jump_variant, ground_grab, switch_stance, manual_pivot
 };
 enum class InputDisposition : std::uint8_t { waiting, started, unsupported, cancelled, expired };
 // The caller selects one installed release table only after establishing its
@@ -95,6 +96,8 @@ struct InputRequest {
     // Direction is the presence flag; request_at may legitimately be zero.
     std::uint64_t manual_request_at{};
     int manual_direction{};
+    TriggerPress trigger{};
+    SetupStance setup{SetupStance::normal};
     constexpr GrindChangeTarget grind_target() const noexcept {
         return action == InputAction::rail_change ? grind_change_target(variant) : GrindChangeTarget::none;
     }
@@ -137,6 +140,11 @@ struct InputEnvironment {
     bool native_fingerflips{};
     std::uint64_t manual_revert_request_at{};
     int manual_revert_direction{}; // Established actuator only, never pending acquisition.
+    TriggerRouting triggers{};
+    std::uint8_t blocked_triggers{};
+    SetupStance setup{SetupStance::normal};
+    bool manual_launch{};
+    bool manual_pivot_admitted{};
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -423,10 +431,12 @@ public:
             ((request.generation_mask & 4u) && request.generations.action != native.generations.action &&
              !jump_selection_retired(request,native,released_jump))))
             return InputDisposition::cancelled;
-        if (request.air_episode.number && (!native.airborne || request.air_episode != native.air_episode()))
+        const bool landing_revert=request.action==InputAction::revert && request.trigger.owner==TriggerOwner::landing_revert;
+        if (!landing_revert && request.air_episode.number && (!native.airborne || request.air_episode != native.air_episode()))
             return InputDisposition::cancelled;
         if (rail(request.action) && context == InputContext::lip) return InputDisposition::cancelled;
         if (request.session != session || (request.context != context &&
+            !(landing_revert && request.context==InputContext::air && context==InputContext::ground) &&
             !(manual(request.action) && request.context == InputContext::air && context == InputContext::ground) &&
             !(request.action == InputAction::flip && request.pop_release_at &&
               request.context == InputContext::ground && context == InputContext::air) &&
@@ -441,7 +451,7 @@ private:
     std::array<InputRequest, capacity + 2> slots_{};
     std::size_t front_{}, size_{}, reserved_{};
     std::uint64_t epoch_{}, manual_epoch_{}, rail_epoch_{};
-    std::array<std::uint64_t, static_cast<std::size_t>(InputAction::ground_grab) + 1> cancellations_{};
+    std::array<std::uint64_t, static_cast<std::size_t>(InputAction::manual_pivot) + 1> cancellations_{};
     std::array<std::uint64_t, static_cast<std::size_t>(InputAirTableKind::count)> table_cancellations_{};
 };
 // Shared production recognition and dispatch. Native adapters remain responsible for
@@ -477,6 +487,7 @@ public:
         for(auto& event:diagnostic_.dispatch)event.request.recognition.reset();
     }
     void reset() noexcept {
+        triggers_.reset();setup_.reset();
         air_tables_ = {}; table_seals_ = {}; table_retired_ = {};
         events_.reset(); balance_controls_ = {}; previous_rail_ = {}; pending_.clear(); ++session_; crouched_ = false; crouch_sequence_ = 0;
         previous_context_ = InputContext::unknown; previous_balance_branch_ = 0; jump_binding_ = InputJumpBinding::disabled; jump_generation_ = 0; direction_ = 0; direction_at_ = 0;
@@ -504,6 +515,23 @@ public:
         return false;
     }
     const InputHistory& history() const noexcept { return events_.history(); }
+    std::uint8_t owned_triggers() const noexcept { return triggers_.owned_held(); }
+    bool owns_setup_trigger() const noexcept {
+        const auto& trigger=triggers_.get(0);
+        return trigger && !trigger.released && trigger.owner==TriggerOwner::setup;
+    }
+    std::uint8_t owned_vert_triggers() const noexcept {
+        std::uint8_t mask{};
+        for(unsigned channel=0;channel<2;++channel) {
+            const auto& trigger=triggers_.get(channel);
+            if(trigger && !trigger.released && (trigger.owner==TriggerOwner::transfer ||
+                trigger.owner==TriggerOwner::landing_revert))mask|=trigger.mask();
+        }
+        return mask;
+    }
+    SetupStance selected_setup(bool a_held=false) const noexcept { return setup_.desired(a_held); }
+    SetupStance selected_ground_setup() const noexcept { return setup_.desired_setup(true); }
+    void acknowledge_setup() noexcept { setup_.cancel_launch(); }
     InputRequest pending_manual() const noexcept { return pending_.slots()[0]; }
     InputRequest pending_grab() const noexcept {
         for (const auto& request : pending_.slots()) if (request.action == InputAction::grab) return request;
@@ -512,6 +540,7 @@ public:
     void acknowledge_jump_release() noexcept { pending_.cancel(InputAction::ollie_release); }
     void cancel_auxiliary() noexcept {
         pending_.cancel(InputAction::grab); pending_.cancel(InputAction::revert); grab_repeat_available_ = false;
+        pending_.cancel(InputAction::manual_pivot);pending_.cancel(InputAction::switch_stance);
         extended_grab_held_=false;
     }
     void cancel_air_episode(bool preserve_history = false) noexcept {
@@ -646,6 +675,7 @@ public:
         // Physical held state always updates. Balance-event exclusions apply
         // from the preceding admitted context, separately from native ownership.
         events_.sample(now, physical, balance_controls_, environment.manual_active, environment.policy);
+        triggers_.observe(events_.history(),environment.context,native);
         constexpr auto extended_chord=TrickControls::mask(TrickControls::flip)|TrickControls::mask(TrickControls::grab_layer);
         if((physical.buttons&extended_chord)!=extended_chord)extended_flip_held_=false;
         constexpr auto grab_chord=TrickControls::mask(TrickControls::grab)|TrickControls::mask(TrickControls::grab_layer);
@@ -657,6 +687,7 @@ public:
         diagnostic_.stick = events_.vertical_direction(false); diagnostic_.pad = events_.vertical_direction(true);
         if (environment.conflict) {
             events_.discard_intent(); pending_.clear(); crouched_ = false;
+            triggers_.reset();setup_.reset();
             wallplant_edge_={};
             diagnostic_.stick_first = diagnostic_.pad_first = 0;
             diagnostic_.stick_at = diagnostic_.pad_at = 0; diagnostic_.suppress_reverse = false;
@@ -681,6 +712,13 @@ public:
             direction_ = held_direction; direction_at_ = now;
             direction_source_ = InputSource::direction;
         }
+        recognize_triggers(now,environment);
+        setup_.sample(now,triggers_.get(0),{environment.context,native,environment.gameplay && !environment.conflict});
+        if(native.required) {
+            environment.setup=setup_.desired((physical.buttons&TrickControls::mask(TrickControls::ollie))!=0 || crouched_);
+            if(environment.manual_launch)environment.setup=environment.nollie?SetupStance::nollie:SetupStance::normal;
+            else environment.nollie=environment.setup==SetupStance::nollie;
+        }
         recognize_surface(now, environment);
         recognize_branches(now, environment);
         recognize_rail_extras(now, environment);
@@ -698,13 +736,6 @@ public:
                 }
                 continue;
             }
-            // Preserve the physical RT edge while balance publication catches
-            // up. The auxiliary dispatcher still requires independently current
-            // manual admission; recognition itself grants no native actuator.
-            if (environment.auxiliary_enabled && event.token.source == InputSource::triggers && event.token.code == TrickControls::revert_trigger &&
-                event.token.edge == InputEdge::press && (environment.context == InputContext::ground ||
-                    environment.context == InputContext::balance))
-                { const auto match = consume(event); enqueue(InputAction::revert, now, 1, environment,1,0,0,0,{},&match); }
             if (event.token.source != InputSource::buttons || event.owners) continue;
             const auto code = event.token.code;
             if (code == TrickControls::flip && event.token.edge == InputEdge::release) flip_release = event.sequence;
@@ -728,14 +759,26 @@ public:
                     continue;
                 }
                 if (event.token.edge == InputEdge::press && environment.ollie_allowed && environment.context != InputContext::foot) {
-                    if (environment.native_footplants && environment.context==InputContext::ground &&
-                        !environment.nollie && recognize_footplant(now,environment,event)) continue;
-                    const auto match=consume(event);crouched_=true;crouch_nollie_=environment.nollie;crouch_at_=event.at;
+                    auto context=environment;
+                    if(native.required && context.context==InputContext::ground && !context.manual_launch) {
+                        context.setup=setup_.desired_setup(true);
+                        context.nollie=context.setup==SetupStance::nollie;
+                    }
+                    if (context.native_footplants && context.context==InputContext::ground &&
+                        context.setup==SetupStance::normal && !context.nollie && recognize_footplant(now,context,event)) continue;
+                    const auto match=consume(event);crouched_=true;crouch_nollie_=context.nollie;crouch_at_=event.at;
+                    crouch_manual_=environment.manual_launch;
                     crouch_sequence_=event.sequence;
-                    enqueue(InputAction::crouch, now, 1, environment,1,0,0,0,{},&match);
+                    enqueue(InputAction::crouch, now, 1, context,1,0,0,0,{},&match);
                 } else if (event.token.edge == InputEdge::release && crouched_) {
                     if (!recognize_jump_release(now, environment)) {
-                        auto match=consume(event);auto context=environment;context.nollie=crouch_nollie_;
+                        auto match=consume(event);auto context=environment;
+                        if(!native.required || crouch_manual_)context.nollie=crouch_nollie_;
+                        if(crouch_manual_)context.setup=context.nollie?SetupStance::nollie:SetupStance::normal;
+                        if(native.required) {
+                            setup_.freeze_launch(event.at,context.setup);
+                            environment.setup=context.setup;environment.nollie=context.nollie;
+                        }
                         match.events[0]=crouch_sequence_;match.events[1]=event.sequence;match.count=2;
                         match.first_at=crouch_at_;match.last_at=event.at;
                         enqueue(InputAction::ollie_release, now, 1, context,1,0,0,0,{},&match);
@@ -744,6 +787,10 @@ public:
                 }
             }
             if (event.token.edge != InputEdge::press) continue;
+            if(code==TrickControls::flip && environment.setup==SetupStance::pressure &&
+               !environment.air_tables.pressure.current(now,native)) {
+                consume(event);diagnostic_.unresolved_definition=true;continue;
+            }
             if(code==TrickControls::flip)extended_flip_held_=false;
             if(code==TrickControls::grab)extended_grab_held_=false;
             if(code==TrickControls::flip && environment.context==InputContext::air && environment.native_fingerflips &&
@@ -807,6 +854,11 @@ public:
         recognize_board(now, environment);
         if (environment.context == InputContext::rail) pending_.bind_rail_selection(now,environment.rail);
         pending_.dispatch(now, session_, environment.context, adapter, [&](InputDispatchEvent event) {
+            // A fresh admitted setup replaces an aborted grounded launch.
+            // A rejected A may not overwrite an earlier launch's identity.
+            if(event.request.action==InputAction::crouch && event.disposition==InputDisposition::started)setup_.cancel_launch();
+            if(event.request.action==InputAction::ollie_release &&
+               event.disposition!=InputDisposition::waiting && event.disposition!=InputDisposition::started)setup_.cancel_launch();
             if(event.request.action==InputAction::flip && event.request.modifier==1 &&
                 event.request.input_sequence==extended_flip_sequence_ &&
                 event.disposition!=InputDisposition::waiting && event.disposition!=InputDisposition::started)
@@ -943,13 +995,52 @@ private:
         auto match=InputMatch::single(event);
         events_.history().consume(match,InputConsumption::regular);return match;
     }
+    void recognize_triggers(std::uint64_t now,const InputEnvironment& environment) noexcept {
+        const auto& native=environment.native_context;
+        for(unsigned channel=0;channel<2;++channel) {
+            const auto& press=triggers_.get(channel);
+            if(!press || press.owner!=TriggerOwner::none || now<press.press.at)continue;
+            const auto retire=[&] {triggers_.claim(channel,{TriggerOwner::cancelled,0},events_.history(),now);};
+            if((environment.blocked_triggers&(1u<<channel)) || now-press.press.at>TriggerJournal::context_window_ms ||
+               (native.required && (!press.native.required || !press.native.fresh(press.press.at) ||
+                press.native.generations.owner!=native.generations.owner))) {retire();continue;}
+            TriggerDecision decision{};
+            const auto until=press.press.at>UINT64_MAX-InputTiming::native_sample_lease_ms?UINT64_MAX:
+                press.press.at+InputTiming::native_sample_lease_ms;
+            if(channel==1 && press.context==InputContext::balance && environment.context==InputContext::balance &&
+               (environment.manual_pivot_admitted || environment.manual_revert_direction))
+                decision={TriggerOwner::manual_pivot,until,true};
+            else if(environment.triggers.qualify)
+                decision=environment.triggers.qualify(environment.triggers.context,press,native,now);
+            if(decision.owner!=TriggerOwner::none && decision.owner!=TriggerOwner::manual_pivot &&
+               decision.owner!=TriggerOwner::landing_revert && decision.owner!=TriggerOwner::transfer) {retire();continue;}
+            if(decision.owner==TriggerOwner::none && channel==0 && press.context==environment.context &&
+               (press.context==InputContext::ground || press.context==InputContext::balance || press.context==InputContext::rail))
+                decision={TriggerOwner::setup,0,true};
+            if(decision.owner==TriggerOwner::none && channel==1 && press.context==InputContext::ground &&
+               environment.context==InputContext::ground && environment.auxiliary_enabled)
+                decision={TriggerOwner::switch_stance,until,true};
+            // Acquiring balance is not an established Manual. A later native
+            // admission must not turn this old RT into a physical Pivot.
+            if(decision.owner==TriggerOwner::none && channel==1 && press.context==InputContext::balance) {retire();continue;}
+            if(decision.owner==TriggerOwner::none || !triggers_.claim(channel,decision,events_.history(),now))continue;
+            if(decision.owner==TriggerOwner::setup)continue;
+            const auto& claimed=triggers_.get(channel);
+            const auto match=InputMatch::single(claimed.press);
+            const auto action=decision.owner==TriggerOwner::switch_stance?InputAction::switch_stance:
+                decision.owner==TriggerOwner::manual_pivot?InputAction::manual_pivot:
+                decision.owner==TriggerOwner::landing_revert?InputAction::revert:InputAction::transfer_command;
+            enqueue(action,now,InputTiming::native_sample_lease_ms,environment,1,0,0,0,{},&match,
+                InputForm::ordinary,0,InputFootprintKind::events,nullptr,nullptr,nullptr,&claimed);
+        }
+    }
     void enqueue(InputAction action, std::uint64_t now, std::uint64_t duration,
                  InputEnvironment environment, unsigned presses = 1, std::uint8_t variant = 0, std::uint64_t delay = 0, std::uint8_t modifier = 0, InputToken inherited = {}, const InputMatch* footprint = nullptr,
                  InputForm form = InputForm::ordinary, std::int16_t defined_direction = 0,
                  InputFootprintKind footprint_kind = InputFootprintKind::unknown,
                  const InputGenerations* lineage = nullptr,
                  const ContextualTrickRow* contextual = nullptr,
-                 const InputRequest* parent = nullptr) noexcept {
+                 const InputRequest* parent = nullptr,const TriggerPress* trigger=nullptr) noexcept {
         const auto limit = std::numeric_limits<std::uint64_t>::max();
         const auto deadline = now > limit - duration ? limit : now + duration;
         InputRequest request{action, environment.context, now, deadline, session_,
@@ -981,7 +1072,22 @@ private:
             // current base ID; owner and airborne episode remain mandatory here.
             if (action==InputAction::flip && form==InputForm::held_repeat) request.generation_mask=1;
         }
-        if(action==InputAction::revert && environment.context==InputContext::balance &&
+        request.setup=environment.setup;
+        if(trigger) {
+            request.trigger=*trigger;
+            request.context=trigger->context;
+            request.generations=trigger->native.generations;
+            request.physical_pressed_at=trigger->press.at;
+            request.physical_released_at=trigger->released?trigger->release.at:0;
+            request.input_sequence=trigger->press.sequence;
+            // The immutable trigger retains its flight provenance. Only a
+            // transfer requires continued AIR; grounded native frames retain
+            // the preceding episode number after touchdown too.
+            if(trigger->owner==TriggerOwner::transfer)request.air_episode=trigger->native.air_episode();
+            request.deadline=trigger->deadline;request.inclusive_deadline=true;
+            if(trigger->owner==TriggerOwner::transfer || trigger->owner==TriggerOwner::landing_revert)request.generation_mask=1;
+        }
+        if(action==InputAction::manual_pivot && environment.context==InputContext::balance &&
            environment.manual_revert_direction && environment.native_context.required &&
            environment.native_context.fresh(now) && footprint && footprint->count) {
             request.manual_request_at=environment.manual_revert_request_at;
@@ -1565,9 +1671,6 @@ private:
         if (surface.can_push && events_.held({InputSource::buttons,TrickControls::grind,InputEdge::press})) {
             enqueue(InputAction::wall_command,now,1,environment,1,2); return;
         }
-        if (surface.can_transfer && surface.transfer_buttons &&
-            (physical_buttons() & surface.transfer_buttons) == surface.transfer_buttons)
-            enqueue(InputAction::transfer_command,now,1,environment);
     }
     std::uint16_t physical_buttons() const noexcept {
         std::uint16_t result{};
@@ -1827,7 +1930,8 @@ private:
         if (environment.manual_active) { cancel_manual(); return; }
         if ((environment.context != InputContext::ground && environment.context != InputContext::air) || (!environment.manual_safe && !environment.manual_prepare &&
              !(environment.context == InputContext::ground && environment.native_context.manual_ground_wait(now))) ||
-            physical.lt > 30 || physical.rt > 30 ||
+            (physical.lt > 30 && !(owned_vert_triggers()&1u)) ||
+            (physical.rt > 30 && !(owned_vert_triggers()&2u)) ||
             (physical.buttons & 0xf030u) || (physical.buttons & 0x0300u) == 0x0300u) {
             cancel_manual(); diagnostic_.stick_first = diagnostic_.pad_first = 0;
             diagnostic_.stick_at = diagnostic_.pad_at = 0; return;
@@ -1901,6 +2005,8 @@ private:
     InputBalanceControls balance_controls_{};
     InputRailState previous_rail_{};
     InputEvents events_{};
+    TriggerJournal triggers_{};
+    PhysicalSetupSelection setup_{};
     InputRequestQueue pending_{};
     Diagnostic diagnostic_{};
     std::uint64_t crouch_sequence_{};
@@ -1922,6 +2028,6 @@ private:
     std::uint64_t jump_generation_{};
     unsigned active_flip_count_{}, active_grab_count_{}, previous_balance_branch_{};
     bool active_flip_{}, grab_repeat_available_{},extended_flip_held_{},extended_grab_held_{};
-    bool clocked_{}, crouched_{}, crouch_nollie_{}, flip_nollie_{}, manual_unknown_{};
+    bool clocked_{}, crouched_{}, crouch_nollie_{}, crouch_manual_{}, flip_nollie_{}, manual_unknown_{};
 };
 }

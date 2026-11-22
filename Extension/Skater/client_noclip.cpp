@@ -25,6 +25,8 @@
 #include "Extension/ArcadeMode/arcade_ground_motion_step.h"
 #include "Extension/ArcadeMode/arcade_ground_writer_observation.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
+#include "Extension/ArcadeMode/arcade_vert_runtime.h"
+#include "Engine/Game/Build/20260929/placement_adapters.h"
 #include "Extension/ArcadeMode/arcade_wallplant_runtime.h"
 #include "Extension/ArcadeMode/arcade_custom_flatland_runtime.h"
 #include "Extension/ArcadeMode/arcade_flatland_surface.h"
@@ -559,6 +561,7 @@ struct ArcadeAir {
     arcade_mode::GroundTurnAngularLease turn_write, air_write;
     arcade_mode::GroundYawOutput ground_output{};
     arcade_mode::AirMotionOutput output{};
+    bool vert_aligning{};
     arcade_mode::NativeAirSpinProof output_proof{};
     NoBailSkater owner{};
     std::uintptr_t client{};
@@ -1780,7 +1783,7 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
         const char* wall_frame_reason="frame_not_read";
         const auto native_frame = arcade_mode::native_air_context(now,
             {owner.base,owner.entity,owner.core,owner.context,owner.rig},sampled,&cleanup,
-            wall_probe.input?&wall_frame_reason:nullptr);
+            &wall_frame_reason);
         wall_writer(4,wall_frame_reason);
         // Angular writer observation begin. Reuse only the reads above.
         arcade_mode::AngularWriterObservation angular_observation{
@@ -1856,6 +1859,7 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
             angular_row.release=true; // Angular writer observation.
         };
         if (!intent.enabled) {
+            arcade_mode::vert_runtime::cancel();
             wall_writer(8,"intent_disabled");
             a.ground_yaw.cancel(&ground_turn); a.ground_output={}; a.output={}; a.controller.reset();
             a.ground_resistance.reset(); a.ready_until.store(0,std::memory_order_release);
@@ -1876,17 +1880,58 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
         // This ordinary motion path never bypasses its contact hold phase.
         (void)wallplant_handoff_active;
         wall_writer(6,"ordinary_motion_only");
-        const auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,
+        arcade_mode::VertObservation vert_observation;
+        vert_observation.native=native_frame;
+        vert_observation.position=reader.value<std::array<float,3>>(bodies.parts[0],
+            game::build::v20260929::placement_adapters::parts_position);
+        vert_observation.velocity=velocities[0];vert_observation.up=bodies.up;vert_observation.enabled=intent.enabled;
+        vert_observation.contested=manual.admitted || mode>2 ||
+            arcade_mode::wallplant_runtime::preserves_combo(native_frame,now);
+        const auto support_contacts=arcade_mode::native_wall_contact::riding_support(owner,now);
+        if(support_contacts.valid && support_contacts.state==physics && contacts==0xc000u &&
+           arcade_mode::AirMotion::same_velocity(support_contacts.seconds,bodies.seconds)) {
+            std::array<arcade_mode::VertRampContact,64> ramp_contacts{};std::size_t ramp_count{};
+            for(std::size_t i=0;i<support_contacts.count;++i) {
+                const auto& hit=support_contacts.contacts[i];
+                if(hit.bone>=4 || !hit.identity_valid || !hit.static_body || !hit.categories_known ||
+                   hit.kind==4 || hit.kind==5 || hit.kind==8 || hit.kind==11 ||
+                   !arcade_mode::native_wall_contact::current(hit,hit.shape.world))continue;
+                vert_observation.supported=true;
+                vert_observation.contacted_shape={hit.shape.world,hit.shape.index,hit.shape.generation};
+                vert_observation.contact_normal=hit.normal;vert_observation.contact_owner={};
+                arcade_mode::SurfaceGeometryWorldOwner stamp{};
+                if(arcade_mode::native_wall_contact::static_world_owner(vert_observation.contacted_shape,stamp)) {
+                    vert_observation.contact_point=hit.point;vert_observation.contact_owner=stamp;
+                    ramp_contacts[ramp_count++]={hit.point,hit.normal,vert_observation.contacted_shape,stamp};
+                }
+            }
+            vert_observation.native_ramp=arcade_mode::vert_ramp_contacts(
+                std::span<const arcade_mode::VertRampContact>{ramp_contacts.data(),ramp_count},
+                vert_observation.position,vert_observation.up);
+        }
+        const auto vert_motion=arcade_mode::vert_runtime::step(vert_observation,now,
+            {owner.base,owner.entity,owner.core,owner.context,owner.rig},wall_frame_reason);
+        const auto& vert_plan=vert_motion.plan;a.vert_aligning=vert_motion.aligning;
+        if(vert_motion.native_flight)a.controller.yield_ordinary_motion();
+        auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,
             bodies.root[1], velocities[0][1], spins[0][1], ordinary, velocities[0][0], velocities[0][2],true,
             arcade_mode::NativeAirSpinProof::from_frame(native_frame),
             {native_frame.flip_known,native_frame.flip_id,native_frame.selection_object},
-            arcade_mode::wallplant_runtime::preserves_combo(native_frame,now)});
+            arcade_mode::wallplant_runtime::preserves_combo(native_frame,now),vert_motion.native_flight});
+        if(vert_plan) {
+            output.ready=output.vertical=output.horizontal=true;
+            output.velocity_y=vert_plan.velocity[1];
+            output.delta_x=vert_plan.velocity[0]-velocities[0][0];
+            output.delta_z=vert_plan.velocity[2]-velocities[0][2];
+        }
         // Angular writer observation: controller result, before native writes.
         angular_row.output_known=true;angular_row.output_ready=output.ready;angular_row.output_angular=output.angular;angular_row.output_rate=output.spin_y;
         NoBailSkater after{};
         reader.verify();
         source_require(no_bail_skater(after) && after == owner, "Air motion ownership changed before execution.");
-        a.owner = owner; a.client = client; a.output = output; a.output_proof = arcade_mode::NativeAirSpinProof::from_frame(native_frame); a.stepped_at = now; a.generation = intent.generation;
+        a.owner = owner; a.client = client; a.output = output;
+        if(vert_plan)a.output.vertical=a.output.horizontal=false;
+        a.output_proof = arcade_mode::NativeAirSpinProof::from_frame(native_frame); a.stepped_at = now; a.generation = intent.generation;
         a.ready_version.fetch_add(1,std::memory_order_acq_rel);
         a.ready_proof.store(output.ready ? arcade_mode::NativeAirSpinProof::from_frame(native_frame) : arcade_mode::NativeAirSpinProof{});
         a.ready_until.store(output.ready && native_frame.valid ? native_frame.sampled_at + 150 : 0,std::memory_order_relaxed);
@@ -1938,6 +1983,22 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
                 resistance_change=change;
             }
         } else if (ground_step.status == arcade_mode::GroundStepStatus::unavailable) a.ground_resistance.reset();
+        if(vert_plan) {
+            // Reuse the existing owner-checked native packet and setter used by
+            // contact exits. Both planner velocities must describe this same
+            // one-shot impulse; an old vert landing fan must not remain active.
+            auto trajectory=wallplant_release_trajectory(owner.base,owner,vert_plan.velocity,reader);
+            reader.verify();
+            source_require(no_bail_skater(after) && after==owner,"Vert trajectory owner changed.");
+            const bool submitted=trainer::submit_native_trajectory(owner.base,trajectory.object,trajectory.parameters,true);
+#if defined(DINGOSDK_DEV_TOOLS)
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE VERT PLANNER: episode={} step={} action={} submitted={} landing={},{},{}.",
+                native_frame.airborne_episode,native_frame.physics_step,static_cast<unsigned>(vert_plan.action),
+                submitted,vert_plan.landing[0],vert_plan.landing[1],vert_plan.landing[2]);
+#endif
+            source_require(submitted,"Vert native trajectory submission failed.");
+        }
         a.ground_output=a.ground_yaw.step(intent,native_frame,now,bodies.seconds,velocities[0],ordinary,manual.admitted,&ground_turn);
         auto applied=a.ground_output.ready ? arcade_mode::GroundYaw::body_output(a.ground_output) : output;
         angular_row.ground_selected=a.ground_output.ready; // Angular writer observation.
@@ -1968,6 +2029,7 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
     } catch (...) {
         try {throw;} catch(const SourceGuard& issue) {wall_writer(7,issue.message);}
         catch(...) {wall_writer(7,"unknown_exception");}
+        arcade_mode::vert_runtime::cancel();
         a.controller.reset(); a.ground_resistance.reset(); a.ground_yaw.reset(); a.ground_output={}; a.output = {}; a.turn_write.clear(); a.air_write.clear(); a.ready_until.store(0, std::memory_order_release);
     }
 }
@@ -1983,7 +2045,7 @@ bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
         now - a.stepped_at > 150 || now < intent.sampled_at || now - intent.sampled_at > 150 || multiplayer_session_active()) return false;
     const bool requested_angular = a.output.angular && intent.angular_allowed;
     const bool requested_ground=a.ground_output.ready && a.ground_output.angular && intent.angular_allowed;
-    if (!a.output.vertical && !requested_angular && !requested_ground) return false;
+    if (!a.output.vertical && !requested_angular && !requested_ground && !a.vert_aligning) return false;
     SourceReader reader;
     if (reader.pointer(a.owner.core, 0x438) != rig || reader.pointer(a.owner.core, 0x3c0) != context) return false;
     const auto bodies = debug_noclip_bodies(a.owner.base, a.client, a.owner.entity);
@@ -2024,7 +2086,9 @@ bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
     const float velocity_y=a.output.vertical ? reader.value<std::array<float,3>>(bodies.parts[0],0x70)[1] : 0;
     const bool vertical=arcade_mode::AirMotion::ordinary_basis(bodies.up) && a.output.vertical && arcade_mode::AirMotion::vertical_target_current(a.output,intent,a.output_proof,current,now,
         velocity_y,bodies.seconds,{current_frame.flip_known,current_frame.flip_id,current_frame.selection_object});
-    if (!vertical && !angular) return false;
+    const auto vert_normal=arcade_mode::vert_runtime::alignment(current_frame,now);
+    const bool align=arcade_mode::vert_math::length(vert_normal)>.9f;
+    if (!vertical && !angular && !align) return false;
     source_require(reader.value<std::uint8_t>(owner.entity, 0x7e0) == 0 &&
         reader.raw(reinterpret_cast<std::uintptr_t>(supplied), target.data(), sizeof(target)) && valid_flight_transform(target),
         "Invalid native air motion target.");
@@ -2036,6 +2100,21 @@ bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
         // Preserve the native actor's supplied orientation, including flip
         // pitch/roll. Compose only this qualified step's local-up yaw delta.
         arcade_mode::AirMotion::rotate_target(target, a.output.spin_y * bodies.seconds);
+    }
+    if(align) {
+        auto tilted=target;
+        if(arcade_mode::vert_align_target(tilted,vert_normal,bodies.seconds)) {
+            // Reuse the existing fingerprinted physical-reference limit, keeping
+            // native pose rejection and both bodies' angular travel budgets.
+            const auto physical=wallplant_orientation_snapshot(current_frame.owner,reader);
+            float available{},travel{};
+            game::orientation_target::Result report;
+            std::array<float,16> bounded{};
+            if(game::orientation_target::motion_budget(physical.limit,bodies.seconds,
+                physical.root_spin,physical.reference_spin,available,travel) &&
+               game::orientation_target::error(physical.actual,target)<available &&
+               game::orientation_target::bound(physical.actual,tilted,available,bounded,report))target=bounded;
+        }
     }
     source_require(valid_flight_transform(target), "Air motion target is out of bounds.");
     reader.verify();

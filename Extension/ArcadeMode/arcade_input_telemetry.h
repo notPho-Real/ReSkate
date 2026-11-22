@@ -70,6 +70,17 @@ struct ManualPhysicsEvidence {
     float step{}, elapsed{}, repeat_pressure{}, position{}, velocity{};
     unsigned profile{};
 };
+#if defined(DINGOSDK_DEV_TOOLS)
+// Historical status transitions, not a score receipt or renewed native lease.
+// Native addresses never leave the producer; generation/step identify its proof.
+struct ManualPivotEvidence {
+    std::uint64_t ms{},sequence{},transition{},episode{},started_ms{},start_step{},owner_generation{};
+    std::uint64_t native_ms{},physics_step{},native_owner_generation{},completed_ms{},completed_step{},client_dropped{};
+    unsigned status{},rejection{},origin{},successor{},state{},mode{},contacts{},stance{};
+    float board_radians{},body_radians{};
+    bool native_valid{},motion_correlated{},orientation_valid{},fakie{};
+};
+#endif
 struct CustomScoreEvidence {
     std::uint64_t ms{}, sequence{}, step{}, points{};
     unsigned kind{}, trick{}, multiplier{}; // kind: performed, bank, bail.
@@ -250,10 +261,26 @@ using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFai
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
     ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence,
-    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence, GroundWriterEvidence, camera_diagnostics::Evidence, AngularWriterEvidence, CustomScoreEvidence, ModelSettlementEvidence>;
+    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence, GroundWriterEvidence, camera_diagnostics::Evidence, AngularWriterEvidence, CustomScoreEvidence, ModelSettlementEvidence
+#if defined(DINGOSDK_DEV_TOOLS)
+    , ManualPivotEvidence
+#endif
+    >;
 // Native UI observers use this bridge; the sink never receives native objects.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
+#if defined(DINGOSDK_DEV_TOOLS)
+    if(const auto* pivot=std::get_if<ManualPivotEvidence>(&row))
+        return pivot->sequence && pivot->transition && pivot->episode && pivot->status<=3 && pivot->rejection<=6 &&
+            pivot->transition<=pivot->ms && pivot->started_ms<=pivot->ms &&
+            std::isfinite(pivot->board_radians) && std::isfinite(pivot->body_radians) &&
+            (!pivot->native_valid || (pivot->physics_step && pivot->native_ms<=pivot->ms &&
+                pivot->ms-pivot->native_ms<=InputTiming::native_sample_lease_ms)) &&
+            (pivot->status!=3 || (pivot->native_valid && pivot->motion_correlated && pivot->orientation_valid &&
+                pivot->owner_generation && pivot->native_owner_generation==pivot->owner_generation &&
+                pivot->start_step && pivot->completed_step==pivot->physics_step &&
+                pivot->completed_ms==pivot->native_ms && !pivot->rejection));
+#endif
     if(const auto* settlement=std::get_if<ModelSettlementEvidence>(&row))
         return settlement->ms && settlement->sequence &&
             (settlement->kind==SettlementKind::bank || settlement->kind==SettlementKind::bail) &&

@@ -15,6 +15,46 @@ struct Row { std::uint64_t producer{}, ordinal{}, checksum{}; };
 constexpr std::uint64_t checksum(std::uint64_t producer, std::uint64_t ordinal) {
     return (producer * 1000003u) ^ ordinal ^ 0xabcdef12u;
 }
+#if defined(DINGOSDK_DEV_TOOLS)
+void manual_pivot_rows() {
+    InputTelemetry state;InputTelemetryLink link;link.publish(state);
+    ManualPivotEvidence row{};
+    row.ms=row.native_ms=1000;row.sequence=1;row.transition=500;row.episode=3;
+    row.started_ms=500;row.start_step=10;row.physics_step=row.completed_step=40;
+    row.owner_generation=row.native_owner_generation=2;row.completed_ms=1000;
+    row.status=3;row.origin=row.successor=static_cast<unsigned>(SkatePose::manual);
+    row.state=100;row.mode=1;row.contacts=0x4000;row.stance=0x20;
+    row.board_radians=-3.14f;row.body_radians=-3.13f;
+    row.native_valid=row.motion_correlated=row.orientation_valid=row.fakie=true;
+    check(link.client(row),"physical Pivot receipt fits the existing bounded telemetry channel");
+    std::array<ClientTelemetry,2> received{};
+    check(state.client.take(received)==1,"Pivot event is drained once with existing queue ordering");
+    const auto& copied=std::get<ManualPivotEvidence>(received[0]);
+    check(copied.transition==500&&copied.episode==3&&copied.start_step==10&&copied.physics_step==40&&
+        copied.owner_generation==2&&copied.board_radians==-3.14f&&copied.body_radians==-3.13f&&
+        copied.contacts==0x4000&&copied.fakie,"Pivot row preserves signed physical rotation and original native identity");
+    check(client_telemetry_fresh(received[0],100000),"historical Pivot status keeps its original timestamps instead of renewing or silently expiring");
+    for(unsigned fault=0;fault<10;++fault){auto bad=row;
+        if(fault==0)bad.board_radians=std::numeric_limits<float>::quiet_NaN();
+        if(fault==1)bad.native_valid=false;
+        if(fault==2)bad.motion_correlated=false;
+        if(fault==3)bad.orientation_valid=false;
+        if(fault==4)++bad.native_owner_generation;
+        if(fault==5)++bad.completed_step;
+        if(fault==6)bad.ms=1151;
+        if(fault==7)bad.rejection=1;
+        if(fault==8){bad.status=2;bad.rejection=7;}
+        if(fault==9)bad.status=4;
+        check(!link.client(bad),"malformed Pivot success cannot enter the existing telemetry channel");
+    }
+    check(state.client.take_dropped()==10,"invalid Pivot rows retain existing observable evidence-loss accounting");
+    row.status=2;row.rejection=5;row.native_valid=row.motion_correlated=false;row.ms=1200;
+    check(link.client(row),"rejected stale motion remains reportable as a historical failure, never a physical success");
+    state.client.take(received);
+    for(unsigned i=0;i<64;++i)check(link.client(row),"Pivot rows share the existing fixed client capacity");
+    check(!link.client(row)&&state.client.take_dropped()==1,"Pivot saturation cannot silently hide a lost status transition");
+}
+#endif
 void model_settlement_rows() {
     Model model({},1,true);
     const auto evidence=[&](std::uint64_t now) {
@@ -516,6 +556,9 @@ void schema3_footer_recovery() {
 }
 void run_controller_capture_tests();
 int main() {
+#if defined(DINGOSDK_DEV_TOOLS)
+    manual_pivot_rows();
+#endif
     model_settlement_rows();
     saturation_and_recovery();
     worker_scheduling();

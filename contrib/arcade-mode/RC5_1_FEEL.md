@@ -5,6 +5,23 @@ This candidate is not hardware accepted. Development is on
 The accepted updater and historical builds are unchanged. [ROADMAP.md](ROADMAP.md)
 tracks current priorities; dated evidence below remains scoped to its recorded source.
 
+## Fixed PS2 ground controls — current correction
+
+The current contract supersedes the older ground RT/Revert and live LT modifier
+descriptions below. LT tap selects Nollie; hold selects Pressure. A still owns
+crouch and launch. Native Nollie16 and its follow-up identities survive LT release;
+unsupported Pressure requests never substitute an ordinary trick. Ground RT
+dispatches only native Switch, while established Manual RT requests physical
+Pivot/Nose Pivot. Native Switch delivery remains under integration.
+
+The shared [trigger contract](TRIGGER_CONTRACT.md) reserves vert flight and landing
+inputs before ordinary ground commands. Native board-reference and hips motion
+now provide independent Pivot evidence; label changes or fakie alone do not pass.
+The current chain requires physical rotation, resulting stance and qualified
+successor support. Manual acceptance remains at least three continuous seconds,
+with no gameplay timeout. Current implementation and verification are recorded in
+[ROADMAP.md](ROADMAP.md); older captures retain their original meaning.
+
 ## Offline gameplay expansion — November 22
 
 Neutral third X now uses the existing owned Triple Kickflip path, superseding
@@ -33,7 +50,8 @@ the original native observation's150ms lease only when an independently
 established Manual owns the stick. It preserves the exact Manual request,
 direction, native generations and physical timestamp; a fresh observation
 cannot renew expiry. Current balance proof is still mandatory before execution.
-Ground/unconfirmed Manual RT keeps its1ms policy, and a new A immediately
+The earlier ground/unconfirmed RT1ms policy is superseded by the contextual
+Switch/Pivot contract above. A new A immediately
 cancels pending RT while preserving the ordinary Ollie setup and release.
 
 The corrected production-composed lifecycle passes700,263 sanitizer checks,

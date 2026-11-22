@@ -117,6 +117,7 @@ struct AirMotionFrame {
     NativeAirSpinProof native{};
     NativeFlipSelection native_action{}; // From that same original physics frame.
     bool retained_air_contact{}; // An owned contact hold, not a new grounded launch basis.
+    bool native_vert_air{}; // Qualified transition flight keeps native linear motion.
 };
 struct AirMotionOutput {
     bool ready{}, vertical{}, angular{};
@@ -249,7 +250,8 @@ public:
         air_seen_ = true;
         const bool taking_off = grounded_;
         grounded_ = false;
-        if (!ordinary_) return {};
+        if (!ordinary_ && !frame.native_vert_air) return {};
+        if (frame.native_vert_air) yield_ordinary_motion();
         if(!frame.ordinary_ground) { pending_=vertical_=false; launch_blocked_=true; }
         const auto followup=frame.native_required ? qualified_followup(intent,frame.native,frame.now) : 0;
         // A different positively observed native actor owns its trajectory,

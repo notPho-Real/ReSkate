@@ -216,12 +216,15 @@ struct Route {
             const auto& r=*static_cast<Route*>(p);return native_grab::Control{2,0,0,0,r.active};
         };
     }
-    NativeGesture::Output poll(std::uint64_t now,std::uint16_t buttons,std::uint32_t state=201) {
+    NativeGesture::Output poll(std::uint64_t now,std::uint16_t buttons,std::uint32_t state=201,PhysicalInputSample modifiers={}) {
         NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=state==100?1:2;
         sample.words[1]=state==100?0xc000u:0;
         env.native_context=InputNativeContext::from_frame(producer.observe(now,{1,2,3,4,5},sample,{true,-1,16}));
         env.pose=state==100?SkatePose::riding:SkatePose::air;env.tick=now*60/1000;
-        return session.poll(now,{buttons},0,0,env);
+        if(env.surface.can_transfer) {
+            env.surface.fresh=true;env.surface.generation=1;env.surface.generations=env.native_context.generations;
+        }
+        modifiers.buttons=buttons;return session.poll(now,modifiers,0,0,env);
     }
 };
 void first_use() {
@@ -267,6 +270,29 @@ void first_use() {
     for(std::uint64_t now=1000;now<=1900;now+=100)input.poll(now,now*60/1000,true,unknown);
     check(!input.active() && !input.completed(),"unallocated outputs cannot extend the native entry deadline");
 }
+void vert_trigger_fingerflip() {
+    for(unsigned channel:{0u,1u})for(unsigned hz:{30u,60u,120u})for(unsigned fault=0;fault<3;++fault) {
+        Route r;const unsigned dt=(1000u+hz-1)/hz;
+        r.poll(1000,0,100);r.poll(1000+dt,0x2000);r.poll(1000+2*dt,0x2000);
+        r.env.triggers={&channel,[](void* state,const TriggerPress& press,const InputNativeContext&,std::uint64_t) noexcept {
+            return press.channel()==*static_cast<unsigned*>(state)?
+                TriggerDecision{TriggerOwner::transfer,press.press.at+150,true}:TriggerDecision{};
+        }};
+        r.env.surface.can_transfer=true;
+        r.env.extensions={nullptr,[](void*,const InputRequest& request) noexcept {
+            return request.action==InputAction::transfer_command?InputDisposition::started:InputDisposition::unsupported;
+        }};
+        PhysicalInputSample pad;if(channel)pad.rt=255;else pad.lt=255;
+        r.poll(1000+3*dt,0x2000,201,pad);
+        if(fault==1)pad.lt=pad.rt=255;
+        if(fault==2)r.env.external_owner=true;
+        const auto output=r.poll(1000+4*dt,0x6000,201,pad);
+        check(r.requests==(fault?0u:1u) && !r.ordinary,
+            "held-grab X ignores only claimed vert triggers while retaining foreign-owner and unrelated-trigger rejection");
+        if(!fault)check(output.action.native_grab_triggers && output.action.pad.owns_right_stick && !output.authored_playback,
+            "fingerflip keeps its existing producer instead of starting an ordinary flip after transfer");
+    }
+}
 void routing() {
     for(unsigned direction:{0u,4u,8u,2u,1u}) {
         Route r;r.poll(1000,0,100);r.poll(1017,0x2000);r.poll(1034,0x2000);
@@ -284,4 +310,4 @@ void routing() {
     {Route r;r.poll(1000,0,100);r.poll(1017,0x6000,100);check(!r.requests,"ground B plus X cannot borrow airborne admission");}
 }
 }
-int main(){setting_scope();boxed_setting_handoff();family_entry();transitions();first_use();routing();std::cout<<"Native fingerflip routing and lifecycle tests passed\n";}
+int main(){vert_trigger_fingerflip();setting_scope();boxed_setting_handoff();family_entry();transitions();first_use();routing();std::cout<<"Native fingerflip routing and lifecycle tests passed\n";}

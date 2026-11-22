@@ -116,6 +116,8 @@ struct NativeGesture {
         bool footplant_owned{};
         bool ground_grab_owned{};
         bool flatland_triggers_owned{};
+        std::uint8_t trigger_owned{}; // Exclusive physical LT/RT cycle mask, not native execution.
+        std::uint8_t vert_trigger_owned{};
     };
 };
 }

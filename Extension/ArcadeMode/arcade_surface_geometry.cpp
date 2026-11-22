@@ -263,6 +263,61 @@ bool revalidate_surface_geometry(const SurfaceGeometryNativeApi& api,const Surfa
                                  const SurfaceGeometrySample& sample) noexcept {
     return revalidate(api,ctx,sample,nullptr);
 }
+VertPatch query_vert_patch(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
+        SurfaceGeometryVector point,SurfaceGeometryVector normal,float reach,SurfaceGeometryTrace* trace) noexcept {
+    using namespace vert_math;
+    VertPatch patch;
+    if(trace)*trace={};
+    const auto fail=[&](const char* reason)->VertPatch {if(trace)trace->reason=reason;return {};};
+    try {
+        if(!current(api,ctx,trace) || !api.static_world_owner || !api.surface.contact_ready || !finite(point) ||
+           !finite(normal) || !unit(normal) || normal[1]<-.01f || !std::isfinite(reach) || reach<=0 || reach>12)return fail("vert_patch_context");
+        auto right=cross(normal,{0,1,0});
+        if(!unit(right))right={1,0,0};
+        const auto forward=cross(right,normal);
+        constexpr std::array<std::array<float,2>,9> offsets{{{0,0},{-.3f,0},{.3f,0},{0,-.4f},{0,.4f},
+            {-.3f,-.4f},{.3f,-.4f},{-.3f,.4f},{.3f,.4f}}};
+        Exclusions excluded;
+        for(std::size_t i=0;i<offsets.size();++i) {
+            const auto center=add(point,add(scale(right,offsets[i][0]),scale(forward,offsets[i][1])));
+            const SurfaceGeometrySegment ray{add(center,scale(normal,.5f)),add(center,scale(normal,-reach))};
+            if(trace)trace->ray=static_cast<unsigned>(i);
+            const auto hit=cast(api,ctx,ray,excluded,trace,nullptr,true);
+            if(!hit)return {};
+            if(!hit->world_owner.value || dot(hit->normal,normal)<.85f || hit->normal[1]<-.01f)return fail("vert_patch_normal");
+            auto& sample=patch.samples[i];
+            sample.context=ctx;sample.body=hit->body;sample.body_owner=hit->owner;sample.world_owner=hit->world_owner;
+            sample.point=hit->point;sample.query_normal=hit->normal;sample.queried_at=api.now(api.user);sample.valid=true;
+            if(i && (std::abs(dot(sub(sample.point,patch.center().point),patch.center().query_normal))>.12f ||
+                     dot(sample.query_normal,patch.center().query_normal)<.85f))return fail("vert_patch_discontinuous");
+        }
+        for(const auto& sample:patch.samples)if(!revalidate(api,ctx,sample,trace))return fail("vert_patch_revalidate");
+        patch.valid=exclusions_current(api,ctx,excluded,trace);if(trace)trace->reason=patch.valid?"vert_patch_valid":"vert_patch_exclusions";return patch;
+    } catch(...) {return fail("vert_patch_exception");}
+}
+bool query_vert_clearance(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
+        SurfaceGeometryVector point,SurfaceGeometryVector velocity,float gravity,float seconds) noexcept {
+    using namespace vert_math;
+    try {
+        if(!current(api,ctx) || !finite(point) || !finite(velocity) || !std::isfinite(seconds) || seconds<=0 ||
+           seconds>2.5f || !std::isfinite(gravity) || gravity<0 || gravity>60)return false;
+        auto right=cross(horizontal(velocity),{0,1,0});if(!unit(right))return false;
+        // A finite swept ray bundle is conservative admission, not a claim of
+        // capsule collision coverage. Native articulated collisions stay enabled.
+        constexpr std::array<std::array<float,2>,6> offsets{{{0,.15f},{-.3f,.15f},{.3f,.15f},{0,1.6f},{-.3f,1.6f},{.3f,1.6f}}};
+        Exclusions excluded;
+        constexpr unsigned steps=12;
+        for(unsigned step=0;step<steps;++step)for(const auto offset:offsets) {
+            const auto shift=add(scale(right,offset[0]),SurfaceGeometryVector{0,offset[1],0});
+            const auto start=add(position(point,velocity,gravity,seconds*static_cast<float>(step)/steps),shift);
+            const auto end=add(position(point,velocity,gravity,seconds*static_cast<float>(step+1)/steps),shift);
+            bool clear{};
+            (void)cast(api,ctx,{start,end},excluded,nullptr,&clear);
+            if(!clear)return false;
+        }
+        return exclusions_current(api,ctx,excluded);
+    } catch(...) {return false;}
+}
 SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContext& ctx,
                                              const SurfaceGeometryRequest& request, SurfaceGeometryTrace* trace) noexcept {
     const auto fail=[&](const char* reason) -> SurfaceGeometrySample {if(trace)trace->reason=reason;return {};};

@@ -39,6 +39,14 @@ struct Harness {
         return session.poll(now, physical, 0, 0, admission);
     }
 };
+// Adapter-only fixtures explicitly supply a qualified touchdown. This is not a
+// geometry assertion and must never be the default for ordinary ground RT.
+TriggerRouting mock_landing_revert() {
+    return {nullptr,[](void*,const TriggerPress& press,const InputNativeContext&,std::uint64_t) noexcept {
+        return press.channel()==1 && press.context==InputContext::ground ?
+            TriggerDecision{TriggerOwner::landing_revert,press.press.at+1,true}:TriggerDecision{};
+    }};
+}
 void native_adapters() {
     Harness h;
     h.poll(0);
@@ -63,17 +71,25 @@ void native_adapters() {
     check(!h.poll(985).action.requested, "held B cannot replay after native recipe completes");
     h.admission.pose = SkatePose::riding;
     check(h.poll(1002, {0x2000}).buttons == 0, "grounded B remains Arcade-only and cannot publish native brake");
-    h.session.reset(); h.poll(1000);
-    out = h.poll(1017, {0, 0, 0, 0, 255});
+    { Harness h;h.admission.triggers=mock_landing_revert();
+    const auto landing_poll=[&](std::uint64_t now,PhysicalInputSample pad={},unsigned mode=1){
+        h.admission.native_context={true,true,{1,1,1},now+1,now};
+        h.admission.native_context.flip={true,-1,100,100,mode,0,1,1,1};
+        return h.poll(now,pad);
+    };
+    landing_poll(1000);
+    out = landing_poll(1017, {0, 0, 0, 0, 255});
     check(out.action.owned && out.action.pad.right_y == 0 && out.action.request_kind == 3,
-        "fresh RT reaches the LS revert path without a crouch or grab");
-    check(h.poll(1047, {0, 0, 0, 0, 255}).action.pad.left_x > 32000, "revert rotation follows existing absolute-time recipe");
-    for(unsigned t=1064;t<2017;t+=17)h.poll(t, {0,0,0,0,255});
-    check(!h.poll(2017, {0,0,0,0,255}).action.owned, "revert releases within its fixed bound without repeated held-trigger commands");
-    h.session.reset(); h.poll(1300); h.admission.nollie = true;
-    out = h.poll(1317, {0, 0, 0, 255, 255});
-    check(!out.action.owned && out.action.result == DispatchResult::unsafe_context, "unverified revert stance cannot own sticks");
-    h.admission.nollie = false; h.session.reset(); h.poll(1400);
+        "explicitly qualified touchdown RT reaches the LS revert path without a crouch or grab");
+    check(landing_poll(1047, {0, 0, 0, 0, 255}).action.pad.left_x > 32000, "revert rotation follows existing absolute-time recipe");
+    for(unsigned t=1064;t<2017;t+=17)landing_poll(t, {0,0,0,0,255});
+    check(!landing_poll(2017, {0,0,0,0,255}).action.owned, "revert releases within its fixed bound without repeated held-trigger commands");
+    h.session.reset(); landing_poll(2300,{},2);
+    out = landing_poll(2317, {0, 0, 0, 0, 255},2);
+    check(!out.action.owned && !out.action.pad.owns_left_stick && !out.action.pad.owns_right_stick,
+        "unqualified native mode cannot own revert sticks even with a touchdown reservation");
+    }
+    h.session.reset(); h.poll(1400);
     h.poll(1417, {0x8001}); h.admission.pose = SkatePose::air;
     out = h.poll(1451, {0x8001});
     check(out.phase == 1 && out.right_y == 20000 && !out.authored_playback, "held ground-to-air Y retains measured partial board tilt");
@@ -271,7 +287,8 @@ void unsupported_contexts() {
             "posture extra repeated press precedes generic branch matching");
         Harness left; left.admission.pose = SkatePose::manual; left.admission.observed_balance_branch = branch; left.poll(0);
         out = left.poll(17, {0, 0, 0, 255, 0});
-        check(out.unsupported == (branch != 0), "left spin extra requires an eligible observed branch context");
+        check(!out.unsupported&&!out.action.owned&&!out.authored_playback&&!left.session.diagnostic().dispatched,
+            "balance LT reserves setup selection and never dispatches the retired branch-spin binding");
     }
 }
 
@@ -345,7 +362,7 @@ void airborne_setup_eligibility() {
 
 void queued_grab_identity() {
     // F07/F10/I10: immutable recognized identity is distinct from live readiness.
-    for (unsigned step : {17u,34u}) for (bool recognized_nollie : {false,true}) {
+    for (unsigned step : {17u,34u}) for (bool legacy_nollie : {false,true}) {
         Harness h; h.admission.pose=SkatePose::air;
         const auto poll=[&](std::uint64_t now,PhysicalInputSample physical) {
             h.admission.native_context={true,true,{1,1,1},now+1,now,false,true,1,0};
@@ -353,24 +370,26 @@ void queued_grab_identity() {
         };
         poll(0,{});
         check(poll(step,{0x4000,-25000,0}).authored_playback,"queued Grab fixture has an existing Flip owner");
-        h.admission.nollie=recognized_nollie;
+        h.admission.nollie=legacy_nollie;
         poll(2*step,{0x2000,-25000,0});
-        check(h.session.pending_grab().action==InputAction::grab && h.session.pending_grab().nollie==recognized_nollie,
-            "queued Grab preserves its recognized launch family");
-        h.admission.nollie=!recognized_nollie;
+        check(h.session.pending_grab().action==InputAction::grab && !h.session.pending_grab().nollie,
+            "legacy caller Nollie flags cannot substitute for actual selected launch provenance");
+        const auto recognized=h.session.pending_grab();
+        h.admission.nollie=!legacy_nollie;
         unsigned terminal{};
         for (unsigned now=3*step;now<1200;now+=step) {
             const auto out=poll(now,{0x2000,-25000,0});
-            check(!out.action.owned,"a later readiness change cannot substitute basic Grab for the recognized unsupported identity");
+            if(out.action.requested&&out.action.owned)check(out.action.trick==ArcadeTrick::basic_bs_grab,
+                "a later launch-family change cannot relabel the queued basic Grab identity");
             const auto& diagnostic=h.session.diagnostic();
             for(std::size_t i=0;i<diagnostic.dispatched;++i) if(diagnostic.dispatch[i].request.action==InputAction::grab) {
                 const auto& event=diagnostic.dispatch[i];
-                check(event.request.nollie==recognized_nollie && event.request.recognized_at==2*step &&
-                    event.disposition==InputDisposition::unsupported,"queued Grab ends explicitly unsupported without identity or timestamp renewal");
+                check(event.request.nollie==recognized.nollie && event.request.input_sequence==recognized.input_sequence && event.request.recognized_at==2*step &&
+                    event.disposition==InputDisposition::started,"queued Grab starts without identity or timestamp renewal after its prior Flip owner releases");
                 ++terminal;
             }
         }
-        check(terminal==1 && h.session.pending_grab().action==InputAction::none,"held Grab cannot replay the unsupported queued request");
+        check(terminal==1 && h.session.pending_grab().action==InputAction::none,"held Grab cannot replay the admitted queued request");
     }
 }
 
@@ -521,17 +540,18 @@ void production_order_and_boundary_matrix() {
             "published ground-turn triple uses its own strict333ms query, without borrowing the Manual55ms allowance");
     }
     for(auto cadence:{17u,34u}) {
-        ConformanceSession h;h.trace="revert-busy-expiry";h.admission.pose=SkatePose::riding;
+        ConformanceSession h;h.trace="switch-busy-cancellation";h.admission.pose=SkatePose::riding;
         h.poll(0);h.poll(cadence,{0x1000});
         const auto request=h.poll(2*cadence,{0x1000,0,0,0,255});
         const auto& before=h.session.diagnostic();
         check(!request.action.owned&&before.recognition_count==1&&
-            before.recognition[0].request.action==InputAction::revert&&before.recognition[0].request.deadline==2*cadence+1,
-            "live RT route retains its current fresh-only handoff rather than claiming an installed source revert table");
+            before.recognition[0].request.action==InputAction::switch_stance&&before.dispatched==1&&
+            before.dispatch[0].disposition==InputDisposition::cancelled,
+            "ground RT selects Switch and cannot interrupt an owned crouch or fall back to Revert");
         const auto next=h.poll(3*cadence,{0x1000,0,0,0,255});
         const auto& after=h.session.diagnostic();
-        check(!next.action.owned&&after.dispatched==1&&after.dispatch[0].disposition==InputDisposition::expired,
-            "a busy native owner cannot silently turn the one-millisecond RT handoff into reference20/200ms query parity");
+        check(!next.action.owned&&after.dispatched==0,
+            "held RT cannot replay the cancelled Switch command");
     }
 }
 
@@ -575,6 +595,7 @@ void production_session_boundary_matrix() {
         ConformanceSession h;h.trace=rollback?"session-clock-rollback":"session-bail";
         h.admission.export_rail_requests=true;
         h.admission.pose=actor==1||actor==2||actor==3?SkatePose::air:SkatePose::riding;
+        if(actor==4)h.admission.triggers=mock_landing_revert();
         const auto pose=h.admission.pose;
         const PhysicalInputSample commands[]{{0x1000},{0x4000,-25000},{0x2000},{0x8000},{0,0,0,0,255}};
         const auto physical=commands[actor];h.poll(1000);const auto start=h.poll(1000+cadence,physical);
@@ -597,7 +618,7 @@ void production_session_boundary_matrix() {
 struct ConformanceFacade {
     NativeInputState producer; NativeInputOwner owner{1,2,3,4,5}; ArcadeInput input{true};
     std::vector<PreparedGesture> prepared{catalog()}; unsigned cadence{17};const char* trace{"bound-facade"};bool flip_ready{true}, manual_ready{};
-    std::uint32_t air_contacts{};NativeFlipSelection selection{true,-1};
+    std::uint32_t air_contacts{};NativeFlipSelection selection{true,-1};TriggerRouting triggers{};
     ConformanceFacade(){input.enable(true);input.set_recognition_capture(0,true);}
     NativeGesture::Output poll(std::uint64_t now,unsigned state,PhysicalInputSample physical={},bool publish=true) {
         if(publish) {
@@ -609,7 +630,8 @@ struct ConformanceFacade {
         const auto pose=state==200?SkatePose::air:state==401?SkatePose::grind:SkatePose::riding;
         const auto out=input.poll(0,now,physical.buttons,physical.x,physical.y,0,0,true,true,false,0,
             physical.lt>30||physical.rt>30,false,true,now/cadence,false,prepared,false,manual_ready,pose,
-            false,false,false,false,flip_ready,false,physical.lt,physical.rt,ActionExperiment::classic,true,true,false);
+            false,false,false,false,flip_ready,false,physical.lt,physical.rt,ActionExperiment::classic,true,true,false,
+            {},{},{},{},{},{},{},{},{},triggers);
         if(conformance_record)conformance_record(trace,now,out,*input.input_diagnostic(0),*input.history(0));
         return out;
     }
@@ -902,11 +924,12 @@ void manual_context_window_contracts(){
 void production_facade_matrix() {
     for(auto cadence:{17u,34u})for(unsigned actor=0;actor<5;++actor)for(unsigned boundary=0;boundary<5;++boundary) {
         auto h_storage=std::make_unique<ConformanceFacade>();auto& h=*h_storage;h.cadence=cadence;h.trace="bound-owner-lifecycle";
+        if(actor==4)h.triggers=mock_landing_revert();
         const auto state=actor==1||actor==2||actor==3?200u:100u;
         const PhysicalInputSample commands[]{{0x1000},{0x4000,-25000},{0x2000},{0x8000},{0,0,0,0,255}};
         const auto physical=commands[actor];h.poll(1000,state);const auto start=h.poll(1000+cadence,state,physical);
         check(actor==0||actor==1?start.authored_playback:actor==3?start.rail.held:start.action.owned,
-            "actual bound facade publishes each supported jump/flip/basic-grab/rail/revert endpoint");
+            "actual bound facade publishes jump/flip/basic-grab/rail and explicitly qualified touchdown Revert endpoints");
         auto now=1000+2*cadence;
         if(boundary==0)h.input.enable(false);
         if(boundary==1){auto menu=physical;menu.buttons|=0x10;h.poll(now,state,menu);}
@@ -959,14 +982,15 @@ void auxiliary_mode_contract() {
     for(auto cadence:{17u,34u})for(auto mode:{ActionExperiment::off,ActionExperiment::observe,ActionExperiment::grabs,
         ActionExperiment::revert_frontside,ActionExperiment::revert_backside,ActionExperiment::classic}) {
         ConformanceSession h;h.admission.pose=SkatePose::riding;h.admission.action_mode=mode;
-        h.poll(1000);const auto out=h.poll(1000+cadence,{0,0,0,0,255});
         const bool revert=mode==ActionExperiment::classic||mode==ActionExperiment::revert_frontside||mode==ActionExperiment::revert_backside;
+        if(revert)h.admission.triggers=mock_landing_revert();
+        h.poll(1000);const auto out=h.poll(1000+cadence,{0,0,0,0,255});
         check(out.action.owned==revert&&out.action.requested==revert&&out.action.consume_rt==revert,
             "RT ownership, recognition and physical masking use the same published action mode");
         check(h.session.diagnostic().recognition_count==(revert?1u:0u),
             "grab-only and observation modes do not publish a ground RT action table");
         for(const auto& event:h.session.history().events())if(event.token==InputToken{InputSource::triggers,1,InputEdge::press})
-            check(event.owners==(revert?InputConsumption::regular:0u),"an unpublished RT table leaves its physical event category unconsumed");
+            check(event.owners==(revert?InputConsumption::trigger:0u),"qualified touchdown owns the trigger category; an unpublished RT table leaves its edge unconsumed");
         if(revert) {
             check(out.action.request_kind==(mode==ActionExperiment::revert_backside?4u:3u),
                 "existing frontside/backside recipe selection remains separate from observed native identity");
@@ -977,19 +1001,26 @@ void auxiliary_mode_contract() {
     // The actual caller supports selecting this experiment only while disabled.
     for(auto cadence:{17u,34u})for(auto mode:{ActionExperiment::grabs,ActionExperiment::classic,ActionExperiment::revert_backside}) {
         NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};auto input_storage=std::make_unique<ArcadeInput>(true);auto& input=*input_storage;
+        unsigned switches{};
+        const InputAdapter stance_change{&switches,[](void* context,const InputRequest& request) noexcept {
+            if(request.action!=InputAction::switch_stance || request.trigger.owner!=TriggerOwner::switch_stance)
+                return InputDisposition::unsupported;
+            ++*static_cast<unsigned*>(context);return InputDisposition::started;
+        }};
         input.enable(true);input.set_recognition_capture(0,true);
         const auto poll=[&](std::uint64_t now,std::uint8_t rt) {
             NativeRequestSample sample{};sample.valid=true;sample.state=100;sample.crouch_mode=1;sample.words[1]=0xc000;
             const auto frame=producer.observe(now,owner,sample,{true,-1});
             input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
             return input.poll(0,now,0,0,0,0,0,true,true,false,0,rt>30,false,false,now/cadence,false,{},false,false,
-                SkatePose::riding,false,false,false,false,true,false,0,rt,mode,true,true,false);
+                SkatePose::riding,false,false,false,false,true,false,0,rt,mode,true,true,false,
+                {},{},{},{},{},{},{},{},{},{},stance_change);
         };
         poll(1000,0);const auto out=poll(1000+cadence,255);
         const bool enabled=mode!=ActionExperiment::grabs;
-        check(out.action.owned==enabled&&out.action.consume_rt==enabled&&
+        check(!out.action.owned&&!out.action.requested&&out.action.consume_rt==enabled&&switches==(enabled?1u:0u)&&
             input.input_diagnostic(0)->recognition_count==(enabled?1u:0u),
-            "native-bound facade cannot start a hidden revert actor in the grab-only experiment");
+            "ordinary ground RT reaches only Switch in enabled modes and cannot start a hidden Revert actor");
     }
 }
 
@@ -1019,8 +1050,8 @@ void auxiliary_release_handoff_contract() {
             h.poll(100);check(!h.poll(134).action.owned,"second release independently finishes its own software neutral tail");
         }
     }
-    ConformanceSession h;h.admission.pose=SkatePose::riding;h.poll(0);
-    check(h.poll(10,{0,0,0,0,255}).action.owned,"RT begins one existing native recipe request");
+    ConformanceSession h;h.admission.pose=SkatePose::riding;h.admission.triggers=mock_landing_revert();h.poll(0);
+    check(h.poll(10,{0,0,0,0,255}).action.owned,"explicit touchdown RT begins one existing native recipe request");
     check(h.poll(20).action.owned,"RT is a press request; physical release alone does not cancel an admitted recipe");
     h.poll(30,{0,0,0,0,255});const auto& waiting=h.session.diagnostic();
     check(waiting.recognition_count==1&&waiting.recognition[0].request.recognized_at==30,
@@ -1127,7 +1158,7 @@ void native_revert_stances() {
  for(bool mirrored:{false,true})for(short x:{short{-25000},short{25000}}) {
   Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
   raw.valid=true;raw.state=100;raw.crouch_mode=1;raw.words[1]=0xc000;
-  h.admission.inspected_stance=false;h.admission.mirror_x=mirrored;
+  h.admission.inspected_stance=false;h.admission.mirror_x=mirrored;h.admission.triggers=mock_landing_revert();
   auto poll=[&](std::uint64_t now,unsigned state,unsigned rt){
    raw.state=state;raw.words[0]=mirrored?0u:0x20u;
    auto f=producer.observe(now,owner,raw,{true,-1});
@@ -1236,9 +1267,8 @@ void manual_revert_publication_deadline() {
   h.poll(1100,{0,0,0,0,255});
   if(fault==9) {
    const auto& diagnostic=h.session.diagnostic();
-   check(diagnostic.recognition_count==1&&!diagnostic.recognition[0].request.manual_direction&&
-         diagnostic.recognition[0].request.deadline==1101,
-         "unconfirmed busy Manual retains the original one-millisecond RT policy");
+   check(diagnostic.recognition_count==0,
+         "unconfirmed Manual cannot select Pivot or borrow the ground Switch command");
   }
   if(fault==0)++owner.rig;
   if(fault==1)raw.words[1]=nose?0x8000u:0x4000u;
@@ -1323,6 +1353,7 @@ void revert_crouch_ownership() {
  for(bool nose:{false,true})for(bool manual:{false,true})for(unsigned cadence:{8u,17u,33u}) {
   Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
   raw.valid=true;raw.state=100;raw.crouch_mode=1;raw.words[1]=manual?(nose?0x8000u:0x4000u):0xc000u;
+  if(!manual)h.admission.triggers=mock_landing_revert();
   auto poll=[&](std::uint64_t now,unsigned mode,unsigned rt,short y=0) {
    raw.words[1]=manual&&now>=1000?(nose?0x8000u:0x4000u):0xc000u;
    raw.crouch_mode=mode;const auto frame=producer.observe(now,owner,raw,{true,-1});
@@ -1337,7 +1368,7 @@ void revert_crouch_ownership() {
    poll(900,1,0);poll(920,1,0,static_cast<short>(nose?-25000:25000));
    check(poll(940,1,0,static_cast<short>(nose?25000:-25000)).manual.owns,"manual actor owns RS before the verified revert transfer");
   }
-  poll(1000,1,0);check(poll(1017,1,255).action.owned,"fresh ground or confirmed balance admits one RT actor");
+  poll(1000,1,0);check(poll(1017,1,255).action.owned,"qualified touchdown or confirmed balance admits one RT actor");
   for(unsigned elapsed=cadence;elapsed<680;elapsed+=cadence) {
    const auto out=poll(1017+elapsed,0,255);
    check(out.action.pad.right_y==(manual?(nose?20000:-20000):0),

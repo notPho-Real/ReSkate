@@ -463,7 +463,7 @@ public:
         const auto directions=state.pad_buttons?state.pad_buttons:state.stick_buttons;
         state.buttons=static_cast<std::uint16_t>((input.buttons&0xfff0u)|directions);
         state.direction=encode(directions&8u?1:directions&4u?-1:0,directions&2u?-1:directions&1u?1:0);
-        state.triggers=static_cast<std::uint8_t>((input.lt>30?1u:0u)|(input.rt>128?2u:0u));
+        state.triggers=static_cast<std::uint8_t>((input.lt>30?1u:0u)|(input.rt>30?2u:0u));
         return state;
     }
     const InputDigitalState& digital_state() const noexcept {return digital_;}
@@ -496,8 +496,8 @@ public:
                 record({InputSource::buttons, static_cast<std::int16_t>(bit),input.buttons & mask ? InputEdge::press : InputEdge::release}, now);
         }
         for (unsigned trigger = 0; trigger < 2; ++trigger) {
-            const bool held = (trigger ? input.rt > 128 : input.lt > 30);
-            const bool was = (trigger ? previous_.rt > 128 : previous_.lt > 30);
+            const bool held = (trigger ? input.rt > 30 : input.lt > 30);
+            const bool was = (trigger ? previous_.rt > 30 : previous_.lt > 30);
             if (held != was) record({InputSource::triggers, static_cast<std::int16_t>(trigger),held ? InputEdge::press : InputEdge::release}, now);
         }
         previous_ = input; observe_held(now);
@@ -530,7 +530,7 @@ public:
         case InputSource::buttons:
             return token.code >= 0 && token.code < 16 &&
                 (previous_.buttons & (std::uint16_t{1} << static_cast<unsigned>(token.code))) != 0;
-        case InputSource::triggers: return token.code == 0 ? previous_.lt > 30 : token.code == 1 && previous_.rt > 128;
+        case InputSource::triggers: return token.code == 0 ? previous_.lt > 30 : token.code == 1 && previous_.rt > 30;
         case InputSource::stick: return token.code != 0 && stick_ == token.code;
         case InputSource::pad: return token.code != 0 && pad_ == token.code;
         case InputSource::vertical_stick: return token.code != 0 && vertical_stick_ == token.code;
@@ -575,7 +575,7 @@ private:
         };
         for (unsigned bit = 0; bit < 16; ++bit)
             update(bit, previous_.buttons & (std::uint16_t{1} << bit) ? static_cast<int>(bit) + 1 : 0);
-        update(16, previous_.lt > 30 ? 1 : 0); update(17, previous_.rt > 128 ? 2 : 0);
+        update(16, previous_.lt > 30 ? 1 : 0); update(17, previous_.rt > 30 ? 2 : 0);
         update(18, stick_ ? stick_ + 1 : 0); update(19, pad_ ? pad_ + 1 : 0); update(20, canonical_ ? canonical_ + 1 : 0);
         update(21, vertical_stick_ ? vertical_stick_ + 2 : 0); update(22, vertical_pad_ ? vertical_pad_ + 2 : 0);
     }
@@ -600,8 +600,8 @@ private:
                     record({InputSource::buttons, static_cast<std::int16_t>(control),
                         input.buttons & mask ? InputEdge::press : InputEdge::release}, now);
             } else {
-                const bool held = control == 16 ? input.lt > 30 : input.rt > 128;
-                const bool was = control == 16 ? previous_.lt > 30 : previous_.rt > 128;
+                const bool held = control == 16 ? input.lt > 30 : input.rt > 30;
+                const bool was = control == 16 ? previous_.lt > 30 : previous_.rt > 30;
                 if (held != was) record({InputSource::triggers,static_cast<std::int16_t>(control-16),
                     held ? InputEdge::press : InputEdge::release},now);
             }

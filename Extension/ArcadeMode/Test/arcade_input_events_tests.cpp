@@ -114,11 +114,11 @@ void normalization_tests() {
     check(input.history().events().size() == 4, "one physical direction and three physical controls release once without projection duplicates");
     input.discard_intent(); input.sample(30, {});
     check(input.history().events().empty(), "discarding intent retains physical baseline");
-    input.sample(40, {0x4000, 25000, 25000, 30, 128});
+    input.sample(40, {0x4000, 25000, 25000, 30, 30});
     check(input.history().events().size() == 2, "diagonal is one token and trigger thresholds remain strict");
-    input.sample(50, {0x4000, 25000, 25000, 31, 129});
-    check(input.history().events().size() == 4, "triggers rise at their independent thresholds");
-    input.sample(60, {0x4000, 25000, 25000, 31, 129});
+    input.sample(50, {0x4000, 25000, 25000, 31, 31});
+    check(input.history().events().size() == 4, "both triggers rise at the shared physical dead zone");
+    input.sample(60, {0x4000, 25000, 25000, 31, 31});
     check(input.history().events().size() == 4, "held samples do not duplicate events");
     input.reset(); input.sample(100, {}); input.sample(110, {0x0001, 0, 25000}, true);
     const std::array<InputToken, 3> held{{{InputSource::buttons, 0, InputEdge::press},
@@ -390,7 +390,8 @@ void sampled_replay_tests() {
     }
     for (const unsigned gap : {100u, 499u, 500u, 600u}) {
         UnifiedInput input; Adapter adapter;
-        const InputEnvironment air{InputContext::air, true};
+        InputEnvironment air{InputContext::air, true};
+        air.policy=InputPolicy::compatibility(); // Historical face-first query; production neutral X is immediate.
         input.poll(0, {}, air, adapter.bind()); input.poll(10, {0x4000}, air, adapter.bind());
         check(adapter.calls == 0, "face-first unmatched flip owns no adapter");
         input.poll(10 + gap, {0, -25000, 0}, air, adapter.bind());
@@ -409,10 +410,13 @@ void recognition_capture_tests() {
         };
         poll(0,{}); poll(cadence,{0x1000,0,0,0,255});
         const auto& d=input.diagnostic();
-        check(d.recognition_count==2 && d.recognition_omitted==0, "one poll exports each crouch and revert attempt separately at30/60Hz");
+        check(d.recognition_count==2 && d.recognition_omitted==0, "one poll exports each crouch and Switch attempt separately at30/60Hz");
         std::uint64_t press_id{};
         for(std::size_t i=0;i<d.recognition_count;++i) {
             const auto& attempt=d.recognition[i]; const auto& r=attempt.request;
+            check(r.action==InputAction::crouch ||
+                (r.action==InputAction::switch_stance && r.trigger.owner==TriggerOwner::switch_stance),
+                "ordinary ground RT retains Switch intent and cannot masquerade as a qualified Revert");
             check(attempt.queued && r.recognition->sequence && r.session==d.session && r.recognized_at==cadence,
                 "attempt retains stable sequence action session and original recognition time");
             check(r.recognition->footprint_kind==InputFootprintKind::events && r.recognition->footprint.count==1 &&

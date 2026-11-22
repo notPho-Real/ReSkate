@@ -651,6 +651,15 @@ Snapshot observe(const NoBailSkater& owner,std::uint64_t now) noexcept {
     if(usable(latest))return latest;
     return usable(latest_board)?latest_board:Snapshot{};
 }
+Snapshot riding_support(const NoBailSkater& owner,std::uint64_t now) noexcept {
+    std::lock_guard lock(mutex);
+    const auto& value=latest_board;
+    if(!material_permitted.load(std::memory_order_acquire) && !permitted.load(std::memory_order_acquire))return {};
+    if(!value.valid || !value.after_valid || value.owner!=owner || value.physics_thread!=GetCurrentThreadId() ||
+       now<value.sampled_at || now-value.sampled_at>100 || value.state!=value.state_after ||
+       (value.state!=100 && value.state!=103))return {};
+    return value;
+}
 SupportMaterial board_material(const NoBailSkater& owner,std::uint64_t now) noexcept {
     if(!materials_ready.load(std::memory_order_acquire))return {};
     Snapshot snap{};

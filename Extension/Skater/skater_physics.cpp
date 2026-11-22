@@ -149,6 +149,8 @@ Step read_step(const NoBailSkater& skater, float seconds, bool wipeout) noexcept
     Step step;
     step.seconds = seconds;
     step.wipeout = wipeout;
+    if(available())step.board_reference=detail::read_board_reference_pose(
+        [](std::uintptr_t address,auto& value) {return memory::peek(address,value);},skater);
     std::uint32_t physics_state{};
     if (memory::peek(skater.context + state::physics_state_offset, physics_state)) {
         step.state = physics_state;
