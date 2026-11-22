@@ -138,7 +138,7 @@ def generate(root,variant='current'):
          'void cancel()noexcept{++cancellations;live=false;}\n'
          'StanceControl controls(const NoBailSkater&,const InputNativeContext&,std::uint64_t,std::uint64_t)noexcept{return {};}')
     once('const InputAdapter stance_adapter{};',
-         'const bool stance_permitted=false;const auto native_flip_owner=owner;\nconst InputAdapter stance_adapter{};')
+         'bool stance_permitted=false;const auto native_flip_owner=owner;\nconst InputAdapter stance_adapter{};')
     once(' const auto admission=native_readiness.sample(now,arcade_input.native_context(now));\n const bool game_input=active&&fixture_watch&&admission.gameplay,may_start=admission.start,may_push=false,may_toggle_board=false,offboard=admission.offboard;',
          ' bool game_input=active&&fixture_watch,capture_game_input{};\n'+control_owner+'\n (void)capture_game_input;')
     once('const bool flip_ready=admission.flip_ready,action_safe=admission.action;', '')
