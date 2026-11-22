@@ -27,6 +27,10 @@ struct Route {
         admission.action_mode=ActionExperiment::classic;admission.catalog=catalog;
         admission.normal_flip={this,[](void* context,std::int32_t id) noexcept {
             auto& self=*static_cast<Route*>(context);
+            if(!self.admission.native_context.airborne || id!=self.expected_flip)
+                std::cerr<<"flip route id="<<id<<" expected="<<self.expected_flip<<" nose="<<self.nose
+                    <<" switched="<<self.switched<<" at="<<self.admission.native_context.sampled_at
+                    <<" state="<<self.admission.native_context.flip.state<<'\n';
             require(self.admission.native_context.airborne && id==self.expected_flip,"flip submission requires actual AIR");
             ++self.flips;return true;
         }};
@@ -158,7 +162,7 @@ inline void run() {
     for(bool rail:{false,true})for(bool grab:{false,true})for(unsigned cadence:{8u,17u,34u})
     for(bool simultaneous:{false,true})for(bool switched:{false,true})for(bool nose:{false,true})for(unsigned fault=0;fault<9;++fault) {
         if(rail && nose)continue;
-        auto h=std::make_unique<Route>();h->switched=switched;h->nose=nose;
+        auto h=std::make_unique<Route>();h->switched=switched;h->nose=nose;h->expected_flip=nose?17:2;
         const int jump=nose?16:1;
         std::uint64_t now=1000;
         if(!rail) {

@@ -9,7 +9,100 @@ class ManualEpisode {
 public:
     enum class Phase { inactive, acquiring, active, transitioning, airborne_suspended, combo_airborne, ended };
     enum class Exit { none, disabled, owner, offboard, grind, bail, putdown, incompatible, endpoint };
-    void reset() noexcept { phase_=Phase::inactive; exit_=Exit::none; pose_=SkatePose::unknown; last_={}; two_at_=transition_id_=successor_contact_step_=release_step_=delivery_at_=0; successor_={}; owned_=transition_completed_=resume_pending_=uncertain_=reported_=physical_exit_=false;command_={}; }
+    // Physical body observations from the same original physics callback as
+    // frame. Entity placement, animation/display poses and fakie flags are not
+    // substitutes for these native board-reference and pelvis basis vectors.
+    struct PivotMotion {
+        bool valid{};
+        NativeInputOwner owner{};
+        std::uint64_t owner_generation{}, physics_step{}, sampled_at{};
+        std::array<float,3> board_forward{}, body_forward{};
+        bool operator==(const PivotMotion&) const = default;
+    };
+    enum class PivotStatus { inactive, tracking, rejected, observed };
+    enum class PivotRejection { none, identity, motion, support, sampling, rotation, successor };
+    struct PivotEvidence {
+        PivotStatus status{PivotStatus::inactive};
+        PivotRejection rejection{PivotRejection::none};
+        std::uint64_t transition{}, episode{}, started_at{}, completed_at{}, completed_step{};
+        SkatePose origin{SkatePose::unknown}, successor{SkatePose::unknown};
+        float board_radians{}, body_radians{};
+    };
+    const PivotEvidence& pivot_evidence() const noexcept { return pivot_; }
+    // Evidence only. Failure never cancels the existing Manual/revert owner,
+    // balance restoration or combo, and success grants no native score credit.
+    bool begin_pivot(std::uint64_t transition,const NativeInputFrame& frame,
+                     const PivotMotion& motion,std::uint64_t now) noexcept {
+        if(!transition || transition>now || pivot_.status==PivotStatus::tracking ||
+            (pivot_.episode==serial_ && transition<=pivot_.transition))return false;
+        pivot_={PivotStatus::tracking,PivotRejection::none,transition,serial_,frame.sampled_at,0,0,pose_};
+        pivot_frame_=frame;pivot_motion_=motion;pivot_board_path_=pivot_body_path_=0;pivot_native_turn_=false;
+        if(!owned_ || !actuatable(now) || !pivot_frame_current(frame) ||
+            frame.owner!=owner_ || frame.owner_generation!=generation_ || !frame.orientation.valid) {
+            reject_pivot(PivotRejection::identity);return false;
+        }
+        if(!pivot_support(frame)) {reject_pivot(PivotRejection::support);return false;}
+        if(!pivot_motion_current(frame,motion)) {reject_pivot(PivotRejection::motion);return false;}
+        pivot_initial_orientation_=frame.orientation;
+        return true;
+    }
+    // Call after observe() on EVERY original physics step while tracking. A
+    // missing read must be supplied as invalid, never silently skipped. The
+    // existing episode proves successor balance; this adds actual supported
+    // board/body rotation, independently of labels and requested LS movement.
+    void observe_pivot(const NativeInputFrame& frame,const PivotMotion& motion,std::uint64_t transition) noexcept {
+        if(pivot_.status!=PivotStatus::tracking)return;
+        if(!frame.valid || !established() || !owned_ || uncertain_ || release_step_ ||
+            serial_!=pivot_.episode || transition!=pivot_.transition ||
+            frame.owner!=pivot_frame_.owner || frame.owner_generation!=pivot_frame_.owner_generation ||
+            !pivot_frame_current(frame) || frame.owner!=owner_ || frame.owner_generation!=generation_) {
+            reject_pivot(PivotRejection::identity);return;
+        }
+        if(!pivot_support(frame)) {reject_pivot(PivotRejection::support);return;}
+        if(!pivot_motion_current(frame,motion)) {reject_pivot(PivotRejection::motion);return;}
+        if(frame.physics_step==pivot_frame_.physics_step) {
+            if(motion!=pivot_motion_ || frame.state!=pivot_frame_.state || frame.contacts!=pivot_frame_.contacts ||
+                frame.action_generation!=pivot_frame_.action_generation ||
+                frame.contact_generation!=pivot_frame_.contact_generation || frame.orientation!=pivot_frame_.orientation)
+                reject_pivot(PivotRejection::sampling);
+            return;
+        }
+        if(frame.physics_step!=pivot_frame_.physics_step+1 || frame.sampled_at<=pivot_frame_.sampled_at ||
+            frame.sampled_at-pivot_frame_.sampled_at>150 || frame.mode_generation!=pivot_frame_.mode_generation ||
+            frame.action_generation<pivot_frame_.action_generation || frame.contact_generation<pivot_frame_.contact_generation) {
+            reject_pivot(PivotRejection::sampling);return;
+        }
+        const auto board=pivot_delta(pivot_motion_.board_forward,motion.board_forward);
+        const auto body=pivot_delta(pivot_motion_.body_forward,motion.body_forward);
+        // Beyond a quarter turn between observations the direction/path is
+        // ambiguous. These are evidence tolerances, never physics/input tuning.
+        constexpr float pi=3.14159265358979323846f;
+        if(std::abs(board)>pi*.5f || std::abs(body)>pi*.5f) {reject_pivot(PivotRejection::rotation);return;}
+        pivot_.board_radians+=board;pivot_.body_radians+=body;
+        pivot_board_path_+=std::abs(board);pivot_body_path_+=std::abs(body);
+        pivot_native_turn_=pivot_native_turn_ || frame.state==101;
+        pivot_frame_=frame;pivot_motion_=motion;
+        // Reject extra revolutions and large reversals rather than accepting
+        // an arbitrary odd half-turn from endpoint direction alone.
+        if(pivot_board_path_>pi*4/3 || pivot_body_path_>pi*4/3) {reject_pivot(PivotRejection::rotation);return;}
+        if(phase_!=Phase::active || !transition_completed_ || transition_id_!=pivot_.transition)return;
+        if(!pivot_native_turn_ || !frame.orientation.valid ||
+            frame.orientation.fakie==pivot_initial_orientation_.fakie ||
+            frame.state!=100 || frame.mode!=1 ||
+            frame.contacts!=(pose_==SkatePose::manual?0x4000u:0x8000u)) {
+            reject_pivot(PivotRejection::successor);return;
+        }
+        constexpr float tolerance=pi/6; // Both measured bodies must turn180 +/-30 degrees.
+        if(std::abs(std::abs(pivot_.board_radians)-pi)>tolerance ||
+            std::abs(std::abs(pivot_.body_radians)-pi)>tolerance ||
+            pivot_.board_radians*pivot_.body_radians<=0 ||
+            std::abs(pivot_.board_radians-pivot_.body_radians)>tolerance) {
+            reject_pivot(PivotRejection::rotation);return;
+        }
+        pivot_.status=PivotStatus::observed;pivot_.successor=pose_;
+        pivot_.completed_at=frame.sampled_at;pivot_.completed_step=frame.physics_step;
+    }
+    void reset() noexcept { phase_=Phase::inactive; exit_=Exit::none; pose_=SkatePose::unknown; last_={}; two_at_=transition_id_=successor_contact_step_=release_step_=delivery_at_=0; successor_={}; owned_=transition_completed_=resume_pending_=uncertain_=reported_=physical_exit_=false;command_={};pivot_={}; }
     Phase phase() const noexcept { return phase_; }
     Exit exit() const noexcept { return exit_; }
     std::uint64_t serial() const noexcept { return serial_; }
@@ -34,7 +127,7 @@ public:
     }
     NativeInputFrame termination_frame() const noexcept { return terminal_; }
     bool take_termination() noexcept { if(!ended() || reported_)return false;reported_=true;return true; }
-    void end(Exit reason) noexcept { if(phase_!=Phase::inactive && phase_!=Phase::ended){phase_=Phase::ended;exit_=reason;terminal_=last_;reported_=false;successor_={};owned_=resume_pending_=false;physical_exit_=reason==Exit::putdown || reason==Exit::bail || reason==Exit::grind || reason==Exit::offboard || reason==Exit::incompatible;two_at_=0;} }
+    void end(Exit reason) noexcept { if(phase_!=Phase::inactive && phase_!=Phase::ended){phase_=Phase::ended;exit_=reason;terminal_=last_;reported_=false;successor_={};owned_=resume_pending_=false;physical_exit_=reason==Exit::putdown || reason==Exit::bail || reason==Exit::grind || reason==Exit::offboard || reason==Exit::incompatible;two_at_=0;if(pivot_.status==PivotStatus::tracking)reject_pivot(PivotRejection::identity);} }
     void release_delivery(const NativeInputFrame& f,bool physical_release) noexcept {
         if(!physical_release || !established() || !f.valid || f.owner!=owner_ ||
             f.owner_generation!=generation_ || f.state!=100 || f.mode!=1 || !f.physics_step)return;
@@ -160,6 +253,40 @@ public:
         return false;
     }
 private:
+    void reject_pivot(PivotRejection reason) noexcept {pivot_.status=PivotStatus::rejected;pivot_.rejection=reason;}
+    bool pivot_frame_current(const NativeInputFrame& frame) const noexcept {
+        return frame.valid && last_.valid && frame.owner==last_.owner &&
+            frame.owner_generation==last_.owner_generation && frame.physics_step==last_.physics_step &&
+            frame.sampled_at==last_.sampled_at && frame.contact_generation==last_.contact_generation &&
+            frame.action_generation==last_.action_generation && frame.mode_generation==last_.mode_generation &&
+            frame.state==last_.state && frame.mode==last_.mode && frame.contacts==last_.contacts &&
+            frame.stance_and_push==last_.stance_and_push && frame.orientation==last_.orientation;
+    }
+    bool pivot_support(const NativeInputFrame& frame) const noexcept {
+        // Reuse the admitted native wheel identity. Fakie/switch changes do
+        // not swap the physically supporting truck; both-truck revert contact
+        // is not evidence of a wheel-supported Pivot.
+        return frame.valid && !frame.airborne && !frame.rail_family && !(frame.stance_and_push&0x40u) &&
+            (frame.state==100 || frame.state==101) && frame.mode==1 &&
+            frame.contacts==(pivot_.origin==SkatePose::manual?0x4000u:0x8000u);
+    }
+    static bool pivot_motion_current(const NativeInputFrame& frame,const PivotMotion& motion) noexcept {
+        if(!motion.valid || !frame.owner.valid() || !frame.owner_generation || !frame.physics_step ||
+            motion.owner!=frame.owner || motion.owner_generation!=frame.owner_generation ||
+            motion.physics_step!=frame.physics_step || motion.sampled_at!=frame.sampled_at)return false;
+        for(const auto& vector:{motion.board_forward,motion.body_forward}) {
+            float square{};
+            for(float v:vector) {if(!std::isfinite(v))return false;square+=v*v;}
+            if(std::abs(square-1)> .05f || vector[0]*vector[0]+vector[2]*vector[2]<.25f)return false;
+        }
+        return true;
+    }
+    static float pivot_delta(const std::array<float,3>& before,const std::array<float,3>& after) noexcept {
+        return std::atan2(before[2]*after[0]-before[0]*after[2],before[0]*after[0]+before[2]*after[2]);
+    }
+    PivotEvidence pivot_{};PivotMotion pivot_motion_{};NativeInputFrame pivot_frame_{};
+    NativeOrientation pivot_initial_orientation_{};
+    float pivot_board_path_{},pivot_body_path_{};bool pivot_native_turn_{};
     Phase phase_{Phase::inactive};Exit exit_{Exit::none};SkatePose pose_{SkatePose::unknown};
     NativeInputOwner owner_{};NativeInputFrame last_{};ManualRevertContact successor_{};
     std::uint64_t serial_{},generation_{},entry_step_{},integration_step_{},two_at_{},air_at_{},successor_step_{},transition_id_{},successor_contact_step_{},release_step_{},delivery_at_{};

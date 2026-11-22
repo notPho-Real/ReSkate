@@ -46,6 +46,9 @@ bool static_world_owner(const SurfaceGeometryBody& body,SurfaceGeometryWorldOwne
         ground_shape=ground_shape || body==fixture::clearance_result.adjacent_shapes[i];
     owner=fixture::clearance_policy && ground_shape?
         fixture::clearance_owner:fixture::wall.world_owner;
+    const auto& sample=fixture::clearance_policy && ground_shape?fixture::clearance_result:fixture::wall;
+    for(unsigned i=0;i<std::min<unsigned>(sample.adjacent_shape_count,4);++i)
+        if(body==sample.adjacent_shapes[i])owner=sample.adjacent_world_owners[i];
     if(fixture::changed_adjacent_owner && body!=fixture::wall.body)++owner.body.generation;
     return fixture::motion_geometry && fixture::hit_current && body.index!=fixture::rejected_shape;
 }
@@ -92,7 +95,7 @@ bool revalidate_surface_geometry(const SurfaceGeometryNativeApi& api,const Surfa
         (!sample.body_owner || owner.value==sample.body_owner) && owner==sample.world_owner))return false;
     if(sample.adjacent_shape_count>sample.adjacent_shapes.size())return false;
     for(unsigned i=0;i<sample.adjacent_shape_count;++i)
-        if(!api.static_world_owner(api.user,sample.adjacent_shapes[i],owner) || owner!=sample.world_owner)return false;
+        if(!api.static_world_owner(api.user,sample.adjacent_shapes[i],owner) || owner!=sample.adjacent_world_owners[i])return false;
     return true;
 }
 SurfaceGeometryAnchor query_wallplant_anchor(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
@@ -134,7 +137,7 @@ void observe_at(const NativeInputFrame& f){fixture::now=std::max(fixture::now,f.
 void finish_at(const WallplantCommand& c,bool ok,std::uint64_t at){fixture::now=at;finish_hold(c,ok,at);}
 bool preserve_at(const NativeInputFrame& f,std::uint64_t at){fixture::now=at;return preserves_combo(f,at);}
 void clearance_policy_checks(bool motion) {
-    for(unsigned fault=0;fault<9;++fault) {
+    for(bool independent:{false,true})for(unsigned fault=0;fault<9;++fault) {
         const auto command=setup();in_flight={};candidate={};raw={};pending={};
         const auto f=observed;
         SurfaceGeometryContext ctx{{1,2,3,4,5},context(f),8,7,1,9,f.owner_generation,
@@ -158,6 +161,12 @@ void clearance_policy_checks(bool motion) {
         if(fault>=7) {
             for(unsigned i=0;i<4;++i)fresh_ground.adjacent_shapes[i]={7,21+i,1};
             fresh_ground.adjacent_shape_count=4;
+            fresh_ground.adjacent_world_owners.fill(fresh_ground.world_owner);
+            if(independent)for(unsigned i=0;i<4;++i) {
+                auto& stamp=fresh_ground.adjacent_world_owners[i];
+                stamp.body.index+=100+i;stamp.index+=20+i;stamp.generation+=i;
+                stamp.kind=i%2;stamp.value=9000+i;
+            }
             ordinary_ground=fresh_ground;
             if(fault==8)fixture::rejected_shape=21;
         }
@@ -385,14 +394,20 @@ void motion_diagnostic_checks() {
           "process capacity also bounds log output after the single overflow notice");
 }
 int main(){
-    for(bool motion:{false,true})for(unsigned fault=0;fault<5;++fault) {
+    for(bool independent:{false,true})for(bool motion:{false,true})for(unsigned fault=0;fault<5;++fault) {
         auto command=setup();fixture::motion_geometry=true;fixture::wall={};
         fixture::rejected_shape=0;fixture::changed_adjacent_owner=false;
         auto& wall=fixture::wall;wall.valid=true;wall.body={7,1,9};
         wall.world_owner={{7,70,50331648},77,69,50331648,0,1234};
         wall.adjacent_shapes={SurfaceGeometryBody{7,2,9},SurfaceGeometryBody{7,3,9},
             SurfaceGeometryBody{7,4,9},SurfaceGeometryBody{7,5,9}};
-        wall.adjacent_shape_count=4;candidate.wall=wall;
+        wall.adjacent_shape_count=4;wall.adjacent_world_owners.fill(wall.world_owner);
+        if(independent)for(unsigned i=0;i<4;++i) {
+            auto& stamp=wall.adjacent_world_owners[i];
+            stamp.body.index+=100+i;stamp.index+=20+i;stamp.generation+=i;
+            stamp.kind=i%2;stamp.value=9000+i;
+        }
+        candidate.wall=wall;
         fixture::rejected_shape=wall.adjacent_shapes[fault%4].index;
         check(!enter(command,1000) && !held_command(),
             "neighbor invalidation before admission cannot acquire planted hold");

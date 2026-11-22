@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_vert_trigger.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_input_session.h"
+#include "Extension/ArcadeMode/arcade_native_input_state.h"
 #include "Engine/Game/Abi/orientation_target.h"
 #include <cstdlib>
 #include <iostream>
@@ -285,6 +286,27 @@ void unavailable_snapshots() {
     ++o.native.physics_step;o.native.sampled_at=1030;c.observe(o);
     check(!c.pending(o.native,1161),"gap does not renew original trigger deadline");
 }
+void occupied_actor_expiry() {
+    VertAirController c;auto o=ground();warm(c,o);c.observe(o);o=fly(o);c.observe(o);
+    const auto edge=o.native.sampled_at;
+    check(c.request(o.native,edge,edge,1),"fresh transfer before existing native flip observation");
+    ++o.native.action_generation;o.native.flip_id=2;
+    auto plan=vert_level_out(o,{1,0,0});plan.clear=true;
+    for(unsigned i=0;i<17;++i) {
+        ++o.native.physics_step;o.native.sampled_at+=10;c.observe(o);
+        check(!c.stage(plan,o,o.native.sampled_at) && !c.consume(o.native,o.native.sampled_at,o.velocity),
+            "native flip owns its trajectory throughout transfer request expiry");
+    }
+    check(c.phase()==VertPhase::native_air && c.landing().flight(o.native),
+        "expired transfer retains genuine vert flight and independent landing lineage");
+    check(!c.request(o.native,o.native.sampled_at,edge,1),"expired original trigger cannot rearm after actor retirement");
+    ++o.native.physics_step;o.native.sampled_at+=10;o.velocity={4,-3,0};c.observe(o);
+    ++o.native.physics_step;o.native.sampled_at+=10;o.native.airborne=false;o.native.state=100;
+    ++o.native.air_departure;o.native.contacts=0xc000;o.native.flip_id=-1;o.supported=true;
+    o.up=o.contact_normal={0,1,0};o.contacted_shape={7,8,9};c.observe(o);
+    check(c.landing().ready(o.native,o.native.sampled_at),
+        "actual qualifying touchdown can still admit a new Revert after a safely refused transfer");
+}
 void destinations() {
     unsigned found{};
     for(float gravity:{9.81f,20.f,34.29f})for(float speed:{6.f,10.f,14.f})for(float angle:{0.f,.7f,1.6f,3.1f})for(float shift:{0.f,1000.f}) {
@@ -374,6 +396,11 @@ void unchanged_motion() {
     auto output=c.step(intent,f);check(!output.vertical && !output.horizontal,"qualified vert suppresses ordinary gravity and launch shaping");
 }
 struct Requests {unsigned count{};InputRequest last{};};
+TriggerRouting routing_for(VertAirController& controller) {
+    return {&controller,[](void* value,const TriggerPress& press,const InputNativeContext& current,std::uint64_t now) noexcept {
+        return qualify_vert_trigger(*static_cast<VertAirController*>(value),press,current,now);
+    }};
+}
 void session_trigger_ownership() {
     InputSession session;Requests requests;InputAdmission a;
     a.gameplay=true;a.pose=SkatePose::air;a.action_mode=ActionExperiment::classic;
@@ -381,19 +408,114 @@ void session_trigger_ownership() {
         if(r.action!=InputAction::transfer_command)return InputDisposition::unsupported;
         auto& out=*static_cast<Requests*>(p);++out.count;out.last=r;return InputDisposition::started;
     }};
-    auto frame=fly(ground()).native;
+    VertAirController controller;auto observation=ground();warm(controller,observation);controller.observe(observation);
+    observation=fly(observation);controller.observe(observation);a.triggers=routing_for(controller);
+    auto frame=observation.native;
     a.native_context=InputNativeContext::from_frame(frame);
     a.surface={1,frame.physics_step,true,false,false,true,0,a.native_context.generations};
     a.tick=1;(void)session.poll(1010,{},0,0,a);
     ++frame.physics_step;frame.sampled_at=1020;a.native_context=InputNativeContext::from_frame(frame);a.tick=2;
+    observation.native=frame;controller.observe(observation);
     PhysicalInputSample pad;pad.lt=255;
     auto result=session.poll(1020,pad,0,0,a);
-    check(result.transfer_triggers_owned && requests.count==1,"accepted LT owns native trigger channel");
-    a.surface.can_transfer=false;++frame.physics_step;frame.sampled_at=1030;a.native_context=InputNativeContext::from_frame(frame);a.tick=3;
+    check(result.trigger_owned && requests.count==1,"accepted LT owns native trigger channel");
+    controller.cancel();a.surface.can_transfer=false;++frame.physics_step;frame.sampled_at=1030;a.native_context=InputNativeContext::from_frame(frame);a.tick=3;
     result=session.poll(1030,pad,0,0,a);
-    check(result.transfer_triggers_owned && requests.count==1,"trigger ownership persists after request while held");
+    check(result.trigger_owned && requests.count==1,"trigger ownership persists after request while held");
     pad.lt=0;++frame.physics_step;frame.sampled_at=1040;a.native_context=InputNativeContext::from_frame(frame);a.tick=4;
-    result=session.poll(1040,pad,0,0,a);check(!result.transfer_triggers_owned,"physical release retires transfer trigger ownership");
+    result=session.poll(1040,pad,0,0,a);check(!result.trigger_owned,"physical release retires transfer trigger ownership");
+}
+void transfer_preserves_grab_producer() {
+    for(unsigned channel:{0u,1u})for(bool qualified:{false,true}) {
+        InputSession session;InputAdmission a;
+        a.gameplay=a.action_fresh=a.inspected_stance=true;a.pose=SkatePose::air;a.action_mode=ActionExperiment::classic;
+        VertAirController controller;auto o=ground();warm(controller,o);controller.observe(o);o=fly(o);controller.observe(o);
+        if(qualified)a.triggers=routing_for(controller);
+        struct Producer {unsigned reads{},requests{};} producer;
+        a.normal_grab.context=&producer;
+        a.normal_grab.controls=[](void* state) noexcept {
+            ++static_cast<Producer*>(state)->reads;return native_grab::Control{2u};
+        };
+        a.extensions={&producer,[](void* state,const InputRequest& input) noexcept {
+            if(input.action!=InputAction::transfer_command)return InputDisposition::unsupported;
+            ++static_cast<Producer*>(state)->requests;return InputDisposition::started;
+        }};
+        const auto poll=[&](std::uint64_t now,PhysicalInputSample pad) {
+            ++o.native.physics_step;o.native.sampled_at=now;controller.observe(o);
+            a.native_context=InputNativeContext::from_frame(o.native);
+            a.surface={1,o.native.physics_step,true,false,false,true,0,a.native_context.generations};a.tick=now/17;
+            return session.poll(now,pad,0,0,a);
+        };
+        check(poll(1020,{}).action.native_grab_triggers,"existing qualified grab producer owns its native hand channel");
+        const auto before=producer.reads;
+        PhysicalInputSample pad;if(channel)pad.rt=255;else pad.lt=255;
+        auto output=poll(1037,pad);
+        check(output.action.native_grab_triggers==qualified && producer.reads==before+(qualified?1u:0u),
+            "shared transfer claim preserves grab producer in the same poll; unclaimed trigger still conflicts");
+        check(output.vert_trigger_owned==(qualified?1u<<channel:0u) && producer.requests==(qualified?1u:0u),
+            "one contextual trigger claims one trajectory request without replacing grab ownership");
+        output=poll(1054,pad);
+        check(output.action.native_grab_triggers==qualified && producer.requests==(qualified?1u:0u),
+            "held transfer does not repeat or suppress ongoing grab production");
+    }
+}
+void vert_trigger_manual_entry() {
+    // Input adapter fixture: genuine vert/landing proof is covered above. No
+    // Manual request or synthetic native state is a combo/scoring acceptance.
+    for(unsigned phase:{0u,1u,2u})for(unsigned channel:{0u,1u})for(bool nose:{false,true})for(bool conflict:{false,true}) {
+        const bool landing=phase==1;
+        InputSession session;NativeInputState producer;InputAdmission a;
+        a.gameplay=a.action_fresh=a.inspected_stance=true;a.action_mode=ActionExperiment::classic;
+        struct Proof {unsigned channel{};bool landing{};} proof{channel,landing};
+        a.triggers={&proof,[](void* state,const TriggerPress& press,const InputNativeContext&,std::uint64_t) noexcept {
+            const auto& value=*static_cast<Proof*>(state);
+            return press.channel()==value.channel?TriggerDecision{
+                value.landing?TriggerOwner::landing_revert:TriggerOwner::transfer,press.press.at+150,true}:TriggerDecision{};
+        }};
+        a.extensions={nullptr,[](void*,const InputRequest& input) noexcept {
+            return input.action==InputAction::transfer_command?InputDisposition::started:InputDisposition::unsupported;
+        }};
+        const auto poll=[&](std::uint64_t now,PhysicalInputSample pad,unsigned state) {
+            NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=1;
+            sample.words[1]=state==200?0u:0xc000u;
+            const auto frame=producer.observe(now,{1,2,3,4,5},sample,{true,-1,16});
+            a.native_context=InputNativeContext::from_frame(frame);a.pose=frame.airborne?SkatePose::air:SkatePose::riding;
+            a.manual_safe=state!=101;a.manual_prepare=frame.airborne;a.tick=now/17;
+            a.surface={1,frame.physics_step,true,false,false,true,0,a.native_context.generations};
+            return session.poll(now,pad,0,0,a);
+        };
+        const unsigned initial=landing?100u:200u;
+        (void)poll(1000,{},initial);
+        PhysicalInputSample pad;if(phase!=2){if(channel)pad.rt=255;else pad.lt=255;}
+        pad.y=nose?-25000:25000;
+        const auto start=poll(1017,pad,initial);
+        check(start.vert_trigger_owned==(phase==2?0u:1u<<channel),"first Manual direction retains exact concurrent vert trigger claim");
+        if(phase==2) {
+            pad.y=nose?25000:-25000;
+            check(poll(1034,pad,200).manual.owns,"existing AIR Manual owns its prepared input before transfer");
+            if(channel)pad.rt=255;else pad.lt=255;
+            if(conflict)pad.lt=pad.rt=255;
+            const auto held=poll(1051,pad,200);
+            if(held.manual.owns!=!conflict || held.vert_trigger_owned!=(1u<<channel))std::cerr<<"AIR manual transfer: channel="<<channel<<" nose="<<nose<<" conflict="<<conflict<<" owned="<<held.manual.owns<<" mask="<<unsigned(held.vert_trigger_owned)<<"\n";
+            check(held.manual.owns==!conflict && held.vert_trigger_owned==(1u<<channel),
+                "fresh same-poll transfer preserves existing AIR Manual; unclaimed channel still cancels");
+            continue;
+        }
+        if(landing)check(start.action.requested && start.action.pad.owns_left_stick,
+            "qualified landing starts the existing native Revert input before Manual handoff");
+        if(conflict)pad.lt=pad.rt=255;
+        pad.y=nose?25000:-25000;
+        auto output=poll(1034,pad,landing?101u:200u);
+        if(landing) {
+            check((session.pending_manual().action!=InputAction::none)==!conflict,
+                "Manual pair during landing Revert retains its own input despite held consumed trigger");
+            for(unsigned at=1051;at<1731;at+=17)(void)poll(at,pad,101);
+            output=poll(1731,pad,100);
+        }
+        check(output.manual.owns==!conflict && (!output.manual.owns || output.right_y==(nose?20000:-20000)),
+            "consumed vert trigger permits Manual/Nose preparation; unrelated trigger remains a conflict");
+        if(!conflict)check(!output.manual.confirmed,"input delivery alone never certifies a native Manual or combo");
+    }
 }
 void held_transfer_intent() {
     UnifiedInput input;Requests received;
@@ -402,10 +524,12 @@ void held_transfer_intent() {
         return InputDisposition::started;
     }};
     InputEnvironment e;e.gameplay=true;e.context=InputContext::air;
-    auto native=fly(ground()).native;
+    VertAirController controller;auto observation=ground();warm(controller,observation);controller.observe(observation);
+    observation=fly(observation);controller.observe(observation);e.triggers=routing_for(controller);
+    auto native=observation.native;
     PhysicalInputSample pad;pad.buttons=8;
     for(unsigned i=0;i<30;++i) {
-        native.sampled_at+=20;++native.physics_step;
+        native.sampled_at+=20;++native.physics_step;observation.native=native;controller.observe(observation);
         e.native_context=InputNativeContext::from_frame(native);
         e.surface={1,native.physics_step,true,false,false,true,0,e.native_context.generations};
         if(i==29)pad.rt=255;
@@ -422,18 +546,23 @@ void input_edges() {
             return InputDisposition::started;
         }};
         InputEnvironment e;e.gameplay=true;e.context=InputContext::ground;
-        auto native=ground().native;e.native_context=InputNativeContext::from_frame(native);
+        VertAirController controller;auto observation=ground();warm(controller,observation);controller.observe(observation);
+        e.triggers=routing_for(controller);
+        auto native=observation.native;e.native_context=InputNativeContext::from_frame(native);
         PhysicalInputSample physical;
         input.poll(1000,physical,e,adapter);
         if(held_before){if(right)physical.rt=255;else physical.lt=255;}
-        native.sampled_at=1005;++native.physics_step;e.native_context=InputNativeContext::from_frame(native);
+        native.sampled_at=1005;++native.physics_step;observation.native=native;controller.observe(observation);
+        e.native_context=InputNativeContext::from_frame(native);
         input.poll(1005,physical,e,adapter);
-        native=fly(ground()).native;native.physics_step=4;e.context=InputContext::air;e.native_context=InputNativeContext::from_frame(native);
+        observation=fly(ground());observation.native.physics_step=4;controller.observe(observation);native=observation.native;
+        e.context=InputContext::air;e.native_context=InputNativeContext::from_frame(native);
         e.surface.fresh=e.surface.can_transfer=true;e.surface.generation=1;e.surface.physics_step=native.physics_step;
         e.surface.generations=e.native_context.generations;
         input.poll(1010,physical,e,adapter);
         if(right)physical.rt=255;else physical.lt=255;
-        native.sampled_at=1020;++native.physics_step;e.native_context=InputNativeContext::from_frame(native);
+        native.sampled_at=1020;++native.physics_step;observation.native=native;controller.observe(observation);
+        e.native_context=InputNativeContext::from_frame(native);
         e.surface.generations=e.native_context.generations;
         input.poll(1020,physical,e,adapter);
         check(received.count==(held_before?0u:1u),"only fresh airborne trigger recognizes transfer");
@@ -442,4 +571,4 @@ void input_edges() {
     }
 }
 }
-int main(){retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();lifecycle();contact_departure_delay();unavailable_snapshots();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();lifecycle();contact_departure_delay();unavailable_snapshots();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

@@ -59,7 +59,111 @@ struct Pipeline {
     }
 };
 }
+void slide_to_vertical_sweeps() {
+    for(unsigned hz:{30u,60u,120u})for(bool crooked:{false,true}) {
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=31;p.contact.end[2]=-12;
+        p.step(1000,402);p.poll();p.step(1100,402);p.poll();
+        p.step(1200,402);p.poll(crooked?test_b:test_y);p.step(1210,402);p.poll();p.step(1230,402);p.poll(test_b);
+        const auto initial=p.change.serial();
+        check(p.arms==1 && p.change.active() && p.control==GrindAdmissionControl::slide_tail_return &&
+            p.dispatched.grind_target()==(crooked?GrindChangeTarget::crooked:GrindChangeTarget::nosegrind),
+            "Bluntslide BB/YB begins its qualified5-0 preparation for the requested final sweep");
+        for(unsigned i=0;i<=950*hz/1000 && p.arms==1;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            if(elapsed>=550){p.contact.actor=32;p.contact.identity=24;}
+            p.step(1230+elapsed,elapsed<250?402:elapsed<550?406:403);
+            p.controls.valid=p.controls.neutral=elapsed>=850;p.poll(test_b);p.poll(test_b);
+            p.change.verify(p.now,{elapsed>=550,402,403,1,{}},p.contact,p.animation);
+            const auto pad=p.change.sample(p.now);
+            if(elapsed<800)check(pad.owns && pad.x==(elapsed<200?0:32767) && pad.y==(elapsed<200?-32767:-8192),
+                "three-leg request preserves the complete measured slide return pulse");
+            p.advance(elapsed>=820);p.advance(elapsed>=820);
+            check(!p.change.evidence().final_leg_serial && !p.change.evidence().physics_changed,
+                "5-0 and its completion never masquerade as final Nosegrind/Crooked");
+        }
+        const auto middle=p.now;
+        check(p.arms==2 && p.change.serial()==initial+1 && p.control==GrindAdmissionControl::ordinary &&
+            p.last_deadline==middle+1500,"observed neutral5-0 arms exactly one bounded50-50 return");
+        for(unsigned i=0;i<=750*hz/1000 && p.arms==2;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            if(elapsed>=450){p.contact.actor=40;p.contact.identity=20;}
+            p.step(middle+elapsed,elapsed<150?403:elapsed<450?406:401);p.poll(test_b);p.poll(test_b);
+            // The first completion remains visible in this synthetic sequence.
+            // A new current lease must independently report403→401.
+            p.change.verify(p.now,elapsed>=600?NativeGrindCompletion{true,403,401,1,{}}:
+                NativeGrindCompletion{true,402,403,1,{}},p.contact,p.animation);
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns && !pad.x && !pad.y,"intermediate5-0 return owns native neutral, never the final sweep");
+            p.advance();p.advance();
+            if(elapsed<600)check(p.arms==2 && !p.change.evidence().final_leg_serial,
+                "stale first-leg completion cannot release the second preparation gate");
+            check(!p.change.evidence().completed && !p.change.evidence().physics_changed && !p.change.evidence().animation_changed,
+                "both intermediates remain preparation evidence only");
+        }
+        const auto final=p.change.evidence().final_leg_started_at;
+        check(p.arms==3 && p.change.serial()==initial+2 && final>=middle+600 &&
+            p.last_deadline==final+1500,"only independently completed50-50 starts the existing final sweep");
+        const auto identity=crooked?32u:23u;
+        for(unsigned i=0;i<=1600*hz/1000;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            if(elapsed>=450){p.contact.actor=48;p.contact.identity=identity;}
+            p.step(final+elapsed,elapsed<150?401:elapsed<450?406:403);p.poll(test_b);p.poll(test_b);
+            p.animation.grind_type=elapsed>=700?identity:20u;
+            p.change.verify(p.now,{elapsed>=550,401,403,1,{}},p.contact,p.animation);p.advance();
+            const auto& e=p.change.evidence();
+            check(p.arms==3 && e.first_input_at==1200 && e.last_input_at==1230 &&
+                e.serial==initial && e.final_leg_serial==initial+2,"three native legs preserve one physical request without held replay");
+            if(elapsed<550)check(!e.completed && !e.physics_changed,"final contact cannot replace final native completion");
+            if(elapsed<700)check(!e.animation_changed,"50-50 animation cannot acknowledge final sweep");
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns==(elapsed<1000),"final sweep keeps its existing1000ms control lifetime");
+            if(pad.owns)check(pad.y==32767 && pad.x==(elapsed<200?0:crooked?24000:12000),
+                "final Nosegrind/Crooked uses its existing native control recipe");
+        }
+        check(!p.change.active() && p.change.evidence().physics_changed && p.change.evidence().animation_changed,
+            "only exact final native physics and animation survive completed three-leg controls");
+    }
+    for(bool second_boundary:{false,true})for(bool crooked:{false,true})for(unsigned fault=0;fault<13;++fault) {
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=31;p.contact.end[2]=-12;
+        p.step(1000,402);p.poll();p.step(1100,402);p.poll();
+        p.step(1200,402);p.poll(crooked?test_b:test_y);p.step(1210,402);p.poll();p.step(1230,402);p.poll(test_b);
+        for(unsigned i=1;i<=8;++i) {
+            if(i>=6){p.contact.actor=32;p.contact.identity=24;}
+            p.step(1230+100*i,i<3?402:i<6?406:403);p.poll(test_b);
+        }
+        if(second_boundary) {
+            p.change.verify(p.now,{true,402,403,1,{}},p.contact,p.animation);p.advance();
+            check(p.arms==2 && p.change.active(),"negative final-handoff fixture completes only the first preparation");
+            for(unsigned i=1;i<=7;++i) {
+                if(i>=5){p.contact.actor=40;p.contact.identity=20;}
+                p.step(2030+100*i,i<2?403:i<5?406:401);p.poll(test_b);
+            }
+        }
+        const auto arms=p.arms;
+        if(fault==1)p.contact.identity=23;
+        p.change.verify(p.now,{fault!=0,second_boundary?403u:402u,second_boundary?401u:403u,1,{}},p.contact,p.animation);
+        if(fault==2)p.contact.actor++;
+        if(fault==3)p.contact.segment_identity[0]++;
+        if(fault==4){p.frame.owner.core++;p.poll(test_b);}
+        if(fault==5)p.now+=151;
+        if(fault==8)p.poll(classic_a);
+        if(fault==9)p.poll(0,false);
+        if(fault==10){p.step(p.now+10,406);p.poll(test_b);}
+        if(fault==11)p.contact.valid=false;
+        if(fault==12) {
+            if(second_boundary){p.frame.physics_step=0;p.poll(test_b);}
+            else {p.controls.neutral=false;p.poll(test_b);}
+        }
+        p.advance(fault!=6,fault!=7);
+        check(p.arms==arms+(fault==7?1u:0u) && !p.change.evidence().final_leg_serial &&
+            !p.change.evidence().completed && !p.change.evidence().physics_changed,
+            "each preparation rejects absent completion,wrong identity,replaced contact,owner/stale/OFF/pop-out/phase loss and live prior lease");
+        p.step(p.now+1501,100);p.poll();
+        check(!p.change.active() && !p.change.sample(p.now).owns,"interrupted composition cannot retain a control owner after exit");
+    }
+}
 int main() {
+    slide_to_vertical_sweeps();
     for(unsigned hz:{30u,60u,120u}) {
         auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=32;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();

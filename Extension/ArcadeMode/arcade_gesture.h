@@ -272,7 +272,7 @@ public:
             bool offboard = false, bool action_busy = false, bool flip_ready = true, bool neutral_ready = false,
             std::uint8_t lt = 0, std::uint8_t rt = 0, ActionExperiment mode = ActionExperiment::off,
             bool action_fresh = false, bool inspected_stance = false, bool manual_balance_admitted = false,
-            NativeFlipRequest normal_flip = {}, NativeGrabRequest normal_grab = {}, InputRailState rail = {}, InputAdapter extensions = {}, HeldFlipObservation held_flip = {}, NativeFootplantRequest footplant = {}, NativeGroundGrabRequest ground_grab = {}, InputSurfaceState surface = {}, CustomFlatlandBinding flatland = {}) noexcept {
+            NativeFlipRequest normal_flip = {}, NativeGrabRequest normal_grab = {}, InputRailState rail = {}, InputAdapter extensions = {}, HeldFlipObservation held_flip = {}, NativeFootplantRequest footplant = {}, NativeGroundGrabRequest ground_grab = {}, InputSurfaceState surface = {}, CustomFlatlandBinding flatland = {}, TriggerRouting triggers = {}, InputAdapter stance_change = {}) noexcept {
         if (!enabled_ || user >= sessions_.size() || (native_bound_ && user != 0)) return {buttons, rx, ry};
         if (native_bound_ && (!focused_ || now < authority_at_ || now-authority_at_ > 150 || !game_input)) {
             cancel_commands(); game_input = false;
@@ -296,6 +296,8 @@ public:
         admission.rail=rail;
         admission.extensions=extensions;
         admission.surface=surface;
+        admission.triggers=triggers;
+        admission.stance_change=stance_change;
         admission.custom_flatland=flatland.enabled;
         admission.custom_flatland_triggers=flatland.owns_triggers;
         admission.custom_flatland_branch=flatland.branch;
@@ -324,7 +326,7 @@ public:
                     (native.contacts == 0x8000u || native.contacts == 0xc000u))) &&
                 native.mode == 1 && !(native.stance_and_push & 0x40u);
             // An admitted basic balance selects its own jump family. Physical
-            // LT is an ordinary-ground modifier, not a replacement balance identity.
+            // setup selection cannot replace that independently supported balance identity.
             if (native.state == 100 && (buttons & classic_a)) {
                 if (manual_phase) admission.nollie = balance_controls_.kind == InputBalanceKind::nose;
                 else if (manual_balance_admitted && (observed == SkatePose::manual || observed == SkatePose::nose_manual))

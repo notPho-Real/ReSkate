@@ -217,7 +217,9 @@ inline InputDiagram diagram(const TrickDefinition& trick,const TrickBinding& b,
         step(StepKind::hold,TrickControls::mask(TrickControls::grab_layer));together();
         direction(b.direction);together();step(StepKind::press,TrickControls::mask(TrickControls::flip));
         out.window_ms=InputTiming::readiness_ms;
-        out.condition+="; modifier and direction held when X is pressed; single flip only";break;
+        out.condition+="; modifier and direction held when X is pressed; single flip only";
+        if(trick.id==ArcadeTrick::frontfoot_impossible)out.condition+="; nollie context selects Back Foot Impossible";
+        break;
     default: {
         const bool grab=trick.category==TrickCategory::grabs;
         const auto face=grab?TrickControls::mask(TrickControls::grab):trick.category==TrickCategory::grinds?TrickControls::mask(TrickControls::grind):TrickControls::mask(TrickControls::flip);
@@ -227,7 +229,9 @@ inline InputDiagram diagram(const TrickDefinition& trick,const TrickBinding& b,
         out.window_ms=b.presses>1?InputTiming::extra_press_ms:InputTiming::direction_ms;
         if(b.presses>1 && grab)out.window_ms=grab_repeat_ms;
         else if(b.presses>1 && trick.executor!=TrickExecutor::held_flip)out.window_ms=flip_repeat_ms;
-        if(trick.executor==TrickExecutor::held_flip)out.condition+="; same flight, one repeat, ordinary stance; native held preparation still open";
+        if(trick.executor==TrickExecutor::held_flip)out.condition+=b.presses==3?
+            "; same flight, third X before the double catches, ordinary stance; extends the original held actor":
+            "; same flight, one repeat, ordinary stance; native held preparation still open";
         else if(grab)out.condition+="; hold B; release B to exit";
         break;
     }
@@ -275,11 +279,16 @@ inline NativeCardBinding native_card_binding(std::string_view title) {
     else if(token.starts_with("NOLLIE_")){token.remove_prefix(7);nollie=true;}
     else if(token.starts_with("N_")){token.remove_prefix(2);nollie=true;}
     const auto key=card_key(token);
-    constexpr std::array<std::string_view,7> unavailable{
-        "bspopshuvitunderflip","frontfootimpossible","fspopshuvitunderflip",
+    constexpr std::array<std::string_view,6> unavailable{
+        "bspopshuvitunderflip","fspopshuvitunderflip",
         "grabbstweak","heelflipunderflip",
         "hospitalflip","kickflipunderflip"};
     if(std::find(unavailable.begin(),unavailable.end(),key)!=unavailable.end())return {nullptr,nollie,true};
+    // Native39 is the nollie back-foot variant, not a nollie front-foot
+    // label. Keep that distinction while sharing the physical Arcade chord.
+    if(key=="backfootimpossible")return nollie?
+        NativeCardBinding{trick_definition(ArcadeTrick::frontfoot_impossible),true}:NativeCardBinding{nullptr,false,true};
+    if(nollie && key=="frontfootimpossible")return {nullptr,true,true};
     // Native card identifiers differ from their displayed names. Keep these
     // explicit so a missing binding never borrows a different trick's inputs.
     struct Alias {std::string_view key;ArcadeTrick trick;};
@@ -348,6 +357,9 @@ template<class ButtonLabel> NativeCardGuidance native_card_guidance(const TrickD
     }
     if(out.inputs.empty())out.inputs.emplace_back("Arcade controls are not assigned.");
     if(nollie)out.inputs.emplace_back("Hold "+label(TrickControls::trigger_mask(0))+" for nollie inputs.");
+    if(trick.id==ArcadeTrick::frontfoot_impossible)
+        out.inputs.emplace_back(nollie?"Nollie Back Foot Impossible.":
+            "With "+label(TrickControls::trigger_mask(0))+": Nollie Back Foot Impossible.");
     if(trick.id==ArcadeTrick::casper) {
         out.inputs.emplace_back("During Manual; keep balancing.");
         out.inputs.emplace_back(label(TrickControls::trigger_mask(0))+" / "+

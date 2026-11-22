@@ -5,6 +5,61 @@ This candidate is not hardware accepted. Development is on
 The accepted updater and historical builds are unchanged. [ROADMAP.md](ROADMAP.md)
 tracks current priorities; dated evidence below remains scoped to its recorded source.
 
+## Fixed PS2 ground controls — current correction
+
+The current contract supersedes the older ground RT/Revert and live LT modifier
+descriptions below. LT tap selects Nollie; hold selects Pressure. A still owns
+crouch and launch. Native Nollie16 and its follow-up identities survive LT release;
+unsupported Pressure requests never substitute an ordinary trick. Ground RT
+dispatches only native Switch, while established Manual RT requests physical
+Pivot/Nose Pivot. Native Switch delivery remains under integration.
+
+The shared [trigger contract](TRIGGER_CONTRACT.md) reserves vert flight and landing
+inputs before ordinary ground commands. Native board-reference and hips motion
+now provide independent Pivot evidence; label changes or fakie alone do not pass.
+The current chain requires physical rotation, resulting stance and qualified
+successor support. Manual acceptance remains at least three continuous seconds,
+with no gameplay timeout. Current implementation and verification are recorded in
+[ROADMAP.md](ROADMAP.md); older captures retain their original meaning.
+
+## Offline gameplay expansion — November 22
+
+Neutral third X now uses the existing owned Triple Kickflip path, superseding
+the double-only neutral limitation in the November20 snapshot below. Its own
+physical deadline, parent request, actor lifetime and catch rules remain intact.
+The guide distinguishes implemented triples from native-accepted execution.
+R3+Left+X adds native Front Foot Impossible37, or Nollie Back Foot Impossible39
+with LT; ordinary directional mappings and exact-gesture refusal remain.
+
+Wall and floor patches now span independently authenticated static pieces.
+Each piece retains its own complete lifetime stamp and must present a native
+normal agreeing with the measured plane. Obstructions, missing geometry,
+stale ownership and unsuitable normals still reject. Allocation/owner stamps
+are not transform stamps: same-incarnation editor relocation remains unproven,
+including for the original center body. Bluntslide can also continue through
+the measured5-0 and50-50 returns into Nosegrind/Crooked with separate native
+completion gates. Exact-candidate native execution remains pending for all
+these changes. No Deck operation was needed for this implementation batch.
+
+## Manual RT publication correction — November 22
+
+The composed Manual→RT fixture previously admitted a pending RT only because
+input and client publication shared one millisecond. Advancing publication by
+just1ms reproduces the lost input. The corrected route retains that edge for
+the original native observation's150ms lease only when an independently
+established Manual owns the stick. It preserves the exact Manual request,
+direction, native generations and physical timestamp; a fresh observation
+cannot renew expiry. Current balance proof is still mandatory before execution.
+The earlier ground/unconfirmed RT1ms policy is superseded by the contextual
+Switch/Pivot contract above. A new A immediately
+cancels pending RT while preserving the ordinary Ollie setup and release.
+
+The corrected production-composed lifecycle passes700,263 sanitizer checks,
+including same-ms,1ms and one-frame gaps at30/60/120Hz. Session tests pass6,907
+checks plus648 takeoff and326 jump-idle checks, including lease-age/expiry,
+same-generation Manual replacement, owner loss and duplicate suppression.
+Windows integration and native chain acceptance remain separate requirements.
+
 ## Manual acceptance checkpoint — November 22
 
 Focused episode tests now explicitly check the three-second minimum, continued

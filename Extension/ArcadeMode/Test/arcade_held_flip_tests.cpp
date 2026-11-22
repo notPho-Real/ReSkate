@@ -167,9 +167,72 @@ struct Route {
         poll(1170,{},201,requested,false);
     }
 };
+// Adapter-level trigger proof only. Genuine ramp/landing qualification is
+// tested by arcade_vert_air_tests; this fixture isolates shared journal ordering.
+void vert_trigger_preserves_held_flip() {
+    for(unsigned channel:{0u,1u})for(unsigned hz:{30u,60u,120u})for(unsigned fault=0;fault<4;++fault) {
+        auto h=std::make_unique<Route>();h->first();
+        h->poll(1187,{0x4000},201,2,false,0,false,false,2);
+        h->poll(1204,{},201,2,true,0,true,true,2);
+        check(h->repeats==1,"vert context begins with an admitted original held flip");
+        struct Proof {unsigned channel{},fault{},requests{};} proof{channel,fault};
+        h->admission.triggers={&proof,[](void* state,const TriggerPress& press,const InputNativeContext&,std::uint64_t) noexcept {
+            const auto& value=*static_cast<Proof*>(state);
+            if(value.fault==2 || press.channel()!=value.channel)return TriggerDecision{};
+            return TriggerDecision{value.fault==1?TriggerOwner::landing_revert:TriggerOwner::transfer,
+                press.press.at+150,value.fault!=1};
+        }};
+        h->admission.surface.fresh=h->admission.surface.can_transfer=true;
+        h->admission.surface.generation=1;h->admission.surface.generations=h->admission.native_context.generations;
+        h->admission.extensions={&proof,[](void* state,const InputRequest& request) noexcept {
+            if(request.action!=InputAction::transfer_command)return InputDisposition::unsupported;
+            ++static_cast<Proof*>(state)->requests;return InputDisposition::started;
+        }};
+        PhysicalInputSample pad;if(channel)pad.rt=255;else pad.lt=255;
+        if(fault==3)pad.lt=pad.rt=255;
+        auto out=h->poll(1221,pad,201,2,true,0,true,true,2);
+        const bool survives=fault<2;
+        check(out.held_input_released!=survives && out.authored_playback==survives,
+            "only journal-owned vert trigger channels preserve the active held input");
+        check(out.vert_trigger_owned==(fault==2?0u:1u<<channel),
+            "held flip exemption is the exact original trigger channel");
+        const auto dt=(1000u+hz-1)/hz;
+        out=h->poll(1221+dt,pad,201,2,true,0,true,true,2);
+        check(out.authored_playback==survives && proof.requests==(fault==0 || fault==3?1u:0u),
+            "repeated held trigger samples neither duplicate transfer nor take the flip pad lease");
+        out=h->poll(1221+2*dt,pad,201,2,true,1,true,true,2);
+        check(out.held_actor_acknowledged==survives && h->bridge_calls==1 && h->repeats==1,
+            "preserved flip catches only at original native extra-count and actor proof");
+    }
+}
+void vert_trigger_allows_new_repeat() {
+    for(unsigned channel:{0u,1u})for(bool third:{false,true})for(bool conflict:{false,true}) {
+        auto h=std::make_unique<Route>();h->first();
+        if(third)h->poll(1187,{0x4000},201,2,false,0,false,false,2);
+        struct Proof {unsigned channel{},requests{};} proof{channel};
+        h->admission.triggers={&proof,[](void* state,const TriggerPress& press,const InputNativeContext&,std::uint64_t) noexcept {
+            return press.channel()==static_cast<Proof*>(state)->channel?
+                TriggerDecision{TriggerOwner::transfer,press.press.at+150,true}:TriggerDecision{};
+        }};
+        h->admission.surface.fresh=h->admission.surface.can_transfer=true;
+        h->admission.surface.generation=1;h->admission.surface.generations=h->admission.native_context.generations;
+        h->admission.extensions={&proof,[](void* state,const InputRequest& request) noexcept {
+            if(request.action!=InputAction::transfer_command)return InputDisposition::unsupported;
+            ++static_cast<Proof*>(state)->requests;return InputDisposition::started;
+        }};
+        PhysicalInputSample pad;if(channel)pad.rt=255;else pad.lt=255;
+        h->poll(1204,pad,201,2,third,0,third,third,2);
+        if(conflict)pad.lt=pad.rt=255;
+        pad.buttons=0x4000;
+        const auto out=h->poll(1221,pad,201,2,third,0,third,third,2);
+        check(h->repeats==(third?1u:0u)+(conflict?0u:1u) && proof.requests==1 && h->bridge_calls==1,
+            "new second/third X remains eligible with the claimed vert channel; another trigger still conflicts");
+        check(out.held_flip_request==(conflict?0:2),"vert ownership never bypasses held-repeat actor admission");
+    }
+}
 void physical_triples() {
     for(unsigned hz:{30u,60u,120u})for(unsigned stage:{0u,1u,2u})
-    for(std::int16_t direction:{std::int16_t{-25000},std::int16_t{25000}})
+    for(std::int16_t direction:{std::int16_t{0},std::int16_t{-25000},std::int16_t{25000}})
     for(bool switched:{false,true}) {
         auto h=std::make_unique<Route>();h->one_shot_bridge=true;h->bridge_accept=stage==2;h->switched=switched;
         const auto dt=(1000u+hz-1)/hz;const int id=direction>0?3:2;
@@ -193,6 +256,9 @@ void physical_triples() {
             h->third_request.physical_pressed_at==third && h->third_request.deadline==third+InputTiming::readiness_ms &&
             !h->third_request.unbounded,
             "third edge retains its exact second parent and immutable physical admission deadline");
+        check(h->third_request.air.trick==(direction>0?ArcadeTrick::triple_heelflip:ArcadeTrick::triple_kickflip) &&
+            (direction || (h->third_request.direction==0 && h->third_request.direction_source==InputSource::buttons)),
+            "neutral third selects Triple Kickflip without inventing a directional edge");
         auto out=h->poll(third+6*dt,{},201,1,true,1,true,true,id);
         check(out.authored_playback && !out.held_input_released && !out.held_actor_acknowledged,
             "upgraded held input keeps native ownership through the first extra rotation");
@@ -244,11 +310,11 @@ void triple_boundaries() {
     }
     // The existing timely-parent/successor exception belongs to the double.
     // Its queued third has an independent half-open physical200ms deadline.
-    for(unsigned delivery:{1369u,1370u}) {
+    for(unsigned delivery:{1369u,1370u}) for(std::int16_t direction:{std::int16_t{0},std::int16_t{-25000}}) {
         auto h=std::make_unique<Route>();h->one_shot_bridge=true;h->bridge_accept=false;
         h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);
         h->poll(1051,{0x1000},100,1);h->poll(1085,{},100,1);
-        h->poll(1102,{0x4000,-25000},103,1,false);h->poll(1119,{},103,1,false);
+        h->poll(1102,{0x4000,direction},103,1,false);h->poll(1119,{},103,1,false);
         h->poll(1136,{0x4000},103,1,false);h->poll(1153,{},103,1,false);
         h->poll(1170,{0x4000},103,1,false);h->poll(1204,{},103,1,false);
         h->poll(1250,{},200,1,false);h->poll(1286,{},201,1,false);
@@ -263,9 +329,10 @@ void triple_boundaries() {
     }
 }
 void triple_cancellation() {
-    for(unsigned fault=0;fault<18;++fault) {
+    for(std::int16_t direction:{std::int16_t{0},std::int16_t{-25000}})
+    for(unsigned fault=0;fault<17;++fault) {
         auto h=std::make_unique<Route>();h->one_shot_bridge=true;
-        h->first(fault==11?0:-25000);
+        h->first(direction);
         h->poll(1187,{0x4000},201,2,false,0,false,false,2);
         h->poll(1204,{},201,2,true,0,true,true,2);
         check(h->repeats==1,"third negative starts with a live original double owner");
@@ -275,30 +342,28 @@ void triple_cancellation() {
         if(fault==3)h->switched=true;
         if(fault==4)h->selection_object=32;
         if(fault==5)h->held_available=false;
-        if(fault==15)h->admission.action_mode=ActionExperiment::off;
-        const auto at=fault==16?1356u:1221u;
-        PhysicalInputSample pad{static_cast<std::uint16_t>(fault==8?0x5000: fault==12?0x6000:0x4000)};
-        if(fault==13)pad.lt=255;
-        if(fault==14)pad.rt=255;
-        const auto out=h->poll(at,pad,fault==6?100:fault==7?300:201,fault==17?4:2,true,
-            fault==9?1.0f:0.0f,true,true,fault==10?3:2,fault!=16);
+        if(fault==14)h->admission.action_mode=ActionExperiment::off;
+        const auto at=fault==15?1356u:1221u;
+        PhysicalInputSample pad{static_cast<std::uint16_t>(fault==8?0x5000: fault==11?0x6000:0x4000)};
+        if(fault==12)pad.lt=255;
+        if(fault==13)pad.rt=255;
+        const auto out=h->poll(at,pad,fault==6?100:fault==7?300:201,fault==16?4:2,true,
+            fault==9?1.0f:0.0f,true,true,fault==10?3:2,fault!=15);
         check(!h->third_request.input_sequence && h->repeats==1,
-            "third rejects changed owner, focus, conflict, stance, object, observer, landing, bail, new A, catch, wrong actor, neutral binding, buttons and stale state");
+            "third rejects changed owner, focus, conflict, stance, object, observer, landing, bail, new A, catch, wrong actor, buttons and stale state");
         if(fault==9)check(out.held_input_released && out.held_actor_acknowledged,
             "count1 in the third-edge poll catches the established double before any extension");
-        if(fault==11) {
-            const auto caught=h->poll(at+17,{},201,2,true,1,true,true,2);
-            check(caught.held_input_released && caught.held_actor_acknowledged,"unmapped neutral third leaves native double unchanged");
-        }
     }
-    auto h=std::make_unique<Route>();h->one_shot_bridge=true;h->first(-25000);
-    h->poll(1187,{0x4000},201,2,false,0,false,false,2);h->poll(1204,{},201,2,true,0,true,true,2);
-    h->poll(1221,{0x4000},201,2,true,0,true,true,2);h->poll(1238,{},201,2,true,0,true,true,2);
-    h->poll(1255,{0x4000},201,2,true,0,true,true,2);
-    check(h->repeats==2 && h->bridge_calls==1,"fourth X cannot start another held owner or native base");
-    h->poll(1272,{},201,2,true,1,true,true,2);
-    const auto caught=h->poll(1289,{},201,2,true,2,true,true,2);
-    check(caught.held_input_released && caught.held_actor_acknowledged,"fourth X cannot delay the exact triple catch");
+    for(std::int16_t direction:{std::int16_t{0},std::int16_t{-25000}}) {
+        auto h=std::make_unique<Route>();h->one_shot_bridge=true;h->first(direction);
+        h->poll(1187,{0x4000},201,2,false,0,false,false,2);h->poll(1204,{},201,2,true,0,true,true,2);
+        h->poll(1221,{0x4000},201,2,true,0,true,true,2);h->poll(1238,{},201,2,true,0,true,true,2);
+        h->poll(1255,{0x4000},201,2,true,0,true,true,2);
+        check(h->repeats==2 && h->bridge_calls==1,"fourth X cannot start another held owner or native base");
+        h->poll(1272,{},201,2,true,1,true,true,2);
+        const auto caught=h->poll(1289,{},201,2,true,2,true,true,2);
+        check(caught.held_input_released && caught.held_actor_acknowledged,"fourth X cannot delay the exact triple catch");
+    }
 }
 void queued_first_repetition() {
     for(unsigned hz:{30u,60u,120u}) for(std::int16_t direction:{std::int16_t{0},std::int16_t{-25000},std::int16_t{25000}})
@@ -881,4 +946,4 @@ void physical_repetition() {
     }
 }
 }
-int main(){physical_triples();triple_boundaries();triple_cancellation();transient_phase_lifetime();native_phase_recheck();preair_late_parent_readiness();late_parent_dependency_boundaries();native_boundaries();preair_successor_dependency();successor_dependency_boundaries();composed_successor_negatives();preair_queued_repetition();queued_first_repetition();physical_repetition();std::cout<<checks<<" held-flip input checks passed; native animation observations are fixtures\n";}
+int main(){vert_trigger_allows_new_repeat();vert_trigger_preserves_held_flip();physical_triples();triple_boundaries();triple_cancellation();transient_phase_lifetime();native_phase_recheck();preair_late_parent_readiness();late_parent_dependency_boundaries();native_boundaries();preair_successor_dependency();successor_dependency_boundaries();composed_successor_negatives();preair_queued_repetition();queued_first_repetition();physical_repetition();std::cout<<checks<<" held-flip input checks passed; native animation observations are fixtures\n";}

@@ -12,13 +12,54 @@ std::string label(std::uint32_t button){return button==0x1000?"A":button==0x4000
 #include "arcade_evidence_tests.inl"
 int main() {
     for(const auto title:{"ID_SKATEPEDIA_FS_POPSHUVIT_UNDERFLIP","ID_SKATEPEDIA_NOLLIE_BS_POPSHUVIT",
-                          "ID_SKATEPEDIA_HOSPITALFLIP","ID_SKATEPEDIA_FRONTFOOTIMPOSSIBLE"}) {
+                          "ID_SKATEPEDIA_HOSPITALFLIP","ID_SKATEPEDIA_NOLLIE_FRONTFOOTIMPOSSIBLE",
+                          "ID_SKATEPEDIA_BACKFOOTIMPOSSIBLE"}) {
         const auto binding=dingosdk::arcade_mode::trickpedia::native_card_binding(title);
         if(binding.trick || !binding.planned)return 1;
     }
 
     const auto errors=validate_registry(trick_registry);for(const auto& e:errors)std::cerr<<e<<'\n';
     require(errors.empty(),"registry invalid");
+    for(bool nollie:{false,true}) {
+        const auto binding=trickpedia::native_card_binding(nollie?
+            "ID_SKATEPEDIA_NOLLIE_BACKFOOTIMPOSSIBLE":"ID_SKATEPEDIA_FRONTFOOTIMPOSSIBLE");
+        require(binding.trick && binding.trick->id==ArcadeTrick::frontfoot_impossible && binding.nollie==nollie &&
+            native_flip_id(binding.trick->id,nollie)==(nollie?39:37),"alternate Impossible card preserves exact foot and stance identity");
+        const auto diagram=trickpedia::diagram(*binding.trick,binding.trick->bindings[0]);
+        require(!diagram.proposed && diagram.steps.front().buttons==0x80 &&
+            diagram.steps[2].direction==TrickDirection::left && diagram.steps.back().buttons==0x4000 &&
+            diagram.condition.find("nollie context selects Back Foot Impossible")!=std::string::npos,
+            "alternate Impossible diagram shows exact extended chord and asymmetric nollie name");
+        const auto guidance=trickpedia::native_card_guidance(*binding.trick,label,ArcadeTrick::double_grab,nollie);
+        require(guidance.inputs.back().find("Nollie Back Foot Impossible")!=std::string::npos &&
+            trick_status(*binding.trick)==TrickStatus::experimental && binding.trick->evidence.trials.empty(),
+            "alternate Impossible guidance retains naming distinction without invented native acceptance");
+    }
+    for(const auto title:{"ID_SKATEPEDIA_FRONTFOOTIMPOSSIBLE_UNDERFLIP","ID_SKATEPEDIA_NOLLIE_BACKFOOTIMPOSSIBLE_UNDERFLIP"})
+        require(!trickpedia::native_card_binding(title).trick,"underflip cannot borrow ordinary Impossible inputs");
+    const auto* triple=trick_definition(ArcadeTrick::triple_kickflip);
+    require(triple && triple->binding_count==2 && triple->bindings[1].pattern==BindingPattern::held_repeat &&
+        triple->bindings[1].direction==TrickDirection::none && triple->bindings[1].presses==3,
+        "Triple Kickflip exposes the neutral third-X binding");
+    const auto neutral_triple=trickpedia::diagram(*triple,triple->bindings[1]);
+    unsigned presses{},releases{},directions{};
+    for(const auto& step:neutral_triple.steps) {
+        if(step.kind==StepKind::press && step.buttons==0x4000)++presses;
+        if(step.kind==StepKind::release && step.buttons==0x4000)++releases;
+        if(step.kind==StepKind::direction)++directions;
+    }
+    require(!neutral_triple.proposed && presses==3 && releases==2 && !directions &&
+        neutral_triple.window_ms==InputTiming::extra_press_ms &&
+        neutral_triple.condition.find("third X before the double catches")!=std::string::npos &&
+        trick_status(*triple)==TrickStatus::experimental,
+        "neutral triple guide shows three physical presses and the owned-double condition without native acceptance");
+    for(const auto id:{ArcadeTrick::triple_kickflip,ArcadeTrick::triple_heelflip}) {
+        const auto* definition=trick_definition(id);
+        require(definition->evidence.remaining.find("binding implemented")!=std::string_view::npos &&
+            definition->evidence.remaining.find("acceptance remain unverified")!=std::string_view::npos &&
+            definition->evidence.trials.empty(),
+            "implemented triples explain the native acceptance gap without inventing native trials");
+    }
     const auto* laser=trick_definition(ArcadeTrick::heelflip_360);
     require(laser && laser->name=="Laserflip" && trick_name(laser->id)=="Laserflip" &&
         laser->key=="heelflip_360" && native_flip_id(laser->id,false)==14 && native_flip_id(laser->id,true)==27,
@@ -200,7 +241,7 @@ int main() {
             "observed native variant did not resolve to its own binding");
     }
     for(const auto title:{"ID_SKATEPEDIA_FS_POPSHUVIT_UNDERFLIP",
-        "ID_SKATEPEDIA_FRONTFOOTIMPOSSIBLE","ID_SKATEPEDIA_NOLLIE_BACKFOOTIMPOSSIBLE",
+        "ID_SKATEPEDIA_NOLLIE_FRONTFOOTIMPOSSIBLE","ID_SKATEPEDIA_BACKFOOTIMPOSSIBLE",
         "ID_SKATEPEDIA_NOLLIE_BS_POPSHUVIT","ID_SKATEPEDIA_NOLLIE_METHOD"})
         require(!trickpedia::native_card_binding(title).trick,"missing or ambiguous variant borrowed another trick");
     const auto nollie_guidance=trickpedia::native_card_guidance(*trick_definition(ArcadeTrick::kickflip),

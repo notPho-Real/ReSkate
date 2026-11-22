@@ -20,6 +20,8 @@ namespace dingosdk::arcade_mode {
 // Measured active402/31 controls also return through406 to403/24 (5-0).
 // After that return and observed neutral, the existing5-0 controls can continue
 // to50-50, Tailslide or Smith without another physical request.
+// Nosegrind/Crooked additionally require the measured5-0→50-50 return before
+// their existing401 sweep; each intermediate must complete independently.
 // From403/23 or24, the measured401/20 return may prepare the opposite truck
 // grind or Crooked sweep.
 // Crooked32 returns via a measured Up/opposite-heading pulse, neutral, then
@@ -38,7 +40,7 @@ public:
         bool preparation_completed{},preparation_physics_changed{};
         std::uint64_t final_leg_serial{},final_leg_started_at{};
     };
-    void cancel() noexcept { active_=false; admission_={}; source_={}; frame_={}; stable_=false; source_animation_known_=false; preparing_=false; preparation_ready_=false; }
+    void cancel() noexcept { active_=false; admission_={}; source_={}; frame_={}; stable_=false; source_animation_known_=false; preparing_=false; preparation_ready_=preparation_completed_=false; }
     bool active() const noexcept { return active_; }
     bool requires_transition() const noexcept { return active_ && !smith_; }
     std::uint64_t serial() const noexcept { return active_?serial_:0; }
@@ -90,10 +92,12 @@ public:
              (source_.identity==32 && (request.grind_target()==GrindChangeTarget::nosegrind ||
                                       request.grind_target()==GrindChangeTarget::grind_5_0)) ||
              ((source_.identity==23 || source_.identity==24) && request.grind_target()==GrindChangeTarget::crooked));
-        const bool prepare_slide_return=source_.state==402 && source_.identity==31 &&
+        const bool extra_slide_preparation=source_.state==402 && source_.identity==31 &&
+            (request.grind_target()==GrindChangeTarget::nosegrind || request.grind_target()==GrindChangeTarget::crooked);
+        const bool prepare_slide_return=extra_slide_preparation || (source_.state==402 && source_.identity==31 &&
             (request.grind_target()==GrindChangeTarget::grind_50_50 ||
              request.grind_target()==GrindChangeTarget::tailslide ||
-             request.grind_target()==GrindChangeTarget::smith);
+             request.grind_target()==GrindChangeTarget::smith));
         const bool slide_return=source_.state==402 && source_.identity==31 &&
             (request.grind_target()==GrindChangeTarget::grind_5_0 || prepare_slide_return);
         const bool crooked_return=source_.state==403 && source_.identity==32 &&
@@ -130,8 +134,9 @@ public:
             request.generations!=admission_.generations || request.first_input_at>request.last_input_at ||
             request.last_input_at>request.recognized_at || request.recognized_at>now ||
             now-request.last_input_at>300 || request.last_input_at-request.first_input_at>300 ||
-            serial_>=UINT64_MAX-(preparing?1u:0u) ||
-            now>UINT64_MAX-(duration+(preparing?(request.grind_target()==GrindChangeTarget::smith?2200u:1500u):0u)))
+            serial_>=UINT64_MAX-(preparing?1u:0u)-(extra_slide_preparation?1u:0u) ||
+            now>UINT64_MAX-(duration+(preparing?(request.grind_target()==GrindChangeTarget::smith?2200u:1500u):0u)+
+                (extra_slide_preparation?1500u:0u)))
             return InputDisposition::cancelled;
         // Require observed neutral pitch/roll and feature-off before the
         // reference-capture sequences; the saved reference itself is not read.
@@ -159,7 +164,7 @@ public:
         slide_return_=slide_return;
         crooked_return_=crooked_return;
         serial_=next;active_=true;stable_=false;
-        leg_started_at_=now;preparing_=preparing;preparation_ready_=false;
+        leg_started_at_=now;preparing_=preparing;preparation_ready_=preparation_completed_=false;
         final_target_=request.grind_target();
         evidence_={serial_,request.first_input_at,request.last_input_at,now};
         evidence_.source_animation_known=source_animation_known_;
@@ -185,6 +190,18 @@ public:
         // The next403 recipe needs observed neutral, not merely a published5-0
         // identity while the previous heading controls are still decaying.
         if(slide_return_ && (!controls_.valid || !controls_.neutral))return;
+        if(slide_return_ && (final_target_==GrindChangeTarget::nosegrind || final_target_==GrindChangeTarget::crooked)) {
+            // The first return established5-0, not a legal401 sweep source.
+            // Complete its existing neutral return to50-50 under a new lease;
+            // keep the original physical request and final target unchanged.
+            const auto next=serial_+1;
+            if(!arm(next,now+1500,GrindAdmissionControl::ordinary)) {cancel();return;}
+            source_=contact;serial_=next;leg_started_at_=now;
+            preparation_ready_=preparation_completed_=false;slide_return_=crooked_return_=false;
+            lateral_=tail_release_=smith_=false;sweep_x_=held_y_=0;
+            target_identity_=20;target_state_=401;hold_ms_=1500;duration_ms_=1500;
+            return;
+        }
         if(final_target_==GrindChangeTarget::nosegrind || final_target_==GrindChangeTarget::crooked ||
            final_target_==GrindChangeTarget::grind_5_0) {
             // Only the measured403/23,24 or32->401/20 returns reach this branch.
@@ -293,9 +310,10 @@ public:
                 const NativeGrindContact& contact,const NativeGrindSnapshot& animation) noexcept {
         if(!active_ || !fresh(now,frame_))return;
         if(preparing_) {
-            evidence_.preparation_completed=evidence_.preparation_completed ||
+            preparation_completed_=preparation_completed_ ||
                 (completion.valid && completion.source==source_.state && completion.target==target_state_ && completion.phase==1.f);
-            if(evidence_.preparation_completed && frame_.state==target_state_ && contact.valid && contact.state==target_state_ &&
+            evidence_.preparation_completed=evidence_.preparation_completed || preparation_completed_;
+            if(preparation_completed_ && frame_.state==target_state_ && contact.valid && contact.state==target_state_ &&
                 same_segment(contact) && contact.identity==target_identity_) {
                 evidence_.preparation_physics_changed=true;
                 // Finish each measured preparation pulse before handing off:
@@ -364,6 +382,6 @@ private:
     std::uint32_t target_identity_{},target_state_{},hold_ms_{};
     std::uint64_t serial_{},generation_{},stable_at_{},duration_ms_{1500},leg_started_at_{},preparation_ready_at_{};
     GrindChangeTarget final_target_{};
-    bool active_{},stable_{},source_animation_known_{},lateral_{},tail_release_{},smith_{},preparing_{},preparation_ready_{},slide_return_{},crooked_return_{};
+    bool active_{},stable_{},source_animation_known_{},lateral_{},tail_release_{},smith_{},preparing_{},preparation_ready_{},preparation_completed_{},slide_return_{},crooked_return_{};
 };
 }

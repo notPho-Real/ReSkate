@@ -109,6 +109,10 @@ struct Fixture {
     std::uint32_t missing_ground_shape{};
     float ground_yaw{};
     unsigned partition_owner_change{};
+    bool independent_bodies{}, mixed_owner_kinds{};
+    unsigned piece_normal_fault{};
+    float piece_normal_scale{1};
+    std::uint32_t dynamic_piece{};
     std::uint32_t query_categories{1};
     float wall_half_width{10000},wall_half_height{10000},corner_slope{};
     bool nearby_obstruction{};
@@ -150,6 +154,8 @@ struct Fixture {
         const auto& body=*static_cast<const SurfaceGeometryBody*>(ptr);
         auto& value=*static_cast<std::array<std::uint64_t,2>*>(out);
         value={body.index>=100 ? (f.native_self ? 0u : f.live.self_entity) : f.unknown ? 0u : 20u,0};
+        if(f.independent_bodies && body.index>1 && body.index<100)
+            value[0]=(f.mixed_owner_kinds?body.index%2==0:!f.unknown)?1000u+body.index:0u;
         if (f.changed_owner && ++f.entities%2==0) ++value[0];
         return out;
     }
@@ -166,8 +172,14 @@ struct Fixture {
     static bool static_owner(void* user,const SurfaceGeometryBody& body,SurfaceGeometryWorldOwner& owner) noexcept {
         auto& f=*static_cast<Fixture*>(user);
         const auto call=++f.world_owner_calls;
-        if(body.index>=100 || f.reject_world_owner || call==f.reject_owner_at)return false;
+        if(body.index>=100 || body.index==f.dynamic_piece || f.reject_world_owner || call==f.reject_owner_at)return false;
         owner=f.world_owner;
+        if(f.independent_bodies && body.index>1) {
+            owner.body.index+=7*body.index;owner.body.generation+=body.index;
+            owner.index+=11*body.index;owner.generation+=body.index;
+            owner.kind=(f.mixed_owner_kinds?body.index%2==0:!f.unknown)?1u:0u;
+            owner.value=(owner.kind?1000u:2000u)+body.index;
+        }
         if(body.index>1) switch(f.partition_owner_change) {
         case 1:++owner.body.index;break;case 2:++owner.body.generation;break;
         case 3:++owner.store;break;case 4:++owner.index;break;
@@ -316,11 +328,22 @@ struct Fixture {
             f.fractions[0]=f.bad_fraction?std::numeric_limits<float>::quiet_NaN():.5f;
             if(!result->count)f.data[1]=0; // Native empty-vector storage may be null.
         }
-        if((f.wall || f.curve_radius>0 || f.spine_scene) && result->count) {
+        if((f.wall || f.partitioned_ground || f.curve_radius>0 || f.spine_scene) && result->count) {
+            SurfaceGeometryVector measured=(f.curve_radius>0 || f.spine_scene)?f.curve_normal:
+                f.wall?f.wall_normal:SurfaceGeometryVector{-f.sx,1,-f.sz};
+            if(f.partitioned_ground)check(surface_geometry_detail::unit(measured),"ground normal fixture normalizes slope");
+            if(f.partition_shape>1)for(float& axis:measured)axis*=f.piece_normal_scale;
+            if(f.partition_shape>1 && f.piece_normal_fault) {
+                auto right=f.wall?SurfaceGeometryVector{-f.wall_normal[2],0,f.wall_normal[0]}:SurfaceGeometryVector{measured[1],-measured[0],0};
+                check(surface_geometry_detail::unit(right),"obstruction fixture has a tangent direction");
+                if(f.piece_normal_fault==1)for(unsigned axis=0;axis<3;++axis)measured[axis]=.8f*measured[axis]+.6f*right[axis];
+                if(f.piece_normal_fault==2)for(float& axis:measured)axis=-axis;
+                if(f.piece_normal_fault==3)measured={0,0,0};
+            }
             for(unsigned axis=0;axis<3;++axis) {
                 f.hit_positions[f.first][axis]=ray_value->start[axis]+
                     (ray_value->end[axis]-ray_value->start[axis])*f.fractions[f.first];
-                f.hit_normals[f.first][axis]=((f.curve_radius>0 || f.spine_scene)?f.curve_normal[axis]:f.wall_normal[axis])*(f.reversed_normal?-1.f:1.f);
+                f.hit_normals[f.first][axis]=measured[axis]*(f.reversed_normal?-1.f:1.f);
             }
             if(f.bad_position)f.hit_positions[f.first][0]+=.1f;
             if(f.bad_normal)f.hit_normals[f.first][0]=std::numeric_limits<float>::quiet_NaN();
@@ -434,8 +457,33 @@ int main() {
             "trajectory clearance rejects obstruction, malformed query, world replacement and stale context");
     }
 
-    for(bool entity_owner:{false,true})for(unsigned orientation=0;orientation<32;++orientation) {
+    for(bool wall:{false,true}) {
+        Fixture f;f.allow_world_owner=f.unknown=f.independent_bodies=f.mixed_owner_kinds=true;
+        f.partitioned_wall=wall;f.partitioned_ground=!wall;
+        f.piece_normal_scale=.992f; // Within the existing native vector-reader tolerance.
+        const auto sample=wall?f.query_wall():f.query();
+        check(sample.valid && sample.adjacent_shape_count==4,
+            "coplanar separately owned static pieces qualify without sharing the center body");
+        f.dynamic_piece=sample.adjacent_shapes[2].index;
+        check(!revalidate_surface_geometry(f.api(),f.live,sample),
+            "a previously static witness becoming dynamic invalidates the retained patch");
+    }
+    for(bool wall:{false,true})for(unsigned fault=0;fault<9;++fault) {
+        Fixture f;f.allow_world_owner=f.unknown=f.independent_bodies=f.mixed_owner_kinds=true;
+        f.partitioned_wall=wall;f.partitioned_ground=!wall;
+        if(fault==0)f.contact_ready=false;
+        if(fault==1)f.missing_normal=true;
+        if(fault==2)f.bad_normal=true;
+        if(fault==3)f.bad_position=true;
+        if(fault>=4 && fault<=6)f.piece_normal_fault=fault-3;
+        if(fault==7)f.dynamic_piece=2;
+        if(fault==8){f.upper_gap=true;f.missing_ground_shape=4;}
+        check(!(wall?f.query_wall():f.query()).valid,
+            "independent pieces need actual facing coplanar normals, complete static ownership and no missing rays");
+    }
+    for(bool independent:{false,true})for(bool entity_owner:{false,true})for(unsigned orientation=0;orientation<32;++orientation) {
         Fixture f;f.partitioned_ground=f.allow_world_owner=true;f.unknown=!entity_owner;
+        f.independent_bodies=f.mixed_owner_kinds=independent;
         if(entity_owner){f.world_owner.kind=1;f.world_owner.value=20;}
         f.ground_yaw=static_cast<float>(orientation)*.19634954f;
         const float cosine=std::cos(f.ground_yaw),sine=std::sin(f.ground_yaw);
@@ -453,6 +501,8 @@ int main() {
         const auto sample=query();
         check(sample.valid && sample.body==SurfaceGeometryBody{7,1,9} && sample.adjacent_shape_count==4,
             "ground-height patch spans authenticated child shapes under translation/yaw and ramp slope");
+        if(independent)for(const auto& owner:sample.adjacent_world_owners)
+            check(owner.value && owner!=sample.world_owner,"independent floor pieces retain their own complete owner stamps");
         auto expected=SurfaceGeometryVector{-f.sx,1,-f.sz};
         check(surface_geometry_detail::unit(expected) && surface_geometry_detail::dot(expected,sample.query_normal)>.999f &&
             std::abs(sample.point[1]-f.ground_origin[1])<.001f,
@@ -466,8 +516,10 @@ int main() {
         f.missing_ground_shape=0;
         for(unsigned change=1;change<=7;++change) {
             f.partition_owner_change=change;
-            check(!query().valid && !revalidate_surface_geometry(f.api(),f.live,sample),
-                "ground seam admission and reuse require the complete unchanged static body/owner stamp");
+            check(!revalidate_surface_geometry(f.api(),f.live,sample),
+                "ground seam reuse requires each complete unchanged static body/owner stamp");
+            check(query().valid==(change<=5 || (change==7 && !entity_owner && !independent)),
+                "fresh ground can independently qualify changed static pieces but mismatched entity proof still rejects");
         }
         f.partition_owner_change=0;f.fold=true;
         check(!query().valid,"child-shape ground corners cannot fabricate a planar height patch");
@@ -479,8 +531,9 @@ int main() {
     }
     // Map meshes may partition one static body into coplanar child shapes.
     // Exercise every side of the patch independently of world origin/yaw.
-    for(bool entity_owner:{false,true})for(unsigned orientation=0;orientation<32;++orientation) {
+    for(bool independent:{false,true})for(bool entity_owner:{false,true})for(unsigned orientation=0;orientation<32;++orientation) {
         Fixture f;f.partitioned_wall=f.allow_world_owner=true;f.unknown=!entity_owner;
+        f.independent_bodies=f.mixed_owner_kinds=independent;
         if(entity_owner){f.world_owner.kind=1;f.world_owner.value=20;}
         const auto angle=static_cast<float>(orientation)*.19634954f;
         f.wall_normal={std::sin(angle),0,std::cos(angle)};
@@ -490,7 +543,9 @@ int main() {
         check(sample.valid && sample.body==SurfaceGeometryBody{7,1,9} && sample.adjacent_shape_count==4,
             "coplanar child-shape seams retain the exact center and all four neighbors under translation/yaw");
         check(sample.world_owner==f.world_owner && revalidate_surface_geometry(f.api(),f.live,sample),
-            "each child shape proves the same full static body and owner incarnation");
+            "each contributing shape proves its own full static body and owner incarnation");
+        if(independent)for(const auto& owner:sample.adjacent_world_owners)
+            check(owner.value && owner!=sample.world_owner,"independent wall pieces retain their own complete owner stamps");
         for(const auto shape:sample.adjacent_shapes) {
             f.rejected_partition_shape=shape.index;
             check(!revalidate_surface_geometry(f.api(),f.live,sample),
@@ -501,7 +556,8 @@ int main() {
             f.partition_owner_change=change;
             check(!revalidate_surface_geometry(f.api(),f.live,sample),
                 "neighbor body/owner replacement invalidates retained geometry");
-            check(!f.query_wall().valid,"matching entity or plane cannot join different body/owner stamps");
+            check(f.query_wall().valid==(change<=5 || (change==7 && !entity_owner && !independent)),
+                "fresh coplanar wall pieces need independently valid stamps, not an identical owner");
         }
         f.partition_owner_change=0;
         auto corrupt=sample;corrupt.adjacent_shape_count=5;

@@ -18,8 +18,10 @@ exact equivalent is **UNSUPPORTED**, never silently replaced by another trick.
 | B, airborne | Grab |
 | Y | Contextual grind / lip |
 | LB / RB | Spin left / right |
-| LT | Nollie context |
-| RT | Switch / revert context |
+| LT tap / hold, on ordinary ground | Select Nollie / Pressure setup |
+| RT, on ordinary ground | Toggle native Regular / Switch stance |
+| RT, established Manual / Nose Manual | Physical Pivot / Nose Pivot |
+| LT or RT, qualified vert landing | Landing Revert, owned by the vert controller |
 | LB+RB | Native dismount / remount, one edge per fresh chord |
 | Up → Down | Manual request |
 | Down → Up | Nose Manual request |
@@ -28,6 +30,25 @@ Native locomotion supplies automatic pushes when movement intent and observed
 speed require them. The player does not need to repeatedly press a push button.
 The physical right stick always belongs to the camera; any synthetic gesture used
 inside a native adapter is an implementation detail, not another player control.
+
+This is the single fixed PS2 control scheme. LT alone never jumps. A remains
+the crouch/release control: normal setup selects native Ollie1 and Nollie setup
+selects native Nollie16. The physical journal distinguishes an LT tap from a
+200ms hold without delaying A. That threshold is implementation tuning, not a
+historical timing claim. A second short tap returns to normal setup; Pressure
+lasts while LT is held and release restores the previous selection. An overlapping
+quick LT/A release uses the prospective tap selection immediately. The admitted
+launch freezes its identity through that flight, including after LT release.
+Both trigger edges use the existing strict30/31 physical dead zone. Holding a
+trigger through landing, owner replacement or OFF/ON never creates a new press.
+
+Pressure selection is recognized, but no supported native Pressure actor has
+been established. Its unavailable launch/flip requests emit no unrelated trick.
+Native Switch delivery is still being integrated; ground RT has no Revert fallback.
+The input adapter and physical Pivot evidence are separate from native acceptance.
+LT during Manual/grind cannot replace the active physical support or its native
+launch family. See [the shared trigger contract](TRIGGER_CONTRACT.md) for vert
+precedence and exclusive consumption.
 
 X and B execution requires independently observed airtime and a fresh press.
 Ground X does not start a jump; ground B retains native braking. Neither command
@@ -105,7 +126,7 @@ exists. A dash means this contract assigns no variant to that combination.
 
 | Direction | X | X,X | X,X,X |
 | --- | --- | --- | --- |
-| Neutral X | Kickflip | Double Kickflip | — |
+| Neutral X | Kickflip | Double Kickflip | Triple Kickflip |
 | Left | Kickflip | Double Kickflip | Triple Kickflip |
 | Up | Impossible | Double Impossible | Triple Impossible |
 | Right | Heelflip | Double Heelflip | Triple Heelflip |
@@ -127,11 +148,17 @@ This is one native 360 shove request through the same captured-edge binding,
 not an inferred repeat of the 180 shove. Native execution and landing acceptance
 remain pending.
 
-Directional Triple Kickflip and Triple Heelflip extend the existing held double
+Hold R3 and Left when pressing X for **Front Foot Impossible** (native37).
+With Nollie setup selected, the same chord selects **Nollie Back Foot Impossible**
+(native39). Ordinary Left+X remains Kickflip and Up+X remains Impossible.
+These use their exact native gestures; a missing gesture never substitutes
+another trick. Native execution and landing acceptance remain pending.
+
+Neutral or directional Triple Kickflip and directional Triple Heelflip extend the existing held double
 only when a fresh third X reaches that same owned flight before its catch. The
 third edge keeps its own200ms deadline; it cannot borrow the double's successor
 allowance or restart the native base actor. The original held-entry and lifetime
-limits remain unchanged. Neutral X retains its double-only mapping. These routes
+limits remain unchanged. A fourth X cannot extend the triple or delay its catch. These routes
 are implemented but require exact-candidate native triple acceptance.
 
 After releasing an ordinary Ollie, a prompt neutral X tap can wait through
@@ -223,25 +250,41 @@ orientation or which end of the board meets the rail.
 On an established Bluntslide, X→Y now requests Tailslide and X→X requests
 Smith through the existing native 5-0 return. The same rail segment, completed
 return, retired transition and observed neutral controls are required before
-the final leg. These composed routes are offline-tested; exact-candidate native
+the final leg. Y→B requests Nosegrind and B→B requests Crooked through that
+5-0 and a separately completed 50-50 return before the final sweep. Each
+intermediate keeps its own original native admission and completion checks;
+the original physical button timestamps remain unchanged. These routes require
+the existing qualified horizontal rail segment of at least12m; available travel
+still determines whether the entire chain can finish. They are offline-tested; exact-candidate native
 execution, animation and combo acceptance remain pending.
 
-## Manual, revert and balance
+## Manual, Pivot and balance
 
 Up → Down requests Manual; Down → Up requests Nose Manual. Only verified native
 observations establish the actual pose. Manual correction uses Up / Down; grind
 correction uses Left / Right. Both meters display the actual inertial balance
 model, including fatigue retained throughout the same unbanked combo.
 
-RT requests the appropriate switch/revert action for the observed context. Native
-revert identity must be observed. A landing revert creates one continuation
+Ordinary ground RT toggles native stance without a Revert trajectory or automatic
+180-degree rotation. Established Manual/Nose Manual RT requests a physical
+Pivot/Nose Pivot, retaining the balance owner and combo. Success requires measured
+board and body rotation, native stance transition and qualified successor support;
+changing a label or fakie flag alone does not pass. A vert landing Revert creates one continuation
 opportunity; repeated revert cannot keep extending grace or farming multiplier.
+During an established Manual, a physical RT press survives a delayed client
+balance publication only until the original native observation's150ms expiry.
+It runs immediately when current Manual proof arrives; later polls do not renew
+it. Losing or replacing that Manual, changing native generations or pressing A
+cancels the pending Pivot. Unconfirmed Manual acquisition cannot borrow Pivot
+authority later from a held RT. The original landing qualifier exclusively owns
+vert Reverts; neither transfer nor landing inputs may become delayed ground commands.
 
 The active Manual acceptance recipe is entry → at least three continuous seconds
 of independently qualified physical balance → Ollie out. Begin timing at qualified
 entry, not the direction pair. Check actual wheel support and pose, stable balance
 HUD, owner/stance continuity, and the native exit and landing. Then check
-Manual → RT → Nose Manual → Ollie → Flip continuity separately. Three seconds is
+Manual → RT → physical Pivot → valid successor Manual/Nose Manual → Ollie → Flip
+continuity separately, including resulting stance and support. Three seconds is
 a test minimum, never a gameplay cutoff; balanced holds must continue beyond it.
 Retained two-second or ten-second payloads are historical recipes and must be
 updated before reuse, with their existing physical, freshness and cleanup guards.
@@ -260,23 +303,3 @@ and rotation work. Basic native Y grinding, exits and balance HUD now have fixed
 Deck evidence; finish their remaining integration before deferred grabs and exotic
 named variants. This table remains the target contract. STATE.md and the existing
 native-method matrix distinguish verified behavior from outstanding acceptance.
-
-## Experimental vert air and transfers
-
-A fresh LT or RT during a geometry-qualified vert flight requests the same
-contextual action. The controller searches in travel direction, biased by held
-directional intent: a reachable descending transition and verified crest can
-select Spine Transfer or Hip Transfer; an already descending flight into a lower
-transition can select Acid Drop. Without an eligible destination, Level Out
-redistributes a bounded amount of upward momentum into forward travel.
-
-A trigger held before takeoff does not request a transfer. One accepted press
-owns its trigger channels until release, including across landing. Ground LT
-Nollie and RT Revert/Switch retain their existing contexts. No fresh transfer
-input leaves native vert trajectory and gravity intact. Flips, grabs and spins
-retain their existing input paths; physical alignment yields to native trick actors.
-
-These paths are experimental source implementation. Offline trajectory, geometry
-and input tests do not establish native takeoff, actual transfer execution,
-rendered alignment, landing, combo banking or player feel. Exact-candidate native
-acceptance is required before describing them as playable or accepted.
