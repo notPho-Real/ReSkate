@@ -24,6 +24,8 @@ namespace dingosdk::arcade_mode {
 // their existing401 sweep; each intermediate must complete independently.
 // From403/23 or24, the measured401/20 return may prepare the opposite truck
 // grind or Crooked sweep.
+// From5-0, that return may also prepare Nosegrind and its existing Noseslide
+// or Nosebluntslide leg. Neither intermediate acknowledges the requested slide.
 // Crooked32 returns via a measured Up/opposite-heading pulse, neutral, then
 // original403→401; native23 during the same-actor preparation is not final20.
 // That verified401/20 may prepare the existing Nosegrind or5-0 sweep.
@@ -58,7 +60,7 @@ public:
         }
         frame_=frame;controls_=controls;
         if(active_) {
-            if(now<leg_started_at_ || now-leg_started_at_>=duration_ms_ ||
+            if(now<leg_started_at_ || now>=operation_deadline_ || now-leg_started_at_>=duration_ms_ ||
                 (smith_ && (!controls.valid || frame.state!=403 || contact.actor!=source_.actor)) ||
                 (slide_return_ && frame.state==402 && contact.actor!=source_.actor) ||
                 (crooked_return_ && frame.state==403 &&
@@ -86,12 +88,14 @@ public:
         admission_.generations={frame.owner_generation,frame.contact_generation,frame.action_generation};
     }
     template<class Arm> InputDisposition request(const InputRequest& request,std::uint64_t now,Arm&& arm) noexcept {
-        const bool prepare_sweep=source_.state==403 &&
+        const bool extra_nose_preparation=source_.state==403 && source_.identity==24 &&
+            (request.grind_target()==GrindChangeTarget::noseslide || request.grind_target()==GrindChangeTarget::nosebluntslide);
+        const bool prepare_sweep=extra_nose_preparation || (source_.state==403 &&
             ((source_.identity==24 && request.grind_target()==GrindChangeTarget::nosegrind) ||
              (source_.identity==23 && request.grind_target()==GrindChangeTarget::grind_5_0) ||
              (source_.identity==32 && (request.grind_target()==GrindChangeTarget::nosegrind ||
                                       request.grind_target()==GrindChangeTarget::grind_5_0)) ||
-             ((source_.identity==23 || source_.identity==24) && request.grind_target()==GrindChangeTarget::crooked));
+             ((source_.identity==23 || source_.identity==24) && request.grind_target()==GrindChangeTarget::crooked)));
         const bool extra_slide_preparation=source_.state==402 && source_.identity==31 &&
             (request.grind_target()==GrindChangeTarget::nosegrind || request.grind_target()==GrindChangeTarget::crooked);
         const bool prepare_slide_return=extra_slide_preparation || (source_.state==402 && source_.identity==31 &&
@@ -130,13 +134,17 @@ public:
             (preparing && !geometry(source_,144.)))
             return InputDisposition::unsupported;
         const std::uint64_t duration=smith?2200u:crooked_return?2000u:1500u;
+        const bool extra_preparation=extra_slide_preparation || extra_nose_preparation;
+        // Sum only the existing native leg budgets. Handoffs never renew this
+        // overall bound (at most4500ms for the qualified three-leg routes).
+        const auto total_duration=duration+(preparing?(request.grind_target()==GrindChangeTarget::smith?2200u:1500u):0u)+
+            (extra_preparation?1500u:0u);
         if(active_ || !admission_.ready || !fresh(now,frame_) || request.rail_generation!=generation_ ||
             request.generations!=admission_.generations || request.first_input_at>request.last_input_at ||
             request.last_input_at>request.recognized_at || request.recognized_at>now ||
             now-request.last_input_at>300 || request.last_input_at-request.first_input_at>300 ||
-            serial_>=UINT64_MAX-(preparing?1u:0u)-(extra_slide_preparation?1u:0u) ||
-            now>UINT64_MAX-(duration+(preparing?(request.grind_target()==GrindChangeTarget::smith?2200u:1500u):0u)+
-                (extra_slide_preparation?1500u:0u)))
+            serial_>=UINT64_MAX-(preparing?1u:0u)-(extra_preparation?1u:0u) ||
+            now>UINT64_MAX-total_duration)
             return InputDisposition::cancelled;
         // Require observed neutral pitch/roll and feature-off before the
         // reference-capture sequences; the saved reference itself is not read.
@@ -164,7 +172,8 @@ public:
         slide_return_=slide_return;
         crooked_return_=crooked_return;
         serial_=next;active_=true;stable_=false;
-        leg_started_at_=now;preparing_=preparing;preparation_ready_=preparation_completed_=false;
+        leg_started_at_=now;operation_deadline_=now+total_duration;
+        preparing_=preparing;preparation_ready_=preparation_completed_=false;
         final_target_=request.grind_target();
         evidence_={serial_,request.first_input_at,request.last_input_at,now};
         evidence_.source_animation_known=source_animation_known_;
@@ -178,7 +187,7 @@ public:
     template<class Arm> void advance(std::uint64_t now,const NativeGrindContact& contact,
                                     bool native_idle,Arm&& arm) noexcept {
         if(!active_ || !preparing_ || !preparation_ready_)return;
-        if(!fresh(now,frame_) || now<preparation_ready_at_ || now-preparation_ready_at_>150 ||
+        if(!fresh(now,frame_) || now>=operation_deadline_ || now<preparation_ready_at_ || now-preparation_ready_at_>150 ||
             now<leg_started_at_ || now-leg_started_at_>=duration_ms_ ||
             frame_.state!=target_state_ || !contact.valid || contact!=preparation_contact_ || !same_segment(contact)) {
             cancel();return;
@@ -200,6 +209,20 @@ public:
             preparation_ready_=preparation_completed_=false;slide_return_=crooked_return_=false;
             lateral_=tail_release_=smith_=false;sweep_x_=held_y_=0;
             target_identity_=20;target_state_=401;hold_ms_=1500;duration_ms_=1500;
+            return;
+        }
+        if(target_state_==401 && (final_target_==GrindChangeTarget::noseslide ||
+                                  final_target_==GrindChangeTarget::nosebluntslide)) {
+            // The5-0 return established50-50, not a legal lateral source.
+            // Reuse its existing Nosegrind preparation and await a separate
+            // native401→403 completion before the final lateral admission.
+            const auto next=serial_+1;
+            if(!arm(next,now+1500,GrindAdmissionControl::ordinary)) {cancel();return;}
+            source_=contact;serial_=next;leg_started_at_=now;
+            preparation_ready_=preparation_completed_=false;
+            slide_return_=crooked_return_=lateral_=tail_release_=smith_=false;
+            sweep_x_=12000;held_y_=32767;target_identity_=23;target_state_=403;
+            hold_ms_=1000;duration_ms_=1500;
             return;
         }
         if(final_target_==GrindChangeTarget::nosegrind || final_target_==GrindChangeTarget::crooked ||
@@ -260,7 +283,7 @@ public:
         evidence_.final_leg_serial=serial_;evidence_.final_leg_started_at=now;
     }
     Pad sample(std::uint64_t now) const noexcept {
-        if(!active_ || !fresh(now,frame_) || now<leg_started_at_ || now-leg_started_at_>=duration_ms_)return {};
+        if(!active_ || !fresh(now,frame_) || now<leg_started_at_ || now>=operation_deadline_ || now-leg_started_at_>=duration_ms_)return {};
         if(preparation_ready_)return {true,0,0};
         if(now-leg_started_at_>=hold_ms_)return {};
         if(crooked_return_) {
@@ -308,7 +331,7 @@ public:
     }
     void verify(std::uint64_t now,const NativeGrindCompletion& completion,
                 const NativeGrindContact& contact,const NativeGrindSnapshot& animation) noexcept {
-        if(!active_ || !fresh(now,frame_))return;
+        if(!active_ || !fresh(now,frame_) || now<leg_started_at_ || now>=operation_deadline_)return;
         if(preparing_) {
             preparation_completed_=preparation_completed_ ||
                 (completion.valid && completion.source==source_.state && completion.target==target_state_ && completion.phase==1.f);
@@ -380,7 +403,7 @@ private:
     Evidence evidence_{};
     std::int16_t sweep_x_{},held_y_{};
     std::uint32_t target_identity_{},target_state_{},hold_ms_{};
-    std::uint64_t serial_{},generation_{},stable_at_{},duration_ms_{1500},leg_started_at_{},preparation_ready_at_{};
+    std::uint64_t serial_{},generation_{},stable_at_{},duration_ms_{1500},leg_started_at_{},preparation_ready_at_{},operation_deadline_{};
     GrindChangeTarget final_target_{};
     bool active_{},stable_{},source_animation_known_{},lateral_{},tail_release_{},smith_{},preparing_{},preparation_ready_{},preparation_completed_{},slide_return_{},crooked_return_{};
 };

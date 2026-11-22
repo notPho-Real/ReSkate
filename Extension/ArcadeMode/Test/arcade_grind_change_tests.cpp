@@ -162,7 +162,136 @@ void slide_to_vertical_sweeps() {
         check(!p.change.active() && !p.change.sample(p.now).owns,"interrupted composition cannot retain a control owner after exit");
     }
 }
+void tail_to_nose_slides() {
+    for(unsigned hz:{30u,60u,120u})for(bool reverse:{false,true}) {
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;
+        p.contact.identity=24;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        const auto first=reverse?test_b:test_y;
+        const auto held=static_cast<std::uint16_t>(first|(reverse?test_y:classic_x));
+        p.step(1200,403);p.poll(first);p.step(1230,403);p.poll(held);
+        const auto initial=p.change.serial();
+        check(p.arms==1 && p.change.active() && p.control==GrindAdmissionControl::ordinary &&
+            p.dispatched.grind_target()==(reverse?GrindChangeTarget::nosebluntslide:GrindChangeTarget::noseslide),
+            "5-0 nose-slide request starts its qualified50-50 return");
+        for(unsigned leg=0;leg<2;++leg) {
+            const auto start=p.now,arms=p.arms;
+            const auto source=leg?401u:403u,target=leg?403u:401u;
+            for(unsigned i=0;i<=800*hz/1000 && p.arms==arms;++i) {
+                const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+                if(elapsed>=400){p.contact.actor=32+8*leg;p.contact.identity=leg?23u:20u;}
+                p.step(start+elapsed,elapsed<150?source:elapsed<400?406u:target);
+                p.poll(held);p.poll(held);
+                // An old completion remains visible across the second leg.
+                p.change.verify(p.now,elapsed>=550?NativeGrindCompletion{true,source,target,1,{}}:
+                    leg?NativeGrindCompletion{true,403,401,1,{}}:NativeGrindCompletion{},p.contact,p.animation);
+                const auto pad=p.change.sample(p.now);
+                check(pad.owns && pad.y==(leg && elapsed<550?32767:0) &&
+                    pad.x==(leg && elapsed>=200 && elapsed<550?12000:0),
+                    "return and Nosegrind preparations retain their existing control recipes");
+                check(!p.change.evidence().completed && !p.change.evidence().physics_changed &&
+                    !p.change.evidence().animation_changed,"neither intermediate acknowledges the final slide");
+                p.advance(elapsed>=650);p.advance(elapsed>=650);
+                if(elapsed<650)check(p.arms==arms,"preparation needs its own completion and retired native lease");
+            }
+            check(p.arms==arms+1 && p.change.serial()==initial+leg+1,
+                "each completed intermediate advances exactly one existing native leg");
+            if(!leg)check(!p.change.evidence().final_leg_serial && p.control==GrindAdmissionControl::ordinary,
+                "50-50 return starts Nosegrind preparation, never a direct lateral lease");
+        }
+        const auto final=p.change.evidence().final_leg_started_at;
+        check(p.control==(reverse?GrindAdmissionControl::lateral_nose_reverse:GrindAdmissionControl::lateral_nose) &&
+            p.last_deadline==final+1500,"only actual Nosegrind starts the existing qualified lateral policy");
+        const auto identity=reverse?30u:21u;
+        for(unsigned i=0;i<=1600*hz/1000;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            if(elapsed>=450){p.contact.actor=48;p.contact.identity=identity;}
+            p.step(final+elapsed,elapsed<150?403u:elapsed<450?406u:402u);p.poll(held);p.poll(held);
+            p.animation.grind_type=elapsed>=700?identity:23u;
+            p.change.verify(p.now,elapsed>=550?NativeGrindCompletion{true,403,402,1,{}}:
+                NativeGrindCompletion{true,401,403,1,{}},p.contact,p.animation);p.advance();
+            const auto& evidence=p.change.evidence();
+            check(p.arms==3 && evidence.first_input_at==1200 && evidence.last_input_at==1230 &&
+                evidence.started_at==1230 && evidence.serial==initial && evidence.final_leg_serial==initial+2,
+                "three-leg slide preserves one original physical request and distinct native leases");
+            if(elapsed<550)check(!evidence.completed && !evidence.physics_changed,"preparation completion is not final slide completion");
+            if(elapsed<700)check(!evidence.animation_changed,"Nosegrind animation cannot acknowledge the final slide");
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns==(elapsed<1000),"final nose-slide controls retain the existing lifetime");
+            if(pad.owns)check(pad.x==(elapsed<50?0:reverse?-32767:32767) && pad.y==(elapsed<50?0:8192),
+                "final nose-slide uses the existing neutral then signed lateral pulse");
+        }
+        check(!p.change.active() && p.change.evidence().physics_changed && p.change.evidence().animation_changed,
+            "only exact completed final slide with changed animation retires the chain");
+    }
+    for(bool reverse:{false,true})for(unsigned boundary=0;boundary<2;++boundary)for(unsigned fault=0;fault<14;++fault) {
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;
+        p.contact.identity=24;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        const auto first=reverse?test_b:test_y;
+        const auto held=static_cast<std::uint16_t>(first|(reverse?test_y:classic_x));
+        p.step(1200,403);p.poll(first);p.step(1230,403);p.poll(held);
+        for(unsigned leg=0;leg<=boundary;++leg) {
+            const auto start=p.now;
+            for(unsigned i=1;i<=6;++i) {
+                if(i>=4){p.contact.actor=32+8*leg;p.contact.identity=leg?23u:20u;}
+                p.step(start+100*i,i<2?(leg?401u:403u):i<4?406u:(leg?403u:401u));p.poll(held);
+            }
+            if(leg<boundary){p.change.verify(p.now,{true,403,401,1,{}},p.contact,p.animation);p.advance();}
+        }
+        const auto arms=p.arms;
+        if(fault==1)p.contact.identity=24;
+        p.change.verify(p.now,{fault!=0,boundary?401u:403u,fault==13?402u:boundary?403u:401u,1,{}},p.contact,p.animation);
+        if(fault==2)++p.contact.actor;
+        if(fault==3)++p.contact.segment_identity[0];
+        if(fault==4){++p.frame.owner.core;p.poll(held);}
+        if(fault==5)p.now+=151;
+        if(fault==8)p.poll(classic_a);
+        if(fault==9)p.poll(0,false);
+        // Running out of rail is a lost native contact, not something the
+        // segment's total12m length can predict from this observation model.
+        if(fault==10){p.contact.valid=false;p.poll(held);}
+        if(fault==11){p.step(p.now+20,100);p.poll(held);}
+        if(fault==12){p.step(p.now+900,boundary?403u:401u);p.poll(held);}
+        p.advance(fault!=6,fault!=7);
+        check(p.arms==arms+(fault==7?1u:0u) && !p.change.evidence().final_leg_serial &&
+            !p.change.evidence().completed && !p.change.evidence().physics_changed,
+            "both nose-slide preparations reject missing/wrong completion,owner/contact loss,stale/OFF/pop-out and live lease");
+        // Let every still-pending preparation expire. Restored contact and
+        // readiness alone must never create an automatic continuation.
+        p.step(p.now+1501,100);p.poll();
+        check(!p.change.active() && !p.change.sample(p.now).owns,"failed preparation withdraws control ownership");
+        p.contact.valid=true;p.contact.identity=boundary?23u:20u;
+        p.step(p.now+20,boundary?403u:401u);
+        p.change.observe(p.now,p.frame,p.contact,true,p.animation,p.controls);p.advance();
+        check(p.arms==arms+(fault==7?1u:0u),"restored contact cannot revive an expired original slide request");
+    }
+    for(bool reverse:{false,true}) {
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;
+        p.contact.identity=24;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        const auto first=reverse?test_b:test_y;
+        const auto held=static_cast<std::uint16_t>(first|(reverse?test_y:classic_x));
+        p.step(1200,403);p.poll(first);p.step(1230,403);p.poll(held);
+        for(unsigned leg=0;leg<2;++leg) {
+            const auto start=p.now;
+            // Push each handoff near its existing1500ms deadline while
+            // retaining every original native sample and the same segment.
+            for(unsigned i=1;i<=14;++i) {
+                if(i>=12){p.contact.actor=32+8*leg;p.contact.identity=leg?23u:20u;}
+                p.step(start+100*i,i<2?(leg?401u:403u):i<12?406u:(leg?403u:401u));p.poll(held);
+            }
+            p.change.verify(p.now,{true,leg?401u:403u,leg?403u:401u,1,{}},p.contact,p.animation);p.advance();
+        }
+        check(p.arms==3 && p.last_deadline<=1230+4500,
+            "late handoffs cannot extend the sum of three existing1500ms native leases");
+        for(unsigned i=1;i<=17;++i){p.step(4030+100*i,406);p.poll(held);p.advance();}
+        check(!p.change.active() && !p.change.sample(5730).owns && p.arms==3,
+            "missing final completion expires within the original4500ms operation bound without rearming");
+    }
+}
 int main() {
+    tail_to_nose_slides();
     slide_to_vertical_sweeps();
     for(unsigned hz:{30u,60u,120u}) {
         auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=32;p.contact.end[2]=-12;
@@ -1132,11 +1261,11 @@ int main() {
     }
     for(unsigned fault=0;fault<4;++fault) {
         auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=23;p.contact.end[2]=fault==0?-6.f:-12.f;
-        if(fault==1)p.contact.identity=24;
+        if(fault==1)p.contact.identity=26;
         if(fault==2)p.contact.geometry=2;
         if(fault==3)p.contact.begin[1]=1;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0xc000);
-        check(p.arms==0,"Noseslide requires actual Nosegrind source and measured horizontal twelve-metre geometry");
+        check(p.arms==0,"Noseslide requires a supported physical source and measured horizontal twelve-metre geometry");
     }
     for(unsigned fault=0;fault<4;++fault) {
         auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=fault==1?23u:24u;p.contact.end[2]=fault==0?-6.f:-12.f;
@@ -1149,8 +1278,9 @@ int main() {
     {
         auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=24;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0xc000);
-        check(p.dispatched.grind_target()==GrindChangeTarget::noseslide && p.arms==0,
-            "simultaneous X+Y retains Noseslide priority instead of inventing an ordered Tailslide alias");
+        check(p.dispatched.grind_target()==GrindChangeTarget::noseslide && p.arms==1 &&
+            p.control==GrindAdmissionControl::ordinary,
+            "simultaneous X+Y starts Noseslide preparation instead of inventing an ordered Tailslide alias");
     }
     {
         auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=24;p.contact.end[2]=-12;
