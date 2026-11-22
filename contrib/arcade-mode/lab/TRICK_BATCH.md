@@ -139,14 +139,18 @@ identity after the last observed grind entry, with a confirmed native exit.
 An approach Ollie cannot satisfy that exit requirement.
 
 Optional `expected.chain` qualifies a complete observed lifecycle, for example:
-`{"poses":[2,3,2,4,2,1],"air_ids":[1,1,1],"minimum_balance_ms":200,"grace_ms":[350,650]}`.
+`{"poses":[2,3,2,4,2,1],"air_ids":[1,1,1],"minimum_balance_ms":3000,"grace_ms":[350,650]}`.
 Poses are riding1, air2, grind3, manual4 and nose manual5. The example requires
 air/grind/air/manual/air/riding within one active combo, native Ollie ID1 at each
-matched takeoff, at least200ms in each balance section, persistent fatigue and
+matched takeoff, at least 3000 ms in each balance section, persistent fatigue and
 final lifecycle expiry350–650ms after landing. Native IDs must occur within
 200ms before to150ms after their matched takeoff. Brief wheel-contact bounces,
 an earlier approach identity, or a later fresh combo cannot complete the chain.
-These are explicit acceptance criteria, not changes to game physics or timing.
+The default balance minimum is 3000 ms. Shorter explicit values are reserved for
+lifecycle timing tests and cannot satisfy Manual acceptance. Manual acceptance
+also requires at least 3 seconds of continuous physical support and balance;
+combo observations alone are insufficient. The minimum is a test criterion,
+not a gameplay timeout. A sustained Manual continues while balance is maintained.
 Incomplete evidence remains UNVERIFIED. `score_banking` remains UNVERIFIED:
 correct lifecycle expiry is not proof of correct monetary scoring.
 

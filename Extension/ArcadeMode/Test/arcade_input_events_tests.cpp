@@ -228,9 +228,9 @@ void queue_action_cancellation_tests() {
         queue.dispatch(20, 1, action == InputAction::rail_select ? InputContext::rail : InputContext::air, {&sink, Cancelling::receive},
             [&](InputDispatchEvent event) { cancelled += event.disposition == InputDisposition::cancelled; }, {}, true);
         unsigned original{}, replacement{};
-        for (const auto& request : queue.slots()) if (request.action == action) {
-            original += request.recognized_at == 10;
-            replacement += request.recognized_at == 30;
+        for (const auto& queued : queue.slots()) if (queued.action == action) {
+            original += queued.recognized_at == 10;
+            replacement += queued.recognized_at == 30;
         }
         const bool dedicated = action != InputAction::grab;
         check(original == (same_action || (dedicated && replace) ? 0u : 1u), "action cancellation during a waiting callback cannot restore cancelled intent or discard unrelated intent");

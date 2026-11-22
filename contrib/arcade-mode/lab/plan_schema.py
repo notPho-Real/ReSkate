@@ -82,7 +82,7 @@ def validate_plan(plan):
                 raise ValueError('Native air identities must match chain takeoffs')
             for identity in chain['air_ids']:
                 integer(identity, 1, 63)
-            integer(chain.get('minimum_balance_ms', 200), 0, 2000)
+            integer(chain.get('minimum_balance_ms', 3000), 0, 3000)
             grace = chain.get('grace_ms', [350, 650])
             if not isinstance(grace, list) or len(grace) != 2:
                 raise ValueError('Invalid lifecycle grace window')
