@@ -164,12 +164,12 @@ int main(){
     require(variants.models.at(3).inputs==std::vector<std::string>{"Original distinct frontside diagram"},
         "frontside guidance did not restore the native diagram on OFF");
     reset();Context unsupported;
-    unsupported.models.at(3).title="ID_SKATEPEDIA_FS_360_POPSHUVIT";
-    unsupported.models.at(3).inputs={"Original frontside 360 diagram"};
+    unsupported.models.at(3).title="ID_SKATEPEDIA_FS_POPSHUVIT_UNDERFLIP";
+    unsupported.models.at(3).inputs={"Original frontside underflip diagram"};
     const auto unsupported_original=unsupported.models;update_trickpedia(unsupported,1000);
     require(unsupported.models.at(3).inputs.front().find("Planned")!=std::string::npos &&
         unsupported.models.at(3).inputs.front().find("not available yet")!=std::string::npos,
-        "unsupported frontside 360 card must explain availability instead of borrowing single controls");
+        "unsupported frontside underflip card must explain availability instead of borrowing ordinary controls");
     arcade_mode::on=false;update_trickpedia(unsupported,1010);
     require(unsupported.models==unsupported_original,"unsupported guidance did not restore exact native models on OFF");
     reset();Context rewritten;update_trickpedia(rewritten,1000);

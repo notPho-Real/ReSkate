@@ -275,9 +275,9 @@ inline NativeCardBinding native_card_binding(std::string_view title) {
     else if(token.starts_with("NOLLIE_")){token.remove_prefix(7);nollie=true;}
     else if(token.starts_with("N_")){token.remove_prefix(2);nollie=true;}
     const auto key=card_key(token);
-    constexpr std::array<std::string_view,8> unavailable{
+    constexpr std::array<std::string_view,7> unavailable{
         "bspopshuvitunderflip","frontfootimpossible","fspopshuvitunderflip",
-        "fs360popshuvit","grabbstweak","heelflipunderflip",
+        "grabbstweak","heelflipunderflip",
         "hospitalflip","kickflipunderflip"};
     if(std::find(unavailable.begin(),unavailable.end(),key)!=unavailable.end())return {nullptr,nollie,true};
     // Native card identifiers differ from their displayed names. Keep these
@@ -286,6 +286,7 @@ inline NativeCardBinding native_card_binding(std::string_view title) {
     constexpr std::array aliases{
         Alias{"bspopshuvit",ArcadeTrick::pop_shove_it},
         Alias{"fspopshuvit",ArcadeTrick::fs_pop_shove_it},
+        Alias{"fs360popshuvit",ArcadeTrick::fs_shove_it_360},
         Alias{"360popshuvit",ArcadeTrick::shove_it_360},
         Alias{"inwardheel",ArcadeTrick::inward_heelflip},
         Alias{"360inwardheel",ArcadeTrick::inward_heelflip_360},
@@ -312,7 +313,7 @@ inline NativeCardBinding native_card_binding(std::string_view title) {
     };
     // Directional nollie labels and their diagrams use different side names.
     // They need an explicit identity match before receiving Arcade guidance.
-    if(nollie && key!="fspopshuvit" && (key.find("popshuvit")!=std::string::npos))return {nullptr,nollie,true};
+    if(nollie && key!="fspopshuvit" && key!="fs360popshuvit" && (key.find("popshuvit")!=std::string::npos))return {nullptr,nollie,true};
     const TrickDefinition* result=nullptr;
     for(const auto& alias:aliases)if(key==alias.key){result=trick_definition(alias.trick);break;}
     for(const auto& trick:trick_registry) {

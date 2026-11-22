@@ -16,11 +16,11 @@ struct Route {
     unsigned starts{},recognized{}; bool exact_clock{},nollie{},switched{};NativeFlipRequest normal_flip{};
     NativeGesture::Output output{};
     Route() {
-        for(const unsigned id:{1u,2u,3u,4u,5u,6u,7u,8u,9u,36u})
+        for(const unsigned id:{1u,2u,3u,4u,5u,6u,7u,8u,9u,13u,36u})
             recipes.emplace_back(static_cast<std::uint8_t>(id),false,GestureContext::ground,
                 std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
         input.enable(true);input.set_recognition_capture(0,true);
-        for(const unsigned id:{16u,22u})recipes.emplace_back(static_cast<std::uint8_t>(id),true,GestureContext::ground,
+        for(const unsigned id:{16u,22u,25u})recipes.emplace_back(static_cast<std::uint8_t>(id),true,GestureContext::ground,
             std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
     }
     NativeGesture::Output poll(std::uint64_t now,PhysicalInputSample pad={},std::uint32_t state=201,
@@ -301,7 +301,7 @@ void native_transition_requests() {
     for(unsigned rate:{30u,60u,120u})
     for(bool delayed_selection:{false,true})
     for(bool retired_selection:{false,true})
-    for(unsigned delay:{0u,100u,500u}) for(auto choice:{Choice{0,2},Choice{2,4},Choice{8,3},Choice{5,9},Choice{0x82,7}}) {
+    for(unsigned delay:{0u,100u,500u}) for(auto choice:{Choice{0,2},Choice{2,4},Choice{8,3},Choice{5,9},Choice{0x82,7},Choice{0x81,13}}) {
         auto h=std::make_unique<Route>();Sink sink;h->normal_flip={&sink,Sink::submit};
         h->poll(1000,{},100,-1,1);h->poll(1020,{0x1000},100,-1,1);
         h->poll(1060,{0x1000},100,delayed_selection?-1:1,delayed_selection?1:0);
@@ -325,17 +325,23 @@ void native_transition_requests() {
     }
 }
 void frontside_shove_inputs() {
+    check(native_flip::ordinary_flip(13) && native_flip::ordinary_flip(25),"exact FS360 identities use the ordinary native bridge");
+    for(const auto id:{0,1,16,31,32,33,34,35,40,41})
+        check(!native_flip::ordinary_flip(id),"FS360 admission does not admit Ollie helpers, Wallies or unrelated identities");
+    for(bool full_turn:{false,true})
     for(unsigned hz:{30u,60u,120u})for(bool analog:{false,true})for(bool nollie:{false,true})for(bool switched:{false,true}) {
         const auto dt=1000u/hz;
         auto h=std::make_unique<Route>();h->nollie=nollie;h->switched=switched;h->poll(1000);
-        const PhysicalInputSample chord{static_cast<std::uint16_t>(analog?0x4080:0x4082),0,
-            static_cast<std::int16_t>(analog?-25000:0)};
+        const auto id=full_turn?(nollie?25:13):(nollie?22:7);
+        const auto trick=full_turn?ArcadeTrick::fs_shove_it_360:ArcadeTrick::fs_pop_shove_it;
+        const PhysicalInputSample chord{static_cast<std::uint16_t>(analog?0x4080:full_turn?0x4081:0x4082),0,
+            static_cast<std::int16_t>(analog?(full_turn?25000:-25000):0)};
         auto out=h->poll(1000+dt,chord);
-        check(out.requested_id==(nollie?22:7) && out.authored_playback,
-            "R3 plus analog or digital Down-X routes the exact frontside regular/nollie native gesture");
+        check(out.requested_id==id && out.authored_playback,
+            "R3 plus analog or digital Up/Down-X routes the exact frontside regular/nollie native gesture");
         const auto* diagnostic=h->input.input_diagnostic(0);
         check(diagnostic->recognition_count==1 && diagnostic->recognition[0].request.modifier==1 &&
-            diagnostic->recognition[0].request.air.trick==ArcadeTrick::fs_pop_shove_it &&
+            diagnostic->recognition[0].request.air.trick==trick &&
             diagnostic->recognition[0].request.physical_pressed_at==1000+dt &&
             diagnostic->recognition[0].request.deadline==1000+dt+InputTiming::readiness_ms,
             "frontside input has one immutable physical edge and unchanged200ms readiness window");
@@ -356,12 +362,13 @@ void frontside_shove_inputs() {
         check(!(out.action.consume_buttons&0x80u) && h->starts==1,
             "fresh R3 after modifier release is not owned by the older held X occurrence");
     }
-    {
+    for(bool full_turn:{false,true})for(bool nollie:{false,true}) {
         auto h=std::make_unique<Route>();
-        h->recipes.erase(std::remove_if(h->recipes.begin(),h->recipes.end(),[](const auto& recipe){return recipe.native_id==7;}),h->recipes.end());
-        h->poll(1000);const auto out=h->poll(1010,{0x4082});
+        h->nollie=nollie;const auto missing=full_turn?(nollie?25:13):(nollie?22:7);
+        h->recipes.erase(std::remove_if(h->recipes.begin(),h->recipes.end(),[&](const auto& recipe){return recipe.native_id==missing;}),h->recipes.end());
+        h->poll(1000);const auto out=h->poll(1010,{static_cast<std::uint16_t>(full_turn?0x4081:0x4082)});
         check(out.unsupported && !out.requested_id && !out.authored_playback,
-            "missing exact frontside gesture cannot substitute the ordinary backside shove");
+            "missing exact frontside gesture cannot substitute a backside shove or Impossible");
     }
     {
         auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);
