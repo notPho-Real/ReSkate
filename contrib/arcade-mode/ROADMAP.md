@@ -94,6 +94,12 @@ the old history bridge rejected it. The source correction retains only
 bounded history across that push-clear edge, requires a fresh independent
 confirmation, and keeps push onset, leading-foot changes and actor changes
 rejected. Mismatched frames grant no transfer or motion authority.
+The recorded mode2→1/partial-contact landing boundary now also retains the
+pre-contact descent witness for at most100ms. Transfer motion stops immediately;
+only original supported riding contact can release a reserved landing Revert.
+Original trigger deadlines remain unchanged. The combined correction passes
+6,443 vert and89,999 geometry/runtime sanitizer checks; native query admission
+and the106 contact-reader checks remain intact.
 Native flight qualification, transfer and landing acceptance remain pending.
 
 Portable tests cover transformed curved ramps, independent shape owners, holes,
