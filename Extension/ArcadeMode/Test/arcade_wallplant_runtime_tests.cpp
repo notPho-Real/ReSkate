@@ -8,6 +8,8 @@ std::uint64_t now=1000,query_latency{};
 bool hit_current=true,race_cancel{};
 bool collision_scope{};
 bool geometry_mode{},motion_geometry{};
+std::uint32_t rejected_shape{};
+bool changed_adjacent_owner{};
 bool clearance_policy{};
 unsigned clearance_queries{};
 dingosdk::arcade_mode::SurfaceGeometrySample clearance_result{};
@@ -39,9 +41,13 @@ bool collision_current(std::uint64_t serial,const NoBailSkater& owner) noexcept 
 }
 bool current(const Contact&,std::uintptr_t) noexcept{return fixture::hit_current;}
 bool static_world_owner(const SurfaceGeometryBody& body,SurfaceGeometryWorldOwner& owner) noexcept {
-    owner=fixture::clearance_policy && body==fixture::clearance_result.body?
+    bool ground_shape=body==fixture::clearance_result.body;
+    for(unsigned i=0;i<std::min<unsigned>(fixture::clearance_result.adjacent_shape_count,4);++i)
+        ground_shape=ground_shape || body==fixture::clearance_result.adjacent_shapes[i];
+    owner=fixture::clearance_policy && ground_shape?
         fixture::clearance_owner:fixture::wall.world_owner;
-    return fixture::motion_geometry && fixture::hit_current;
+    if(fixture::changed_adjacent_owner && body!=fixture::wall.body)++owner.body.generation;
+    return fixture::motion_geometry && fixture::hit_current && body.index!=fixture::rejected_shape;
 }
 bool local_component_owner(const SurfaceGeometryBody&,std::uintptr_t,SurfaceGeometryWorldOwner&) noexcept{return false;}
 }
@@ -80,10 +86,14 @@ bool revalidate_surface_geometry(const SurfaceGeometryNativeApi& api,const Surfa
     if(!fixture::clearance_policy)return true;
     // Mirror the production body-owner stamp comparison at this native seam.
     SurfaceGeometryWorldOwner owner{};
-    return sample.fresh_for(ctx,fixture::now) && api.static_world_owner &&
+    if(!(sample.fresh_for(ctx,fixture::now) && api.static_world_owner &&
         api.static_world_owner(api.user,sample.body,owner) &&
         owner.value && owner.kind==(sample.body_owner?1u:0u) &&
-        (!sample.body_owner || owner.value==sample.body_owner) && owner==sample.world_owner;
+        (!sample.body_owner || owner.value==sample.body_owner) && owner==sample.world_owner))return false;
+    if(sample.adjacent_shape_count>sample.adjacent_shapes.size())return false;
+    for(unsigned i=0;i<sample.adjacent_shape_count;++i)
+        if(!api.static_world_owner(api.user,sample.adjacent_shapes[i],owner) || owner!=sample.world_owner)return false;
+    return true;
 }
 SurfaceGeometryAnchor query_wallplant_anchor(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
         SurfaceGeometryBody,SurfaceGeometryVector point,SurfaceGeometryVector,SurfaceGeometryVector root,SurfaceGeometryVector offset,
@@ -124,8 +134,8 @@ void observe_at(const NativeInputFrame& f){fixture::now=std::max(fixture::now,f.
 void finish_at(const WallplantCommand& c,bool ok,std::uint64_t at){fixture::now=at;finish_hold(c,ok,at);}
 bool preserve_at(const NativeInputFrame& f,std::uint64_t at){fixture::now=at;return preserves_combo(f,at);}
 void clearance_policy_checks(bool motion) {
-    for(unsigned fault=0;fault<7;++fault) {
-        setup();in_flight={};candidate={};raw={};pending={};
+    for(unsigned fault=0;fault<9;++fault) {
+        const auto command=setup();in_flight={};candidate={};raw={};pending={};
         const auto f=observed;
         SurfaceGeometryContext ctx{{1,2,3,4,5},context(f),8,7,1,9,f.owner_generation,
             motion?SurfaceGeometryPhase::motion_admission:SurfaceGeometryPhase::collision_response};
@@ -145,6 +155,12 @@ void clearance_policy_checks(bool motion) {
         if(fault==4)fresh_ground.valid=false;
         if(fault==5)fresh_ground.queried_at=fixture::now+1;
         if(fault==6)fresh_ground.point[1]=1.9f;
+        if(fault>=7) {
+            for(unsigned i=0;i<4;++i)fresh_ground.adjacent_shapes[i]={7,21+i,1};
+            fresh_ground.adjacent_shape_count=4;
+            ordinary_ground=fresh_ground;
+            if(fault==8)fixture::rejected_shape=21;
+        }
         raw.valid=true;raw.owner={1,2,3,4,5};raw.state=201;
         raw.sampled_at=1000;raw.seconds=f.physics_seconds;raw.velocity={-12,-2,0};raw.count=1;
         auto& hit=raw.contacts[0];hit.identity_valid=hit.static_body=hit.categories_known=true;
@@ -156,18 +172,32 @@ void clearance_policy_checks(bool motion) {
         const auto token=motion?begin_motion(f,fixture::now):0;
         if(motion)publish_motion_geometry(token,api,ctx,f,{.4f,2,0},{0,1,0},{-12,-2,0},ordinary_ground,supports);
         else publish_geometry(api,ctx,f,{.4f,2,0},ordinary_ground,supports);
-        check(candidate.valid==(fault==0 || fault==1),
+        check(candidate.valid==(fault==0 || fault==1 || fault==7),
               "fresh ordinary entity ground requires a current-policy query before wallplant publication");
-        check(fixture::clearance_queries==(fault==1?0u:1u),
+        check(fixture::clearance_queries==((fault==1 || fault==7)?0u:1u),
               "only a fresh ground sample revalidated under current ownership policy avoids the fallback");
         if(candidate.valid) {
             check(candidate.ground.world_owner==fixture::clearance_owner && candidate.ground.body_owner==4321,
                   "published clearance retains the independently queried entity owner stamp");
             check(candidate.ground.queried_at==1000 && candidate.contact.native.sampled_at==f.sampled_at,
                   "clearance reuse correction does not renew native observation or query clocks");
+            if(fault==7) {
+                check(candidate.ground.adjacent_shape_count==4 && candidate.ground.adjacent_shapes==fresh_ground.adjacent_shapes,
+                    "published ground-height patch retains every authenticated child shape");
+                in_flight=command;
+                for(const auto shape:candidate.ground.adjacent_shapes) {
+                    fixture::rejected_shape=shape.index;
+                    check(!enter(command,fixture::now) && !held_command(),
+                        "floor child invalidated after publication cannot admit a planted hold");
+                }
+                fixture::rejected_shape=0;
+                check(candidate_current(),"unchanged published floor children retain admission authority");
+                in_flight={};
+            }
         }
         if(motion)end_motion(token);
         fixture::clearance_policy=fixture::motion_geometry=fixture::geometry_mode=false;
+        fixture::rejected_shape=0;
     }
 }
 void motion_admission_checks() {
@@ -355,6 +385,35 @@ void motion_diagnostic_checks() {
           "process capacity also bounds log output after the single overflow notice");
 }
 int main(){
+    for(bool motion:{false,true})for(unsigned fault=0;fault<5;++fault) {
+        auto command=setup();fixture::motion_geometry=true;fixture::wall={};
+        fixture::rejected_shape=0;fixture::changed_adjacent_owner=false;
+        auto& wall=fixture::wall;wall.valid=true;wall.body={7,1,9};
+        wall.world_owner={{7,70,50331648},77,69,50331648,0,1234};
+        wall.adjacent_shapes={SurfaceGeometryBody{7,2,9},SurfaceGeometryBody{7,3,9},
+            SurfaceGeometryBody{7,4,9},SurfaceGeometryBody{7,5,9}};
+        wall.adjacent_shape_count=4;candidate.wall=wall;
+        fixture::rejected_shape=wall.adjacent_shapes[fault%4].index;
+        check(!enter(command,1000) && !held_command(),
+            "neighbor invalidation before admission cannot acquire planted hold");
+        fixture::rejected_shape=0;
+        candidate.wall.adjacent_shape_count=5;
+        check(!query_current(candidate.wall),"malformed retained shape count fails closed in runtime");
+        candidate.wall=wall;
+        // Admission and hold both consume all shape stamps. The motion scope
+        // itself is tested separately; use the collision admission to start.
+        check(enter(command,1000),"authenticated child-shape wall enters the existing hold");
+        held_motion=motion;
+        check(validate(command,1033,ground(command,1033)),"unchanged child-shape wall preserves planted hold");
+        if(fault<4)fixture::rejected_shape=wall.adjacent_shapes[fault].index;
+        else fixture::changed_adjacent_owner=true;
+        check(!validate(command,1066,ground(command,1066)) && !held_command(),
+            "removing or reassigning any contributing child shape cancels hold before rebound");
+        check(hold_stop.input_sequence==command.input_sequence && !latest_completed(),
+            "shape invalidation retains owned visual cancellation and cannot score completion");
+        fixture::rejected_shape=0;fixture::changed_adjacent_owner=false;
+        fixture::motion_geometry=false;
+    }
     for(unsigned bit=0;bit<32;++bit)for(auto material:{0u,1u,0x12345678u,UINT32_MAX}) {
         Hit hit{};hit.identity_valid=hit.static_body=hit.categories_known=true;
         hit.normal={.6f,0,.8f};hit.categories=std::uint32_t{1}<<bit;hit.packed_material=material;

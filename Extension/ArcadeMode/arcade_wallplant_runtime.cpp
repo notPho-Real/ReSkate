@@ -199,10 +199,14 @@ bool raw_wall(const Hit& h) noexcept {
 }
 bool query_current(const SurfaceGeometrySample& wall) noexcept {
     SurfaceGeometryWorldOwner owner{};
-    return wall.valid && wall.world_owner.value &&
+    if(!(wall.valid && wall.world_owner.value &&
         wall.world_owner.kind==(wall.body_owner?1u:0u) &&
         (!wall.body_owner || wall.world_owner.value==wall.body_owner) &&
-        native_wall_contact::static_world_owner(wall.body,owner) && owner==wall.world_owner;
+        native_wall_contact::static_world_owner(wall.body,owner) && owner==wall.world_owner))return false;
+    if(wall.adjacent_shape_count>wall.adjacent_shapes.size())return false;
+    for(unsigned i=0;i<wall.adjacent_shape_count;++i)
+        if(!native_wall_contact::static_world_owner(wall.adjacent_shapes[i],owner) || owner!=wall.world_owner)return false;
+    return true;
 }
 bool scoped_motion(std::uint64_t token,const NativeInputFrame& frame,std::uint64_t now) noexcept {
     // AIR preparation runs inside the original update; its observation was
@@ -213,12 +217,19 @@ bool scoped_motion(std::uint64_t token,const NativeInputFrame& frame,std::uint64
         double(now-motion_scope.started)<=std::ceil(double(frame.physics_seconds)*1000);
 }
 bool candidate_current() noexcept {
+    // A split ground patch is part of admission's measured height evidence.
+    // Its child shapes must still exist when publication becomes a hold; the
+    // floor is no longer a support dependency once the wall hold has begun.
+    if(candidate.ground.adjacent_shape_count && !query_current(candidate.ground))return false;
     return candidate.contact.motion_query?
         (scoped_motion(candidate.motion,candidate.contact.native,GetTickCount64()) && query_current(candidate.wall)):
-        native_wall_contact::current(candidate.hit,candidate.contact.geometry.world);
+        (native_wall_contact::current(candidate.hit,candidate.contact.geometry.world) &&
+         (!candidate.wall.adjacent_shape_count || query_current(candidate.wall)));
 }
 bool held_current(const WallplantCommand& command) noexcept {
-    return held_motion?query_current(held_wall):native_wall_contact::current(held_hit,command.geometry.world);
+    return held_motion?query_current(held_wall):
+        (native_wall_contact::current(held_hit,command.geometry.world) &&
+         (!held_wall.adjacent_shape_count || query_current(held_wall)));
 }
 bool ready(std::uint64_t now,const NativeInputFrame& f) noexcept {
     // The alternative admits only during the native motion call. Collision

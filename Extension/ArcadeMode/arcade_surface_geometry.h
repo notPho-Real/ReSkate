@@ -48,6 +48,11 @@ struct SurfaceGeometrySample {
     SurfaceGeometryVector point{}, query_normal{};
     bool valid{};
     SurfaceGeometryWorldOwner world_owner{};
+    // A broad surface can cross child-shape seams of one authenticated static
+    // body. Keep every additional shape incarnation for later revalidation;
+    // the central contact identity remains body, never a neighboring shape.
+    std::array<SurfaceGeometryBody,4> adjacent_shapes{};
+    unsigned adjacent_shape_count{};
     // This is query geometry, never actual board support or prediction normal.
     // Revalidation of the live body is also required in the authorized callback.
     bool fresh_for(const SurfaceGeometryContext& current, std::uint64_t now) const noexcept {

@@ -231,9 +231,15 @@ static bool revalidate(const SurfaceGeometryNativeApi& api, const SurfaceGeometr
     try {
         std::uint64_t owner{};
         SurfaceGeometryWorldOwner world_owner{};
-        return current(api,ctx,trace) && sample.fresh_for(ctx,api.now(api.user)) &&
+        if (!(current(api,ctx,trace) && sample.fresh_for(ctx,api.now(api.user)) &&
             body_owner(api,ctx,sample.body,owner,trace,&world_owner) && owner == sample.body_owner &&
-            world_owner == sample.world_owner;
+            world_owner == sample.world_owner)) return false;
+        if(sample.adjacent_shape_count>sample.adjacent_shapes.size() ||
+           (sample.adjacent_shape_count && !sample.world_owner.value))return false;
+        for(unsigned i=0;i<sample.adjacent_shape_count;++i)
+            if(!body_owner(api,ctx,sample.adjacent_shapes[i],owner,trace,&world_owner) ||
+               owner!=sample.body_owner || world_owner!=sample.world_owner)return false;
+        return true;
     } catch (...) { return false; }
 }
 bool revalidate_surface_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
@@ -261,9 +267,19 @@ SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi& api
             if(trace)trace->ray=static_cast<unsigned>(i);
             const auto hit = cast(api,ctx,request.segments[i],excluded,trace);
             if (!hit) return {};
-            if (i && (hit->body != sample.body || hit->owner != sample.body_owner || hit->world_owner!=sample.world_owner))
+            if (i && (hit->owner != sample.body_owner || hit->world_owner!=sample.world_owner))
                 return fail("ground_shape_seam");
-            sample.body = hit->body; sample.body_owner = hit->owner; sample.world_owner=hit->world_owner; points[i] = hit->point;
+            if(!i) {
+                sample.body=hit->body;sample.body_owner=hit->owner;sample.world_owner=hit->world_owner;
+            } else if(hit->body!=sample.body) {
+                // Only the static-owner opt-in can join coplanar child shapes.
+                // Ordinary entity-only camera callers retain exact-shape proof.
+                if(!sample.world_owner.value)return fail("ground_shape_seam");
+                const auto end=sample.adjacent_shapes.begin()+sample.adjacent_shape_count;
+                if(std::find(sample.adjacent_shapes.begin(),end,hit->body)==end)
+                    sample.adjacent_shapes[sample.adjacent_shape_count++]=hit->body;
+            }
+            points[i]=hit->point;
         }
         if (!plane(points,sample.query_normal)) return fail("ground_plane");
         sample.point = points[0]; sample.valid = true;
@@ -355,7 +371,17 @@ SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,co
             if(trace)trace->ray=static_cast<unsigned>(i);
             const auto hit=cast(api,ctx,segment,excluded,trace);
             if(!hit)return {};
-            if(hit->body!=body || (i && (hit->owner!=sample.body_owner || hit->world_owner!=sample.world_owner)))return fail("wall_shape_seam");
+            // Center must be the contacted shape. Side samples may cross a
+            // child-shape seam only with the same complete static body/owner
+            // stamp. Equal entity IDs alone cannot join unrelated bodies.
+            if((!i && hit->body!=body) ||
+               (i && (hit->owner!=sample.body_owner || hit->world_owner!=sample.world_owner)))return fail("wall_shape_seam");
+            if(hit->body!=body) {
+                if(!sample.world_owner.value)return fail("wall_shape_seam");
+                const auto end=sample.adjacent_shapes.begin()+sample.adjacent_shape_count;
+                if(std::find(sample.adjacent_shapes.begin(),end,hit->body)==end)
+                    sample.adjacent_shapes[sample.adjacent_shape_count++]=hit->body;
+            }
             sample.body_owner=hit->owner;sample.world_owner=hit->world_owner;points[i]=hit->point;
             const auto separation=std::abs(dot(sub(hit->point,points[0]),normal));
             if(trace)trace->value=separation;

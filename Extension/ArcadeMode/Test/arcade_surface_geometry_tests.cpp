@@ -98,6 +98,11 @@ struct Fixture {
     bool native_self{}, foreign_component{}, changing_component{};
     unsigned component_calls{}, reject_component_at{};
     bool wall{}, upper_gap{}, lower_gap{};
+    bool partitioned_wall{}, partitioned_ground{};
+    std::uint32_t partition_shape{1}, rejected_partition_shape{};
+    std::uint32_t missing_ground_shape{};
+    float ground_yaw{};
+    unsigned partition_owner_change{};
     std::uint32_t query_categories{1};
     float wall_half_width{10000},wall_half_height{10000},corner_slope{};
     bool nearby_obstruction{};
@@ -131,7 +136,8 @@ struct Fixture {
     static bool valid(const void* ptr) {
         const auto& b=*static_cast<const SurfaceGeometryBody*>(ptr);
         const auto call=++running->shape_checks;
-        return call!=running->reject_shape_at && !running->bad_body && b.world==running->live.world && b.index!=UINT32_MAX && b.generation==running->generation;
+        return call!=running->reject_shape_at && b.index!=running->rejected_partition_shape &&
+            !running->bad_body && b.world==running->live.world && b.index!=UINT32_MAX && b.generation==running->generation;
     }
     static void* entity(void* out,const void* ptr) {
         auto& f=*running;
@@ -147,7 +153,8 @@ struct Fixture {
         check(descriptor[0]==f.live.world && descriptor[1]==f.first,"complete nearest hit descriptor retained");
         auto& b=*static_cast<SurfaceGeometryBody*>(out);
         b={f.live.world, f.self_hit ? (f.native_self && !f.many_self ? 203u : static_cast<std::uint32_t>(100+f.calls)) :
-            f.nearby_obstruction ? 3u : f.seam && f.last_x>0 ? 2u : 1u,f.generation};
+            f.nearby_obstruction ? 3u : (f.partitioned_wall || f.partitioned_ground) ? f.partition_shape :
+            f.seam && f.last_x>0 ? 2u : 1u,f.generation};
         return out;
     }
     static bool static_owner(void* user,const SurfaceGeometryBody& body,SurfaceGeometryWorldOwner& owner) noexcept {
@@ -155,6 +162,13 @@ struct Fixture {
         const auto call=++f.world_owner_calls;
         if(body.index>=100 || f.reject_world_owner || call==f.reject_owner_at)return false;
         owner=f.world_owner;
+        if(body.index>1) switch(f.partition_owner_change) {
+        case 1:++owner.body.index;break;case 2:++owner.body.generation;break;
+        case 3:++owner.store;break;case 4:++owner.index;break;
+        case 5:++owner.generation;break;case 6:++owner.kind;break;
+        case 7:++owner.value;break;
+        default:break;
+        }
         if(f.changing_world_owner)owner.generation+=call;
         return true;
     }
@@ -176,7 +190,9 @@ struct Fixture {
         result->first=f.overflow ? UINT32_MAX : f.first; result->count=f.miss ? 0u : 2u;
         f.last_x=ray_value->start[0];
         const float x=ray_value->start[0], z=ray_value->start[2];
-        const float height=f.roof ? 1.f : f.fold ? std::abs(x)*2.f :
+        const float local_x=std::cos(f.ground_yaw)*(x-f.ground_origin[0])-std::sin(f.ground_yaw)*(z-f.ground_origin[2]);
+        const float local_z=std::sin(f.ground_yaw)*(x-f.ground_origin[0])+std::cos(f.ground_yaw)*(z-f.ground_origin[2]);
+        const float height=f.roof ? 1.f : f.fold ? f.ground_origin[1]+std::abs(f.partitioned_ground?local_x:x)*2.f :
             f.ground_origin[1]+f.sx*(x-f.ground_origin[0])+f.sz*(z-f.ground_origin[2]);
         f.self_hit=f.many_self || (f.self && !ray_value->ignored_bodies[0]);
         if (f.self && ray_value->ignored_bodies[0]) {
@@ -196,6 +212,12 @@ struct Fixture {
             const SurfaceGeometryVector tangent{-f.wall_normal[2],0,f.wall_normal[0]};
             const auto relative=surface_geometry_detail::sub(start,f.wall_point);
             const float sideways=surface_geometry_detail::dot(relative,tangent);
+            if(f.partitioned_wall) {
+                auto vertical=surface_geometry_detail::cross(tangent,f.wall_normal);
+                check(surface_geometry_detail::unit(vertical),"partition fixture has a vertical wall-plane basis");
+                const float upwards=surface_geometry_detail::dot(relative,vertical);
+                f.partition_shape=sideways<-.3f?2u:sideways>.3f?3u:upwards<-.3f?4u:upwards>.3f?5u:1u;
+            }
             const float distance=surface_geometry_detail::dot(relative,f.wall_normal)-f.corner_slope*std::abs(sideways);
             const float length=surface_geometry_detail::dot(surface_geometry_detail::sub(start,end),f.wall_normal);
             f.fractions[f.first]=f.self_hit ? .1f : distance/length;
@@ -203,7 +225,13 @@ struct Fixture {
             if ((f.upper_gap && start[1]>f.wall_point[1]+.1f) ||
                 (f.lower_gap && start[1]<f.wall_point[1]-.1f)) result->count=0;
             if(std::abs(sideways)>f.wall_half_width || std::abs(relative[1])>f.wall_half_height)result->count=0;
-        } else f.fractions[f.first]=f.self_hit ? .1f : (ray_value->start[1]-height)/(ray_value->start[1]-ray_value->end[1]);
+        } else {
+            if(f.partitioned_ground) {
+                f.partition_shape=local_x<-.12f?2u:local_x>.12f?3u:local_z<-.12f?4u:local_z>.12f?5u:1u;
+                if(f.partition_shape==f.missing_ground_shape)result->count=0;
+            }
+            f.fractions[f.first]=f.self_hit ? .1f : (ray_value->start[1]-height)/(ray_value->start[1]-ray_value->end[1]);
+        }
         f.fractions[f.first+1]=f.wall ? 1.f : .9f;
         if (f.bad_fraction) f.fractions[f.first]=std::numeric_limits<float>::quiet_NaN();
         f.data[1]=f.bad_data ? 0 : reinterpret_cast<std::uintptr_t>(f.fractions.data());
@@ -311,6 +339,95 @@ bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) no
 }
 }
 int main() {
+    for(bool entity_owner:{false,true})for(unsigned orientation=0;orientation<32;++orientation) {
+        Fixture f;f.partitioned_ground=f.allow_world_owner=true;f.unknown=!entity_owner;
+        if(entity_owner){f.world_owner.kind=1;f.world_owner.value=20;}
+        f.ground_yaw=static_cast<float>(orientation)*.19634954f;
+        const float cosine=std::cos(f.ground_yaw),sine=std::sin(f.ground_yaw);
+        const auto shift=static_cast<float>(orientation)-16.f;
+        f.ground_origin={shift*431.f,shift*2.f,-shift*317.f};
+        // Alternate flat ground and the same rotated ramp.
+        if(orientation%2){f.sx=.3f*cosine;f.sz=-.3f*sine;}
+        auto request=f.request();
+        const auto transform=[&](SurfaceGeometryVector value) {
+            return SurfaceGeometryVector{f.ground_origin[0]+cosine*value[0]+sine*value[2],
+                f.ground_origin[1]+value[1],f.ground_origin[2]-sine*value[0]+cosine*value[2]};
+        };
+        for(auto& segment:request.segments){segment.start=transform(segment.start);segment.end=transform(segment.end);}
+        const auto query=[&]{return query_surface_geometry(f.api(),f.live,request);};
+        const auto sample=query();
+        check(sample.valid && sample.body==SurfaceGeometryBody{7,1,9} && sample.adjacent_shape_count==4,
+            "ground-height patch spans authenticated child shapes under translation/yaw and ramp slope");
+        auto expected=SurfaceGeometryVector{-f.sx,1,-f.sz};
+        check(surface_geometry_detail::unit(expected) && surface_geometry_detail::dot(expected,sample.query_normal)>.999f &&
+            std::abs(sample.point[1]-f.ground_origin[1])<.001f,
+            "partitioned ground preserves the measured center height and plane normal");
+        for(const auto shape:sample.adjacent_shapes) {
+            f.rejected_partition_shape=shape.index;
+            check(!revalidate_surface_geometry(f.api(),f.live,sample),"ground revalidation retains every child-shape incarnation");
+            f.rejected_partition_shape=0;f.missing_ground_shape=shape.index;
+            check(!query().valid,"ground-height seams cannot bridge a missing support ray");
+        }
+        f.missing_ground_shape=0;
+        for(unsigned change=1;change<=7;++change) {
+            f.partition_owner_change=change;
+            check(!query().valid && !revalidate_surface_geometry(f.api(),f.live,sample),
+                "ground seam admission and reuse require the complete unchanged static body/owner stamp");
+        }
+        f.partition_owner_change=0;f.fold=true;
+        check(!query().valid,"child-shape ground corners cannot fabricate a planar height patch");
+        f.fold=false;
+        auto ordinary=f.api();ordinary.static_world_owner=nullptr;
+        check(!query_surface_geometry(ordinary,f.live,request).valid &&
+            !revalidate_surface_geometry(ordinary,f.live,sample),"ordinary ground camera queries cannot borrow static seam authority");
+        check(f.calls==f.pops && f.calls==f.frees,"partitioned ground releases all native result storage on rejection and success");
+    }
+    // Map meshes may partition one static body into coplanar child shapes.
+    // Exercise every side of the patch independently of world origin/yaw.
+    for(bool entity_owner:{false,true})for(unsigned orientation=0;orientation<32;++orientation) {
+        Fixture f;f.partitioned_wall=f.allow_world_owner=true;f.unknown=!entity_owner;
+        if(entity_owner){f.world_owner.kind=1;f.world_owner.value=20;}
+        const auto angle=static_cast<float>(orientation)*.19634954f;
+        f.wall_normal={std::sin(angle),0,std::cos(angle)};
+        const auto shift=static_cast<float>(orientation)-16.f;
+        f.wall_point={shift*431.f,shift*2.f,-shift*317.f};
+        const auto sample=f.query_wall();
+        check(sample.valid && sample.body==SurfaceGeometryBody{7,1,9} && sample.adjacent_shape_count==4,
+            "coplanar child-shape seams retain the exact center and all four neighbors under translation/yaw");
+        check(sample.world_owner==f.world_owner && revalidate_surface_geometry(f.api(),f.live,sample),
+            "each child shape proves the same full static body and owner incarnation");
+        for(const auto shape:sample.adjacent_shapes) {
+            f.rejected_partition_shape=shape.index;
+            check(!revalidate_surface_geometry(f.api(),f.live,sample),
+                "removing any contributing shape invalidates an otherwise unchanged center");
+        }
+        f.rejected_partition_shape=0;
+        for(unsigned change=1;change<=7;++change) {
+            f.partition_owner_change=change;
+            check(!revalidate_surface_geometry(f.api(),f.live,sample),
+                "neighbor body/owner replacement invalidates retained geometry");
+            check(!f.query_wall().valid,"matching entity or plane cannot join different body/owner stamps");
+        }
+        f.partition_owner_change=0;
+        auto corrupt=sample;corrupt.adjacent_shape_count=5;
+        check(!revalidate_surface_geometry(f.api(),f.live,corrupt),"malformed child-shape count rejects safely");
+        f.time+=151;
+        check(!revalidate_surface_geometry(f.api(),f.live,sample),"partitioned geometry keeps the original freshness lease");
+    }
+    for(unsigned fault=0;fault<8;++fault) {
+        Fixture f;f.partitioned_wall=f.allow_world_owner=f.unknown=true;
+        if(fault==0)f.wall_half_width=.3f;
+        if(fault==1)f.wall_half_height=.4f;
+        if(fault==2)f.corner_slope=.12f;
+        if(fault==3)f.corner_slope=-.12f;
+        if(fault==4)f.nearby_obstruction=true;
+        if(fault==5)f.reject_world_owner=true;
+        if(fault==6)f.changing_world_owner=true;
+        if(fault==7)f.allow_world_owner=false;
+        check(!f.query_wall().valid,"child seams cannot bypass patch width/height/corners/nearest-hit or static owner checks");
+    }
+    { Fixture f;f.partitioned_wall=f.allow_world_owner=f.unknown=true;
+      check(f.query_motion().valid,"forward native motion corroborates the same authenticated child-shape wall"); }
     // Eligible static geometry cannot depend on whether the game's camera
     // happens to query its category. Both native static owner forms qualify.
     for(bool entity_owner:{false,true})for(unsigned bit=0;bit<32;++bit) {
