@@ -33,6 +33,15 @@ reached kernel/SDL but never captured game input; that trial cannot test Nollie.
 Exact LT/A replay passes 788 checks: delivered LT selects16, omitted LT selects1.
 Pressure remains unsupported without an exact native actor.
 
+Local follow-up fixes preserve passive Nollie/Pressure setup across native
+pushes (the pushing flag was incorrectly treated as a bail), and preserve final
+neutral Switch ownership while a live leading-foot change awaits publication.
+The setup correction passes 862 selection and 96 composed dispatch checks;
+the stance correction passes 759 production-adapter checks plus its focused
+ownership suites. Both include old-source failures and sanitizer coverage.
+These fixes follow the published `fbb09e16` candidate and are not in its build;
+neither establishes native Nollie or Switch acceptance.
+
 General geometry self-hit handling preserves native position, query readiness,
 owner and ordering checks while skipping an unused self normal. The compiled
 correction passes 89,988 geometry/runtime and 78 contact-reader sanitizer checks.

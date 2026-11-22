@@ -47,6 +47,8 @@ been established. Its unavailable launch/flip requests emit no unrelated trick.
 If A remains held while the previous native crouch retires, releasing LT keeps
 that original A intent and resumes a supported crouch only after native idle.
 An airborne transition, changed actor or lost ownership cancels that intent.
+Native riding pushes preserve the remembered setup. The native pushing flag
+is not a bail; removing that mistaken reset does not relax launch admission.
 Ground RT uses the verified native ChangeStance input processor: one B double-tap
 within its native 300ms window. The final controller packet owns only B; each
 gesture phase needs a delivered packet and a newer native step. After final B
@@ -55,6 +57,11 @@ or the original one-second observation limit. Repeated neutral packets cannot
 renew that limit; completion or cancellation releases ownership immediately.
 Scalar speed assistance obeys this same finalized reservation, including its
 neutral phase; normal eligibility resumes when ownership ends.
+If the live leading foot changes before the sampled frame publishes it, only
+the final neutral reservation may wait within the original observation limit.
+Tap delivery still requires exact agreement; push, owner and asset changes
+still cancel the reservation. This prevents a lost observation, not a native
+stance change by itself.
 The adapter never writes
 heading, momentum or a rendered stance. Native leading-foot observation is
 separate from input delivery; regular/switch/fakie movement still requires native
