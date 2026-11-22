@@ -163,6 +163,19 @@ int main(){
     arcade_mode::on=false;update_trickpedia(variants,1030);
     require(variants.models.at(3).inputs==std::vector<std::string>{"Original distinct frontside diagram"},
         "frontside guidance did not restore the native diagram on OFF");
+    for(bool nollie:{false,true}) {
+        reset();Context impossible;
+        impossible.models.at(3).title=nollie?"ID_SKATEPEDIA_NOLLIE_BACKFOOTIMPOSSIBLE":"ID_SKATEPEDIA_FRONTFOOTIMPOSSIBLE";
+        impossible.models.at(3).inputs={"Original alternate Impossible diagram"};
+        const auto before=impossible.models;update_trickpedia(impossible,1000);
+        const auto& inputs=impossible.models.at(3).inputs.front();
+        require(inputs.find("R3")!=std::string::npos && inputs.find("Left")!=std::string::npos &&
+            inputs.find("X")!=std::string::npos && inputs.find("Nollie Back Foot Impossible")!=std::string::npos &&
+            impossible.models.at(3).title==before.at(3).title,
+            "alternate Impossible guidance preserves native title and exact variant controls");
+        arcade_mode::on=false;update_trickpedia(impossible,1010);
+        require(impossible.models==before,"alternate Impossible OFF restores exact native model");
+    }
     reset();Context unsupported;
     unsupported.models.at(3).title="ID_SKATEPEDIA_FS_POPSHUVIT_UNDERFLIP";
     unsupported.models.at(3).inputs={"Original frontside underflip diagram"};

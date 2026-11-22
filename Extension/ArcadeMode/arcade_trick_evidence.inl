@@ -23,6 +23,10 @@ inline constexpr TrickEvidence frontside_360_shove_evidence{
     "6d8dda8f9431aef21268c74455a5f1ec930df8d8", "Pinned 20260929; source catalog identities13/25",
     "contrib/arcade-mode/research/native-flip-source-catalog.json",
     "R3 plus Up plus X binding implemented using the original native flip route. Native identity, actor, board rotation, catch, landing and scoring acceptance remain unverified."};
+inline constexpr TrickEvidence frontfoot_impossible_evidence{
+    "a2599c54e8a234a8a1cfee1f4e03f9217b7f4301", "Pinned 20260929; source catalog identities37/39",
+    "contrib/arcade-mode/research/native-flip-source-catalog.json",
+    "R3 plus Left plus X binding implemented for native Front Foot Impossible37 and Nollie Back Foot Impossible39. Exact original gestures and native actors; performed rotations, catch, landing and scoring remain unverified."};
 // Add independently reviewed receipts by canonical ID here. Changes to this
 // evidence-only file do not change the gameplay source fingerprint.
 #include "arcade_trick_capture_data.inl"

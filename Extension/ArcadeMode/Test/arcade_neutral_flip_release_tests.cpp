@@ -16,11 +16,11 @@ struct Route {
     unsigned starts{},recognized{}; bool exact_clock{},nollie{},switched{};NativeFlipRequest normal_flip{};
     NativeGesture::Output output{};
     Route() {
-        for(const unsigned id:{1u,2u,3u,4u,5u,6u,7u,8u,9u,13u,36u})
+        for(const unsigned id:{1u,2u,3u,4u,5u,6u,7u,8u,9u,13u,36u,37u})
             recipes.emplace_back(static_cast<std::uint8_t>(id),false,GestureContext::ground,
                 std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
         input.enable(true);input.set_recognition_capture(0,true);
-        for(const unsigned id:{16u,22u,25u})recipes.emplace_back(static_cast<std::uint8_t>(id),true,GestureContext::ground,
+        for(const unsigned id:{16u,22u,25u,39u})recipes.emplace_back(static_cast<std::uint8_t>(id),true,GestureContext::ground,
             std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
     }
     NativeGesture::Output poll(std::uint64_t now,PhysicalInputSample pad={},std::uint32_t state=201,
@@ -301,7 +301,7 @@ void native_transition_requests() {
     for(unsigned rate:{30u,60u,120u})
     for(bool delayed_selection:{false,true})
     for(bool retired_selection:{false,true})
-    for(unsigned delay:{0u,100u,500u}) for(auto choice:{Choice{0,2},Choice{2,4},Choice{8,3},Choice{5,9},Choice{0x82,7},Choice{0x81,13}}) {
+    for(unsigned delay:{0u,100u,500u}) for(auto choice:{Choice{0,2},Choice{2,4},Choice{8,3},Choice{5,9},Choice{0x82,7},Choice{0x81,13},Choice{0x84,37}}) {
         auto h=std::make_unique<Route>();Sink sink;h->normal_flip={&sink,Sink::submit};
         h->poll(1000,{},100,-1,1);h->poll(1020,{0x1000},100,-1,1);
         h->poll(1060,{0x1000},100,delayed_selection?-1:1,delayed_selection?1:0);
@@ -323,6 +323,42 @@ void native_transition_requests() {
         check(issued==1 && sink.calls==1 && sink.selected==choice.id,
             "A-to-X at release,100ms,500ms queues exactly one normal native selection");
     }
+}
+void frontfoot_impossible_inputs() {
+    for(unsigned hz:{30u,60u,120u})for(bool analog:{false,true})for(bool nollie:{false,true})for(bool switched:{false,true}) {
+        const auto dt=1000u/hz;
+        auto h=std::make_unique<Route>();h->nollie=nollie;h->switched=switched;h->poll(1000);
+        const PhysicalInputSample chord{static_cast<std::uint16_t>(analog?0x4080:0x4084),
+            static_cast<std::int16_t>(analog?-25000:0),0};
+        const auto out=h->poll(1000+dt,chord);
+        const auto* d=h->input.input_diagnostic(0);
+        check(out.requested_id==(nollie?39:37) && out.authored_playback && (out.action.consume_buttons&0x80u),
+            "R3 Left-X selects exact regular front-foot or nollie back-foot Impossible");
+        check(d->recognition_count==1 && d->recognition[0].request.air.trick==ArcadeTrick::frontfoot_impossible &&
+            d->recognition[0].request.modifier==1 && d->recognition[0].request.physical_pressed_at==1000+dt &&
+            d->recognition[0].request.deadline==1000+dt+InputTiming::readiness_ms,
+            "alternate Impossible preserves captured modifier and physical readiness deadline");
+        h->poll(1000+2*dt,chord);h->poll(1000+3*dt);
+        check(h->starts==1,"holding or releasing alternate Impossible cannot repeat it");
+    }
+    for(bool nollie:{false,true}) {
+        auto h=std::make_unique<Route>();h->nollie=nollie;
+        const auto id=nollie?39:37;
+        h->recipes.erase(std::remove_if(h->recipes.begin(),h->recipes.end(),[&](const auto& recipe){return recipe.native_id==id;}),h->recipes.end());
+        h->poll(1000);const auto out=h->poll(1010,{0x4084});
+        check(out.unsupported && !out.requested_id && !out.authored_playback,
+            "missing alternate Impossible gesture cannot substitute ordinary Impossible or Kickflip");
+    }
+    for(bool late_modifier:{false,true}) {
+        auto h=std::make_unique<Route>();h->poll(1000);
+        const auto out=h->poll(1010,{static_cast<std::uint16_t>(late_modifier?0x4004:0x4001)});
+        check(out.requested_id==(late_modifier?2:36),"ordinary Left-X and Up-X retain their native mapping");
+        const auto late=h->poll(1020,{0x4084});
+        check(h->starts==1 && !(late.action.consume_buttons&0x80u),"late alternate chord cannot rewrite a captured ordinary edge");
+    }
+    auto ground=std::make_unique<Route>();ground->poll(1000,{},100,-1,1);
+    const auto out=ground->poll(1010,{0x4084},100,-1,1);
+    check(!out.requested_id && !(out.action.consume_buttons&0x80u),"unrelated ground alternate chord starts no flip");
 }
 void frontside_shove_inputs() {
     check(native_flip::ordinary_flip(13) && native_flip::ordinary_flip(25),"exact FS360 identities use the ordinary native bridge");
@@ -351,7 +387,7 @@ void frontside_shove_inputs() {
     }
     for(bool direction_late:{false,true}) {
         auto h=std::make_unique<Route>();h->poll(1000);
-        h->poll(1010,{static_cast<std::uint16_t>(direction_late?0x4084:0x4002)});
+        h->poll(1010,{static_cast<std::uint16_t>(direction_late?0x4088:0x4002)});
         const auto out=h->poll(1040,{0x4082});
         check(!(out.action.consume_buttons&0x80u),
             "late R3 or Down cannot acquire modifier ownership for an ordinary X edge");
@@ -434,4 +470,4 @@ void frontside_shove_inputs() {
             "a new flight cannot inherit the old held chord without a fresh X edge");
     }
 }
-int main() {native_entry_tests::run();frontside_shove_inputs();native_transition_requests();delivered_pop_handoff();early_press_cadences();neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}
+int main() {native_entry_tests::run();frontfoot_impossible_inputs();frontside_shove_inputs();native_transition_requests();delivered_pop_handoff();early_press_cadences();neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}

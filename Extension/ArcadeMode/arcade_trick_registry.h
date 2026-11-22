@@ -59,7 +59,7 @@ enum class ArcadeTrick : std::uint8_t {
     fs_one_foot, frigid_air, no_foot, bs_one_foot, tailwalk, dog_piss, nose_judo, superdude,
     seatbelt_bs_shifty, ollie, manual, nose_manual, revert, no_comply, boneless, coffin,
     spin_900, wallplant, special_grab, special_grind, flatground_special,
-    finger_1, finger_2, finger_3, finger_4, finger_5, finger_6, finger_7, finger_8, finger_9, finger_10, finger_11, finger_12, finger_13, finger_14, finger_19, finger_20, finger_21, finger_22, finger_23, finger_24, finger_25, finger_26, finger_27, finger_28, finger_29, finger_30, boardslide, lipslide, noseslide, tailslide, crooked, overcrook, smith, feeble, ground_half_turn, casper, casper_flip, fs_pop_shove_it, fs_shove_it_360
+    finger_1, finger_2, finger_3, finger_4, finger_5, finger_6, finger_7, finger_8, finger_9, finger_10, finger_11, finger_12, finger_13, finger_14, finger_19, finger_20, finger_21, finger_22, finger_23, finger_24, finger_25, finger_26, finger_27, finger_28, finger_29, finger_30, boardslide, lipslide, noseslide, tailslide, crooked, overcrook, smith, feeble, ground_half_turn, casper, casper_flip, fs_pop_shove_it, fs_shove_it_360, frontfoot_impossible
 };
 
 }
@@ -465,7 +465,9 @@ std::array entries{
     TrickDefinition{ArcadeTrick::fs_pop_shove_it,"fs_pop_shove_it","FS Pop Shove-It",TrickCategory::flips,TrickExecutor::native_flip,
         {{{BindingPattern::extended_flip,TrickDirection::down,1,ArcadeTrick::fs_pop_shove_it,BindingContext::air,0}}},1,7,22,0,{},0,frontside_shove_evidence},
     TrickDefinition{ArcadeTrick::fs_shove_it_360,"fs_shove_it_360","FS 360 Pop Shove-It",TrickCategory::flips,TrickExecutor::native_flip,
-        {{{BindingPattern::extended_flip,TrickDirection::up,1,ArcadeTrick::fs_shove_it_360,BindingContext::air,0}}},1,13,25,0,{},0,frontside_360_shove_evidence}
+        {{{BindingPattern::extended_flip,TrickDirection::up,1,ArcadeTrick::fs_shove_it_360,BindingContext::air,0}}},1,13,25,0,{},0,frontside_360_shove_evidence},
+    TrickDefinition{ArcadeTrick::frontfoot_impossible,"frontfoot_impossible","Front Foot Impossible",TrickCategory::flips,TrickExecutor::native_flip,
+        {{{BindingPattern::extended_flip,TrickDirection::left,1,ArcadeTrick::frontfoot_impossible,BindingContext::air,0}}},1,37,39,0,{},0,frontfoot_impossible_evidence}
 };
 for(auto& t:entries)t.evidence=apply_trick_evidence(t.id,t.evidence);
 return entries;
