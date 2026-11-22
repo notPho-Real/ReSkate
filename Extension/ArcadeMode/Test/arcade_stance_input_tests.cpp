@@ -198,5 +198,34 @@ void lifecycle_and_journal() {
     auto foreign=native;++foreign.generations.owner;
     check(input.same_owner(native)&&!input.same_owner(foreign),"adapter can retire old-owner lease before dispatching replacement's first press");
 }
+void transient_acknowledgement() {
+    for(unsigned stance:{0u,0x20u})for(unsigned revert_at=0;revert_at<3;++revert_at) {
+        StanceInput input;input.start(press(frame(10,1,stance)),frame(10,1,stance),10);
+        for(unsigned phase=0;phase<4;++phase) {
+            auto native=frame(10+phase*10,phase+1,stance);
+            const auto output=input.controls(native,native.sampled_at,phase+1);
+            check(input.delivered(native,output,output.buttons,native.sampled_at,phase+1),
+                "transient acknowledgment starts with exact second press delivery");
+        }
+        auto changed=frame(50,5,stance^0x20u);
+        auto release=input.controls(changed,50,revert_at==2?4u:5u);
+        check(!input.observed_change(),"transient early foot change is not completion");
+        if(revert_at==2) {
+            check(release.owned&&release.buttons==0x2000,"duplicate tick preserves delivered second press");
+            release=input.controls(frame(60,6,stance),60,6);
+        }
+        check(release.owned&&release.buttons==0,"finite producer still releases B");
+        const auto delivery=revert_at==0?frame(55,6,stance):revert_at==2?frame(60,6,stance):changed;
+        check(input.delivered(delivery,release,0,delivery.sampled_at,revert_at==2?6u:5u),
+            "final released packet is published even when the leading foot returns");
+        check(!input.controls(frame(70,7,stance),70,7).owned&&!input.observed_change(),
+            "latched transient leading-foot change cannot acknowledge original stance after final release");
+        check(!input.controls(frame(80,8,stance),80,8).owned&&!input.observed_change(),
+            "phase5 repeated observations cannot revive a transient acknowledgment");
+        check(!input.controls(frame(90,9,stance^0x20u),90,9).owned&&input.observed_change(),
+            "current actual changed leading foot can complete after the finalized release");
+    }
 }
-int main(){original_edge_and_delivery();interruptions();denied_sources();finite_double_tap();packet_and_phase_guards();completion_requires_release();lifecycle_and_journal();std::printf("stance input: %u checks passed\n",checks);}
+
+}
+int main(){original_edge_and_delivery();interruptions();denied_sources();finite_double_tap();packet_and_phase_guards();completion_requires_release();lifecycle_and_journal();transient_acknowledgement();std::printf("stance input: %u checks passed\n",checks);}

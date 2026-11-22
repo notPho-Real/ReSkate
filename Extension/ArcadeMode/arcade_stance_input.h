@@ -102,7 +102,7 @@ public:
         if(!lease_.observe(native,now,true)) {
             if(lease_.observed_change() && second_down_) {
                 // Even a very fast native acknowledgment must publish B up.
-                if(phase_==5){changed_=true;active_=false;return {};}
+                if(phase_==5 && changed_now(native)){changed_=true;active_=false;return {};}
             } else {cancel();return {};}
         }
         if(!second_down_ && first_down_ && (now<first_down_ || now-first_down_>=contract::double_press_ms)) {
@@ -113,7 +113,7 @@ public:
             ++phase_;published_=false;
         }
         if(phase_>=5) {
-            if(lease_.observed_change()){changed_=true;active_=false;}
+            if(lease_.observed_change() && changed_now(native)){changed_=true;active_=false;}
             return {};
         }
         return {true,static_cast<std::uint16_t>((phase_==1 || phase_==3)?contract::button:0),serial_,phase_};
@@ -151,6 +151,12 @@ private:
         static constexpr auto button=game::build::v20260929::arcade_stance::button;
         static constexpr auto double_press_ms=game::build::v20260929::arcade_stance::double_press_ms;
     };
+    bool changed_now(const InputNativeContext& native) const noexcept {
+        // An early acknowledgment is only provisional until final B release.
+        // Do not turn a transient foot change into current completion proof.
+        return ((native.flip.stance^baseline_.flip.stance)&
+            game::build::v20260929::launches::stance_switch_mask)!=0;
+    }
     bool valid_frame(const InputNativeContext& native,std::uint64_t now) const noexcept {
         return native.required && native.fresh(now) && native.flip.valid && !native.airborne && !native.rail_family &&
             !(native.flip.stance&0x40u) && native.flip.state==100 && native.flip.mode<=1 &&
