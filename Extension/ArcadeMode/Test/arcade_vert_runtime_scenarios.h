@@ -184,6 +184,25 @@ void vert_runtime_scene_checks() {
         "complete transformed scene selects its reachable contextual action");
     else check(motion.plan.action==VertAction::none || motion.plan.action==VertAction::level_out,
         "missing crest connection and obstructed flight never fabricate a transfer");
+    if(scene<3) {
+        o.velocity=motion.plan.velocity;
+        auto absent=o;absent.native={};
+        const auto suspended=vert_runtime::step(absent,f.time+1,o.native.owner,"frame_lock_busy");
+        check(!suspended.plan && !suspended.native_flight &&
+            vert_math::length(vert_runtime::alignment(o.native,f.time+1))==0,
+            "busy original publication withdraws runtime motion and alignment authority");
+        o.position=vert_math::position(o.position,o.velocity,9.81f,2.f/60);o.velocity[1]-=9.81f*2.f/60;
+        o.native.physics_step+=2;o.native.sampled_at+=34;context();
+        motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        check(motion.native_flight && motion.aligning && !motion.plan &&
+            vert_math::length(vert_runtime::alignment(o.native,f.time))>.9f,
+            "fresh original trajectory resumes transformed spine, hip and acid alignment without a second impulse");
+        (void)vert_runtime::step(absent,f.time+1,o.native.owner,"frame_correlation");
+        ++o.native.physics_step;o.native.sampled_at+=17;context();
+        motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        check(!motion.native_flight && !motion.plan && vert_math::length(vert_runtime::alignment(o.native,f.time))==0,
+            "correlation failure never receives the narrow busy-publication continuation");
+    }
     check(f.calls==f.pops && f.calls==f.frees,"complete scene releases every native query allocation");
     }
 
