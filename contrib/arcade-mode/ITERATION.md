@@ -40,6 +40,10 @@ Record four short items in the current SSD task receipt:
 - The result that determines the next action.
 
 This is an engineering decision, not another owner approval checkpoint.
+The owner permits Deck use until they say they are picking it up. Do not ask
+for permission again; retain the shared hardware lock and rollback checks.
+Use it only after no useful feature implementation can proceed offline, rather
+than treating a native acceptance gap in one feature as a blocker for all work.
 Do not add parallel playback systems, repeated full test runs or new process
 frameworks when existing tools cover the need.
 

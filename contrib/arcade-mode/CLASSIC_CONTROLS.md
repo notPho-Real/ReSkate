@@ -113,13 +113,19 @@ exists. A dash means this contract assigns no variant to that combination.
 | Up-Left | Hardflip | 360 Hardflip | — |
 | Up-Right | Inward Heelflip | 360 Inward Heelflip | — |
 | Down-Left | Varial Kickflip | 360 Flip | — |
-| Down-Right | Varial Heelflip | 360 Heelflip | — |
+| Down-Right | Varial Heelflip | Laserflip | — |
 
 Hold R3 and Down when pressing X to request **FS Pop Shove-It**. This uses
 the original frontside native identity (7, or 22 in nollie context); ordinary
 Down+X retains Pop Shove-It. The modifier and direction are captured on the X
 edge, and no repeated frontside variant is assigned. The mapping is implemented;
 exact-candidate native actor, rotation, catch and landing verification is pending.
+
+Hold R3 and Up when pressing X for **FS 360 Pop Shove-It**, using the original
+native identity 13 (25 in nollie context). Ordinary Up+X remains Impossible.
+This is one native 360 shove request through the same captured-edge binding,
+not an inferred repeat of the 180 shove. Native execution and landing acceptance
+remain pending.
 
 Directional Triple Kickflip and Triple Heelflip extend the existing held double
 only when a fresh third X reaches that same owned flight before its catch. The
@@ -213,6 +219,12 @@ orientation or which end of the board meets the rail.
 | Up-Right | Crail Slide |
 | Down-Left | Double Blunt Slide |
 | Down-Right | Darkslide |
+
+On an established Bluntslide, X→Y now requests Tailslide and X→X requests
+Smith through the existing native 5-0 return. The same rail segment, completed
+return, retired transition and observed neutral controls are required before
+the final leg. These composed routes are offline-tested; exact-candidate native
+execution, animation and combo acceptance remain pending.
 
 ## Manual, revert and balance
 
