@@ -139,7 +139,7 @@ void retired_initiating_y_grab() {
 int main() {
     retired_initiating_y_grab();
     {
-        Pipeline p;unsigned submissions{};
+        const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;unsigned submissions{};
         p.bridge={&submissions,[](void* context,std::int32_t id) noexcept {
             if(id!=2)return false;
             ++*static_cast<unsigned*>(context);return true;
@@ -171,7 +171,7 @@ int main() {
             "native rail reselection samples use the existing post-pop actor initialization");
     }
     for (unsigned hz : {30u,60u,120u}) for (unsigned state : {400u,401u,402u,403u,404u,405u,406u}) {
-        Pipeline p; p.step(1000,state,hz); p.poll(1000,0);
+        const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture; p.step(1000,state,hz); p.poll(1000,0);
         const auto press=1000+1000/hz;
         p.step(press,state,hz); auto out=p.poll(press,classic_a);
         check(out.jump.setup_started && out.authored_playback && out.right_y==-28000,
@@ -203,7 +203,7 @@ int main() {
         // A retained approach selection is not a new flip and must not discard
         // the released rail recipe before native Ollie selection catches up.
         for(unsigned fault=0;fault<4;++fault) {
-            Pipeline p; unsigned submissions{};
+            const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture; unsigned submissions{};
             p.bridge={&submissions,[](void* context,std::int32_t id) noexcept {
                 if(id!=2)return false;
                 ++*static_cast<unsigned*>(context);return true;
@@ -231,7 +231,7 @@ int main() {
             check(submissions==(fault==0?1u:0u),"retained approach selection never fabricates or repeats a native flip");
         }
         for(unsigned fault=0;fault<10;++fault) {
-            Pipeline p; unsigned submissions{};
+            const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture; unsigned submissions{};
             p.bridge={&submissions,[](void* context,std::int32_t id) noexcept {
                 if(id!=2)return false;
                 ++*static_cast<unsigned*>(context);return true;
@@ -276,7 +276,7 @@ int main() {
             check(!p.input.rail_followup_active(press+2*1000/hz,p.frame),"landing retires rail native follow-up ownership");
         }
         for (bool recipe_available : {false,true}) {
-            Pipeline p; p.step(1000,200,hz); p.poll(1000,0);
+            const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture; p.step(1000,200,hz); p.poll(1000,0);
             const auto press=1000+1000/hz;
             p.step(press,200,hz); p.poll(press,classic_y);
             check(p.rail_pad.owns_right_stick,"held Y acquires the production rail adapter before contact");
@@ -308,7 +308,7 @@ int main() {
             check(p.rail_pad.owns_right_stick,"a fresh physical Y edge can prepare the next grind");
         }
         for (unsigned phase : {400u,402u,403u,404u,405u,406u}) {
-            Pipeline p; p.step(1000,401,hz); p.poll(1000,0);
+            const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture; p.step(1000,401,hz); p.poll(1000,0);
             p.step(1034,401,hz); p.poll(1034,classic_a);
             p.step(1068,phase,hz);
             check(p.poll(1068,classic_a).right_y==-28000,"native grind class change retains an admitted hold");
@@ -316,13 +316,13 @@ int main() {
             check(p.poll(1102,0).jump.setup_admitted,"native grind class change does not discard the release");
         }
         for (unsigned state : {399u,407u,499u,701u,300u,504u}) {
-            Pipeline p; p.step(1000,state,hz); p.poll(1000,0);
+            const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture; p.step(1000,state,hz); p.poll(1000,0);
             p.step(1034,state,hz); const auto out=p.poll(1034,classic_a);
             check(!out.jump.setup_started && !out.authored_playback,
                 "unqualified rail, transition, bail and offboard cannot start a rail pop");
         }
         for (unsigned fault=0;fault<8;++fault) {
-            Pipeline p; p.step(1000,401,hz); p.poll(1000,0);
+            const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture; p.step(1000,401,hz); p.poll(1000,0);
             p.step(1034,401,hz);
             if(fault==0)p.catalog.pop_back();
             if(fault==1)p.input.enable(false);
@@ -333,7 +333,7 @@ int main() {
                 "missing rail recipe, OFF, authority, evidence, stale, menu or admission cannot borrow ground setup");
         }
         for (unsigned boundary : {100u,101u,200u,701u,300u,504u}) {
-            Pipeline p; p.step(1000,401,hz); p.poll(1000,0);
+            const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture; p.step(1000,401,hz); p.poll(1000,0);
             p.step(1034,401,hz); p.poll(1034,classic_a);
             p.step(1068,boundary,hz); auto out=p.poll(1068,classic_a);
             check(!out.authored_playback,"leaving contact before release withdraws held rail setup");
@@ -341,14 +341,14 @@ int main() {
             check(!out.jump.setup_admitted && !out.authored_playback,"withdrawn setup cannot pop on later release");
         }
         {
-            Pipeline p; p.step(1000,401,hz); p.poll(1000,0);
+            const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture; p.step(1000,401,hz); p.poll(1000,0);
             p.step(1034,401,hz); p.poll(1034,classic_a);
             ++p.owner.entity; p.step(1068,401,hz); p.poll(1068,classic_a);
             p.step(1102,401,hz); auto out=p.poll(1102,0);
             check(!out.jump.setup_admitted && !out.authored_playback,"new owner cannot inherit a held rail pop");
         }
         {
-            Pipeline p; p.step(1000,401,hz); p.poll(1000,0);
+            const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture; p.step(1000,401,hz); p.poll(1000,0);
             p.step(1034,401,hz); p.poll(1034,classic_a);
             p.step(1068,401,hz); p.poll(1068,classic_a);
             p.step(1102,403,hz); const auto out=p.poll(1102,0);

@@ -4,6 +4,7 @@
 #include "Extension/ArcadeMode/arcade_native_readiness.h"
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <utility>
 #include <vector>
 using namespace dingosdk::arcade_mode;
@@ -63,6 +64,8 @@ struct AuthoredPipeline {
 };
 }
 int main(){
+ // Full controller fixtures live on the heap: scoped cases can otherwise
+ // share a compiled frame larger than the Windows 1 MiB stack reserve.
  for(auto side:{BoardChord::lb,BoardChord::rb})for(unsigned fault=0;fault<5;++fault) {
   AirRotation buffered;NativeInputFrame f{};f.valid=true;f.owner={1,2,3,4,5};
   f.owner_generation=f.contact_generation=f.action_generation=f.physics_step=1;f.state=100;
@@ -150,7 +153,7 @@ int main(){
 
  for(unsigned cadence:{17u,34u})for(auto side:{BoardChord::lb,BoardChord::rb})
  for(const auto& choice:{std::pair<unsigned,unsigned>{0,2},{8,3},{2,4}}){
-  AuthoredPipeline p;p.dt=static_cast<float>(cadence)/1000;
+  const auto fixture=std::make_unique<AuthoredPipeline>();auto& p=*fixture;p.dt=static_cast<float>(cadence)/1000;
   p.poll(1000,0,100,-1,1);p.poll(1000+cadence);
   auto out=p.poll(1000+2*cadence,static_cast<std::uint16_t>(0x4000u|choice.first));
   check(out.requested_id==choice.second&&out.authored_playback,"real basic flip request starts its existing authored RS actor");
@@ -171,7 +174,7 @@ int main(){
   check(!p.physical.angular&&p.delivered.x==0,"ground contact stops AIR rotation and does not become ordinary ground steering");
  }
  for(unsigned cadence:{17u,34u})for(auto side:{BoardChord::lb,BoardChord::rb})for(bool seen:{false,true}){
-  Pipeline p;p.dt=static_cast<float>(cadence)/1000;p.observe(1000,100);p.publish(0);p.step();
+  const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.dt=static_cast<float>(cadence)/1000;p.observe(1000,100);p.publish(0);p.step();
   p.observe(1000+cadence,200);p.publish(side);check(p.step().angular,"actual producer/current held rotation reaches native motion");
   p.observe(1000+2*cadence,100);if(seen)p.publish(side);check(!p.step().angular,"native landing has no AIR rotation");
   p.observe(1000+3*cadence,200);check(!p.step().angular,"cached prior-flight intent rejected whether input saw landing or missed it");
@@ -184,7 +187,7 @@ int main(){
   p.observe(1000+8*cadence,200);p.publish(0);check(p.step().spin_y==0,"physical zero release reaches native motion immediately");
  }
  for(unsigned fault=0;fault<6;++fault){
-  Pipeline p;p.observe(1000,100);p.publish(0);p.step();p.observe(1017,200);p.publish(BoardChord::rb);check(p.step().angular,"lifecycle negative starts active");
+  const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.observe(1000,100);p.publish(0);p.step();p.observe(1017,200);p.publish(BoardChord::rb);check(p.step().angular,"lifecycle negative starts active");
   if(fault==0)++p.owner.rig;
   p.observe(1034,fault==3?700u:fault==4?dingosdk::game::build::v20260929::arcade_native_probe::offboard_state:200u);
   if(fault==1){p.facade.invalidate_authority();p.rotation.reset();}
@@ -193,7 +196,7 @@ int main(){
   check(!p.step().angular,"owner/focus/menu/bail/actual offboard/OFF loss cannot rearm a held physical baseline");
  }
  {
-  Pipeline p;p.observe(1000,100);p.publish(0);p.step();
+  const auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.observe(1000,100);p.publish(0);p.step();
   p.facade.poll(0,1000,0,0,0,0,0,true,false,false,0,false,true);
   p.observe(1017,100);
   const auto board=p.facade.poll(0,1017,BoardChord::pair,0,0,0,0,true,false,false,0,false,true);
