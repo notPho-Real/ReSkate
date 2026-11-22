@@ -139,8 +139,11 @@ public:
             // destination or a state departure on its own cannot do so.
             const bool landed=matches(previous_.native,previous_.native.sampled_at) && value.supported &&
                 (f.state==100 || f.state==103) && phase_==VertPhase::released &&
-                (released_plan_.action==VertAction::level_out || std::any_of(released_plan_.destination.samples.begin(),
-                    released_plan_.destination.samples.end(),[&](const auto& sample){return sample.body==value.contacted_shape;}));
+                (released_plan_.action==VertAction::level_out ||
+                 (length(sub(value.position,released_plan_.landing))<=1.5f &&
+                  dot(value.up,released_plan_.normal)>.7f &&
+                  std::any_of(released_plan_.destination.samples.begin(),released_plan_.destination.samples.end(),
+                    [&](const auto& sample){return sample.body==value.contacted_shape;})));
             request_=0;plan_={};gravity_=0;gravity_samples_=0;
             const auto n=value.support.center().query_normal;
             const auto& before=previous_.support;
@@ -196,7 +199,8 @@ public:
         return phase_==VertPhase::requested && request_ && now>=request_at_ && now-request_at_<=150 && matches(f,now);
     }
     bool stage(VertPlan plan,const VertObservation& source,std::uint64_t now) noexcept {
-        if(!pending(source.native,now) || !plan || !finite_motion(source))return false;
+        if(!pending(source.native,now) || !plan || !finite_motion(source) ||
+           !source.native.flip_known || source.native.flip_id!=-1)return false;
         plan_=plan;planned_=source.native;planned_velocity_=source.velocity;planned_position_=source.position;return true;
     }
     VertPlan consume(const NativeInputFrame& f,std::uint64_t now,SurfaceGeometryVector velocity) noexcept {
@@ -204,6 +208,10 @@ public:
            now<planned_.sampled_at || now-planned_.sampled_at>50) {
             if(request_ && now>=request_at_ && now-request_at_>150)cancel();return {};
         }
+        // A newly selected native trick owns its physical trajectory even if
+        // its first velocity still matches the query source. Keep the original
+        // short input lifetime, so retirement cannot replay an expired command.
+        if(!f.flip_known || f.flip_id!=-1) {plan_={};return {};}
         // Queries may finish between adjacent original physics steps. Compare
         // against that immutable source, never against a newer observation that
         // would hide a collision. Carry only its velocity delta across gravity.

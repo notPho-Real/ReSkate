@@ -16,6 +16,7 @@ VertPatch patch(Vec point,Vec normal) {
 }
 VertObservation ground() {
     VertObservation o;o.native.valid=true;o.native.owner={1,2,3,4,5};o.native.owner_generation=1;o.native.contact_generation=1;o.native.action_generation=1;o.native.mode_generation=1;
+    o.native.flip_known=true;o.native.flip_id=-1;
     o.native.physics_step=2;o.native.sampled_at=1000;o.native.state=100;o.native.contacts=0xc000;
     o.native.physics_seconds=.01f;o.native.mode=1;o.position={0,5,0};o.velocity={2,8,0};
     o.up={-.9701425f,.2425356f,0};o.support=patch(o.position,o.up);o.supported=o.enabled=true;
@@ -114,7 +115,7 @@ void destinations() {
     check(acid.action==VertAction::acid_drop,"lower aligned transition uses acid drop");
 }
 void staged_races_and_orientation() {
-    for(unsigned failure=0;failure<4;++failure) {
+    for(unsigned failure=0;failure<6;++failure) {
         VertAirController c;auto o=ground();warm(c,o);c.observe(o);o=fly(o);c.observe(o);
         check(c.request(o.native,1010,1010,1),"race request admitted");
         auto plan=vert_level_out(o,{1,0,0});plan.clear=true;
@@ -123,8 +124,10 @@ void staged_races_and_orientation() {
         if(failure==1)o.velocity[0]+=3;
         if(failure==2)o.position[0]+=1;
         if(failure==3)o.native.owner_generation++;
+        if(failure==4)o.native.flip_id=2;
+        if(failure==5)o.native.flip_known=false;
         c.observe(o);
-        check(bool(c.consume(o.native,1020,o.velocity))==(failure==0),"collision, displacement or owner replacement revokes staged impulse");
+        check(bool(c.consume(o.native,1020,o.velocity))==(failure==0),"collision, displacement, owner or native actor replacement revokes staged impulse");
     }
     for(float dt:{1.f/30,1.f/60,1.f/120})for(float yaw:{0.f,.8f,2.f}) {
         std::array<float,16> target{std::cos(yaw),0,-std::sin(yaw),0,0,1,0,0,std::sin(yaw),0,std::cos(yaw),0,3,4,5,1};
@@ -133,6 +136,24 @@ void staged_races_and_orientation() {
         check(dingosdk::game::orientation_target::basis_valid(target),"orientation stays orthonormal");
         check(dingosdk::game::orientation_target::error(before,target)<=2.5f*dt+.0001f,"orientation rate bounded at multiple frame rates");
         check(target[12]==3 && target[13]==4 && target[14]==5,"orientation never moves native position");
+    }
+}
+void destination_contact_landing() {
+    for(unsigned fault=0;fault<4;++fault) {
+        VertAirController c;auto o=ground();warm(c,o);c.observe(o);o=fly(o);c.observe(o);
+        check(c.request(o.native,1010,1010,1),"landing request");
+        auto plan=vert_level_out(o,{1,0,0});plan.action=VertAction::spine;plan.clear=true;
+        plan.landing={4,1,0};plan.normal={.6f,.8f,0};plan.destination=patch(plan.landing,plan.normal);
+        check(c.stage(plan,o,1010) && bool(c.consume(o.native,1010,o.velocity)),"landing plan executed");
+        auto landed=ground();landed.native.physics_step=4;landed.native.sampled_at=1020;
+        landed.position=plan.landing;landed.up=plan.normal;landed.velocity={4,-3,0};
+        landed.support=plan.destination;landed.contacted_shape=plan.destination.center().body;
+        if(fault==1)landed.position[0]+=20;
+        if(fault==2)++landed.contacted_shape.index;
+        if(fault==3)landed.supported=false;
+        c.observe(landed);
+        check((c.phase()==VertPhase::landed)==(fault==0),
+            "only actual destination support near the prediction establishes a transfer landing");
     }
 }
 void unchanged_motion() {
@@ -210,4 +231,4 @@ void input_edges() {
     }
 }
 }
-int main(){lifecycle();destinations();staged_races_and_orientation();unchanged_motion();session_trigger_ownership();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){lifecycle();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
