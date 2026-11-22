@@ -5,6 +5,7 @@
 #include "arcade_controller_route_observation.h"
 #include "arcade_native_trick.h"
 #include "arcade_native_input_state.h"
+#include "arcade_input_dispatch.h"
 #include "arcade_observation.h"
 #include "arcade_manual_history.h"
 #include "arcade_manual_input.h"
@@ -173,7 +174,7 @@ inline bool capture_correlation_valid(const CaptureCorrelationEvidence& r) noexc
     if (r.recognized_ms>r.ms || (r.recognized_ms && r.first_event && r.recognized_ms<r.last_ms)) return false;
     const bool recognition=r.schema>=2&&r.kind==CaptureCorrelationKind::event&&r.source==CaptureCorrelationSource::recognition;
     if(recognition){
-        if(!r.recognition_id||!r.action||r.action>21||r.context>6||r.footprint_kind>2||r.member_count>100||r.member_index>r.member_count||r.recognized_ms!=r.ms)return false;
+        if(!r.recognition_id||!r.action||r.action>static_cast<unsigned>(InputAction::manual_pivot)||r.context>6||r.footprint_kind>2||r.member_count>100||r.member_index>r.member_count||r.recognized_ms!=r.ms)return false;
         if(r.footprint_kind==1){
             if(!r.events_known||!r.member_count||!r.first_event||
                (!r.member_index&&r.member_event)||(r.member_index&&(!r.member_event||r.member_event<r.first_event||r.member_event>r.last_event)))return false;

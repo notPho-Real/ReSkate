@@ -3,12 +3,19 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-The previous checkpoint `2e1f806e` passed all nine required gates in
-[CI 44989104909](https://github.com/notPho-Real/ReSkate/actions/runs/44989104909),
-with 141 Windows preflight and 136 integration tests and a verified experimental
-installer. The current batch corrects the fixed PS2 trigger controls, preserves
-Nollie launch identity, measures physical Pivot evidence and integrates the
-separate vert controller. Previous CI does not compile or accept these changes.
+Checkpoint `ec28f738` passed all nine required gates in
+[CI 45017393061](https://github.com/notPho-Real/ReSkate/actions/runs/45017393061),
+with 148 Windows preflight and 136 integration tests and a verified experimental
+installer. Native Mega Park startup and one ordinary Ollie1 with physical rise
+and landing were observed. Two RT taps reached game input but produced no Switch
+or returned B gesture. The LT trial reached kernel/SDL but not captured game input;
+its ordinary Ollie does not test Nollie selection. Manual stopped before input on
+Gamescope focus; Pressure was withheld. Neither has native acceptance.
+
+The follow-up capture correction accepts the appended jump/ground-grab/Switch/Pivot
+action IDs; the old bound discarded Switch recognition records. Focused C++
+sanitizer and parser checks pass. It is source-only after `ec28f738`, awaiting the
+next necessary runtime batch; retained incomplete captures remain incomplete.
 
 Implementation, compilation, offline tests, native observation and owner acceptance
 are separate states. Historical captures support only their recorded source and
@@ -18,8 +25,8 @@ conditions. No current feature has blanket owner acceptance from this checkpoint
 | --- | --- | --- | --- |
 | 0 / RC5 integration | Existing controller ownership, animations, Casper, wallplants, scoring, Trickpedia, camera and OFF restoration retained with upstream pose/mount facilities. | Base compiled and CI passed. Exact integrated native walkthrough remains incomplete. | M; consolidated native regression after source corrections, with exclusive runner and rollback. |
 | 1 / RC5.1 immediate/repeated flips | Immediate A→X recognizes the physical edge through the admitted pop. Ordinary flips share the owner-validated transient-zero reread. Neutral third X now extends the owned double into Triple Kickflip; directional triples remain. | 2,635 held-flip sanitizer checks pass with physical parent/deadline, catch and fourth-input negatives; old source fails neutral-third regression. Current ascent and triple rotations remain native-unverified. | S; native ascent/rapid repeat at a later checkpoint; continue independent offline work first. |
-| 1 / RC5.1 fixed ground controls | LT tap selects native Nollie16; hold selects Pressure intent without an unrelated actor. Original held-A intent survives native crouch retirement with matching selection, generations and wheel contacts; launch identity survives LT release. RT sends the exact native Switch double-tap through one finite B owner, with no ground Revert fallback or heading/velocity writes. | 370 setup, 409 session and 851 stance sanitizer checks pass; final-packet composition covers B-only output, release and cancellation. Old source fails the native103 retirement replay. Pressure actor is unsupported. Native stance/foot placement, steering, momentum and crouch cancellation acceptance remain pending. | M; compile the integrated runtime, then combined stance/launch smoke. |
-| 1 / RC5.1 Manuals/Pivots | Established Manual RT retains its original150ms publication lease and requests physical Pivot; unconfirmed balance cannot borrow later authority. Physical board-reference/hips rotation plus native successor support independently determine evidence. | Composed lifecycle checks pass in release and DEV, including true180 fixtures and label/fakie-only negatives. Bounded DEV telemetry records independent physical evidence. Six-second hold simulation remains; native3s hold, Pivot stance/support and full chain pending. | M; complete integrated runtime build, then representative physical chain acceptance. |
+| 1 / RC5.1 fixed ground controls | LT setup and native Switch adapter are source-implemented using the shared journal. Original held-A intent survives native crouch retirement with matching selection, generations and wheel contacts; launch identity survives LT release. No ground Revert fallback or heading/velocity writes. | 370 setup, 409 session and 851 stance sanitizer checks pass; ec28 compiled. Native RT reaches game input but no Switch or B delivery was observed; LT native delivery is unresolved. Ordinary Ollie1 observed once. Pressure actor unsupported; no stance/Nollie/Pressure acceptance. | M; resolve Switch admission from existing native evidence and correct LT test delivery before another controls trial. |
+| 1 / RC5.1 Manuals/Pivots | Established Manual RT retains its original150ms publication lease and requests physical Pivot; unconfirmed balance cannot borrow later authority. Physical board-reference/hips rotation plus native successor support independently determine evidence. | Composed lifecycle checks pass in release and DEV, including true180 fixtures and label/fakie-only negatives. Ec28 compiled; native trial stopped at focus guard before input. Six-second hold simulation remains; native3s hold, Pivot stance/support and full chain pending. | M; preserve failed setup receipt; resume representative physical chain only after current focus and trigger ownership are established. |
 | 1 / RC5.1 general wallplants | All-category wall/floor patches span independently authenticated static bodies. Every floor center and child owner is revalidated before admission, including single-shape floors; existing holds depend on the wall. | 55,816 geometry and1,523 runtime checks pass across transformed partitions, categories, mixed owner forms, corners, obstructions and invalidation. Old source fails deleted-floor admission. Same-incarnation editor relocation has no transform stamp, including center; no universal map claim. | M; preserve static snapshot scope; native query/hold smoke at a later checkpoint, after independent offline work. |
 | 2 / RC5.1 movement/rotation/camera | Auto-push, native steering, Ollie, prewind, aerial rotation and camera orbit/recenter already implemented. New camera leases reset follow heading immediately after OFF/ON or controller/native-owner changes. | 691,135 composed lifecycle checks and 2,915 camera checks pass; the new reset regression fails before correction. Native switch/revert follow and visual restoration pending. | S–M; retain continuous smoothing; native visual confirmation at a later checkpoint. |
 | 2 / RC5.1 balance HUD/scoring | Native Manual episode controls HUD lifetime; native/custom trick rows and model combo calculation remain distinct. | Model/row/bank-boundary tests exist. Authoritative native banking is not established by model totals or lingering labels. | M; fix visible problems from retained evidence; native bank/bail confirmation at the combined checkpoint. |

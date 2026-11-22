@@ -11,6 +11,14 @@ SPEC.loader.exec_module(PROBE)
 
 
 class InputTelemetryContract(unittest.TestCase):
+    def test_capture_action_bound_matches_dispatch(self):
+        source = (ROOT / 'Extension/ArcadeMode/arcade_input_dispatch.h').read_text()
+        enum = re.search(r'enum class InputAction : std::uint8_t \{([^}]+)\}', source).group(1)
+        actions = [name.strip() for name in enum.split(',')]
+        self.assertEqual(actions[0], 'none')
+        self.assertEqual(actions[-1], 'manual_pivot')
+        self.assertEqual(PROBE.CAPTURE_RECOGNITION_ACTION_MAX, len(actions) - 1)
+
     def test_repeated_gap_rows_are_counted_regardless_of_channel(self):
         for channel in ("Skater", "Command"):
             text = "\n".join(f"[2026-10-16 12:00:00.000] [7:8] {channel}: ARCADE {kind} GAP: dropped=1."
@@ -108,6 +116,33 @@ class CaptureCorrelationContract(unittest.TestCase):
             self.assertIn(error, result['captures'][0]['errors'])
         self.assertEqual(result['native_acceptance'], 'UNVERIFIED')
         self.assertEqual(result['causal_acceptance'], 'UNVERIFIED')
+
+    def test_current_action_range(self):
+        for action in range(1, 26):
+            with self.subTest(action=action):
+                rows = self.fixture()
+                for row in rows:
+                    if row['source'] == 2:
+                        row['action'] = action
+                result = self.parse(rows)
+                self.assertEqual(result['capture_completeness'], 'COMPLETE')
+                actions = [row['action'] for row in result['captures'][0]['events'] if row['source'] == 2]
+                self.assertEqual(actions, [action, action])
+                self.assertEqual(result['native_acceptance'], 'UNVERIFIED')
+        for action in (0, 26, (1 << 32) - 1):
+            with self.subTest(invalid_action=action):
+                rows = self.fixture()
+                for row in rows:
+                    if row['source'] == 2:
+                        row['action'] = action
+                self.assert_incomplete(rows, 'recognition_shape')
+
+    def test_action_range_does_not_enable_other_schemas(self):
+        for schema in (3, 4):
+            text = self.wire(self.fixture()).replace('schema=2 ', f'schema={schema} ')
+            result = PROBE.parse_capture_correlation(text)
+            self.assertEqual(result['capture_completeness'], 'INCOMPLETE')
+            self.assertGreater(result['malformed'], 0)
 
     def test_complete_and_cross_source_drain_order(self):
         rows = self.fixture()
