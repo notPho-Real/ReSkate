@@ -83,7 +83,7 @@ arcade_mode::TrajectoryContext trajectory_context(const ParkEditorModel& editor,
     return c;
 }
 arcade_mode::TrajectorySample trajectory_sample(const trainer::Telemetry& skater) {
-    return {skater.sampled_ms, skater.position, skater.speed, skater.heading, skater.physics_state,
+    return {skater.sampled_ms, skater.position, skater.speed, arcade_mode::trajectory_heading(skater.heading), skater.physics_state,
         skater.skater && skater.sampled_entity != 0};
 }
 void trajectory_emit(const std::optional<arcade_mode::FixtureTrajectoryEvidence>& row) {

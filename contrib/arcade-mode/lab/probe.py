@@ -1236,13 +1236,43 @@ def parse_fixture_trajectory(text):
     names = ('session seq ms sampled generation revision status dropped x_mm y_mm z_mm '
              'speed_mm_s heading_mdeg state').split()
     statuses = ('idle', 'armed', 'sample', 'complete', 'invalid', 'gap', 'timeout', 'cancelled', 'dropped')
+    reasons = ('none', 'context_changed', 'context_invalid', 'sample_invalid', 'sample_time', 'sample_reordered',
+               'tick_time', 'state_invalid', 'speed_invalid', 'heading_invalid', 'position_invalid',
+               'gameplay_ended', 'arm_timeout', 'cancelled')
     marker = 'ARCADE FIXTURE TRAJECTORY: '
     pattern = re.compile(re.escape(marker) + ' '.join(
         k + r'=(-?[0-9]{1,20})' for k in names) + r'\.$')
+    reason_marker = 'ARCADE FIXTURE TRAJECTORY REASON: '
+    reason_pattern = re.compile(re.escape(reason_marker) +
+        r'session=([0-9]{1,20}) seq=([0-9]{1,20}) ms=([0-9]{1,20}) status=([0-9]) reason=([0-9]{1,2})\.$')
+    expected_reasons = {4: {1, 2, 3, 5, 7, 8, 9, 10, 11}, 5: {4, 6}, 6: {12}, 7: {13}}
     result = dict(samples=[], status=None, malformed=0, dropped=0, sequence_missing=0,
+                  reason_diagnostics=[], reason_dropped=0,
                   capture_completeness='UNVERIFIED', owner_proof='UNVERIFIED')
     previous = None
     for line in text.splitlines():
+        if reason_marker in line:
+            if len(result['reason_diagnostics']) >= 128:
+                result['reason_dropped'] += 1
+                continue
+            try:
+                match = reason_pattern.search(line)
+                if not match:
+                    raise ValueError('reason row')
+                session, seq, ms, status, reason = map(int, match.groups())
+                if (not 1 <= session <= 2**64-1 or not 1 <= seq <= 482 or ms > 2**64-1 or
+                        reason not in expected_reasons.get(status, set())):
+                    raise ValueError('reason bounds')
+                target = result['samples'][-1] if result['samples'] else None
+                if (not target or (target['session'], target['seq'], target['ms'], target['status']) !=
+                        (session, seq, ms, statuses[status]) or target['reason'] is not None):
+                    raise ValueError('unmatched reason')
+                target['reason'] = reasons[reason]
+                result['reason_diagnostics'].append(dict(session=session, seq=seq, ms=ms,
+                    status=statuses[status], reason=reasons[reason]))
+            except (ValueError, TypeError):
+                result['malformed'] += 1
+            continue
         if 'ARCADE FIXTURE TRAJECTORY STATUS: ' in line:
             try:
                 raw = line.split('ARCADE FIXTURE TRAJECTORY STATUS: ', 1)[1]
@@ -1298,6 +1328,7 @@ def parse_fixture_trajectory(text):
             else:
                 result['sequence_missing'] += row['seq'] - 1
             previous = dict(row)
+            row['reason'] = None
             row['status'] = statuses[row['status']]
             row['valid'] = valid
             if not valid:
@@ -1309,7 +1340,7 @@ def parse_fixture_trajectory(text):
                 result['dropped'] += 1
         except (ValueError, TypeError):
             result['malformed'] += 1
-    result['evidence_gap'] = bool(result['malformed'] or result['dropped'] or result['sequence_missing'] or
+    result['evidence_gap'] = bool(result['malformed'] or result['dropped'] or result['reason_dropped'] or result['sequence_missing'] or
         any(r['status'] in ('invalid', 'gap', 'timeout', 'cancelled', 'dropped') or r['dropped'] for r in result['samples']) or
         (result['status'] and (result['status']['dropped'] or result['status']['status'] in ('invalid', 'gap', 'timeout', 'cancelled', 'dropped'))))
     return result

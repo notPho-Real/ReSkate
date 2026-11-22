@@ -22,7 +22,50 @@ def terminal(**overrides):
     return row(**fields)
 
 
+def reason_row(**overrides):
+    fields = dict(session=1, seq=2, ms=13000, status=4, reason=9)
+    fields.update(overrides)
+    return 'ARCADE FIXTURE TRAJECTORY REASON: ' + ' '.join(f'{k}={v}' for k, v in fields.items()) + '.'
+
+
 class FixtureTrajectoryProbeTests(unittest.TestCase):
+    def test_terminal_reason_joins_exact_receipt_without_inventing_values(self):
+        legacy = parse_fixture_trajectory(row() + '\n' + terminal(status=4))
+        self.assertIsNone(legacy['samples'][-1]['reason'])
+        self.assertEqual(legacy['reason_diagnostics'], [])
+        for reason, name in ((1, 'context_changed'), (2, 'context_invalid'), (3, 'sample_invalid'),
+                             (9, 'heading_invalid'), (10, 'position_invalid')):
+            result = parse_fixture_trajectory(row() + '\n' + terminal(status=4) + '\n' + reason_row(reason=reason))
+            self.assertEqual(result['malformed'], 0)
+            self.assertEqual(result['samples'][-1]['reason'], name)
+            self.assertIsNone(result['samples'][-1]['heading_mdeg'])
+            self.assertIsNone(result['samples'][-1]['sampled'])
+            self.assertTrue(result['evidence_gap'])
+            self.assertEqual(result['owner_proof'], 'UNVERIFIED')
+
+    def test_reason_bounds_identity_duplicates_and_status_mismatch_fail_closed(self):
+        prefix = row() + '\n' + terminal(status=4) + '\n'
+        for changes in (dict(reason=0), dict(reason=14), dict(reason=6), dict(reason=-1), dict(session=2),
+                        dict(seq=3), dict(ms=13001), dict(status=3), dict(ms=2**64), dict(raw=123)):
+            result = parse_fixture_trajectory(prefix + reason_row(**changes))
+            self.assertEqual(result['malformed'], 1)
+            self.assertIsNone(result['samples'][-1]['reason'])
+        result = parse_fixture_trajectory(prefix + reason_row() + '\n' + reason_row())
+        self.assertEqual(result['malformed'], 1)
+        self.assertEqual(len(result['reason_diagnostics']), 1)
+        self.assertEqual(parse_fixture_trajectory(reason_row())['malformed'], 1)
+
+    def test_reason_gap_timeout_cancel_and_output_cap(self):
+        for status, reason in ((5, 4), (5, 6), (6, 12), (7, 13)):
+            result = parse_fixture_trajectory(row() + '\n' + terminal(status=status) + '\n' +
+                                              reason_row(status=status, reason=reason))
+            self.assertEqual(result['malformed'], 0)
+        text = '\n'.join(row(session=i) + '\n' + terminal(session=i, status=4) + '\n' + reason_row(session=i)
+                         for i in range(1, 130))
+        result = parse_fixture_trajectory(text)
+        self.assertEqual(len(result['reason_diagnostics']), 128)
+        self.assertEqual(result['reason_dropped'], 1)
+        self.assertTrue(result['evidence_gap'])
     def test_relative_samples_and_terminal_are_diagnostic_only(self):
         r = parse_fixture_trajectory(row() + '\n' + terminal())
         self.assertEqual(r['samples'][0]['x_mm'], -1234)

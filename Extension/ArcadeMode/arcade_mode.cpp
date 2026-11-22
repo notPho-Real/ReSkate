@@ -1021,6 +1021,12 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
                 "ARCADE FIXTURE TRAJECTORY: session={} seq={} ms={} sampled={} generation={} revision={} status={} dropped={} x_mm={} y_mm={} z_mm={} speed_mm_s={} heading_mdeg={} state={}.",
                 r.session, r.sequence, r.ms, r.sampled, r.generation, r.revision, static_cast<unsigned>(r.status),
                 r.dropped, r.x_mm, r.y_mm, r.z_mm, r.speed_mm_s, r.heading_mdeg, r.state);
+#if defined(DINGOSDK_DEV_TOOLS)
+            if (r.reason != TrajectoryReason::none)
+                logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE FIXTURE TRAJECTORY REASON: session={} seq={} ms={} status={} reason={}.",
+                    r.session, r.sequence, r.ms, static_cast<unsigned>(r.status), static_cast<unsigned>(r.reason));
+#endif
         } else if constexpr (std::is_same_v<T, ScoreNodeEvidence>) {
             const auto path = score_probe_path_text(r.path);
             logging::log(logging::Level::info, logging::Channel::skater,

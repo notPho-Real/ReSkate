@@ -6,6 +6,14 @@
 
 namespace dingosdk::arcade_mode {
 enum class TrajectoryStatus : unsigned { idle, armed, sample, complete, invalid, gap, timeout, cancelled, dropped };
+enum class TrajectoryReason : unsigned {
+    none, context_changed, context_invalid, sample_invalid, sample_time, sample_reordered,
+    tick_time, state_invalid, speed_invalid, heading_invalid, position_invalid, gameplay_ended, arm_timeout, cancelled
+};
+// Trainer's negative atan2 result can round to exactly360 when adding360 in
+// float precision. Canonicalize only that equivalent endpoint; other invalid
+// headings still fail the unchanged finite/range guard.
+inline float trajectory_heading(float heading) noexcept { return heading == 360.f ? 0.f : heading; }
 struct TrajectoryContext {
     std::array<std::uintptr_t, 5> owner{};
     std::uint64_t generation{}, revision{}, object{};
@@ -25,6 +33,7 @@ struct FixtureTrajectoryEvidence {
     TrajectoryStatus status{TrajectoryStatus::idle};
     int x_mm{}, y_mm{}, z_mm{};
     unsigned speed_mm_s{}, heading_mdeg{}, state{};
+    TrajectoryReason reason{TrajectoryReason::none};
 };
 class FixtureTrajectory {
 public:
@@ -32,7 +41,7 @@ public:
     bool active() const noexcept { return status == TrajectoryStatus::armed || status == TrajectoryStatus::sample; }
     bool arm(const TrajectoryContext& c, const TrajectorySample& s, std::array<float, 3> origin,
              std::uint64_t now) noexcept {
-        if (active() || session == UINT64_MAX || !valid(c, s, origin, now) || s.state != 100 || s.speed > .1f ||
+        if (active() || session == UINT64_MAX || invalid_reason(c, s, origin, now) != TrajectoryReason::none || s.state != 100 || s.speed > .1f ||
             std::abs(std::remainder(s.heading, 360.f)) > 3.f) return false;
         float distance{};
         for (unsigned i = 0; i < 3; ++i) distance += (s.position[i] - origin[i]) * (s.position[i] - origin[i]);
@@ -44,16 +53,19 @@ public:
     std::optional<FixtureTrajectoryEvidence> tick(const TrajectoryContext& c, const TrajectorySample& s,
                                                  std::uint64_t now, bool gameplay) noexcept {
         if (!active()) return {};
-        if (now < last_ || now - last_ > freshness_ms) return stop(TrajectoryStatus::gap, now);
+        if (now < last_ || now - last_ > freshness_ms) return stop(TrajectoryStatus::gap, now, TrajectoryReason::tick_time);
         last_ = now;
-        if (s.sampled && (now < s.sampled || now - s.sampled > freshness_ms)) return stop(TrajectoryStatus::gap, now);
-        if (c != context_ || !valid(c, s, origin_, now) || s.sampled < last_sampled_)
-            return stop(TrajectoryStatus::invalid, now);
+        if (s.sampled && (now < s.sampled || now - s.sampled > freshness_ms))
+            return stop(TrajectoryStatus::gap, now, TrajectoryReason::sample_time);
+        const auto invalid = invalid_reason(c, s, origin_, now);
+        if (invalid != TrajectoryReason::none) return stop(TrajectoryStatus::invalid, now, invalid);
+        if (c != context_) return stop(TrajectoryStatus::invalid, now, TrajectoryReason::context_changed);
+        if (s.sampled < last_sampled_) return stop(TrajectoryStatus::invalid, now, TrajectoryReason::sample_reordered);
         if (status == TrajectoryStatus::armed) {
-            if (now - began_ > 5000) return stop(TrajectoryStatus::timeout, now);
+            if (now - began_ > 5000) return stop(TrajectoryStatus::timeout, now, TrajectoryReason::arm_timeout);
             if (!gameplay) return {};
             began_ = now; status = TrajectoryStatus::sample;
-        } else if (!gameplay) return stop(TrajectoryStatus::invalid, now);
+        } else if (!gameplay) return stop(TrajectoryStatus::invalid, now, TrajectoryReason::gameplay_ended);
         if (now - began_ >= duration_ms || count >= sample_limit) return stop(TrajectoryStatus::complete, now);
         if (now < next_ || s.sampled == last_sampled_) return {};
         next_ = now + interval_ms; last_sampled_ = s.sampled; ++count;
@@ -64,7 +76,7 @@ public:
     }
     std::optional<FixtureTrajectoryEvidence> cancel(std::uint64_t now) noexcept {
         if (!active()) return {};
-        return stop(TrajectoryStatus::cancelled, now);
+        return stop(TrajectoryStatus::cancelled, now, TrajectoryReason::cancelled);
     }
     void delivery_failed() noexcept { ++dropped; status = TrajectoryStatus::dropped; }
     TrajectoryStatus status{TrajectoryStatus::idle};
@@ -72,22 +84,28 @@ public:
     unsigned count{};
 private:
     static int quantize(float value) noexcept { return static_cast<int>(std::lround(value * 1000.f)); }
-    static bool valid(const TrajectoryContext& c, const TrajectorySample& s,
-                      const std::array<float, 3>& origin, std::uint64_t now) noexcept {
-        if (!c.valid || !c.generation || !c.revision || !c.object || !s.valid || !s.sampled ||
-            now < s.sampled || now - s.sampled > freshness_ms || s.state > 10000 ||
-            !std::isfinite(s.speed) || s.speed < 0 || s.speed > 50 ||
-            !std::isfinite(s.heading) || s.heading < 0 || s.heading >= 360) return false;
-        for (auto part : c.owner) if (!part) return false;
+    static TrajectoryReason invalid_reason(const TrajectoryContext& c, const TrajectorySample& s,
+                                           const std::array<float, 3>& origin, std::uint64_t now) noexcept {
+        if (!c.valid || !c.generation || !c.revision || !c.object) return TrajectoryReason::context_invalid;
+        for (auto part : c.owner) if (!part) return TrajectoryReason::context_invalid;
+        if (!s.valid || !s.sampled) return TrajectoryReason::sample_invalid;
+        if (now < s.sampled || now - s.sampled > freshness_ms) return TrajectoryReason::sample_time;
+        if (s.state > 10000) return TrajectoryReason::state_invalid;
+        if (!std::isfinite(s.speed) || s.speed < 0 || s.speed > 50) return TrajectoryReason::speed_invalid;
+        if (!std::isfinite(s.heading) || s.heading < 0 || s.heading >= 360) return TrajectoryReason::heading_invalid;
         for (unsigned i = 0; i < 3; ++i)
             if (!std::isfinite(origin[i]) || !std::isfinite(s.position[i]) ||
-                std::abs(origin[i]) > 100000 || std::abs(s.position[i] - origin[i]) > (i == 1 ? 20.f : 100.f)) return false;
-        return true;
+                std::abs(origin[i]) > 100000 || std::abs(s.position[i] - origin[i]) > (i == 1 ? 20.f : 100.f))
+                return TrajectoryReason::position_invalid;
+        return TrajectoryReason::none;
     }
     FixtureTrajectoryEvidence row(std::uint64_t now) noexcept {
         return {session, ++sequence_, now, 0, context_.generation, context_.revision, dropped, status};
     }
-    FixtureTrajectoryEvidence stop(TrajectoryStatus reason, std::uint64_t now) noexcept { status = reason; return row(now); }
+    FixtureTrajectoryEvidence stop(TrajectoryStatus state, std::uint64_t now,
+                                   TrajectoryReason reason = TrajectoryReason::none) noexcept {
+        status = state; auto result = row(now); result.reason = reason; return result;
+    }
     TrajectoryContext context_{};
     std::array<float, 3> origin_{};
     std::uint64_t began_{}, last_{}, last_sampled_{}, next_{}, sequence_{};

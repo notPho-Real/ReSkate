@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <numbers>
 #include <type_traits>
 using namespace dingosdk::arcade_mode;
 unsigned checks{};
@@ -11,6 +12,25 @@ TrajectorySample sample(std::uint64_t now = 1000) { return {now, {10, 20, 30}, 0
 int main() {
     static_assert(std::is_trivially_copyable_v<FixtureTrajectoryEvidence>);
     const auto origin = sample().position;
+    {
+        float heading = std::atan2(-1.e-8f, 1.f) * 180.f / std::numbers::pi_v<float>;
+        check(heading < 0, "near-zero native forward vector yields negative atan2 heading");
+        heading += 360.f;
+        check(heading == 360.f, "existing float producer arithmetic rounds negative near-zero heading to360");
+        auto s = sample(); s.heading = heading;
+        FixtureTrajectory rejected, fixed;
+        check(!rejected.arm(context(), s, origin, 1000), "unnormalized360 remains rejected by existing range guard");
+        s.heading = trajectory_heading(s.heading);
+        check(s.heading == 0 && fixed.arm(context(), s, origin, 1000), "adapter canonicalizes only equivalent360 endpoint");
+        const auto row = fixed.tick(context(), sample(1050), 1050, true);
+        check(row && row->heading_mdeg == 0 && row->reason == TrajectoryReason::none,
+              "normalized endpoint produces valid zero heading with no failure reason");
+        for (float invalid : {-1.f, 360.01f, std::numeric_limits<float>::infinity(),
+                              std::numeric_limits<float>::quiet_NaN()}) {
+            FixtureTrajectory t; auto bad = sample(); bad.heading = trajectory_heading(invalid);
+            check(!t.arm(context(), bad, origin, 1000), "normalization does not admit out-of-range or nonfinite heading");
+        }
+    }
     for (unsigned fault = 0; fault < 12; ++fault) {
         FixtureTrajectory t; auto c = context(); auto s = sample();
         if (fault == 0) c.valid = false;
@@ -59,6 +79,27 @@ int main() {
         auto r = t.tick(c, s, now, gameplay);
         check(r && !r->sampled && !t.active() && r->status == (fault >= 8 ? TrajectoryStatus::gap : TrajectoryStatus::invalid),
               "owner geometry menu bounds and tick gaps stop without partial samples");
+        const auto reason = fault <= 3 ? TrajectoryReason::context_changed : fault <= 5 ? TrajectoryReason::position_invalid :
+            fault == 6 ? TrajectoryReason::speed_invalid : fault == 7 ? TrajectoryReason::gameplay_ended : TrajectoryReason::tick_time;
+        check(r->reason == reason, "terminal reports exact first failing guard without raw invalid data");
+    }
+    for (unsigned fault = 0; fault < 7; ++fault) {
+        FixtureTrajectory t; t.arm(context(), sample(), origin, 1000);
+        t.tick(context(), sample(1050), 1050, true);
+        auto c = context(); auto s = sample(1100);
+        if (fault == 0) c.valid = false;
+        if (fault == 1) s.valid = false;
+        if (fault == 2) s.heading = 360.f;
+        if (fault == 3) s.state = 10001;
+        if (fault == 4) s.sampled = 1049;
+        if (fault == 5) s.sampled = 949;
+        if (fault == 6) c.owner[0] = 0;
+        const auto row = t.tick(c, s, 1100, true);
+        constexpr std::array reasons{TrajectoryReason::context_invalid, TrajectoryReason::sample_invalid,
+            TrajectoryReason::heading_invalid, TrajectoryReason::state_invalid, TrajectoryReason::sample_reordered,
+            TrajectoryReason::sample_time, TrajectoryReason::context_invalid};
+        check(row && row->reason == reasons[fault] && !row->sampled && !row->state && !row->heading_mdeg && !t.active(),
+              "distinct context sample heading state reordering and freshness reasons preserve failclosed stops");
     }
     {
         FixtureTrajectory t; t.arm(context(), sample(), origin, 1000);
