@@ -1,6 +1,8 @@
 #include "Extension/ArcadeMode/arcade_stance_input.h"
+#include "Extension/ArcadeMode/arcade_native_asset_cache.h"
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
@@ -14,6 +16,57 @@ InputNativeContext frame(std::uint64_t at=10,std::uint64_t step=1,unsigned stanc
 TriggerPress press(InputNativeContext native=frame()) {
     return {{{InputSource::triggers,1,InputEdge::press},10,1},{},InputContext::ground,
         native,TriggerOwner::switch_stance,160};
+}
+void exported_asset_identity() {
+    namespace contract=dingosdk::game::build::v20260929::arcade_stance;
+    // Independently inspected exported instance IDs in supported-build records
+    // 1014, 818, 407 and 22455. InputScheme imports corroborate the PIA and
+    // processor instance IDs. The file GUIDs identify containers, not objects.
+    constexpr std::array<contract::Guid,4> instances{{
+        {0xd2,0x4a,0x46,0x5d,0x17,0x48,0x19,0x4b,0xb5,0xa1,0x37,0x24,0x2f,0xca,0xa8,0x9b},
+        {0xee,0xbc,0xfd,0x55,0x7e,0x89,0xf3,0x4f,0x87,0xf2,0xe6,0x84,0x1f,0x26,0x4e,0x04},
+        {0x73,0x6d,0x5b,0xa6,0x5d,0xb8,0x8d,0x40,0x95,0xbd,0xbf,0x0e,0x2b,0xc8,0x85,0xa4},
+        {0x79,0x77,0x05,0xfe,0x62,0x12,0x5f,0x42,0x8e,0x4c,0xb9,0x83,0xcf,0x08,0xed,0xf1}
+    }};
+    constexpr std::array<contract::Guid,4> files{{
+        {0x1a,0xae,0xa6,0x40,0x29,0xbd,0xb2,0x4a,0x97,0xfb,0x22,0x68,0xc9,0x8b,0x56,0x0e},
+        {0xd2,0x48,0xbb,0x3d,0x7b,0xbe,0x32,0x4a,0xa8,0xee,0x92,0x3e,0x5d,0x61,0x14,0xfa},
+        {0xa4,0xa7,0xc8,0x25,0x03,0xd7,0x27,0x4e,0x9b,0x97,0x9e,0x66,0xd1,0x61,0x1a,0x32},
+        {0x2f,0xed,0xa2,0x9e,0x6d,0xbf,0xdd,0x4a,0x80,0x0f,0x3b,0x7c,0x1b,0x9b,0xcb,0x46}
+    }};
+    std::array<std::array<std::uint8_t,32>,instances.size()> storage{};
+    struct Asset {std::uintptr_t object{};contract::Guid guid{};};
+    std::array<Asset,instances.size()> loaded{};
+    static_assert(instances.size()==contract::assets.size());
+    for(std::size_t i=0;i<loaded.size();++i) {
+        std::memcpy(storage[i].data(),instances[i].data(),instances[i].size());
+        loaded[i]={reinterpret_cast<std::uintptr_t>(storage[i].data()+16),contract::assets[i].guid};
+    }
+    const auto matches=[](std::uintptr_t object,const contract::Guid& expected) noexcept {
+        contract::Guid actual{};
+        std::memcpy(actual.data(),reinterpret_cast<const void*>(object-contract::asset_guid_prefix),actual.size());
+        return actual==expected;
+    };
+    const auto available=[&]{return native_assets_current(std::span{loaded},matches);};
+    check(available(),"stance readiness recognizes actual exported asset instances");
+    for(std::size_t i=0;i<loaded.size();++i) {
+        loaded[i].guid=files[i];
+        check(!available(),"a file GUID cannot authorize its exported stance object");
+        loaded[i].guid=contract::assets[i].guid;
+        const auto object=loaded[i].object;loaded[i].object=0;
+        check(!available(),"a missing stance asset still withholds readiness");
+        loaded[i].object=object;storage[i][0]^=1u;
+        check(!available(),"a recycled stance asset address still invalidates readiness");
+        storage[i][0]^=1u;
+    }
+    StanceInput input;
+    check(available()&&input.start(press(),frame(),10),"verified asset identity admits the original RT producer");
+    auto output=input.controls(frame(),10,1);
+    check(output.owned&&!output.buttons&&input.delivered(frame(),output,0,10,1),
+        "admitted Switch first publishes its owned neutral packet");
+    output=input.controls(frame(20,2),20,2);
+    check(output.owned&&output.buttons==0x2000,"a subsequent delivered native frame can begin the B gesture");
+    check(!input.observed_change(),"asset readiness and B output never prove a physical stance change");
 }
 void original_edge_and_delivery() {
     for(unsigned stance:{0u,0x20u}) {
@@ -228,4 +281,4 @@ void transient_acknowledgement() {
 }
 
 }
-int main(){original_edge_and_delivery();interruptions();denied_sources();finite_double_tap();packet_and_phase_guards();completion_requires_release();lifecycle_and_journal();transient_acknowledgement();std::printf("stance input: %u checks passed\n",checks);}
+int main(){exported_asset_identity();original_edge_and_delivery();interruptions();denied_sources();finite_double_tap();packet_and_phase_guards();completion_requires_release();lifecycle_and_journal();transient_acknowledgement();std::printf("stance input: %u checks passed\n",checks);}
