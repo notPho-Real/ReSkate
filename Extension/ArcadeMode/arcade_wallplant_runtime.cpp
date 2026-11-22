@@ -220,10 +220,10 @@ bool scoped_motion(std::uint64_t token,const NativeInputFrame& frame,std::uint64
         double(now-motion_scope.started)<=std::ceil(double(frame.physics_seconds)*1000);
 }
 bool candidate_current() noexcept {
-    // A split ground patch is part of admission's measured height evidence.
-    // Its child shapes must still exist when publication becomes a hold; the
-    // floor is no longer a support dependency once the wall hold has begun.
-    if(candidate.ground.adjacent_shape_count && !query_current(candidate.ground))return false;
+    // Every ground patch supplies admission's measured height evidence. Its
+    // center and any child shapes must still exist when publication becomes
+    // a hold; the floor is no longer a dependency once that hold has begun.
+    if(!query_current(candidate.ground))return false;
     return candidate.contact.motion_query?
         (scoped_motion(candidate.motion,candidate.contact.native,GetTickCount64()) && query_current(candidate.wall)):
         (native_wall_contact::current(candidate.hit,candidate.contact.geometry.world) &&

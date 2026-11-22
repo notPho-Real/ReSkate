@@ -44,6 +44,9 @@ trigger through landing, owner replacement or OFF/ON never creates a new press.
 
 Pressure selection is recognized, but no supported native Pressure actor has
 been established. Its unavailable launch/flip requests emit no unrelated trick.
+If A remains held while the previous native crouch retires, releasing LT keeps
+that original A intent and resumes a supported crouch only after native idle.
+An airborne transition, changed actor or lost ownership cancels that intent.
 Ground RT uses the verified native ChangeStance input processor: one B double-tap
 within its native 300ms window. The final controller packet owns only B; each
 phase needs a delivered packet and a newer native step. The adapter never writes
