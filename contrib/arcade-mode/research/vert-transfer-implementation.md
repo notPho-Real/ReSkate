@@ -211,3 +211,14 @@ object, state `201`, mode `2` and no contacts within the same 100ms limit. Chang
 actors, reverse mode transitions and combined mismatches reject. This correction
 has offline regression evidence; native return, transfers and landing Revert
 remain unaccepted until a compiled corrected candidate demonstrates them.
+
+
+A separate existing-fixture regression reproduces a local-self query ordering
+failure: the nearest hit has a verified local-component owner but unavailable,
+inside-facing or non-finite vectors. Those vectors were rejected before the
+existing native owner-exclusion query could reach the ramp. Only that already
+authenticated local component now skips destination-vector validation; its shape,
+owner, fraction, lifetime and native exclusion checks remain unchanged. Every
+nonlocal hit still needs valid measured vectors. The old source fails this
+regression; it does not establish that self hits caused the recorded generic
+`motion_hit_vectors` failures.

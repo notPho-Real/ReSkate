@@ -198,7 +198,11 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
                 if(trace)trace->point=point;
                 if (!finite(point)) return fail("point_invalid");
                 Hit found{point,body,owner,world_owner,local_component};
-                if(measure_contact || (patch_owner && !local_component && owner!=ctx.self_entity && world_owner!=*patch_owner)) {
+                // A reciprocally authenticated local component is excluded by
+                // its native owner below. Its hit vectors never describe a
+                // destination, including when the ray starts inside that body.
+                // Requested nonlocal measurements retain their validation.
+                if(!local_component && (measure_contact || (patch_owner && owner!=ctx.self_entity && world_owner!=*patch_owner))) {
                     body_contact_read::Vectors vectors;
                     const auto read_vector=[&]<class T>(std::uintptr_t at,T& value) {
                         return read(api,at,value);
