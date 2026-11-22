@@ -113,8 +113,8 @@ Focused tests compile the production observer with simulated memory endpoints
 and cover read failures, changed buffers/layouts/owners/plans, stale samples,
 overlay interference and mount feedback. Existing runtime and release tests
 cover entry, cancellation and the unchanged default. These checks do not prove
-a visible improvement; the exact Windows DLL still requires the bounded Deck
-comparison described below.
+a visible improvement. The exact Windows DLL has now run the bounded Deck
+comparison recorded below.
 
 ## Native acceptance procedure
 
@@ -136,3 +136,119 @@ not prove tricks. Compare Arcade OFF, idle/no-request and cancellation/owner-los
 controls; stop for owner/map mismatch, stale observations or loss of cleanup.
 Capture rendered body/board placement as visual evidence alongside native
 receipts. CI and offline checks never establish gameplay acceptance.
+
+
+## Built and rendered candidate
+
+Runtime source: `6d8dda8f9431aef21268c74455a5f1ec930df8d8`.
+[Full integration CI](https://github.com/notPho-Real/ReSkate/actions/runs/44960313950)
+passed all nine required jobs: Windows runtime build, 141 preflight tests,
+136 full integration tests, Linux/server validation, targeted source tests,
+macOS lab checks, Deck packaging and release eligibility. Publishing was skipped.
+The experimental package is
+[Deck artifact 14730572611](https://github.com/notPho-Real/ReSkate/actions/runs/44960313950/artifacts/14730572611).
+Its embedded DLL is byte-identical to the runtime artifact:
+46,456,320 bytes, SHA-256
+`e9f5a2f4118482dcbb86868ea63ca55ce7c9576948603ac64965f7e64934bfb0`.
+
+The earlier run 44957299049 failed an unchanged crash-capture test with
+`0x8007012b` (`ERROR_PARTIAL_COPY`). Its logs and artifacts were retained.
+The same source passed three early crash-capture repetitions and the complete
+suite on the fresh runner above. No assertion was waived and no crash code
+was changed. The underlying host-dependent failure is not fully diagnosed.
+
+The exact DLL was loaded on the Steam Deck and checked against its mapped
+file identity. Native level records confirmed `skate3_megapark`; input callback
+cadence and both native/cached steps confirmed the 30 Hz fixture. Evidence is
+retained under `artifacts/animation-render-seed-6d8dda8f` in the external workspace.
+
+The disabled baseline and enabled experiment both rendered Casper entry, hold,
+Casper Flip, return to native Manual, and a subsequent Ollie/landing. A separate
+enabled direct-return case also restored native Manual and allowed the Ollie.
+The enabled cases accepted fresh rendered seeds with sequences 19 and 72 and
+ages 20.7 ms and 22.0 ms, respectively. Those receipts establish submission;
+the separately captured original video frames establish the observed rendering.
+
+`animation-comparison.json` records source, DLL, video/receipt hashes, reviewed
+frame times, one stable native owner per trial, and the rendering limits.
+Body and board stay coherent in the selected entry/hold/exit frames. Differences
+from the existing animation are modest: **a clear visual improvement has not
+been established**. The experiment therefore remains unsaved and disabled by
+default. It is a working compatibility prototype, not a claim of new physical
+balance/contact behavior or a reason to replace the existing owned clip.
+
+With the experiment off, the short Nose Manual case recorded 2.783 seconds of
+consecutive native Manual observations, then air and landing, at 30.002 Hz.
+No Comply and Boneless advanced through their native preparation/animation,
+flight and grounded return; selected original frames show the board/foot
+transition and remount. Method and FS Grab advanced the expected native actors
+(details 2 and 6), withdrew intent, released, and landed. These are bounded
+native/render observations. Native scoring ownership remains a separate,
+unverified claim; a visible score label alone is not used to establish it.
+
+Opening the console cancels gameplay ownership before the experiment's OFF
+command is executed. Accordingly, the hardware comparison verifies restoration
+after console cancellation; the direct active-switch cancellation path is
+covered by source tests, not claimed as an independently isolated hardware test.
+
+The regular Manual counterpart observed 3.047 seconds of consecutive native
+support, including native exit latency, then Ollie/air and landing. This is
+approximately three seconds; it is not reported as a strict <=3.000 second
+measurement. Manual/revert separately retained the supported Manual through
+native revert state 101, then popped, flipped and landed. Camera right-look and
+release showed the orbit and restored follow view; 90 camera samples were
+queued with no lost, uninspected or pending samples.
+
+Immediate Kickflip measured 1.011 physical board turns. Double Kickflip measured
+1.992 turns, native extra count 0→1, held-actor advancement, intent withdrawal
+and landing. Its full release-receipt check remains **unverified**: two native
+phase-zero reads invalidated the earlier observation, so the release record
+could not retain an acknowledged native ID/count. The later held observation
+must not be joined to the earlier serial as one proved lifetime. The strict
+phase/owner refusal remains intact; no safety check was relaxed.
+
+LB/RB pulses spanning native preparation and takeoff produced approximately
++156.18° / -155.76° of native heading change and landed. The earlier pulses that
+ended before observed takeoff produced approximately zero rotation in this
+session. Those results are retained; very early pulse repeatability is not
+accepted. The source requires a currently held shoulder and fresh same-owner
+AIR for the preparation bridge. Spin code is unchanged from the integrated
+baseline.
+
+The rail fixture reached native grind state 401, passed independently checked
+AIR and rail-contact gates, popped to 200/201, flipped and landed in 100.
+Original frames show rail support, airborne exit and upright landing. A brief
+external state-zero sample before the first takeoff remains unknown and was
+not used to admit either gate. The exact owned temporary rail was removed.
+Selected frames also show native FS Grab and rail/Kickflip presentation, and
+custom Casper/Casper Flip scores alongside the Manual meter. These verify
+presentation, not independently owned native scoring callbacks.
+
+Wallplant passed the unchanged contact/rebound evaluator on this DLL: one native
+hold entry and committed release, no hold cancellation, 11 consumed upward/
+outward samples strictly after observed release, stable owner across 800
+samples, and final native state 100. The submitted reflected exit matched the
+existing formula within 3.12e-8. This establishes bounded contact/rebound behavior,
+not improved rendered Wallplant foot placement or native numeric scoring.
+The first Wallplant preflight rejected an incorrectly prepared local receipt
+hash before input; that failure was retained. A fresh exact-file hash corrected
+the pin for the successful trial without removing any guard.
+
+The native Skatepedia opened successfully. The mapped Ollie card on its Flip
+Tricks tab displayed Arcade's "hold A -> release A" guidance. Turning Arcade
+OFF while that card remained selected restored its native stick diagram,
+verified in original before/after captures. This covers one mapped card and
+restoration, not every Trickpedia entry.
+
+The game and launcher were closed normally. The prior source
+`5ae5778627a7dbe0bf3153eb7b36b471bdd5aa1b`, exact DLL, launcher settings and
+installation receipt were restored. A fresh trusted status check confirmed both
+processes stopped, updates disabled, stock/game hashes unchanged and no pending
+recovery. All 144 rollback sets and the four score-asset files were preserved;
+the hardware authority was revoked. `native-verification.json` indexes the
+evidence and remaining limits. The candidate and installer remain preserved
+for further work; this session did not publish an accepted update.
+
+The different earlier mechanic list mentioned by the owner has not yet been
+identified precisely. The completed follow-ons above do not establish that
+the broader Primo/Railstand/flatland roadmap is finished.

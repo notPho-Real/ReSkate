@@ -48,8 +48,8 @@ strict package verification. Two further production input defects are corrected:
 Both regressions fail against the preceding production code and pass with the
 corrections under ASan/UBSan and warnings as errors. Candidate Windows compilation
 and native acceptance remain required. The owner's current Manual acceptance is
-a ten-second physically qualified hold, superseding the historical two-second
-requirement below. The trusted status runner currently cannot resolve
+a **2–3 second physically qualified hold followed by an Ollie exit**. Ten seconds
+is not an acceptance requirement. The trusted status runner currently cannot resolve
 `steamdeck.local`; no input, deployment or reuse of expired hardware authority
 occurred. Checkpoint receipts and packaging reside in the SSD artifact directory
 `rc51-responsive-core-20261120`.
