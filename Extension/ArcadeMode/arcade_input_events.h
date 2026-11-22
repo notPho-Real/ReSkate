@@ -6,6 +6,7 @@
 #include "arcade_input_policy.h"
 
 namespace dingosdk::arcade_mode {
+enum class InputContext : std::uint8_t { unknown, ground, air, balance, rail, foot, lip };
 enum class InputSource : std::uint8_t { buttons, stick, pad, triggers, vertical_stick, vertical_pad, direction };
 enum class InputEdge : std::uint8_t { press, release };
 struct InputToken {
@@ -29,6 +30,7 @@ struct InputBalanceControls {
 };
 struct InputConsumption {
     static constexpr std::uint32_t regular = 1, manual = 2, extra_grind = 8, extra = 16;
+    static constexpr std::uint32_t trigger = 32;
 };
 struct InputEvent {
     InputToken token{};
@@ -43,6 +45,7 @@ struct InputEvent {
     // Physical state at this edge, retained through takeoff/admission buffering.
     std::uint16_t physical_buttons{};
     std::int16_t physical_direction{};
+    bool operator==(const InputEvent&) const = default;
 };
 struct InputPattern {
     std::span<const InputToken> steps;
