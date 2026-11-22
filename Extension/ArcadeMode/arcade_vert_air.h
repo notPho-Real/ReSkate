@@ -400,7 +400,15 @@ public:
     VertPlan consume(const NativeInputFrame& f,std::uint64_t now,SurfaceGeometryVector velocity) noexcept {
         if(!pending(f,now) || !plan_ || planned_.owner!=f.owner || f.physics_step<planned_.physics_step ||
            now<planned_.sampled_at || now-planned_.sampled_at>50) {
-            if(request_ && now>=request_at_ && now-request_at_>150)cancel();return {};
+            if(request_ && now>=request_at_ && now-request_at_>150) {
+                // An unavailable transfer expires its own command, not genuine
+                // vert flight or the later independently proven landing window.
+                // The shared journal still owns the original physical edge.
+                request_=0;plan_={};
+                if(phase_==VertPhase::requested && matches(f,now))phase_=VertPhase::native_air;
+                else cancel();
+            }
+            return {};
         }
         // A newly selected native trick owns its physical trajectory even if
         // its first velocity still matches the query source. Keep the original

@@ -149,3 +149,8 @@ AIR and the ground-before-contact publication gap. Each retains its original
 transfer or landing owner and deadline; reservation alone never executes Revert.
 The shared-journal session fixtures use the primary engineer's reviewed dispatcher
 contract, not a parallel transfer sampler.
+
+An expired transfer request also relinquishes only that request when the same
+genuine native flight remains current. It preserves the independent landing
+lineage, so a later fresh trigger can still qualify a real landing Revert. Native
+flip ownership prevents a staged impulse throughout the original request lifetime.
