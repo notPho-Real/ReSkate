@@ -2000,9 +2000,9 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
             a.air_write.record(native_frame,bodies.parts,spins,bodies.up,cleanup);
         } else if (cleanup.inspected || !a.air_write.pending()) a.air_write.clear();
     } catch (...) {
-        arcade_mode::vert_runtime::cancel();
         try {throw;} catch(const SourceGuard& issue) {wall_writer(7,issue.message);}
         catch(...) {wall_writer(7,"unknown_exception");}
+        arcade_mode::vert_runtime::cancel();
         a.controller.reset(); a.ground_resistance.reset(); a.ground_yaw.reset(); a.ground_output={}; a.output = {}; a.turn_write.clear(); a.air_write.clear(); a.ready_until.store(0, std::memory_order_release);
     }
 }

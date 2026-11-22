@@ -163,6 +163,25 @@ void session_trigger_ownership() {
     pad.lt=0;++frame.physics_step;frame.sampled_at=1040;a.native_context=InputNativeContext::from_frame(frame);a.tick=4;
     result=session.poll(1040,pad,0,0,a);check(!result.transfer_triggers_owned,"physical release retires transfer trigger ownership");
 }
+void held_transfer_intent() {
+    UnifiedInput input;Requests received;
+    InputAdapter adapter{&received,[](void* p,const InputRequest& r) noexcept {
+        if(r.action==InputAction::transfer_command){auto& out=*static_cast<Requests*>(p);++out.count;out.last=r;}
+        return InputDisposition::started;
+    }};
+    InputEnvironment e;e.gameplay=true;e.context=InputContext::air;
+    auto native=fly(ground()).native;
+    PhysicalInputSample pad;pad.buttons=8;
+    for(unsigned i=0;i<30;++i) {
+        native.sampled_at+=20;++native.physics_step;
+        e.native_context=InputNativeContext::from_frame(native);
+        e.surface={1,native.physics_step,true,false,false,true,0,e.native_context.generations};
+        if(i==29)pad.rt=255;
+        input.poll(native.sampled_at,pad,e,adapter);
+    }
+    check(received.count==1 && received.last.direction==InputEvents::encode(1,0),
+        "transfer uses still-held direction after the trick sequence window expires");
+}
 void input_edges() {
     for(bool right:{false,true})for(bool held_before:{false,true}) {
         UnifiedInput input;Requests received;
@@ -191,4 +210,4 @@ void input_edges() {
     }
 }
 }
-int main(){lifecycle();destinations();staged_races_and_orientation();unchanged_motion();session_trigger_ownership();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){lifecycle();destinations();staged_races_and_orientation();unchanged_motion();session_trigger_ownership();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

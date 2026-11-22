@@ -25,6 +25,10 @@ namespace dingosdk::arcade_mode::native_grab {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_footplant {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_ground_grab {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_grind {void cancel() noexcept {}}
+namespace dingosdk::arcade_mode::vert_runtime {
+unsigned cancellations{};
+void cancel() noexcept {++cancellations;}
+}
 namespace dingosdk::arcade_mode::custom_flatland_runtime {
 unsigned cancellations{};
 void cancel() noexcept {++cancellations;}
@@ -227,6 +231,7 @@ void run(){
         require(controller_route.accepts(slot,1000)&&arcade_input.admitted(0,1000),"explicit multi-connected route retains independent facade authority proof");++checks;
         playback_packets={};playback_packets[slot].sample(20,20,true);playback_packets[slot].sample(20,20,true);
         push=air=true;gameplay_valid_until=1150;reset_physical_manual=false;
+        const auto vert_cancellations=vert_runtime::cancellations;
         const auto wallplant_cancellations=wallplant_runtime::cancellations;
         const auto flatland_cancellations=custom_flatland_runtime::cancellations;
         disconnect_xinput_source((slot+1)%4);
@@ -235,7 +240,9 @@ void run(){
             "other controller withdrawal cannot cancel selected wallplant ownership");++checks;
         require(custom_flatland_runtime::cancellations==flatland_cancellations,
             "other controller withdrawal cannot cancel selected flatland ownership");++checks;
+        require(vert_runtime::cancellations==vert_cancellations,"unrelated controller does not withdraw vert");++checks;
         disconnect_xinput_source(slot);
+        require(vert_runtime::cancellations==vert_cancellations+1,"selected controller withdraws vert once");++checks;
         require(!controller_route.accepts(slot,1000)&&!arcade_input.admitted(0,1000)&&!push&&!air&&!gameplay_valid_until&&reset_physical_manual,
             "actual disconnect callback revokes shared facade and native intentions immediately");++checks;
         require(wallplant_runtime::cancellations==wallplant_cancellations+1,

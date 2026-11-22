@@ -118,6 +118,10 @@ InputSurfaceState surface(std::uint64_t,const NativeInputFrame&)noexcept{return 
 bool current(const WallplantCommand&,std::uint64_t,const NativeInputFrame&,SurfaceGeometryVector)noexcept{return false;}
 }
 // Manual fixtures supply no custom-animation receipt or motion authority.
+namespace dingosdk::arcade_mode::vert_runtime {
+void cancel()noexcept{}
+InputSurfaceState surface(std::uint64_t,const NativeInputFrame&,InputSurfaceState other)noexcept{return other;}
+}
 namespace dingosdk::arcade_mode::custom_flatland_runtime {
 CustomExecutionBatch take_executions()noexcept{return {};}
 void cancel()noexcept{}

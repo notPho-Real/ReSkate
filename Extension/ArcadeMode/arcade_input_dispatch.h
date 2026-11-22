@@ -993,6 +993,9 @@ private:
             request.geometry_known = false; request.rail_generation = 0;
         }
         if (action == InputAction::jump_variant) request.jump_generation = environment.jump_generation;
+        if(action==InputAction::transfer_command) {
+            request.direction=events_.held_direction();request.direction_source=InputSource::direction;
+        }
         request.form = form;
         if(parent)request.parent_input_sequence=parent->input_sequence;
         if(action==InputAction::flip && environment.context==InputContext::ground) {
