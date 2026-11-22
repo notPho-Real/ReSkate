@@ -26,6 +26,7 @@ void manual_pivot_rows() {
     row.status=3;row.origin=row.successor=static_cast<unsigned>(SkatePose::manual);
     row.state=100;row.mode=1;row.contacts=0x4000;row.stance=0x20;
     row.board_radians=-3.14f;row.body_radians=-3.13f;
+    row.board_forward={0,0,-1};row.hips_forward={.1f,0,-.99f};row.motion_sample=true;
     row.native_valid=row.motion_correlated=row.orientation_valid=row.fakie=true;
     check(link.client(row),"physical Pivot receipt fits the existing bounded telemetry channel");
     std::array<ClientTelemetry,2> received{};
@@ -33,7 +34,9 @@ void manual_pivot_rows() {
     const auto& copied=std::get<ManualPivotEvidence>(received[0]);
     check(copied.transition==500&&copied.episode==3&&copied.start_step==10&&copied.physics_step==40&&
         copied.owner_generation==2&&copied.board_radians==-3.14f&&copied.body_radians==-3.13f&&
-        copied.contacts==0x4000&&copied.fakie,"Pivot row preserves signed physical rotation and original native identity");
+        copied.contacts==0x4000&&copied.fakie&&copied.motion_sample&&
+        copied.board_forward==row.board_forward&&copied.hips_forward==row.hips_forward,
+        "Pivot row preserves signed physical rotation, current bases and original native identity");
     check(client_telemetry_fresh(received[0],100000),"historical Pivot status keeps its original timestamps instead of renewing or silently expiring");
     for(unsigned fault=0;fault<10;++fault){auto bad=row;
         if(fault==0)bad.board_radians=std::numeric_limits<float>::quiet_NaN();
@@ -50,7 +53,22 @@ void manual_pivot_rows() {
     }
     check(state.client.take_dropped()==10,"invalid Pivot rows retain existing observable evidence-loss accounting");
     row.status=2;row.rejection=5;row.native_valid=row.motion_correlated=false;row.ms=1200;
+    row.board_forward={};row.hips_forward={};
     check(link.client(row),"rejected stale motion remains reportable as a historical failure, never a physical success");
+    state.client.take(received);
+    for(unsigned fault=0;fault<5;++fault){auto bad=row;
+        if(fault==0)bad.board_forward[0]=std::numeric_limits<float>::quiet_NaN();
+        if(fault==1)bad.hips_forward[2]=std::numeric_limits<float>::infinity();
+        if(fault==2)bad.board_forward={0,0,1};
+        if(fault==3){bad.motion_correlated=bad.native_valid=true;bad.native_ms=bad.ms;}
+        if(fault==4)bad.ms=1601;
+        check(!link.client(bad),"invalid or replayed Pivot motion and renewed trace deadlines fail validation");
+    }
+    check(state.client.take_dropped()==5,"invalid diagnostic motion remains visible in queue loss accounting");
+    auto boundary=row;boundary.ms=1600;
+    check(link.client(boundary),"original1100ms trace boundary retains an explicit missing-motion sample");
+    boundary.ms=1601;boundary.motion_sample=false;
+    check(link.client(boundary),"later historical status is permitted without extending the motion window");
     state.client.take(received);
     for(unsigned i=0;i<64;++i)check(link.client(row),"Pivot rows share the existing fixed client capacity");
     check(!link.client(row)&&state.client.take_dropped()==1,"Pivot saturation cannot silently hide a lost status transition");

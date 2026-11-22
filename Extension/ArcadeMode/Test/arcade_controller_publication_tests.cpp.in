@@ -72,13 +72,13 @@ std::atomic<bool> manual_balance_admitted{};
 std::uint64_t physics_step{};
 struct Sink {
     unsigned push{},air{},charge{};
-    bool drive{},angular{},ground_turn{};
+    bool drive{},crouched{},angular{},ground_turn{};
     float yaw{};
     std::uint64_t release{};
     std::int32_t native_launch_id{};
 } sink;
 void require(bool value,const char* why){if(!value){std::cerr<<why<<'\n';std::exit(1);}}
-void set_arcade_push_intent(bool enabled,bool){++sink.push;sink.drive=enabled;}
+void set_arcade_push_intent(bool enabled,bool crouched){++sink.push;sink.drive=enabled;sink.crouched=crouched;}
 // Nonactuating sink observes the original production publication arguments.
 void set_arcade_air_intent(bool,std::uint64_t release,std::uint64_t,unsigned charge,
         float yaw,bool angular,const NativeManualContact*,const NativeInputFrame*,
@@ -103,6 +103,7 @@ void writers(unsigned user,std::uint64_t now,NativeGesture::Output result,SkateP
     AirRotation::Output rotation{held_buttons!=0,0,0,2.0f,{}};
     const AirRotation::Output prewind{}; // This fixture exercises the rate-publication path.
     const GroundControl ground_controls{};
+    [[maybe_unused]] const StanceControl stance_pad{};
 @controller_route_push@
 @controller_route_air_ownership@
 @controller_route_air@
@@ -119,8 +120,8 @@ void establish(unsigned user,std::uint64_t now,unsigned source=0){
 }
 namespace stance_publication {
 ArcadeInput arcade_input{true};std::array<PlaybackPacket,4> playback_packets;
-struct Output{std::uint16_t buttons{};short lx{},ly{},rx{},ry{};unsigned lt{},rt{},acks{};bool after_packet{};std::uint16_t acknowledged{};};
-Output sample(bool owns_controls,bool conflict,bool face_owner,std::uint16_t physical_buttons,StanceControl control,bool automatic_push=false){
+struct Output{std::uint16_t buttons{};short lx{},ly{},rx{},ry{};unsigned lt{},rt{},acks{};bool after_packet{};std::uint16_t acknowledged{};bool drive{},crouched{};};
+Output sample(bool owns_controls,bool conflict,bool face_owner,std::uint16_t physical_buttons,StanceControl control,bool automatic_push=false,bool drive_safe=true,bool crouched=false){
     const unsigned user=0;const std::uint64_t now=1000,tick=60;const std::uint32_t physical_packet=41,normal_mask=0;
     const bool reference=false,stance_permitted=owns_controls&&!conflict;
     const dingosdk::NoBailSkater native_flip_owner{1,2,3,4,5};
@@ -134,10 +135,11 @@ Output sample(bool owns_controls,bool conflict,bool face_owner,std::uint16_t phy
     playback_packets={};native_stance::pending=control;native_stance::deliveries=0;
     native_stance::packet_probe=&playback_packets[user];native_stance::delivered_after_packet=false;
 @controller_route_final_controls@
+@controller_route_push@
 @controller_route_packet_sample@
     require(output_packet==(stance_pad.owned?42u:41u),"stance alone publishes a fresh synthetic packet exactly while its B control is owned");
     return {result.buttons,left_x,left_y,result.right_x,result.right_y,left_trigger,right_trigger,
-        native_stance::deliveries,native_stance::delivered_after_packet,native_stance::delivered_buttons};
+        native_stance::deliveries,native_stance::delivered_after_packet,native_stance::delivered_buttons,sink.drive,sink.crouched};
 }
 void run(){
     unsigned checks{};
@@ -157,9 +159,8 @@ void run(){
         require(accepted||(!native_stance::pending.owned&&native_stance::cancellations==cancellations+1),
             "loss of controls or final permission cancels the stance producer before output or delivery acknowledgment");++checks;
     }
-    // The native bda7ae8b trial delivered both B presses, then this exact final
-    // writer resumed X while stance acknowledgment was still pending. Native
-    // push subsequently invalidated the otherwise fresh stance observation.
+    // Both native X and independent scalar assistance must use the finalized
+    // stance reservation. Withholding either does not prove native completion.
     StanceInput input;
     const auto frame=[](unsigned index,unsigned stance=0u){
         const auto at=100u+17u*index;
@@ -174,6 +175,7 @@ void run(){
         const auto control=input.controls(native,native.sampled_at,index+1u);
         const auto output=sample(true,false,false,0,control,true);
         require(!(output.buttons&0x4000u),"actual final writer withholds automatic X through native stance acknowledgment");++checks;
+        require(!output.drive,"actual scalar publication withholds movement assistance through native stance acknowledgment");++checks;
         require(input.delivered(native,control,output.buttons,native.sampled_at,index+1u),
             "actual final neutral packet preserves the finite stance observation lease");++checks;
         require(!input.observed_change(),"withholding automatic push cannot fabricate a native stance result");++checks;
@@ -184,6 +186,15 @@ void run(){
     require(input.observed_change()&&!input.active()&&!completed.owned,
         "fresh native leading-foot observation releases neutral ownership");++checks;
     require(resumed.buttons==0x4000u,"actual final writer resumes automatic push immediately after native acknowledgment");++checks;
+    require(resumed.drive,"actual scalar publication resumes eligible assistance immediately after native acknowledgment");++checks;
+    for(bool drive:{false,true})for(bool crouched:{false,true})for(bool conflict:{false,true}) {
+        const auto held=sample(true,conflict,false,0,{true,0,77,5},true,drive,crouched);
+        require(held.drive==(drive&&conflict)&&held.crouched==crouched,
+            "stance reservation only withdraws drive permission; cancellation restores original eligibility and crouch metadata");++checks;
+        const auto idle=sample(true,false,false,0,{},true,drive,crouched);
+        require(idle.drive==drive&&idle.crouched==crouched,
+            "without stance ownership original riding, crouch and rejected-drive behavior is unchanged");++checks;
+    }
     native_stance::packet_probe=nullptr;
     std::cout<<checks<<" exact production stance publication checks passed\n";
 }

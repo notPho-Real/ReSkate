@@ -41,6 +41,8 @@ def generate(root,variant='current'):
                                  '        const auto release_deadline = manual_release_until.load')
     final_controls=module.between(mode,'        // Controller route final_controls publication begin.',
                                   '        // Controller route final_controls publication end.')
+    push_publication=module.between(mode,'        // Controller route push publication begin.',
+                                    '        // Controller route push publication end.')
     if variant=='rollback-revert-delivery':
         # RC3 preserves native pressure rather than exchanging manual identity.
         # Removing acquisition observation alone no longer corrupts that pose.
@@ -172,6 +174,7 @@ def generate(root,variant='current'):
      if(rotation.owns_left){left_x=rotation.x;left_y=rotation.y;}
      CORRECTION
      FINAL_CONTROLS
+     PUSH_PUBLICATION
      last_pad={left_x,left_y,result.right_x,result.right_y,result.buttons,ground_controls.encode(),manual_correction.owns_y,delivered_drive,left_trigger,right_trigger,physical_buttons};
      if(result.manual.owns&&result.manual.revert.ack_at&&action.pad.owns_left_stick){
       check(last_pad.ry==manual_pressure&&std::abs(static_cast<int>(last_pad.ry))<=20000&&!action.pad.owns_right_stick,
@@ -179,7 +182,7 @@ def generate(root,variant='current'):
       check(last_pad.x==action.pad.left_x&&last_pad.y==action.pad.left_y,
          "final native packet preserves the original LS revert recipe during manual handoff");
      }
-     return result;'''.replace('DRIVE',drive).replace('ACTION_DELIVERY',action_delivery).replace('FINAL_CONTROLS',final_controls).replace('CORRECTION',correction).replace('MANUAL_PUBLICATION',manual_publication)
+     return result;'''.replace('DRIVE',drive).replace('ACTION_DELIVERY',action_delivery).replace('FINAL_CONTROLS',final_controls).replace('PUSH_PUBLICATION',push_publication).replace('CORRECTION',correction).replace('MANUAL_PUBLICATION',manual_publication)
     once(old,new)
 
     scalar_template=r'''
@@ -594,7 +597,7 @@ def generate(root,variant='current'):
     return source, {'base_chunks':json.loads(generated['correspondence.json']),
      'variant':variant,
      'production_chunks_sha256':{name:hashlib.sha256(value.encode()).hexdigest() for name,value in {
-      'control_owner':control_owner,'final_controls':final_controls,'action_delivery':action_delivery,
+      'control_owner':control_owner,'final_controls':final_controls,'push_publication':push_publication,'action_delivery':action_delivery,
       'reverse_mask':reverse_mask,'drive_and_reservation_publication':drive,'correction':correction,'manual_publication':manual_publication,
       'native_manual_current':native_current,'resistance_current':resistance_current,
       'resistance_before':resistance,'commit_motion':commit,'body_writer':body_writer,'carrier_store':store,'carrier_load':load,

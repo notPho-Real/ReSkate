@@ -53,6 +53,8 @@ gesture phase needs a delivered packet and a newer native step. After final B
 release, neutral ownership withholds automatic pushes until native acknowledgment
 or the original one-second observation limit. Repeated neutral packets cannot
 renew that limit; completion or cancellation releases ownership immediately.
+Scalar speed assistance obeys this same finalized reservation, including its
+neutral phase; normal eligibility resumes when ownership ends.
 The adapter never writes
 heading, momentum or a rendered stance. Native leading-foot observation is
 separate from input delivery; regular/switch/fakie movement still requires native
@@ -60,9 +62,10 @@ acceptance of this candidate. Ground RT has no Revert fallback.
 The adapter authenticates exported instance GUIDs at the live object prefix.
 File GUIDs identify the containing asset and cannot authenticate that object;
 using them prevented Switch admission in the `ec28f738` native trial.
-The corrected `bda7ae8b` trial delivered both double taps but observed no stance
-change. Its subsequent auto-push conflict is corrected in source; physical
-Switch acceptance remains pending.
+The `6f132763` trial delivered both double taps and retained neutral ownership,
+but observed no stance change. A native push flag still ended observation; in
+one attempt it appeared before automatic X resumed. Its cause is unresolved,
+and physical Switch acceptance remains pending.
 The input adapter and physical Pivot evidence are separate from native acceptance.
 LT during Manual/grind cannot replace the active physical support or its native
 launch family. See [the shared trigger contract](TRIGGER_CONTRACT.md) for vert
@@ -275,6 +278,14 @@ the original physical button timestamps remain unchanged. These routes require
 the existing qualified horizontal rail segment of at least12m; available travel
 still determines whether the entire chain can finish. They are offline-tested; exact-candidate native
 execution, animation and combo acceptance remain pending.
+
+From an established 5-0, Y→X requests Noseslide and B→Y requests Nosebluntslide.
+Both use the completed 50-50 return, then a separately completed Nosegrind
+preparation, then the existing native lateral transition. Neither intermediate
+counts as the requested slide. The original request has a fixed maximum of
+4.5 seconds; this is an expiry ceiling, not an added input delay. Loss of rail,
+owner or transition authority cancels the chain. These extensions pass the same
+offline controls and completion tests; native execution remains unverified.
 
 ## Manual, Pivot and balance
 

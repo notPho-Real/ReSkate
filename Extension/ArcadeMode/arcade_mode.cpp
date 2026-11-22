@@ -516,19 +516,37 @@ ManualEpisode manual_episode;
 // retried/retimestamped success. The next status row retains the same identity.
 void emit_manual_pivot_evidence(std::uint64_t now,const NativeInputFrame& frame) noexcept {
     static ManualPivotEvidence previous{};
+    static NativeInputOwner trace_owner{};
+    static bool trace_open{};
     const auto& proof=manual_episode.pivot_evidence();
     const auto status=static_cast<unsigned>(proof.status),reason=static_cast<unsigned>(proof.rejection);
     const bool inactive=proof.status==ManualEpisode::PivotStatus::inactive;
-    if((inactive && (!previous.transition || previous.status==status)) ||
-       (!inactive && previous.transition==proof.transition && previous.episode==proof.episode &&
-        previous.status==status && previous.rejection==reason))return;
+    const bool new_transition=!inactive &&
+        (proof.transition!=previous.transition || proof.episode!=previous.episode);
+    const bool status_changed=inactive ? previous.transition && previous.status!=status :
+        new_transition || previous.status!=status || previous.rejection!=reason;
+    if(new_transition) {trace_owner=frame.owner;trace_open=true;}
+    // The original transition owns this diagnostic window. A rejection does
+    // not renew it or stop observation of the same supported animation, and
+    // missing native motion is reported without replaying the preceding basis.
+    const bool in_window=!inactive && now>=proof.transition && now-proof.transition<=1100;
+    const bool same_owner=frame.valid && frame.owner==trace_owner &&
+        (new_transition || frame.owner_generation==previous.owner_generation);
+    const bool same_episode=manual_episode.serial()==proof.episode &&
+        manual_episode.owned() && manual_episode.grounded();
+    const bool trace_attempt=trace_open && in_window && enabled();
+    const bool new_step=new_transition || !frame.valid || frame.physics_step>previous.physics_step;
+    const bool motion_sample=trace_attempt && (new_step || !same_owner || !same_episode);
+    if(!in_window || !enabled() || !same_owner || !same_episode)trace_open=false;
+    if(!status_changed && !motion_sample)return;
     if(previous.sequence==UINT64_MAX){input_telemetry.client_lost();return;}
     ManualPivotEvidence row=previous;
-    if(!inactive && (proof.transition!=previous.transition || proof.episode!=previous.episode)) {
+    if(new_transition) {
         row={};row.transition=proof.transition;row.episode=proof.episode;row.started_ms=proof.started_at;
         row.start_step=frame.physics_step;row.owner_generation=frame.owner_generation;
     }
     row.ms=now;row.sequence=previous.sequence+1;row.status=status;row.rejection=reason;
+    row.motion_sample=motion_sample;row.board_forward={};row.hips_forward={};
     if(!inactive) {
         row.origin=static_cast<unsigned>(proof.origin);row.successor=static_cast<unsigned>(proof.successor);
         row.board_radians=proof.board_radians;row.body_radians=proof.body_radians;
@@ -539,9 +557,15 @@ void emit_manual_pivot_evidence(std::uint64_t now,const NativeInputFrame& frame)
     row.state=frame.state;row.mode=frame.mode;row.contacts=frame.contacts;row.stance=frame.stance_and_push;
     row.orientation_valid=frame.orientation.valid;row.fakie=frame.orientation.fakie;
     const auto& motion=capture_manual_pivot_motion;
-    row.motion_correlated=motion.valid && row.native_valid && motion.owner==frame.owner &&
+    row.motion_correlated=motion.valid && row.native_valid && same_owner && same_episode && motion.owner==frame.owner &&
         motion.owner_generation==frame.owner_generation && motion.physics_step==frame.physics_step && motion.sampled_at==frame.sampled_at;
+    for(const auto& basis:{motion.board_forward,motion.body_forward}) {
+        for(const auto value:basis)if(!std::isfinite(value))row.motion_correlated=false;
+        if(basis[0]*basis[0]+basis[2]*basis[2]<.01f)row.motion_correlated=false;
+    }
+    if(row.motion_correlated) {row.board_forward=motion.board_forward;row.hips_forward=motion.body_forward;}
     row.client_dropped=input_telemetry.client_dropped();
+    if(proof.status==ManualEpisode::PivotStatus::observed)trace_open=false;
     previous=row;
     (void)input_telemetry.client(row);
 }
@@ -954,10 +978,11 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
 #if defined(DINGOSDK_DEV_TOOLS)
         else if constexpr (std::is_same_v<T, ManualPivotEvidence>)
             logging::log(logging::Level::info,logging::Channel::skater,
-                "ARCADE MANUAL PIVOT: ms={} seq={} transition={} episode={} started_ms={} start_step={} owner_gen={} native_ms={} step={} native_owner_gen={} status={} rejection={} origin={} successor={} board_radians={} body_radians={} completed_ms={} completed_step={} native_valid={} motion_correlated={} state={} mode={} contacts={} stance={} orientation_valid={} fakie={} client_dropped={} native_score_verified=false.",
+                "ARCADE MANUAL PIVOT: ms={} seq={} transition={} episode={} started_ms={} start_step={} owner_gen={} native_ms={} step={} native_owner_gen={} status={} rejection={} origin={} successor={} board_radians={} body_radians={} completed_ms={} completed_step={} native_valid={} motion_correlated={} state={} mode={} contacts={} stance={} orientation_valid={} fakie={} motion_sample={} board_forward={},{},{} hips_forward={},{},{} client_dropped={} native_score_verified=false.",
                 r.ms,r.sequence,r.transition,r.episode,r.started_ms,r.start_step,r.owner_generation,r.native_ms,r.physics_step,r.native_owner_generation,
                 r.status,r.rejection,r.origin,r.successor,r.board_radians,r.body_radians,r.completed_ms,r.completed_step,
-                r.native_valid,r.motion_correlated,r.state,r.mode,r.contacts,r.stance,r.orientation_valid,r.fakie,r.client_dropped);
+                r.native_valid,r.motion_correlated,r.state,r.mode,r.contacts,r.stance,r.orientation_valid,r.fakie,r.motion_sample,
+                r.board_forward[0],r.board_forward[1],r.board_forward[2],r.hips_forward[0],r.hips_forward[1],r.hips_forward[2],r.client_dropped);
 #endif
         else if constexpr (std::is_same_v<T, BalanceFailureEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
@@ -2882,9 +2907,6 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             pose == SkatePose::riding && !(physical_buttons & static_cast<std::uint16_t>(~(classic_x | (crouched ? classic_a : 0)))) &&
             physical_left_trigger <= 30 && physical_right_trigger <= 30 && !action.owned && !reference &&
             !result.suppress_reverse && (!result.command_busy || crouched);
-        // Controller route push publication begin.
-        set_arcade_push_intent(drive_safe, crouched);
-        // Controller route push publication end.
         const auto rotation_native = arcade_input.native_context(now);
         const auto rotation_pose = native_rotation_pose(rotation_native,pose,hop_origin.valid);
         const bool native_rate_ready = arcade_air_motion_ready(&rotation_native);
@@ -2989,6 +3011,11 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if(owns_controls && stance_pad.owned)
             result.buttons=static_cast<std::uint16_t>((result.buttons&~0x2000u)|stance_pad.buttons);
         // Controller route final_controls publication end.
+        // Scalar assistance shares the finalized native stance reservation.
+        // Neutral B alone must not leave an independent acceleration budget.
+        // Controller route push publication begin.
+        set_arcade_push_intent(drive_safe && !stance_pad.owned, crouched);
+        // Controller route push publication end.
         const auto normal_mask = synthetic_packet_mask(result.phase, result.buttons != physical_buttons || consume_nollie ||
             result.right_x != physical_right_x || result.right_y != physical_right_y ||
             left_trigger != physical_left_trigger || right_trigger != physical_right_trigger) ^

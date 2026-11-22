@@ -50,6 +50,11 @@ retains neutral B ownership so automatic X cannot initiate a conflicting native
 push. Neutral publication does not restart either tap or renew the original
 one-second acknowledgment limit. A real completion, conflict or timeout releases
 it immediately; this reservation supplies no native stance evidence.
+The scalar movement-assistance intent is published after that same finalized
+reservation and is also withheld while it is owned. Cancelling or completing
+the reservation restores the existing drive eligibility without a new delay.
+This closes a separate ownership gap; it does not explain the native push flag
+observed before automatic X resumed in the second `6f132763` attempt.
 
 The ground engineer owns `arcade_input_events.h`, `arcade_trigger_input.h`,
 `arcade_input_dispatch.h` and `arcade_input_session.h`. The vert engineer owns

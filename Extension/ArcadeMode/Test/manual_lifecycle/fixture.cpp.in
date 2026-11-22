@@ -73,10 +73,12 @@ std::array<PlaybackPacket,4> playback_packets;NativeControllerRoute controller_r
 @@PACKET_RETIRE@@
 std::atomic<std::uint64_t> action_eligible_until{},manual_eligible_until{},manual_prepare_until{},manual_release_until{};
 NativeInputReadiness native_readiness;std::atomic<SkatePose> manual_observed{SkatePose::unknown};std::atomic<bool>manual_balance_admitted{};
-struct Telemetry{template<class T>void client(const T&){}void pad(const PadTelemetry&){}bool client_dropped()const{return false;}void client_lost(){}
+struct Telemetry{template<class T>void client(const T&){}void pad(const PadTelemetry&){}std::uint64_t client_dropped()const{return lost;}void client_lost(){++lost;}
+ std::uint64_t lost{};
 #if defined(DINGOSDK_DEV_TOOLS)
  std::vector<ManualPivotEvidence> pivots;
- void client(const ManualPivotEvidence& row){pivots.push_back(row);}
+ bool accept_pivots=true;
+ void client(const ManualPivotEvidence& row){if(accept_pivots)pivots.push_back(row);else ++lost;}
 #endif
 }input_telemetry;
 NativeInputFrame capture_native_frame{};std::array<std::uint32_t,8> capture_native_words{};float capture_physics_dt{};
@@ -1071,20 +1073,106 @@ void manual_pivot_physical_production(){
   check((evidence.status==ManualEpisode::PivotStatus::observed)==(fault==0),
       "production physical Pivot needs both board and body half-turn plus uninterrupted single-truck support");
 #if defined(DINGOSDK_DEV_TOOLS)
-  check(input_telemetry.pivots.size()==2&&input_telemetry.pivots[0].status==1&&
-      input_telemetry.pivots[1].status==(fault==0?3u:2u),
-      "production Pivot emits only its start and final status, never one telemetry row per physics/input poll");
+  check(input_telemetry.pivots.size()>2&&input_telemetry.pivots.front().status==1&&
+      input_telemetry.pivots.back().status==(fault==0?3u:2u),
+      "production Pivot retains bounded original-step motion and unchanged final proof status");
+  for(std::size_t i=1;i<input_telemetry.pivots.size();++i){
+   const auto& current=input_telemetry.pivots[i];const auto& prior=input_telemetry.pivots[i-1];
+   check(current.physics_step>prior.physics_step&&current.ms-current.transition<=1100,
+       "current Pivot motion is emitted once per original step inside its unrenewed window");
+  }
   const auto& receipt=input_telemetry.pivots.back();
   check(receipt.transition==evidence.transition&&receipt.episode==episode&&
       receipt.started_ms==input_telemetry.pivots.front().native_ms&&
       receipt.start_step==input_telemetry.pivots.front().physics_step&&
-      receipt.sequence==input_telemetry.pivots.front().sequence+1&&
+      receipt.sequence==input_telemetry.pivots.front().sequence+input_telemetry.pivots.size()-1&&
       receipt.board_radians==evidence.board_radians&&receipt.body_radians==evidence.body_radians,
       "production telemetry preserves actual Pivot proof identity and measured signed rotation through successor settlement");
 #endif
   check(manual_episode.serial()==episode&&manual_balance_admitted.load()&&balance_hud_pending()&&
       combo_session.model().state().combo_active&&combo_session.model().state().multiplier==multiplier,
       "physical Pivot verification cannot fabricate scoring or prevent ordinary successor balance restoration");
+#if defined(DINGOSDK_DEV_TOOLS)
+  if(nose&&fault==2&&(hz==30||hz==120)){
+   auto frame=capture_native_frame;auto count=input_telemetry.pivots.size();
+   if(hz==30){
+    ++frame.owner.core;++frame.owner_generation;
+    emit_manual_pivot_evidence(clock_ms,frame);
+    check(input_telemetry.pivots.size()==++count&&!input_telemetry.pivots.back().motion_correlated,
+        "native owner replacement emits an empty closure rather than foreign Pivot motion");
+   }else{
+    set_enabled(false,false);count=input_telemetry.pivots.size();
+    check(input_telemetry.pivots.back().status==0&&!input_telemetry.pivots.back().motion_sample&&
+        !input_telemetry.pivots.back().motion_correlated,
+        "Arcade OFF preserves terminal status without replaying motion or extending the trace");
+   }
+   ++frame.sampled_at;++frame.physics_step;++clock_ms;
+   emit_manual_pivot_evidence(clock_ms,frame);
+   check(input_telemetry.pivots.size()==count,"owner loss and Arcade OFF permanently retire this diagnostic window");
+  }
+  if(!nose&&fault==2&&(hz==30||hz==120)){
+   auto frame=capture_native_frame;auto count=input_telemetry.pivots.size();
+   if(hz==120)manual_episode.release_delivery(frame,true);
+   else {
+    manual_episode.end(ManualEpisode::Exit::putdown);
+    ++frame.sampled_at;++frame.physics_step;++clock_ms;
+    manual_episode.admit(frame,{SkatePose::manual,true,true});
+    ManualInputDiagnostic command{};command.owns=command.safe=true;command.request=-1;command.request_at=frame.sampled_at;
+    manual_episode.delivery(frame,command,true);
+    check(manual_episode.serial()!=episode&&manual_episode.owned(),
+        "replacement negative control establishes a newly owned same-native-owner Manual episode");
+   }
+   emit_manual_pivot_evidence(clock_ms,frame);
+   check(input_telemetry.pivots.size()==++count&&!input_telemetry.pivots.back().motion_correlated&&
+       input_telemetry.pivots.back().board_forward==std::array<float,3>{},
+       "physical release or same-owner episode replacement closes the old trace with an explicit gap");
+   ++frame.sampled_at;++frame.physics_step;++clock_ms;
+   emit_manual_pivot_evidence(clock_ms,frame);
+   check(input_telemetry.pivots.size()==count,
+       "later native frames cannot reopen a physically retired or replaced Pivot trace");
+  }
+  if(!nose&&hz==60&&fault==2){
+   const auto rejected=manual_episode.pivot_evidence();
+   auto count=input_telemetry.pivots.size();
+   emit_manual_pivot_evidence(clock_ms,capture_native_frame);remap();
+   check(input_telemetry.pivots.size()==count,"duplicate physics/client polls never replay Pivot vectors");
+   advance_trial(dt);observe(dt/1000.f,support,100);
+   check(input_telemetry.pivots.size()==++count&&!input_telemetry.pivots.back().motion_correlated&&
+       input_telemetry.pivots.back().board_forward==std::array<float,3>{}&&
+       input_telemetry.pivots.back().hips_forward==std::array<float,3>{},
+       "missing current hips and board motion emits an explicit empty diagnostic gap");
+   advance_trial(dt);observe(dt/1000.f,support,100,true,true,-1,motion(3.141592654f,100));
+   check(input_telemetry.pivots.size()==++count&&input_telemetry.pivots.back().motion_correlated&&
+       input_telemetry.pivots.back().board_forward[2]<-.99f&&
+       input_telemetry.pivots.back().hips_forward[2]<-.9f&&
+       input_telemetry.pivots.back().status==2&&input_telemetry.pivots.back().rejection==5&&
+       manual_episode.pivot_evidence().board_radians==rejected.board_radians&&
+       manual_episode.pivot_evidence().body_radians==rejected.body_radians,
+       "later exact board and hips bases do not rewrite rejected physical Pivot proof");
+   auto invalid_motion=motion(3.141592654f,100);
+   invalid_motion.poses[23]->transform[8]=std::numeric_limits<float>::quiet_NaN();
+   advance_trial(dt);observe(dt/1000.f,support,100,true,true,-1,invalid_motion);
+   check(input_telemetry.pivots.size()==++count&&!input_telemetry.pivots.back().motion_correlated&&
+       input_telemetry.pivots.back().hips_forward==std::array<float,3>{},
+       "nonfinite current hips become a visible gap without emitting a malformed basis");
+   input_telemetry.accept_pivots=false;const auto lost=input_telemetry.lost;
+   advance_trial(dt);observe(dt/1000.f,support,100,true,true,-1,motion(3.141592654f,100));
+   emit_manual_pivot_evidence(clock_ms,capture_native_frame);
+   check(input_telemetry.pivots.size()==count&&input_telemetry.lost==lost+1,
+       "failed enqueue is counted once and cannot retry the same motion with a new sequence");
+   input_telemetry.accept_pivots=true;
+   advance_trial(dt);observe(dt/1000.f,support,100,true,true,-1,motion(3.141592654f,100));
+   check(input_telemetry.pivots.back().client_dropped==lost+1,
+       "next fresh motion exposes prior bounded queue loss");
+   while(clock_ms-began<=1100){
+    advance_trial(dt);observe(dt/1000.f,support,100,true,true,-1,motion(3.141592654f,100));
+   }
+   count=input_telemetry.pivots.size();
+   advance_trial(dt);observe(dt/1000.f,support,100,true,true,-1,motion(3.141592654f,100));
+   check(input_telemetry.pivots.size()==count&&input_telemetry.pivots.back().ms-began<=1100,
+       "rejected Pivot trace ends at its original deadline without per-frame logging afterward");
+  }
+#endif
   trial_hz=0;
  }
 }

@@ -72,14 +72,17 @@ struct ManualPhysicsEvidence {
     unsigned profile{};
 };
 #if defined(DINGOSDK_DEV_TOOLS)
-// Historical status transitions, not a score receipt or renewed native lease.
+// Historical status transitions and bounded original-step motion, not a score
+// receipt or renewed native lease. Proof radians stay frozen after rejection;
+// current bases can show later animation motion without changing that decision.
 // Native addresses never leave the producer; generation/step identify its proof.
 struct ManualPivotEvidence {
     std::uint64_t ms{},sequence{},transition{},episode{},started_ms{},start_step{},owner_generation{};
     std::uint64_t native_ms{},physics_step{},native_owner_generation{},completed_ms{},completed_step{},client_dropped{};
     unsigned status{},rejection{},origin{},successor{},state{},mode{},contacts{},stance{};
     float board_radians{},body_radians{};
-    bool native_valid{},motion_correlated{},orientation_valid{},fakie{};
+    std::array<float,3> board_forward{},hips_forward{};
+    bool native_valid{},motion_correlated{},orientation_valid{},fakie{},motion_sample{};
 };
 #endif
 struct CustomScoreEvidence {
@@ -271,9 +274,17 @@ using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFai
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
 #if defined(DINGOSDK_DEV_TOOLS)
-    if(const auto* pivot=std::get_if<ManualPivotEvidence>(&row))
+    if(const auto* pivot=std::get_if<ManualPivotEvidence>(&row)) {
+        for(const auto& basis:{pivot->board_forward,pivot->hips_forward}) {
+            for(const auto value:basis)if(!std::isfinite(value))return false;
+            if(pivot->motion_correlated && basis[0]*basis[0]+basis[2]*basis[2]<.01f)return false;
+            if(!pivot->motion_correlated && basis!=std::array<float,3>{})return false;
+        }
         return pivot->sequence && pivot->transition && pivot->episode && pivot->status<=3 && pivot->rejection<=6 &&
             pivot->transition<=pivot->ms && pivot->started_ms<=pivot->ms &&
+            (!pivot->motion_sample || pivot->ms-pivot->transition<=1100) &&
+            (!pivot->motion_correlated || (pivot->native_valid && pivot->owner_generation &&
+                pivot->native_owner_generation==pivot->owner_generation)) &&
             std::isfinite(pivot->board_radians) && std::isfinite(pivot->body_radians) &&
             (!pivot->native_valid || (pivot->physics_step && pivot->native_ms<=pivot->ms &&
                 pivot->ms-pivot->native_ms<=InputTiming::native_sample_lease_ms)) &&
@@ -281,6 +292,7 @@ inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
                 pivot->owner_generation && pivot->native_owner_generation==pivot->owner_generation &&
                 pivot->start_step && pivot->completed_step==pivot->physics_step &&
                 pivot->completed_ms==pivot->native_ms && !pivot->rejection));
+    }
 #endif
     if(const auto* settlement=std::get_if<ModelSettlementEvidence>(&row))
         return settlement->ms && settlement->sequence &&

@@ -12,9 +12,10 @@ descriptions below. LT tap selects Nollie; hold selects Pressure. A still owns
 crouch and launch. Native Nollie16 and its follow-up identities survive LT release;
 unsupported Pressure requests never substitute an ordinary trick. Ground RT
 dispatches only native Switch, while established Manual RT requests physical
-Pivot/Nose Pivot. The `bda7ae8b` native trial delivered both Switch double taps,
-but no physical stance change. The follow-up removes automatic-push overlap
-while awaiting acknowledgment; native Switch acceptance remains pending.
+Pivot/Nose Pivot. The green `6f132763` trial delivered both Switch double taps
+with neutral ownership afterward, but no physical stance change. The native
+push flag still ended observation, including before automatic X resumed;
+native Switch acceptance remains pending.
 
 The shared [trigger contract](TRIGGER_CONTRACT.md) reserves vert flight and landing
 inputs before ordinary ground commands. Native board-reference and hips motion
@@ -23,6 +24,14 @@ The current chain requires physical rotation, resulting stance and qualified
 successor support. Manual acceptance remains at least three continuous seconds,
 with no gameplay timeout. Current implementation and verification are recorded in
 [ROADMAP.md](ROADMAP.md); older captures retain their original meaning.
+
+The `6f132763` Manual trial observed a 3.301-second physical hold with stable
+rear-truck support and owner, plus visible balance HUD. Of 100 observations,
+97 qualified; the largest qualified gap was 107ms. RT then physically turned
+the board and body and changed fakie, but Pivot proof rejected their 42-degree
+rotation difference at the first successor observation. Later exact hips
+convergence, Ollie-out, follow-up Flip and native banking remain unverified.
+This establishes the sampled minimum hold, not acceptance of the full chain.
 
 ## Offline gameplay expansion — November 22
 
