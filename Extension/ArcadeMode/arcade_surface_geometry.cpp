@@ -201,7 +201,9 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
                 // A reciprocally authenticated local component is excluded by
                 // its native owner below. Its hit vectors never describe a
                 // destination, including when the ray starts inside that body.
-                // Its original hit position must still match the ray fraction.
+                // Captured zero-fraction local hits report a stable body contact
+                // away from the ray start. That point supplies no ray geometry:
+                // only the independently authenticated owner is excluded.
                 if(local_component && measure_contact) {
                     const auto read_position=[&]<class T>(std::uintptr_t at,T& value) {return read(api,at,value);};
 #if defined(DINGOSDK_DEV_TOOLS)
@@ -210,9 +212,15 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
 #else
                     body_contact_read::PositionTrace* copied_position=nullptr;
 #endif
+                    SurfaceGeometryVector self_point{};
                     const bool position_valid=api.surface.contact_ready &&
-                        body_contact_read::position(result.data,selected,point,found.point,read_position,copied_position);
+                        (closest==0?body_contact_read::borrowed_position(result.data,selected,self_point,read_position,copied_position):
+                            body_contact_read::position(result.data,selected,point,self_point,read_position,copied_position));
 #if defined(DINGOSDK_DEV_TOOLS)
+                    if(closest==0 && position_trace.point_known)for(unsigned axis=0;axis<3;++axis) {
+                        const double delta=double(position_trace.point[axis])-point[axis];
+                        position_trace.residual_squared+=delta*delta;
+                    }
                     if(trace) {
                         trace->self_position_reason=api.surface.contact_ready?position_trace.reason:"api_unavailable";
                         trace->self_position=position_trace.point;trace->self_position_known=position_trace.point_known;

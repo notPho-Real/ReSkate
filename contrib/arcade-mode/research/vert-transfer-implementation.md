@@ -286,3 +286,43 @@ Focused strict sanitizer results: 6,443 vert and 89,999 geometry/runtime checks;
 release-mode compilation passes. The runtime test verifies native-preservation
 without motion authority through partial 201 contact and original support before
 both LT/RT Revert readiness. Native transfer/Revert acceptance remains outstanding.
+
+## Combined candidate native push boundary
+
+The approved fbb09e16 source passed full CI run45076961332 and produced DLL
+c31c00d9099fd036d3c8e9dc38f771388172cd1659158704d24574b534181fc4.
+One no-trigger Mega Park trial recorded464 physical samples and real
+100 -> 200 -> 201 -> 100 transitions, but did not qualify vert. The unthrottled
+loss diagnostic isolated step9650: established curved support was cancelled
+when the native push bit started (0 -> 0x40), with state100, mode1, contacts
+0xc000 and owner generation unchanged. The next original frame confirmed the
+push, and original AIR followed at9656. Idle201 then cleared the push as it
+entered mode2. The trial sent neither contextual trigger and submitted no plan.
+This is failed native recognition, not playable transfer or no-input acceptance.
+
+The focused replay retains measured positions, normals, velocities and original
+publication times. Shape and selection identities are explicit fixture tokens;
+the capture does not provide an atomic replay of those addresses. The old policy
+fails at the captured push onset. History now survives either push edge only on
+already established curved support, with unchanged leading foot and known idle
+actor. The original confirmation, owner/generation, bounded gap, deadline and
+geometry requirements remain. Idle AIR can finish its push during the existing
+mode1 -> mode2 handoff, again with no input or motion authority during the gap.
+Flatground and standalone vertical support cannot acquire vert from a push edge.
+
+The same trial diagnosed stable local self-hit points away from the ray origin
+at fraction0 (squared residuals .00303023 and .0453456). An independently
+reciprocal local skater/board component supplies an exclusion owner, not a
+landing surface. Zero-fraction self exclusions now require stable borrowed
+position storage without treating that contact point as ray geometry. Nonzero
+fractions and every nonlocal measured surface retain the2cm ray agreement;
+normal, category, world, shape, owner generation, exclusion and cleanup fences
+are unchanged. The self point never supplies destination position or orientation.
+This is an observation-contract correction, not a wider surface tolerance.
+
+Local strict-warning ASan/UBSan checks:6812 vert,90117 geometry/runtime,106 body
+contact reader. Both defects have failing old-policy regressions. The changed
+source still needs Windows CI and a new representative native no-trigger run
+before Level Out input or transfer acceptance. Original trial and package proof
+are retained in the external vert-transfers-20261122/contact-hil and
+contact-package artifact directories. Core ground control dispatch is unchanged.

@@ -88,9 +88,6 @@ bool motion_current(std::uintptr_t world, std::uintptr_t state, const Motion& va
     for (std::size_t i = 0; i < again.values.size(); ++i) if (!same(again.values[i], value.values[i])) return false;
     return true;
 }
-// Position-only observation for an already authenticated exclusion. It retains
-// the same borrowed-array, ordinal, endpoint and ray-fraction checks as vectors;
-// callers needing a surface orientation must still use vectors below.
 // Optional copies of reads already performed; never additional query authority.
 struct PositionTrace {
     const char* reason{"not_started"};
@@ -99,13 +96,13 @@ struct PositionTrace {
     bool point_known{};
 };
 template<class Read>
-bool position(std::uintptr_t data, std::uint32_t ordinal, const Vec& expected, Vec& out, Read&& read,
+bool borrowed_position(std::uintptr_t data, std::uint32_t ordinal, Vec& out, Read&& read,
     PositionTrace* trace = nullptr) {
     namespace c = addr::body_contact;
     out = {};
     if (trace) *trace = {};
     const auto fail = [&](const char* reason) { if (trace) trace->reason = reason; return false; };
-    if (!field_span(data, c::result_positions, sizeof(std::uintptr_t)) || !owned_body::finite(expected, 100000))
+    if (!field_span(data, c::result_positions, sizeof(std::uintptr_t)))
         return fail("input");
     std::uintptr_t points{}, after{};
     V4 p{}, again{};
@@ -115,18 +112,40 @@ bool position(std::uintptr_t data, std::uint32_t ordinal, const Vec& expected, V
     if (after != points) return fail("pointer_changed");
     if (!body_hit_identity::element(read, points, ordinal, again)) return fail("element_repeat_read");
     if (!same(p, again)) return fail("element_changed");
-    double residual{};
-    for (std::size_t i = 0; i < 3; ++i) {
+    for (std::size_t i = 0; i < 3; ++i)
         if (!std::isfinite(p[i])) return fail("nonfinite");
-        const double error = double(p[i]) - expected[i];
-        residual += error * error;
-    }
-    if (trace) { trace->point = {p[0], p[1], p[2]}; trace->point_known = true; trace->residual_squared = residual; }
-    if (residual > .0004) return fail("ray_residual");
     out = {p[0], p[1], p[2]};
-    if (trace) trace->reason = "valid";
+    if (trace) { trace->point = out; trace->point_known = true; trace->reason = "valid"; }
     return true;
 }
+// A stable borrowed point is not ray geometry. Measured surfaces must also
+// agree with the original fraction; only an independently authenticated owner
+// exclusion may discard a zero-fraction result without using its contact point.
+template<class Read>
+bool position(std::uintptr_t data, std::uint32_t ordinal, const Vec& expected, Vec& out, Read&& read,
+    PositionTrace* trace = nullptr) {
+    out = {};
+    if (trace) *trace = {};
+    if (!owned_body::finite(expected, 100000)) {
+        if (trace) trace->reason = "input";
+        return false;
+    }
+    Vec point{};
+    if (!borrowed_position(data, ordinal, point, read, trace)) return false;
+    double residual{};
+    for (std::size_t i = 0; i < 3; ++i) {
+        const double error = double(point[i]) - expected[i];
+        residual += error * error;
+    }
+    if (trace) trace->residual_squared = residual;
+    if (residual > .0004) {
+        if (trace) trace->reason = "ray_residual";
+        return false;
+    }
+    out = point;
+    return true;
+}
+
 struct Vectors { Vec position{}, normal{}; };
 // Borrowed result arrays are read only while the native result's Release scope
 // is alive. The caller supplies the actual native first+ordinal and closest ray.

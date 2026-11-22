@@ -103,6 +103,7 @@ struct Fixture {
     bool self_hit{};
     bool native_self{}, foreign_component{}, changing_component{};
     unsigned self_vector_fault{},vector_reads{};
+    bool zero_fraction{};SurfaceGeometryVector self_position_offset{};
     unsigned component_calls{}, reject_component_at{};
     bool wall{}, upper_gap{}, lower_gap{};
     bool partitioned_wall{}, partitioned_ground{};
@@ -341,6 +342,7 @@ struct Fixture {
                 if(f.piece_normal_fault==2)for(float& axis:measured)axis=-axis;
                 if(f.piece_normal_fault==3)measured={0,0,0};
             }
+            if(f.zero_fraction && f.self_hit)f.fractions[f.first]=0;
             for(unsigned axis=0;axis<3;++axis) {
                 f.hit_positions[f.first][axis]=ray_value->start[axis]+
                     (ray_value->end[axis]-ray_value->start[axis])*f.fractions[f.first];
@@ -354,6 +356,7 @@ struct Fixture {
         if(!(ray_value->filter&f.query_categories))result->count=0;
         f.data[3]=reinterpret_cast<std::uintptr_t>(f.hit_positions.data());
         f.data[4]=f.missing_normal?0:reinterpret_cast<std::uintptr_t>(f.hit_normals.data());
+        if(f.self_hit)for(unsigned axis=0;axis<3;++axis)f.hit_positions[f.first][axis]+=f.self_position_offset[axis];
         if(f.self_hit && f.self_vector_fault) {
             if(f.self_vector_fault==1)f.hit_normals[f.first]={0,0,0,0};
             if(f.self_vector_fault==2)for(float& axis:f.hit_normals[f.first])axis=-axis;
@@ -449,6 +452,24 @@ int main() {
     { Fixture f;f.allow_world_owner=f.unknown=f.self=f.native_self=true;f.contact_ready=false;
       check(!f.query_motion().valid && f.calls==1 && f.vector_reads==0,
           "unavailable contact API never reads even authenticated self position or normal arrays"); }
+    // Captured zero-fraction local component points are stable but are not
+    // positions on the ray. Only authenticated owner exclusions may use them.
+    for(const auto offset:{SurfaceGeometryVector{.01737f,-.0082442f,-.05158f},
+                          SurfaceGeometryVector{.00629f,-.03169184f,-.21048f}})for(unsigned fault=0;fault<7;++fault) {
+        Fixture f;f.wall=f.allow_world_owner=f.unknown=f.self=f.native_self=true;f.wall_normal={-1,0,0};
+        f.zero_fraction=true;f.self_position_offset=offset;
+        if(fault==1)f.foreign_component=true;
+        if(fault==2)f.changing_component=true;
+        if(fault==3)f.self_vector_fault=3;
+        if(fault==4)f.self_vector_fault=5;
+        if(fault==5)f.zero_fraction=false;
+        if(fault==6)f.bad_position=true;
+        const auto result=query_vert_patch(f.api(),f.live,f.wall_point,f.wall_normal,.5f);
+        check(result.valid==(fault==0),"only stable authenticated zero-fraction self is excluded; world ray geometry remains strict");
+        if(result.valid)check(result.center().body.index<100 && result.center().query_normal==f.wall_normal,
+            "excluded overlap point never becomes destination position or orientation");
+        check(f.calls==f.pops && f.calls==f.frees,"zero-fraction exclusion releases all native results");
+    }
     for(unsigned vector_fault=1;vector_fault<=5;++vector_fault)for(unsigned fault=0;fault<8;++fault) {
         Fixture f;f.wall=f.allow_world_owner=f.unknown=f.self=f.native_self=true;f.wall_normal={-1,0,0};
         f.self_vector_fault=vector_fault;

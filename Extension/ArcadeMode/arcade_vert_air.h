@@ -304,30 +304,36 @@ public:
            f.physics_step-previous_.native.physics_step>2 || now<f.sampled_at || now-f.sampled_at>100 ||
            f.mode>2)return false;
         const auto stance=live.words[0]&0x60u;
-        const bool push_clear=stance!=f.stance_and_push;
-        if(push_clear) {
-            // A completed native push at the lip is not a leading-foot change.
-            // Keep history only; the next original frame must confirm the idle actor.
+        const bool push_changed=stance!=f.stance_and_push;
+        const auto contacts=live.words[1]&0xc000u;
+        // Idle AIR can finish a push while entering mode2. Preserve only its
+        // existing flight history; both actor and cleared push need a fresh
+        // original publication before any trigger or trajectory is eligible.
+        const bool idle_mode=correlation.mismatches==(D::mode_changed|(push_changed?D::stance_changed:0u)) &&
+            phase_==VertPhase::native_air && same_flight(f) && f.state==201 && live.state==201 &&
+            f.mode==1 && live.crouch_mode==2 && !f.contacts && !contacts && !f.rail_family &&
+            (!push_changed || ((f.stance_and_push^stance)==0x40u && !(stance&0x40u))) &&
+            f.flip_known && f.flip_id==-1 && f.selection_object &&
+            previous_.native.flip_known && previous_.native.flip_id==-1 &&
+            previous_.native.selection_object==f.selection_object;
+        if(idle_mode) {
+            mode_gap_selection_=f.selection_object;
+            if(push_changed) {push_gap_selection_=f.selection_object;push_gap_stance_=stance;}
+            return true;
+        }
+        if(push_changed) {
+            // Native pushing can start or finish on an already proven curved
+            // ramp. Neither edge changes leading foot or admits a new launch.
+            // The next original frame must confirm this push state and actor.
             if(!(correlation.mismatches&D::stance_changed) ||
                (correlation.mismatches&D::mode_changed) || phase_!=VertPhase::rising_support ||
                (f.state!=100 && f.state!=103) || f.rail_family ||
-               (f.stance_and_push&0x40u)==0 || (stance&0x40u)!=0 ||
-               (stance&0x20u)!=(f.stance_and_push&0x20u) ||
+               (f.stance_and_push^stance)!=0x40u ||
                !f.flip_known || f.flip_id!=-1 || !f.selection_object ||
                !previous_.native.flip_known || previous_.native.flip_id!=-1 ||
                previous_.native.selection_object!=f.selection_object)return false;
         } else if(correlation.mismatches&D::stance_changed)return false;
-        const auto contacts=live.words[1]&0xc000u;
         if(correlation.mismatches&D::mode_changed) {
-            // The recorded idle native201 flight enters mode2 without a new
-            // selected flip. Keep only its no-input history; the next original
-            // frame must independently confirm this actor and phase below.
-            const bool idle=correlation.mismatches==D::mode_changed && phase_==VertPhase::native_air &&
-                same_flight(f) && f.state==201 && live.state==201 && f.mode==1 && live.crouch_mode==2 &&
-                !f.contacts && !contacts && f.flip_known && f.flip_id==-1 && f.selection_object &&
-                previous_.native.flip_known && previous_.native.flip_id==-1 &&
-                previous_.native.selection_object==f.selection_object;
-            if(idle) {mode_gap_selection_=f.selection_object;return true;}
             const bool touchdown=correlation.mismatches==(D::mode_changed|D::contacts_changed) &&
                 (phase_==VertPhase::native_air || phase_==VertPhase::requested || phase_==VertPhase::released) &&
                 same_flight(f) && landing_.flight(f) && f.state==201 && live.state==201 &&
@@ -347,12 +353,12 @@ public:
         }
         if(live.crouch_mode!=f.mode)return false;
         const auto changed=(live.state!=f.state?D::state_changed:0u)|(contacts!=f.contacts?D::contacts_changed:0u);
-        if((changed|(push_clear?D::stance_changed:0u))!=correlation.mismatches)return false;
+        if((changed|(push_changed?D::stance_changed:0u))!=correlation.mismatches)return false;
         const bool ground=f.state==100 || f.state==103;
         const bool air=f.state==200 || f.state==201;
         if(ground) {
             const bool legal=live.state==f.state || (live.state==200 && !contacts);
-            if(legal && push_clear) {push_gap_selection_=f.selection_object;push_gap_stance_=stance;}
+            if(legal && push_changed) {push_gap_selection_=f.selection_object;push_gap_stance_=stance;}
             return legal;
         }
         return air && ((live.state==f.state && !contacts) ||
