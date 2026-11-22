@@ -98,6 +98,9 @@ struct Fixture {
     bool native_self{}, foreign_component{}, changing_component{};
     unsigned component_calls{}, reject_component_at{};
     bool wall{}, upper_gap{}, lower_gap{};
+    std::uint32_t query_categories{1};
+    float wall_half_width{10000},wall_half_height{10000},corner_slope{};
+    bool nearby_obstruction{};
     bool anchor{}, malformed_empty{}, unreadable_fraction_lane{};
     unsigned anchor_block_at{};
     std::array<SurfaceGeometrySegment,40> anchor_segments{};
@@ -106,6 +109,7 @@ struct Fixture {
     unsigned reject_owner_at{},reject_shape_at{},shape_checks{},context_failure_after_owners{};
     SurfaceGeometryWorldOwner world_owner{{7,70,50331648},77,69,50331648,0,1234};
     SurfaceGeometryVector wall_normal{0,0,1}, wall_point{0,1.5f,0};
+    SurfaceGeometryVector ground_origin{};
     SurfaceGeometryVector contact_velocity{};
     float contact_seconds{1.f/30.f};
     bool explicit_contact_motion{};
@@ -142,13 +146,14 @@ struct Fixture {
         const auto& descriptor=*static_cast<const std::array<std::uint64_t,3>*>(hit);
         check(descriptor[0]==f.live.world && descriptor[1]==f.first,"complete nearest hit descriptor retained");
         auto& b=*static_cast<SurfaceGeometryBody*>(out);
-        b={f.live.world, f.self_hit ? (f.native_self && !f.many_self ? 203u : static_cast<std::uint32_t>(100+f.calls)) : f.seam && f.last_x>0 ? 2u : 1u,f.generation};
+        b={f.live.world, f.self_hit ? (f.native_self && !f.many_self ? 203u : static_cast<std::uint32_t>(100+f.calls)) :
+            f.nearby_obstruction ? 3u : f.seam && f.last_x>0 ? 2u : 1u,f.generation};
         return out;
     }
-    static bool static_owner(void* user,const SurfaceGeometryBody&,SurfaceGeometryWorldOwner& owner) noexcept {
+    static bool static_owner(void* user,const SurfaceGeometryBody& body,SurfaceGeometryWorldOwner& owner) noexcept {
         auto& f=*static_cast<Fixture*>(user);
         const auto call=++f.world_owner_calls;
-        if(f.reject_world_owner || call==f.reject_owner_at)return false;
+        if(body.index>=100 || f.reject_world_owner || call==f.reject_owner_at)return false;
         owner=f.world_owner;
         if(f.changing_world_owner)owner.generation+=call;
         return true;
@@ -171,7 +176,8 @@ struct Fixture {
         result->first=f.overflow ? UINT32_MAX : f.first; result->count=f.miss ? 0u : 2u;
         f.last_x=ray_value->start[0];
         const float x=ray_value->start[0], z=ray_value->start[2];
-        const float height=f.roof ? 1.f : f.fold ? std::abs(x)*2.f : f.sx*x+f.sz*z;
+        const float height=f.roof ? 1.f : f.fold ? std::abs(x)*2.f :
+            f.ground_origin[1]+f.sx*(x-f.ground_origin[0])+f.sz*(z-f.ground_origin[2]);
         f.self_hit=f.many_self || (f.self && !ray_value->ignored_bodies[0]);
         if (f.self && ray_value->ignored_bodies[0]) {
             const auto* b=reinterpret_cast<const SurfaceGeometryBody*>(ray_value->ignored_bodies[0]);
@@ -187,12 +193,16 @@ struct Fixture {
             SurfaceGeometryVector start{}, end{};
             for (unsigned axis=0;axis<3;++axis) { start[axis]=ray_value->start[axis]; end[axis]=ray_value->end[axis]; }
             if(f.calls<=f.wall_segments.size())f.wall_segments[f.calls-1]={start,end};
-            const float distance=surface_geometry_detail::dot(surface_geometry_detail::sub(start,f.wall_point),f.wall_normal);
+            const SurfaceGeometryVector tangent{-f.wall_normal[2],0,f.wall_normal[0]};
+            const auto relative=surface_geometry_detail::sub(start,f.wall_point);
+            const float sideways=surface_geometry_detail::dot(relative,tangent);
+            const float distance=surface_geometry_detail::dot(relative,f.wall_normal)-f.corner_slope*std::abs(sideways);
             const float length=surface_geometry_detail::dot(surface_geometry_detail::sub(start,end),f.wall_normal);
             f.fractions[f.first]=f.self_hit ? .1f : distance/length;
             if(f.fractions[f.first]<0 || f.fractions[f.first]>1)result->count=0;
             if ((f.upper_gap && start[1]>f.wall_point[1]+.1f) ||
                 (f.lower_gap && start[1]<f.wall_point[1]-.1f)) result->count=0;
+            if(std::abs(sideways)>f.wall_half_width || std::abs(relative[1])>f.wall_half_height)result->count=0;
         } else f.fractions[f.first]=f.self_hit ? .1f : (ray_value->start[1]-height)/(ray_value->start[1]-ray_value->end[1]);
         f.fractions[f.first+1]=f.wall ? 1.f : .9f;
         if (f.bad_fraction) f.fractions[f.first]=std::numeric_limits<float>::quiet_NaN();
@@ -220,6 +230,9 @@ struct Fixture {
             if(f.bad_position)f.hit_positions[f.first][0]+=.1f;
             if(f.bad_normal)f.hit_normals[f.first][0]=std::numeric_limits<float>::quiet_NaN();
         }
+        // Model the pinned native query's category AND gate, independently of
+        // the production caller's preset selection. Categories are not materials.
+        if(!(ray_value->filter&f.query_categories))result->count=0;
         f.data[3]=reinterpret_cast<std::uintptr_t>(f.hit_positions.data());
         f.data[4]=f.missing_normal?0:reinterpret_cast<std::uintptr_t>(f.hit_normals.data());
         if (f.changed_context) ++f.live.world_generation;
@@ -298,6 +311,97 @@ bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) no
 }
 }
 int main() {
+    // Eligible static geometry cannot depend on whether the game's camera
+    // happens to query its category. Both native static owner forms qualify.
+    for(bool entity_owner:{false,true})for(unsigned bit=0;bit<32;++bit) {
+        for(unsigned route=0;route<3;++route) {
+            Fixture f;f.query_categories=std::uint32_t{1}<<bit;f.allow_world_owner=true;
+            f.unknown=!entity_owner;
+            if(entity_owner){f.world_owner.kind=1;f.world_owner.value=20;}
+            const auto hit=route==0?f.query_wall():route==1?f.query_motion():f.query();
+            check(hit.valid,"all categorized static walls and clearance floors use the wallplant owner policy");
+            check(hit.world_owner==f.world_owner,"category changes never discard static owner provenance");
+            check(revalidate_surface_geometry(f.api(),f.live,hit),"every category retains live owner revalidation");
+        }
+    }
+    for(unsigned route=0;route<3;++route) {
+        Fixture f;f.query_categories=0;f.allow_world_owner=true;f.unknown=true;
+        check(!(route==0?f.query_wall():route==1?f.query_motion():f.query()).valid,
+              "uncategorized geometry is unavailable, never invented by all-category queries");
+    }
+    for(unsigned bit=0;bit<32;++bit) {
+        Fixture f;f.query_categories=std::uint32_t{1}<<bit;
+        check(f.query().valid==bool(f.query_categories&game::build::v20260929::park_editor::camera_query_filter),
+              "ordinary surface callers preserve the camera query preset");
+    }
+    for(bool wall:{false,true})for(unsigned fault=0;fault<5;++fault) {
+        Fixture f;f.allow_world_owner=true;f.unknown=true;f.self=true;f.native_self=true;
+        if(fault==1)f.foreign_component=true;
+        if(fault==2)f.changing_component=true;
+        if(fault==3)f.reject_component_at=3;
+        if(fault==4)f.reject_world_owner=true;
+        check((wall?f.query_wall():f.query()).valid==(fault==0),
+              "all-category corroboration excludes only revalidated local components and still requires a static wall");
+    }
+    // Deterministic generated local geometry: yaw, translation, slight wall
+    // lean and tangential approach change together. No map IDs or triangle
+    // indices are inputs to the production query.
+    std::uint32_t random=0x51a11u;
+    const auto fraction=[&] {
+        random=1664525u*random+1013904223u;
+        return static_cast<float>(random&0xffffu)/65535.f;
+    };
+    for(unsigned trial=0;trial<96;++trial) {
+        const float angle=fraction()*6.283185307f;
+        const float lean=(fraction()-.5f)*.16f;
+        const float horizontal=std::sqrt(1.f-lean*lean);
+        const SurfaceGeometryVector normal{std::sin(angle)*horizontal,lean,std::cos(angle)*horizontal};
+        const SurfaceGeometryVector right{-std::cos(angle),0,std::sin(angle)};
+        const SurfaceGeometryVector origin{(fraction()-.5f)*24000.f,(fraction()-.5f)*200.f,(fraction()-.5f)*24000.f};
+        const auto point=[&](SurfaceGeometryVector local) {
+            return SurfaceGeometryVector{origin[0]+std::cos(angle)*local[0]+std::sin(angle)*local[2],
+                origin[1]+local[1],origin[2]-std::sin(angle)*local[0]+std::cos(angle)*local[2]};
+        };
+        for(float tangent:{-12.f,0.f,12.f}) {
+            Fixture f;f.allow_world_owner=true;f.unknown=true;f.wall_point=origin;f.wall_normal=normal;
+            f.explicit_contact_motion=true;
+            for(unsigned axis=0;axis<3;++axis)f.contact_velocity[axis]=-10.f*normal[axis]+tangent*right[axis];
+            const auto hit=f.query_wall();
+            check(hit.valid,"equivalent broad walls remain eligible under generated world translations and yaw");
+            check(surface_geometry_detail::dot(hit.query_normal,normal)>.995f,
+                  "generated wall plane agrees with the native contact normal");
+            check(hit.world_owner==f.world_owner && hit.queried_at==1000,
+                  "transformed geometry preserves original owner and observation time");
+        }
+        for(unsigned obstruction=0;obstruction<5;++obstruction) {
+            Fixture f;f.allow_world_owner=true;f.unknown=true;f.wall_point=origin;f.wall_normal=normal;
+            if(obstruction==0)f.wall_half_width=.3f;
+            if(obstruction==1)f.wall_half_height=.4f;
+            if(obstruction==2)f.corner_slope=.12f;
+            if(obstruction==3)f.corner_slope=-.12f;
+            if(obstruction==4)f.nearby_obstruction=true;
+            check(!f.query_wall().valid,
+                  "transformed railings, short walls, concave/convex corners and nearer foreign shapes still reject");
+        }
+        {
+            Fixture f;f.allow_world_owner=true;f.unknown=true;f.ground_origin=origin;
+            auto request=f.request();
+            for(auto& ray:request.segments){ray.start=point(ray.start);ray.end=point(ray.end);}
+            const auto ground=query_surface_geometry(f.api(),f.live,request);
+            check(ground.valid && std::abs(ground.point[1]-origin[1])<.001f,
+                  "wall clearance floors remain eligible under the same map transform");
+        }
+        for(bool blocked:{false,true}) {
+            Fixture f;f.allow_world_owner=true;f.unknown=true;f.wall_point=point({0,1.5f,0});
+            f.wall_normal={std::sin(angle),0,std::cos(angle)};
+            if(blocked)f.anchor_block_at=2;
+            const std::array<SurfaceGeometryVector,1> supports{{{0,-.8f,0}}};
+            const auto anchor=f.query_anchor(point({0,2.3f,.2f}),supports,supports[0]);
+            check(anchor.valid!=blocked,"world transforms preserve anchor admission and real obstruction rejection");
+            if(!blocked)check(std::abs(anchor.displacement-.50104f)<.003f,
+                  "wall anchor displacement uses local geometry independently of the map origin");
+        }
+    }
     {
         Fixture f;const auto hit=f.query_motion();
         check(hit.valid,"motion query finds and corroborates a wall without a physics contact record");
@@ -871,7 +975,7 @@ int main() {
     for(bool wall:{false,true}) {
         Fixture f;f.self=true;f.native_self=true;
         check(!(wall?f.query_wall():f.query()).valid&&f.component_calls==0,
-              "clearance-only native component exclusion cannot broaden wall or ground qualification");
+              "ordinary camera callers cannot acquire the all-category local component exclusion");
     }
     { Fixture f;f.many_self=true;
       check(!f.query_anchor().valid&&f.calls==1,"unresolved physics owners fail before sending shape IDs as exclusions"); }

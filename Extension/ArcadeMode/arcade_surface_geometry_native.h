@@ -27,11 +27,13 @@ struct SurfaceGeometryNativeApi {
     bool (*read_bytes)(std::uintptr_t, void*, std::size_t) noexcept{};
     // Opt-in only for wallplant geometry. Must validate an allocated shape,
     // its current static body, and a complete native owner stamp. Entity-kind
-    // stamps must match the separately re-read body_entity value.
+    // stamps must match the separately re-read body_entity value. This opt-in
+    // also queries all categories for wall and ground corroboration; the camera
+    // preset cannot decide which static gameplay surfaces exist.
     bool (*static_world_owner)(void*, const SurfaceGeometryBody&, SurfaceGeometryWorldOwner&) noexcept{};
     // Copied diagnostic from the existing current() callback, never a retry.
     const char* (*current_failure)(void*) noexcept{};
-    // Clearance-only opt-in. Resolve a non-ECS shape owner to a registered
+    // All-category query opt-in. Resolve a non-ECS shape owner to a registered
     // component of context.owner[1] or its authenticated board entity, retaining
     // the complete owner incarnation and reciprocal local association.
     bool (*local_component_owner)(void*,const SurfaceGeometryContext&,const SurfaceGeometryBody&,

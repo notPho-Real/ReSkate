@@ -355,6 +355,18 @@ void motion_diagnostic_checks() {
           "process capacity also bounds log output after the single overflow notice");
 }
 int main(){
+    for(unsigned bit=0;bit<32;++bit)for(auto material:{0u,1u,0x12345678u,UINT32_MAX}) {
+        Hit hit{};hit.identity_valid=hit.static_body=hit.categories_known=true;
+        hit.normal={.6f,0,.8f};hit.categories=std::uint32_t{1}<<bit;hit.packed_material=material;
+        check(raw_wall(hit),"wall eligibility does not name a map's category or packed material");
+        for(auto kind:{4u,5u,8u,11u}) {
+            hit.kind=kind;check(!raw_wall(hit),"excluded native contact kinds cannot use another material to qualify");
+        }
+        hit.kind=0;hit.categories_known=false;
+        check(!raw_wall(hit),"material identity cannot replace missing collision category metadata");
+        hit.categories_known=true;hit.static_body=false;
+        check(!raw_wall(hit),"material identity cannot authorize a moving body");
+    }
     clearance_policy_checks(true);
     clearance_policy_checks(false);
     motion_diagnostic_checks();

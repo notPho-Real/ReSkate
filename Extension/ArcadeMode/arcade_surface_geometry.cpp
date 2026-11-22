@@ -107,8 +107,12 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
         if(trace)trace->attempt=attempt;
         if (!exclusions_current(api,ctx,excluded,trace)) return fail("exclusions_current");
         editor::NativeSurfaceRay ray;
-        if(clear) {
-            // Clearance includes every categorized shape, not just camera hits.
+        const bool all_categories=clear || api.static_world_owner;
+        if(all_categories) {
+            // Wallplant's static-owner opt-in qualifies the actual nearest
+            // shape. The camera filter can omit an otherwise eligible wall or
+            // its supporting floor based on how that map authored categories.
+            // Include those shapes and obstructions, then validate their owners.
             const auto filter=editor::surface_query_filter(body_query::QueryPreset::all);
             if(!filter)return fail("clearance_filter");
             ray.filter=*filter;
@@ -163,7 +167,7 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
                 if (api.picking.hit_body(descriptor.data(),&body) != &body) return fail("hit_shape");
                 if(trace)trace->shape=body;
                 bool local_component=false;
-                if(clear && api.local_component_owner && body.world==ctx.world &&
+                if(all_categories && api.local_component_owner && body.world==ctx.world &&
                    api.picking.body_valid(&body)) {
                     SurfaceGeometryWorldOwner first{},again{};
                     if(api.local_component_owner(api.user,ctx,body,first)) {
@@ -205,7 +209,7 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
         if (!exclusions_current(api,ctx,excluded,trace)) return fail("exclusions_changed");
         if (!hit->local_component && hit->owner != ctx.self_entity) {if(trace)trace->reason="hit";return hit;} // unknown nearer owner never skipped
         // An entity identity alone cannot supply the native exclusion owner.
-        if (clear && !hit->local_component) return fail("self_owner_unavailable");
+        if (all_categories && !hit->local_component) return fail("self_owner_unavailable");
         if (excluded.count == excluded.bodies.size() ||
             std::find(excluded.bodies.begin(),excluded.bodies.begin()+static_cast<std::ptrdiff_t>(excluded.count),hit->body) !=
                 excluded.bodies.begin()+static_cast<std::ptrdiff_t>(excluded.count)) return fail("self_exclusion_limit");
