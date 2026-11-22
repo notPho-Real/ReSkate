@@ -240,7 +240,7 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
         selected=vert_level_out(observation,direction);
         // Missing gravity forbids extrapolating an unmeasured landing. Only a
         // short immediate clearance check is required for breaking vert.
-        selected.clear=query_vert_clearance(api,context,observation.position,selected.velocity,gravity,.2f);
+        selected.clear=query_vert_clearance(api,context,observation.position,selected.velocity,gravity,.2f,direction);
     }
     if(!selected || !api.current(api.user,context))return;
     for(const auto& sample:selected.crest)

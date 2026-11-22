@@ -457,6 +457,22 @@ int main() {
             "trajectory clearance rejects obstruction, malformed query, world replacement and stale context");
     }
 
+    for(float yaw:{0.f,.8f,2.4f})for(float shift:{0.f,1000.f})for(unsigned failure=0;failure<5;++failure) {
+        Fixture f;f.anchor=true;f.first=0;
+        if(failure==1)f.anchor_block_at=17;
+        if(failure==2)f.changed_context=true;
+        const SurfaceGeometryVector direction=failure==3?SurfaceGeometryVector{}:
+            SurfaceGeometryVector{std::cos(yaw),0,std::sin(yaw)};
+        const float gravity=failure==4?0.f:9.81f;
+        const auto context=f.live;
+        check(query_vert_clearance(f.api(),context,{shift,3,-shift},{0,0,0},gravity,.2f,direction)==(failure==0),
+            "apex clearance uses measured gravity and valid heading; obstruction, owner loss and zero rays still reject");
+        if(!failure)check(vert_math::length(vert_math::sub(f.anchor_segments[1].start,
+            {shift+.3f*std::sin(yaw),3.15f,-shift-.3f*std::cos(yaw)}))<.0001f,
+            "apex footprint rotates and translates with its measured travel direction");
+        check(f.calls==f.pops && f.calls==f.frees,"apex clearance retains every native result lifecycle");
+    }
+
     for(bool wall:{false,true}) {
         Fixture f;f.allow_world_owner=f.unknown=f.independent_bodies=f.mixed_owner_kinds=true;
         f.partitioned_wall=wall;f.partitioned_ground=!wall;

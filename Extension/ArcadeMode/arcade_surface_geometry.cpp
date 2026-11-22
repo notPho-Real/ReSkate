@@ -296,12 +296,16 @@ VertPatch query_vert_patch(const SurfaceGeometryNativeApi& api,const SurfaceGeom
     } catch(...) {return fail("vert_patch_exception");}
 }
 bool query_vert_clearance(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
-        SurfaceGeometryVector point,SurfaceGeometryVector velocity,float gravity,float seconds) noexcept {
+        SurfaceGeometryVector point,SurfaceGeometryVector velocity,float gravity,float seconds,SurfaceGeometryVector direction) noexcept {
     using namespace vert_math;
     try {
         if(!current(api,ctx) || !finite(point) || !finite(velocity) || !std::isfinite(seconds) || seconds<=0 ||
            seconds>2.5f || !std::isfinite(gravity) || gravity<0 || gravity>60)return false;
-        auto right=cross(horizontal(velocity),{0,1,0});if(!unit(right))return false;
+        auto heading=horizontal(velocity);
+        // At the apex use the owned ramp/intent direction to orient the same
+        // footprint. It supplies no velocity and cannot make a zero ray clear.
+        if(length(heading)<.9f)heading=horizontal(direction);
+        auto right=cross(heading,{0,1,0});if(!unit(right))return false;
         // A finite swept ray bundle is conservative admission, not a claim of
         // capsule collision coverage. Native articulated collisions stay enabled.
         constexpr std::array<std::array<float,2>,6> offsets{{{0,.15f},{-.3f,.15f},{.3f,.15f},{0,1.6f},{-.3f,1.6f},{.3f,1.6f}}};
@@ -311,6 +315,7 @@ bool query_vert_clearance(const SurfaceGeometryNativeApi& api,const SurfaceGeome
             const auto shift=add(scale(right,offset[0]),SurfaceGeometryVector{0,offset[1],0});
             const auto start=add(position(point,velocity,gravity,seconds*static_cast<float>(step)/steps),shift);
             const auto end=add(position(point,velocity,gravity,seconds*static_cast<float>(step+1)/steps),shift);
+            const auto delta=sub(end,start);if(dot(delta,delta)<=1e-12f)return false;
             bool clear{};
             (void)cast(api,ctx,{start,end},excluded,nullptr,&clear);
             if(!clear)return false;
