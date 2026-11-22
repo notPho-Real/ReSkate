@@ -268,8 +268,9 @@ public:
     void cancel() noexcept {suspended_=false;landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
     void reset() noexcept {*this={};}
     // A busy input publisher is absence of evidence, not a new contact. Keep
-    // recent curvature for this physical owner, but withdraw every command and
-    // require a newer admitted frame before input, queries or writes can resume.
+    // recent curvature for this physical owner, but withdraw transfer queries
+    // and execution until a newer admitted frame proves continuation. Independent
+    // landing input can remain reserved; actual contact alone permits Revert.
     void unavailable(std::uint64_t now,const NativeInputOwner& owner,bool enabled,bool contested) noexcept {
         plan_={};
         unavailable_at_=std::max(unavailable_at_,now);

@@ -330,12 +330,41 @@ void released_snapshot_gaps() {
             advance(1);c.observe(o);
         }
         check(c.phase()==VertPhase::released,"fresh original flight continues after a proven gap");
+        auto target=o.position;target[1]-=.01f;
+        check(c.landing().approach(o.native,patch(target,{0,1,0})),"original descending approach may reserve touchdown input");
         c.unavailable(o.native.sampled_at+1,o.native.owner,true,false);
+        std::array<TriggerPress,2> landing_inputs{};
+        for(unsigned channel:{0u,1u}) {
+            auto& press=landing_inputs[channel];press.press.sequence=channel+2;
+            press.press.token={InputSource::triggers,static_cast<std::int16_t>(channel),InputEdge::press};
+            press.press.at=o.native.sampled_at+2;press.context=InputContext::air;
+            press.native=InputNativeContext::from_frame(o.native);
+            auto decision=qualify_vert_trigger(c,press,press.native,press.press.at);
+            check(decision.owner==TriggerOwner::landing_revert && !decision.ready && decision.deadline==press.press.at+430,
+                "suspended transfer permits only original landing reservation, never ready execution");
+            press.owner=TriggerOwner::landing_revert;
+            decision=qualify_vert_trigger(c,press,press.native,press.press.at+3);
+            check(decision.owner==TriggerOwner::landing_revert && !decision.ready && decision.deadline==press.press.at+430,
+                "repeated suspended observations preserve original landing edge deadline");
+            auto published=o.native;++published.physics_step;published.sampled_at+=milliseconds;
+            published.airborne=false;published.state=100;published.contacts=0xc000;++published.air_departure;
+            decision=qualify_vert_trigger(c,press,InputNativeContext::from_frame(published),published.sampled_at);
+            check(decision.owner==TriggerOwner::landing_revert && !decision.ready && decision.deadline==press.press.at+430,
+                "ground publication without original contact cannot execute reserved Revert or fall through to Switch");
+            auto consumed=press;consumed.owner=TriggerOwner::transfer;
+            check(qualify_vert_trigger(c,consumed,press.native,press.press.at).owner==TriggerOwner::none,
+                "suspension cannot recycle the already transfer-consumed edge");
+        }
         advance(1);o.native.airborne=false;o.native.state=100;o.native.contacts=0xc000;++o.native.air_departure;
         o.supported=true;o.up=o.contact_normal={0,1,0};o.contacted_shape={7,8,9};
         c.observe(o);
         check(c.phase()==VertPhase::landed && c.landing().ready(o.native,o.native.sampled_at),
             "actual supported touchdown after a short busy gap retains independent landing Revert lineage");
+        for(const auto& press:landing_inputs) {
+            const auto decision=qualify_vert_trigger(c,press,InputNativeContext::from_frame(o.native),o.native.sampled_at);
+            check(decision.owner==TriggerOwner::landing_revert && decision.ready && decision.deadline<=press.press.at+430,
+                "only fresh original contact releases reserved LT or RT Revert with no renewed deadline");
+        }
         check(!c.request(o.native,o.native.sampled_at,o.native.sampled_at,2),"actual touchdown cannot replay transfer");
     }
 }

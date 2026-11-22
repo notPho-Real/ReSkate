@@ -157,11 +157,12 @@ flip ownership prevents a staged impulse throughout the original request lifetim
 
 Released-flight publisher contention: retained native captures contain short
 `frame_lock_busy` observations. These now suspend an already delivered transfer
-without erasing its independent landing lineage. No input, impulse or alignment
-is admitted while suspended. A newer original step must preserve owner, episode,
+without erasing its independent landing lineage. No transfer execution, impulse or alignment
+is admitted while suspended. Original landing edges may remain reserved with
+unchanged deadlines, but cannot execute until fresh native contact. A newer original step must preserve owner, episode,
 cadence, bounded elapsed time, predicted velocity and position before alignment
 resumes. Collision, correlation failure, stale observations, bail and OFF still
 cancel. Native contact alone establishes touchdown; no landing is predicted into
 existence. The old controller fails the new regression. Current ASan/UBSan runs
-pass 2,517 vert checks and 87,398 geometry/runtime checks, including transformed
+pass 2,583 vert checks and 87,398 geometry/runtime checks, including transformed
 spine, hip and acid scenes. This remains offline evidence, not native acceptance.
