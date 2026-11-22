@@ -40,7 +40,8 @@ struct SurfaceGeometryNativeApi {
         SurfaceGeometryWorldOwner&) noexcept{};
 };
 // Ground patches retain exact-shape admission unless static_world_owner proves
-// every contributing child shape belongs to the same static body incarnation.
+// each contributing shape's static body incarnation. Independent bodies also
+// require fingerprinted native hit vectors agreeing with the measured plane.
 SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
                                              const SurfaceGeometryRequest&, SurfaceGeometryTrace* = nullptr) noexcept;
 // Bounded forward travel at a native motion-preparation boundary, followed by
@@ -52,8 +53,9 @@ SurfaceGeometrySample query_motion_wall(const SurfaceGeometryNativeApi&,const Su
     SurfaceGeometryTrace* = nullptr) noexcept;
 // Corroborates the broad vertical face around a qualified collision or native
 // ray hit. This is geometry only; it must never create a wall-contact event.
-// Coplanar child shapes may corroborate the same authenticated static body;
-// every contributing shape is retained and revalidated with the sample.
+// Coplanar static pieces retain individual authenticated shape/body/owner
+// stamps. Independent pieces require matching native hit normals; every
+// contributing shape is retained and revalidated with the sample.
 // Motion must come from that retained collision's validated original step.
 // It bounds the first ray's inward search, never predicts or moves a contact.
 SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,

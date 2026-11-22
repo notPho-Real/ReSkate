@@ -48,10 +48,13 @@ struct SurfaceGeometrySample {
     SurfaceGeometryVector point{}, query_normal{};
     bool valid{};
     SurfaceGeometryWorldOwner world_owner{};
-    // A broad surface can cross child-shape seams of one authenticated static
-    // body. Keep every additional shape incarnation for later revalidation;
+    // A broad surface can span independently authenticated static pieces.
+    // Keep every additional shape and its own complete native owner stamp;
     // the central contact identity remains body, never a neighboring shape.
+    // These are allocation/owner lifetimes, not transform stamps. As with the
+    // center, same-incarnation editor relocation is not proven unchanged.
     std::array<SurfaceGeometryBody,4> adjacent_shapes{};
+    std::array<SurfaceGeometryWorldOwner,4> adjacent_world_owners{};
     unsigned adjacent_shape_count{};
     // This is query geometry, never actual board support or prediction normal.
     // Revalidation of the live body is also required in the authorized callback.

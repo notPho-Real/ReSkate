@@ -75,6 +75,19 @@ struct Hit {
     SurfaceGeometryWorldOwner world_owner; bool local_component{};
     SurfaceGeometryVector normal{};
 };
+bool retain_adjacent(SurfaceGeometrySample& sample,const Hit& hit) noexcept {
+    if(hit.body==sample.body)
+        return hit.owner==sample.body_owner && hit.world_owner==sample.world_owner;
+    // Equal entity IDs alone never establish static ownership. Independent
+    // pieces need their own qualified shape/body/owner incarnation.
+    if(!sample.world_owner.value || !hit.world_owner.value)return false;
+    for(unsigned i=0;i<sample.adjacent_shape_count;++i)
+        if(sample.adjacent_shapes[i]==hit.body)return sample.adjacent_world_owners[i]==hit.world_owner;
+    if(sample.adjacent_shape_count==sample.adjacent_shapes.size())return false;
+    const auto index=sample.adjacent_shape_count++;
+    sample.adjacent_shapes[index]=hit.body;sample.adjacent_world_owners[index]=hit.world_owner;
+    return true;
+}
 struct Exclusions {
     std::array<SurfaceGeometryBody,8> bodies{};
     std::array<SurfaceGeometryBody,8> query_handles{};
@@ -99,7 +112,8 @@ bool exclusions_current(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
 }
 std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContext& ctx,
                        const SurfaceGeometrySegment& segment, Exclusions& excluded, SurfaceGeometryTrace* trace = nullptr,
-                       bool* clear = nullptr, bool measure_contact = false) {
+                       bool* clear = nullptr, bool measure_contact = false,
+                       const SurfaceGeometryWorldOwner* patch_owner = nullptr) {
     if(clear)*clear=false;
     const auto fail = [&](const char* reason) -> std::optional<Hit> {if(trace)trace->reason=reason;return {};};
     if(trace){trace->start=segment.start;trace->end=segment.end;}
@@ -184,7 +198,7 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
                 if(trace)trace->point=point;
                 if (!finite(point)) return fail("point_invalid");
                 Hit found{point,body,owner,world_owner,local_component};
-                if(measure_contact) {
+                if(measure_contact || (patch_owner && !local_component && owner!=ctx.self_entity && world_owner!=*patch_owner)) {
                     body_contact_read::Vectors vectors;
                     const auto read_vector=[&]<class T>(std::uintptr_t at,T& value) {
                         return read(api,at,value);
@@ -236,9 +250,12 @@ static bool revalidate(const SurfaceGeometryNativeApi& api, const SurfaceGeometr
             world_owner == sample.world_owner)) return false;
         if(sample.adjacent_shape_count>sample.adjacent_shapes.size() ||
            (sample.adjacent_shape_count && !sample.world_owner.value))return false;
-        for(unsigned i=0;i<sample.adjacent_shape_count;++i)
+        for(unsigned i=0;i<sample.adjacent_shape_count;++i) {
+            const auto& expected=sample.adjacent_world_owners[i];
+            if(!expected.value || expected.kind>1)return false;
             if(!body_owner(api,ctx,sample.adjacent_shapes[i],owner,trace,&world_owner) ||
-               owner!=sample.body_owner || world_owner!=sample.world_owner)return false;
+               owner!=(expected.kind?expected.value:0) || world_owner!=expected)return false;
+        }
         return true;
     } catch (...) { return false; }
 }
@@ -263,25 +280,21 @@ SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi& api
         }
         Exclusions excluded;
         std::array<SurfaceGeometryVector,5> points{};
+        std::array<SurfaceGeometryVector,5> independent_normals{};
         for (std::size_t i = 0; i < points.size(); ++i) {
             if(trace)trace->ray=static_cast<unsigned>(i);
-            const auto hit = cast(api,ctx,request.segments[i],excluded,trace);
+            const auto hit = cast(api,ctx,request.segments[i],excluded,trace,nullptr,false,i?&sample.world_owner:nullptr);
             if (!hit) return {};
-            if (i && (hit->owner != sample.body_owner || hit->world_owner!=sample.world_owner))
-                return fail("ground_shape_seam");
             if(!i) {
                 sample.body=hit->body;sample.body_owner=hit->owner;sample.world_owner=hit->world_owner;
-            } else if(hit->body!=sample.body) {
-                // Only the static-owner opt-in can join coplanar child shapes.
-                // Ordinary entity-only camera callers retain exact-shape proof.
-                if(!sample.world_owner.value)return fail("ground_shape_seam");
-                const auto end=sample.adjacent_shapes.begin()+sample.adjacent_shape_count;
-                if(std::find(sample.adjacent_shapes.begin(),end,hit->body)==end)
-                    sample.adjacent_shapes[sample.adjacent_shape_count++]=hit->body;
-            }
+            } else if(!retain_adjacent(sample,*hit))return fail("ground_shape_seam");
+            if(hit->world_owner!=sample.world_owner)independent_normals[i]=hit->normal;
             points[i]=hit->point;
         }
         if (!plane(points,sample.query_normal)) return fail("ground_plane");
+        for(auto normal:independent_normals)
+            if(normal!=SurfaceGeometryVector{} && (!unit(normal) || dot(normal,sample.query_normal)<.995f))
+                return fail("ground_piece_normal");
         sample.point = points[0]; sample.valid = true;
         if (!exclusions_current(api,ctx,excluded,trace) || !revalidate(api,ctx,sample,trace)) return fail("ground_revalidation");
         if(trace)trace->reason="ground_valid";
@@ -369,20 +382,20 @@ SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,co
                 segment.end[axis]=center-normal[axis]*(i?depth:inward);
             }
             if(trace)trace->ray=static_cast<unsigned>(i);
-            const auto hit=cast(api,ctx,segment,excluded,trace);
+            const auto hit=cast(api,ctx,segment,excluded,trace,nullptr,false,i?&sample.world_owner:nullptr);
             if(!hit)return {};
-            // Center must be the contacted shape. Side samples may cross a
-            // child-shape seam only with the same complete static body/owner
-            // stamp. Equal entity IDs alone cannot join unrelated bodies.
-            if((!i && hit->body!=body) ||
-               (i && (hit->owner!=sample.body_owner || hit->world_owner!=sample.world_owner)))return fail("wall_shape_seam");
-            if(hit->body!=body) {
-                if(!sample.world_owner.value)return fail("wall_shape_seam");
-                const auto end=sample.adjacent_shapes.begin()+sample.adjacent_shape_count;
-                if(std::find(sample.adjacent_shapes.begin(),end,hit->body)==end)
-                    sample.adjacent_shapes[sample.adjacent_shape_count++]=hit->body;
+            // Center remains the contacted shape. Other static pieces must
+            // also present an actual facing native normal, not only ray points
+            // which happen to line up across a railing or corner.
+            if(!i) {
+                if(hit->body!=body)return fail("wall_shape_seam");
+                sample.body_owner=hit->owner;sample.world_owner=hit->world_owner;
+            } else if(!retain_adjacent(sample,*hit))return fail("wall_shape_seam");
+            if(hit->world_owner!=sample.world_owner) {
+                auto measured_normal=hit->normal;
+                if(!unit(measured_normal) || dot(measured_normal,normal)<.995f)return fail("wall_piece_normal");
             }
-            sample.body_owner=hit->owner;sample.world_owner=hit->world_owner;points[i]=hit->point;
+            points[i]=hit->point;
             const auto separation=std::abs(dot(sub(hit->point,points[0]),normal));
             if(trace)trace->value=separation;
             if(separation>.005f)return fail("wall_patch_plane_offset");

@@ -204,8 +204,11 @@ bool query_current(const SurfaceGeometrySample& wall) noexcept {
         (!wall.body_owner || wall.world_owner.value==wall.body_owner) &&
         native_wall_contact::static_world_owner(wall.body,owner) && owner==wall.world_owner))return false;
     if(wall.adjacent_shape_count>wall.adjacent_shapes.size())return false;
-    for(unsigned i=0;i<wall.adjacent_shape_count;++i)
-        if(!native_wall_contact::static_world_owner(wall.adjacent_shapes[i],owner) || owner!=wall.world_owner)return false;
+    for(unsigned i=0;i<wall.adjacent_shape_count;++i) {
+        const auto& expected=wall.adjacent_world_owners[i];
+        if(!expected.value || expected.kind>1 ||
+           !native_wall_contact::static_world_owner(wall.adjacent_shapes[i],owner) || owner!=expected)return false;
+    }
     return true;
 }
 bool scoped_motion(std::uint64_t token,const NativeInputFrame& frame,std::uint64_t now) noexcept {
