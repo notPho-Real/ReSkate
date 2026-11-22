@@ -37,6 +37,15 @@ another unclaimed channel still conflicts normally. This mask grants no native
 actor, stick, support or trajectory permission. Native readiness and owner checks
 remain in each action adapter.
 
+The Switch adapter receives only a `switch_stance` claim from ordinary ground.
+It emits the supported build's native ChangeStance B double-tap through the final
+controller packet. Original RT release does not cancel an initiated sequence;
+actor conflict, owner loss, stale state or OFF cancels output. A delivered phase
+advances only with a new controller tick and native physics sample. Native
+leading-foot change must follow the actual second press and final release before
+completion is reported. This adapter does not implement a ground Revert or a
+render-only stance change.
+
 The ground engineer owns `arcade_input_events.h`, `arcade_trigger_input.h`,
 `arcade_input_dispatch.h` and `arcade_input_session.h`. The vert engineer owns
 the flight/landing qualifier and physical transfer controller. Shared runtime

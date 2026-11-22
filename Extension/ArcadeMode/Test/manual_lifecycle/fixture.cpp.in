@@ -15,6 +15,7 @@
 #include "Extension/ArcadeMode/arcade_native_readiness.h"
 #include "Extension/ArcadeMode/arcade_gesture.h"
 #include "Extension/ArcadeMode/arcade_trigger_input.h"
+#include "Extension/ArcadeMode/arcade_native_stance.h"
 #include "Extension/ArcadeMode/arcade_controller_route.h"
 #include "Extension/ArcadeMode/arcade_playback_packet.h"
 #include "Extension/ArcadeMode/arcade_input_telemetry.h"
@@ -114,6 +115,10 @@ namespace dingosdk::profile_runtime{void set_local_preference(const char*,bool){
 // Nonactuating native service boundary; manual tests do not claim flip playback.
 namespace dingosdk::arcade_mode::native_flip {void cancel()noexcept{}}
 namespace dingosdk::arcade_mode::native_grab {void cancel()noexcept{}} // Nonactuating grab boundary.
+namespace dingosdk::arcade_mode::native_stance {
+unsigned cancellations{};bool live{};
+void cancel()noexcept{++cancellations;live=false;}
+}
 namespace dingosdk::arcade_mode::native_footplant {void cancel()noexcept{}}
 namespace dingosdk::arcade_mode::native_ground_grab {void cancel()noexcept{}}
 // No wall collision/physics is supplied by the manual fixture. Keep current
@@ -215,6 +220,7 @@ const unsigned char physical_left_trigger=0,physical_right_trigger=physical_rt;
 const bool grab_permitted=false;
 struct GrabRequestContext{NoBailSkater owner;std::uint64_t episode;bool held;};
 const GrabRequestContext grab_context{owner,grind_frame.airborne_episode,(physical_buttons&0x2000u)!=0};
+const InputAdapter stance_adapter{}; // This Manual fixture has no admitted native Switch producer.
 @@POLL@@
  if(corrupt_manual_delivery)result.right_y=0;
 @@DELIVERY@@
@@ -732,7 +738,10 @@ void controller_packet_dependencies(){
        "real physical-source packet class establishes owned output before mode reset");
  check(playback_packets[2].sample(30,30,true)==31&&playback_packets[2].sample(30,30,true)==32,
        "separate historical source retains its own packet identity");
+ native_stance::live=true;const auto stance_cancellations=native_stance::cancellations;
  set_enabled(false,false);
+ check(!native_stance::live&&native_stance::cancellations==stance_cancellations+1,
+       "actual Arcade OFF cancels pending native Switch before another input delivery");
  check(!controller_route.accepts(1,clock_ms)&&controller_route.generation()!=generation,
        "exact production mode reset revokes the real selected controller generation");
  check(playback_packets[1].sample(22,22,false)==23&&playback_packets[1].sample(22,22,false)==22,

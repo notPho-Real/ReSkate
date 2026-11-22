@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_manual_episode.h"
 #include "Extension/ArcadeMode/arcade_grind_change.h"
 #include "Extension/ArcadeMode/arcade_playback_packet.h"
+#include "Extension/ArcadeMode/arcade_native_stance.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_wallplant.h"
 #include "Extension/ArcadeMode/arcade_wallplant_geometry_admission.h"
@@ -25,6 +26,16 @@ namespace dingosdk::arcade_mode::native_grab {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_footplant {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_ground_grab {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_grind {void cancel() noexcept {}}
+namespace dingosdk::arcade_mode::native_stance {
+unsigned cancellations{},deliveries{};
+StanceControl pending{};std::uint16_t delivered_buttons{};bool delivered_after_packet{};
+PlaybackPacket* packet_probe{};
+void cancel()noexcept{++cancellations;pending={};}
+StanceControl controls(const NoBailSkater&,const InputNativeContext&,std::uint64_t,std::uint64_t)noexcept{return pending;}
+void delivered(const NoBailSkater&,const InputNativeContext&,StanceControl,std::uint16_t buttons,std::uint64_t,std::uint64_t)noexcept{
+ ++deliveries;delivered_buttons=buttons;delivered_after_packet=packet_probe&&packet_probe->owned();
+}
+}
 namespace dingosdk::arcade_mode::vert_runtime {
 unsigned cancellations{};
 void cancel() noexcept {++cancellations;}
@@ -106,6 +117,49 @@ void establish(unsigned user,std::uint64_t now,unsigned source=0){
     arcade_input.publish_authority(now,1,route.physical(now).valid?1u:0u,true);
 }
 }
+namespace stance_publication {
+ArcadeInput arcade_input{true};std::array<PlaybackPacket,4> playback_packets;
+struct Output{std::uint16_t buttons{};short lx{},ly{},rx{},ry{};unsigned lt{},rt{},acks{};bool after_packet{};std::uint16_t acknowledged{};};
+Output sample(bool owns_controls,bool conflict,bool face_owner,std::uint16_t physical_buttons,StanceControl control){
+    const unsigned user=0;const std::uint64_t now=1000,tick=60;const std::uint32_t physical_packet=41,normal_mask=0;
+    const bool reference=false,stance_permitted=owns_controls&&!conflict;
+    const dingosdk::NoBailSkater native_flip_owner{1,2,3,4,5};
+    NativeGesture::Output result{};result.buttons=physical_buttons;result.right_x=123;result.right_y=-456;
+    short left_x=321,left_y=-654;unsigned char left_trigger=45,right_trigger=67;
+    ActionInputOutput action{};action.pad.owns_face_buttons=face_owner;action.pad.face_buttons=static_cast<std::uint16_t>(physical_buttons&0xf000u);
+    action.pad.owns_triggers=true;
+    AirRotation::Output rotation{};struct Correction{bool owns_y{};}manual_correction;
+    RailAdapterPad rail_pad{};GrindChange::Pad grind_pad{};
+    playback_packets={};native_stance::pending=control;native_stance::deliveries=0;
+    native_stance::packet_probe=&playback_packets[user];native_stance::delivered_after_packet=false;
+@controller_route_final_controls@
+@controller_route_packet_sample@
+    require(output_packet==(stance_pad.owned?42u:41u),"stance alone publishes a fresh synthetic packet exactly while its B control is owned");
+    return {result.buttons,left_x,left_y,result.right_x,result.right_y,left_trigger,right_trigger,
+        native_stance::deliveries,native_stance::delivered_after_packet,native_stance::delivered_buttons};
+}
+void run(){
+    unsigned checks{};
+    for(bool owned:{false,true})for(bool conflict:{false,true})for(bool face:{false,true})
+    for(bool down:{false,true})for(std::uint16_t physical:{std::uint16_t{0x5a55},std::uint16_t{0x7a55}}){
+        const auto baseline=sample(owned,conflict,face,physical,{});
+        const auto cancellations=native_stance::cancellations;
+        const auto output=sample(owned,conflict,face,physical,{true,static_cast<std::uint16_t>(down?0x2000u:0u),77,1});
+        const bool accepted=owned&&!conflict;
+        require(output.buttons==(accepted?static_cast<std::uint16_t>((baseline.buttons&~0x2000u)|(down?0x2000u:0u)):baseline.buttons),
+            "final source mask preserves only owned native B presses and neutral releases; unowned/conflicting controls add no B");++checks;
+        require(output.lx==baseline.lx&&output.ly==baseline.ly&&output.rx==baseline.rx&&output.ry==baseline.ry&&
+            output.lt==baseline.lt&&output.rt==baseline.rt,
+            "native Switch B publication changes no movement axis or trigger beyond the existing final mask");++checks;
+        require(output.acks==(accepted?1u:0u)&&(!accepted||(output.after_packet&&output.acknowledged==output.buttons)),
+            "native Switch acknowledges the exact finalized B payload only after the synthetic packet is sampled");++checks;
+        require(accepted||(!native_stance::pending.owned&&native_stance::cancellations==cancellations+1),
+            "loss of controls or final permission cancels the stance producer before output or delivery acknowledgment");++checks;
+    }
+    native_stance::packet_probe=nullptr;
+    std::cout<<checks<<" exact production stance publication checks passed\n";
+}
+}
 namespace packet_restoration {
 NativeControllerRoute controller_route;
 std::array<PlaybackPacket,4> playback_packets;
@@ -122,6 +176,9 @@ std::uint32_t transport(unsigned user,std::uint64_t now,std::uint32_t physical_p
     struct Correction {bool owns_y{};} manual_correction;
     RailAdapterPad rail_pad{};
     GrindChange::Pad grind_pad{};
+    const StanceControl stance_pad{};const bool owns_controls=false;
+    const dingosdk::NoBailSkater native_flip_owner{};const InputNativeContext stance_native{};
+    const NativeGesture::Output result{};const auto tick=now/17;
 @controller_route_packet_sample@
     return physical_packet ^ output_packet;
 }
@@ -234,6 +291,8 @@ void run(){
         const auto vert_cancellations=vert_runtime::cancellations;
         const auto wallplant_cancellations=wallplant_runtime::cancellations;
         const auto flatland_cancellations=custom_flatland_runtime::cancellations;
+        const auto stance_cancellations=native_stance::cancellations;
+        native_stance::pending={true,0x2000,77,1};
         disconnect_xinput_source((slot+1)%4);
         require(arcade_input.admitted(0,1000)&&push&&air,"other source loss cannot withdraw selected actor");++checks;
         require(wallplant_runtime::cancellations==wallplant_cancellations,
@@ -241,8 +300,12 @@ void run(){
         require(custom_flatland_runtime::cancellations==flatland_cancellations,
             "other controller withdrawal cannot cancel selected flatland ownership");++checks;
         require(vert_runtime::cancellations==vert_cancellations,"unrelated controller does not withdraw vert");++checks;
+        require(native_stance::cancellations==stance_cancellations&&native_stance::pending.owned,
+            "unrelated controller cannot cancel the selected native stance producer");++checks;
         disconnect_xinput_source(slot);
         require(vert_runtime::cancellations==vert_cancellations+1,"selected controller withdraws vert once");++checks;
+        require(native_stance::cancellations==stance_cancellations+1&&!native_stance::pending.owned,
+            "selected controller withdrawal cancels native stance before another packet");++checks;
         require(!controller_route.accepts(slot,1000)&&!arcade_input.admitted(0,1000)&&!push&&!air&&!gameplay_valid_until&&reset_physical_manual,
             "actual disconnect callback revokes shared facade and native intentions immediately");++checks;
         require(wallplant_runtime::cancellations==wallplant_cancellations+1,
@@ -736,6 +799,7 @@ void run(){
 }
 
 void run_controller_publication_tests(){
+    stance_publication::run();
     preparation_path::run();
     unsigned checks{};
     for(unsigned user=0;user<4;++user)for(bool nollie:{false,true}){
