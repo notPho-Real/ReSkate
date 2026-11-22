@@ -13,15 +13,16 @@ struct Fixture {
     InputEvents events{};
     TriggerJournal journal{};
     SetupSelectionContext frame{};
-    std::uint64_t now{},step{},owner{1};
+    std::uint64_t now{},step{},owner{1},action{1};
+    std::uint32_t stance{};
     Fixture(InputContext context=InputContext::ground) {
         frame.context=context;frame.enabled=true;poll(0,0);
     }
     void poll(std::uint64_t at,unsigned lt,TriggerOwner route=TriggerOwner::setup) {
         now=at;
-        frame.native={true,true,{owner,1,1},++step,at,frame.context==InputContext::rail,
+        frame.native={true,true,{owner,1,action},++step,at,frame.context==InputContext::rail,
                       frame.context==InputContext::air,frame.context==InputContext::air?1u:0u,0};
-        frame.native.flip.stance=0;
+        frame.native.flip.stance=stance;
         events.sample(at,{0,0,0,static_cast<std::uint8_t>(lt),0},{},true,{});
         journal.observe(events.history(),frame.context,frame.native);
         if(journal.get(0).owner==TriggerOwner::none)
@@ -127,12 +128,12 @@ void ownership_and_context() {
         f.poll(30,255);check(f.selector.freeze_launch(30),"negative has launch snapshot");
         if(fault==0)f.frame.enabled=false;
         if(fault==1)f.frame.native.valid=false;
-        if(fault==2)f.frame.native.flip.stance=0x40;
+        if(fault==2)f.frame.context=InputContext::unknown;
         if(fault==3)++f.frame.native.generations.owner;
         const auto now=fault==4?181u:fault==5?29u:30u;
         f.selector.sample(now,f.journal.get(0),f.frame);
         check(f.selector.launch()==SetupStance::unknown&&f.selector.remembered()==SetupStance::normal,
-              "OFF, owner loss, bail, stale native sample and regressing clock clear selection and launch");
+              "OFF, owner loss, unavailable gameplay context, stale native sample and regressing clock clear selection and launch");
     }
     Fixture f;f.poll(10,255);auto changed=f.journal.get(0);changed.owner=TriggerOwner::transfer;
     f.selector.sample(10,changed,f.frame);
@@ -181,5 +182,27 @@ void recorded_release_and_provenance() {
               "malformed release cannot toggle or sustain setup ownership");
     }
 }
+void riding_push_selection() {
+    for(unsigned dt:{8u,17u,34u})for(unsigned foot:{0u,0x20u})for(bool already_pushing:{false,true}) {
+        Fixture f;f.stance=foot|(already_pushing?0x40u:0u);f.poll(1,0);
+        f.poll(10,255);f.poll(90,0);
+        check(f.selector.desired()==SetupStance::nollie,"LT tap selects Nollie while ordinary riding is pushing");
+        f.stance=foot|0x40u;++f.action;
+        for(unsigned at=100;at<600;at+=dt) {
+            f.poll(at,0);
+            check(f.selector.desired()==SetupStance::nollie && f.selector.launch()==SetupStance::unknown,
+                  "native pushes cannot erase passive Nollie selection or create a launch");
+        }
+        f.stance=foot;++f.action;f.poll(700,0);f.poll(800,255);f.poll(1000,255);
+        check(f.selector.desired(true)==SetupStance::pressure,"held LT still qualifies Pressure after a native push");
+        f.stance=foot|0x40u;++f.action;f.poll(1010,255);f.poll(1020,0);
+        check(f.selector.desired()==SetupStance::nollie,"Pressure release during a push restores the remembered Nollie");
+        f.stance=foot;f.poll(1100,0);
+        check(f.selector.freeze_launch(1100) && f.selector.launch()==SetupStance::nollie,
+              "an independently admitted A release retains its selected Nollie after pushing");
+        f.frame.context=InputContext::air;f.stance=foot|0x40u;f.poll(1101,0);
+        check(f.selector.launch()==SetupStance::nollie,"push-bit publication cannot relabel an already admitted flight");
+    }
 }
-int main() {tap_and_hold();frozen_flights();ownership_and_context();recorded_release_and_provenance();std::printf("setup selection: %u checks passed\n",checks);}
+}
+int main() {riding_push_selection();tap_and_hold();frozen_flights();ownership_and_context();recorded_release_and_provenance();std::printf("setup selection: %u checks passed\n",checks);}

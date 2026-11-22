@@ -58,6 +58,27 @@ void ground_edges() {
         check(f.requests.size()==2&&f.requests.back().input_sequence>first.input_sequence,"release then second RT requests return stance");
     }
 }
+void setup_survives_riding_push() {
+    for(unsigned foot:{0u,0x20u})for(bool select_nollie:{false,true}) {
+        Fixture f;f.environment.native_context.flip.stance=foot;f.sample(0);
+        if(select_nollie){f.pad.lt=255;f.sample(10);f.pad.lt=0;f.sample(90);}
+        const auto expected=select_nollie?SetupStance::nollie:SetupStance::normal;
+        f.environment.native_context.flip.stance=foot|0x40u;++f.environment.native_context.generations.action;
+        for(unsigned at=100;at<600;at+=17)f.sample(at);
+        check(f.input.selected_setup()==expected && f.requests.empty(),
+            "unified setup survives native push without LT or push creating a jump");
+        f.environment.native_context.flip.stance=foot;++f.environment.native_context.generations.action;f.sample(600);
+        f.pad.buttons=TrickControls::mask(TrickControls::ollie);f.sample(700);
+        f.pad.buttons=0;f.sample(900);
+        check(f.requests.size()==2 && f.requests[0].action==InputAction::crouch &&
+            f.requests[1].action==InputAction::ollie_release && f.requests[0].setup==expected &&
+            f.requests[1].setup==expected && f.requests[1].nollie==select_nollie &&
+            f.requests[1].physical_pressed_at==700 && f.requests[1].physical_released_at==900,
+            "A keeps its original timestamps and selected Ollie or Nollie identity after native push");
+        f.environment.conflict=true;f.sample(901);f.environment.conflict=false;f.sample(902);
+        check(f.input.selected_setup()==SetupStance::normal,"bail or conflicting native ownership still clears setup");
+    }
+}
 void contextual_precedence() {
     {
         Fixture f;f.environment.context=InputContext::balance;f.environment.manual_active=true;
@@ -118,5 +139,5 @@ void interruption() {
     }
 }
 }
-int main() {ground_edges();contextual_precedence();no_landing_replay();interruption();
+int main() {setup_survives_riding_push();ground_edges();contextual_precedence();no_landing_replay();interruption();
     std::printf("trigger dispatch: %u checks passed\n",checks);}

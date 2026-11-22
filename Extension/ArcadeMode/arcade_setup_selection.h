@@ -18,8 +18,10 @@ public:
     void reset() noexcept { *this={}; }
     void sample(std::uint64_t now,const TriggerPress& trigger,SetupSelectionContext frame) noexcept {
         const auto sequence=trigger.press.sequence;
+        // Native0x40 means pushing, not bail. A riding push cannot erase a
+        // remembered setup; native launch admission remains the caller's job.
         if(!frame.enabled || !frame.native.required || !frame.native.fresh(now) ||
-           (frame.native.flip.stance&0x40u) || (clocked_&&now<now_)) {
+           (clocked_&&now<now_)) {
             reset();cursor_=sequence;return;
         }
         const auto owner=frame.native.generations.owner;
