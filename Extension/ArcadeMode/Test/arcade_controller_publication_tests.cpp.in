@@ -120,11 +120,12 @@ void establish(unsigned user,std::uint64_t now,unsigned source=0){
 namespace stance_publication {
 ArcadeInput arcade_input{true};std::array<PlaybackPacket,4> playback_packets;
 struct Output{std::uint16_t buttons{};short lx{},ly{},rx{},ry{};unsigned lt{},rt{},acks{};bool after_packet{};std::uint16_t acknowledged{};};
-Output sample(bool owns_controls,bool conflict,bool face_owner,std::uint16_t physical_buttons,StanceControl control){
+Output sample(bool owns_controls,bool conflict,bool face_owner,std::uint16_t physical_buttons,StanceControl control,bool automatic_push=false){
     const unsigned user=0;const std::uint64_t now=1000,tick=60;const std::uint32_t physical_packet=41,normal_mask=0;
     const bool reference=false,stance_permitted=owns_controls&&!conflict;
     const dingosdk::NoBailSkater native_flip_owner{1,2,3,4,5};
     NativeGesture::Output result{};result.buttons=physical_buttons;result.right_x=123;result.right_y=-456;
+    result.automatic_push=automatic_push;
     short left_x=321,left_y=-654;unsigned char left_trigger=45,right_trigger=67;
     ActionInputOutput action{};action.pad.owns_face_buttons=face_owner;action.pad.face_buttons=static_cast<std::uint16_t>(physical_buttons&0xf000u);
     action.pad.owns_triggers=true;
@@ -156,6 +157,33 @@ void run(){
         require(accepted||(!native_stance::pending.owned&&native_stance::cancellations==cancellations+1),
             "loss of controls or final permission cancels the stance producer before output or delivery acknowledgment");++checks;
     }
+    // The native bda7ae8b trial delivered both B presses, then this exact final
+    // writer resumed X while stance acknowledgment was still pending. Native
+    // push subsequently invalidated the otherwise fresh stance observation.
+    StanceInput input;
+    const auto frame=[](unsigned index,unsigned stance=0u){
+        const auto at=100u+17u*index;
+        InputNativeContext native{true,true,{1,1,1},index+1u,at};
+        native.flip={true,-1,0x10000,100,1,stance,index+1u,1,1};return native;
+    };
+    TriggerPress trigger{{{InputSource::triggers,1,InputEdge::press},100,1},{},InputContext::ground,
+        frame(0),TriggerOwner::switch_stance,250};
+    require(input.start(trigger,frame(0),100),"composed stance starts from the original ground trigger");++checks;
+    for(unsigned index=0;index<24;++index){
+        const auto native=frame(index);
+        const auto control=input.controls(native,native.sampled_at,index+1u);
+        const auto output=sample(true,false,false,0,control,true);
+        require(!(output.buttons&0x4000u),"actual final writer withholds automatic X through native stance acknowledgment");++checks;
+        require(input.delivered(native,control,output.buttons,native.sampled_at,index+1u),
+            "actual final neutral packet preserves the finite stance observation lease");++checks;
+        require(!input.observed_change(),"withholding automatic push cannot fabricate a native stance result");++checks;
+    }
+    auto changed=frame(24,0x20);++changed.generations.action;
+    const auto completed=input.controls(changed,changed.sampled_at,25);
+    const auto resumed=sample(true,false,false,0,completed,true);
+    require(input.observed_change()&&!input.active()&&!completed.owned,
+        "fresh native leading-foot observation releases neutral ownership");++checks;
+    require(resumed.buttons==0x4000u,"actual final writer resumes automatic push immediately after native acknowledgment");++checks;
     native_stance::packet_probe=nullptr;
     std::cout<<checks<<" exact production stance publication checks passed\n";
 }

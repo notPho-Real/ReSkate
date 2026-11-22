@@ -49,13 +49,20 @@ that original A intent and resumes a supported crouch only after native idle.
 An airborne transition, changed actor or lost ownership cancels that intent.
 Ground RT uses the verified native ChangeStance input processor: one B double-tap
 within its native 300ms window. The final controller packet owns only B; each
-phase needs a delivered packet and a newer native step. The adapter never writes
+gesture phase needs a delivered packet and a newer native step. After final B
+release, neutral ownership withholds automatic pushes until native acknowledgment
+or the original one-second observation limit. Repeated neutral packets cannot
+renew that limit; completion or cancellation releases ownership immediately.
+The adapter never writes
 heading, momentum or a rendered stance. Native leading-foot observation is
 separate from input delivery; regular/switch/fakie movement still requires native
 acceptance of this candidate. Ground RT has no Revert fallback.
 The adapter authenticates exported instance GUIDs at the live object prefix.
 File GUIDs identify the containing asset and cannot authenticate that object;
 using them prevented Switch admission in the `ec28f738` native trial.
+The corrected `bda7ae8b` trial delivered both double taps but observed no stance
+change. Its subsequent auto-push conflict is corrected in source; physical
+Switch acceptance remains pending.
 The input adapter and physical Pivot evidence are separate from native acceptance.
 LT during Manual/grind cannot replace the active physical support or its native
 launch family. See [the shared trigger contract](TRIGGER_CONTRACT.md) for vert

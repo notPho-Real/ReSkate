@@ -113,17 +113,23 @@ public:
             ++phase_;published_=false;
         }
         if(phase_>=5) {
-            if(lease_.observed_change() && changed_now(native)){changed_=true;active_=false;}
-            return {};
+            if(lease_.observed_change() && changed_now(native)){changed_=true;active_=false;return {};}
+            // Keep B neutral while awaiting the native foot change. Releasing
+            // ownership here resumes automatic X, whose native push cancels
+            // this still-pending observation before its existing deadline.
+            return {true,0,serial_,phase_};
         }
         return {true,static_cast<std::uint16_t>((phase_==1 || phase_==3)?contract::button:0),serial_,phase_};
     }
     bool delivered(const InputNativeContext& native,StanceControl control,std::uint16_t final_buttons,
                    std::uint64_t now,std::uint64_t tick) noexcept {
-        if(!active_ || !control.owned || control.serial!=serial_ || control.phase!=phase_ || phase_>=5 ||
+        if(!active_ || !control.owned || control.serial!=serial_ || control.phase!=phase_ || phase_>5 ||
            control.buttons!=((phase_==1 || phase_==3)?contract::button:0) ||
            (final_buttons&contract::button)!=control.buttons || tick<last_tick_ ||
            !valid_frame(native,now)) {cancel();return false;}
+        // Phase5 only reserves neutral output. It cannot advance another phase,
+        // reissue either press, or renew the original observation clocks.
+        if(phase_==5)return true;
         if(published_)return true; // Same delivered phase never renews its clocks.
         if(phase_==1) {
             if(!lease_.issued(native,now)){cancel();return false;}

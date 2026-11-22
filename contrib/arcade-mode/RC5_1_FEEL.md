@@ -12,7 +12,9 @@ descriptions below. LT tap selects Nollie; hold selects Pressure. A still owns
 crouch and launch. Native Nollie16 and its follow-up identities survive LT release;
 unsupported Pressure requests never substitute an ordinary trick. Ground RT
 dispatches only native Switch, while established Manual RT requests physical
-Pivot/Nose Pivot. Native Switch delivery remains under integration.
+Pivot/Nose Pivot. The `bda7ae8b` native trial delivered both Switch double taps,
+but no physical stance change. The follow-up removes automatic-push overlap
+while awaiting acknowledgment; native Switch acceptance remains pending.
 
 The shared [trigger contract](TRIGGER_CONTRACT.md) reserves vert flight and landing
 inputs before ordinary ground commands. Native board-reference and hips motion

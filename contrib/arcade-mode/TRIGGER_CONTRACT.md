@@ -45,6 +45,11 @@ advances only with a new controller tick and native physics sample. Native
 leading-foot change must follow the actual second press and final release before
 completion is reported. This adapter does not implement a ground Revert or a
 render-only stance change.
+While awaiting that observation after final B release, the same finite adapter
+retains neutral B ownership so automatic X cannot initiate a conflicting native
+push. Neutral publication does not restart either tap or renew the original
+one-second acknowledgment limit. A real completion, conflict or timeout releases
+it immediately; this reservation supplies no native stance evidence.
 
 The ground engineer owns `arcade_input_events.h`, `arcade_trigger_input.h`,
 `arcade_input_dispatch.h` and `arcade_input_session.h`. The vert engineer owns
