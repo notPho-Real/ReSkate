@@ -165,9 +165,16 @@ void borrowed_position_requires_original_ray() {
             if(fault==8)m.write(points+16,V4{-0.f,3,0,1});
         };
         const auto read=[&](auto at,auto& value){return m.read(at,value);};
-        check(position(data,ordinal,expected,out,read)==(fault==0),
+        PositionTrace trace;
+        check(position(data,ordinal,expected,out,read,&trace)==(fault==0),
             "position-only exclusion rejects missing, nonfinite, inconsistent, replaced and unstable native points");
         check(out==(fault==0?Vec{0,3,0}:Vec{}),"failed position observation publishes no partial point");
+        constexpr std::array<const char*,9> reasons{"valid","nonfinite","ray_residual","element_read","element_read","input","pointer_changed","element_changed","element_changed"};
+        constexpr std::array<unsigned,9> reads{4,4,4,2,1,0,3,4,4};
+        check(std::string_view(trace.reason)==reasons[fault],"copied position diagnostic names actual failed stage");
+        check(m.reads==reads[fault],"diagnostics perform no additional native reads");
+        check(trace.point_known==(fault==0 || fault==2),"only stable finite diagnostic point published");
+        if(fault==2)check(trace.point==Vec{0,3,0} && trace.residual_squared==1,"actual native point and ray residual retained without admission");
     }
 }
 void batch_optional_details_and_final_fence() {

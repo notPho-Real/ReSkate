@@ -78,6 +78,12 @@ struct SurfaceGeometryTrace {
     std::uint64_t entity{};
     SurfaceGeometryVector start{}, end{}, point{};
     float value{};
+#if defined(DINGOSDK_DEV_TOOLS)
+    const char* self_position_reason{"not_observed"};
+    SurfaceGeometryVector self_position{};
+    double self_position_residual{};
+    bool self_position_known{};
+#endif
     // Anchor operands survive individual clearance-ray diagnostics.
     SurfaceGeometryVector anchor_root{}, anchor_body{}, anchor_target{};
     float anchor_displacement{};

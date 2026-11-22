@@ -91,24 +91,40 @@ bool motion_current(std::uintptr_t world, std::uintptr_t state, const Motion& va
 // Position-only observation for an already authenticated exclusion. It retains
 // the same borrowed-array, ordinal, endpoint and ray-fraction checks as vectors;
 // callers needing a surface orientation must still use vectors below.
+// Optional copies of reads already performed; never additional query authority.
+struct PositionTrace {
+    const char* reason{"not_started"};
+    Vec point{};
+    double residual_squared{};
+    bool point_known{};
+};
 template<class Read>
-bool position(std::uintptr_t data, std::uint32_t ordinal, const Vec& expected, Vec& out, Read&& read) {
+bool position(std::uintptr_t data, std::uint32_t ordinal, const Vec& expected, Vec& out, Read&& read,
+    PositionTrace* trace = nullptr) {
     namespace c = addr::body_contact;
     out = {};
-    if (!field_span(data, c::result_positions, sizeof(std::uintptr_t)) || !owned_body::finite(expected, 100000)) return false;
+    if (trace) *trace = {};
+    const auto fail = [&](const char* reason) { if (trace) trace->reason = reason; return false; };
+    if (!field_span(data, c::result_positions, sizeof(std::uintptr_t)) || !owned_body::finite(expected, 100000))
+        return fail("input");
     std::uintptr_t points{}, after{};
     V4 p{}, again{};
-    if (!read(data + c::result_positions, points) || !body_hit_identity::element(read, points, ordinal, p) ||
-        !read(data + c::result_positions, after) || after != points ||
-        !body_hit_identity::element(read, points, ordinal, again) || !same(p, again)) return false;
+    if (!read(data + c::result_positions, points)) return fail("pointer_read");
+    if (!body_hit_identity::element(read, points, ordinal, p)) return fail("element_read");
+    if (!read(data + c::result_positions, after)) return fail("pointer_repeat_read");
+    if (after != points) return fail("pointer_changed");
+    if (!body_hit_identity::element(read, points, ordinal, again)) return fail("element_repeat_read");
+    if (!same(p, again)) return fail("element_changed");
     double residual{};
     for (std::size_t i = 0; i < 3; ++i) {
-        if (!std::isfinite(p[i])) return false;
+        if (!std::isfinite(p[i])) return fail("nonfinite");
         const double error = double(p[i]) - expected[i];
         residual += error * error;
     }
-    if (residual > .0004) return false;
+    if (trace) { trace->point = {p[0], p[1], p[2]}; trace->point_known = true; trace->residual_squared = residual; }
+    if (residual > .0004) return fail("ray_residual");
     out = {p[0], p[1], p[2]};
+    if (trace) trace->reason = "valid";
     return true;
 }
 struct Vectors { Vec position{}, normal{}; };

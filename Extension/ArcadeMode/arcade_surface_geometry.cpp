@@ -204,9 +204,22 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
                 // Its original hit position must still match the ray fraction.
                 if(local_component && measure_contact) {
                     const auto read_position=[&]<class T>(std::uintptr_t at,T& value) {return read(api,at,value);};
-                    if(!api.surface.contact_ready ||
-                       !body_contact_read::position(result.data,selected,point,found.point,read_position))
-                        return fail("self_hit_position");
+#if defined(DINGOSDK_DEV_TOOLS)
+                    body_contact_read::PositionTrace position_trace;
+                    auto* copied_position=&position_trace;
+#else
+                    body_contact_read::PositionTrace* copied_position=nullptr;
+#endif
+                    const bool position_valid=api.surface.contact_ready &&
+                        body_contact_read::position(result.data,selected,point,found.point,read_position,copied_position);
+#if defined(DINGOSDK_DEV_TOOLS)
+                    if(trace) {
+                        trace->self_position_reason=api.surface.contact_ready?position_trace.reason:"api_unavailable";
+                        trace->self_position=position_trace.point;trace->self_position_known=position_trace.point_known;
+                        trace->self_position_residual=position_trace.residual_squared;
+                    }
+#endif
+                    if(!position_valid)return fail("self_hit_position");
                 }
                 // Requested nonlocal measurements retain their validation.
                 if(!local_component && (measure_contact || (patch_owner && owner!=ctx.self_entity && world_owner!=*patch_owner))) {

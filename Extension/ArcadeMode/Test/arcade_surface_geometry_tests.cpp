@@ -459,11 +459,20 @@ int main() {
         if(fault==5)f.bad_position=true;
         if(fault==6)f.bad_fraction=true;
         if(fault==7)f.contact_ready=false;
-        const auto result=query_vert_patch(f.api(),f.live,f.wall_point,f.wall_normal,.5f);
+        SurfaceGeometryTrace trace;
+        const auto result=query_vert_patch(f.api(),f.live,f.wall_point,f.wall_normal,.5f,&trace);
         check(result.valid==(fault==0 && vector_fault!=3 && vector_fault!=5),
             "only authenticated self with a valid native position skips normal validation; actual world surfaces remain strict");
         if(result.valid)check(result.center().body.index<100 && result.center().query_normal==f.wall_normal && f.calls>=10,
             "self vectors never supply landing geometry; native exclusion must query the actual surface");
+#if defined(DINGOSDK_DEV_TOOLS)
+        if(fault==0 && (vector_fault==3 || vector_fault==5))
+            check(std::string_view(trace.self_position_reason)==(vector_fault==3?"nonfinite":"element_read") &&
+                !trace.self_position_known,"self query retains the exact failing reader stage without publishing a point");
+        if(fault==5 && vector_fault!=3 && vector_fault!=5)
+            check(std::string_view(trace.self_position_reason)=="ray_residual" && trace.self_position_known &&
+                trace.self_position_residual>.0004,"self query reports the original finite point mismatch without accepting it");
+#endif
         check(f.calls==f.pops && f.calls==f.frees,"self exclusion and malformed hits release every original query");
     }
     { Fixture f;f.wall=f.allow_world_owner=f.unknown=true;f.wall_normal={-1,0,0};

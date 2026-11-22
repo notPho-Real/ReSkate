@@ -223,3 +223,43 @@ owner, fraction, lifetime and native exclusion checks remain unchanged. Every
 nonlocal hit still needs valid measured vectors. The old source fails this
 regression; it does not establish that self hits caused the recorded generic
 `motion_hit_vectors` failures.
+
+## Push completion at the lip
+
+Combined candidate 6f132763 (full CI 45031833140; feature tree retained by
+2a36bce3) completed one guarded forward-only flight. The 463 physical observations
+show ascent to board height 6.878, return to the originating transition with real
+wheel contact, then continued supported travel. No LT/RT was sent. The controller
+lost rising-support history before its first original AIR observation, so this
+is not acceptance of full-flight preservation, transfer, Revert or scoring.
+
+Original publications retain one owner generation while the native push bit
+0x40 clears together with the c000-to-4000 contact transition. The old history-gap
+policy treats that push completion as a stance change and clears ramp history
+when the writer straddles publication. An artifact replay reproduces this loss;
+observing the same original rear-contact frame directly preserves eligibility.
+The precise failing writer mismatch was throttled out of the native log, so the
+replay does not establish this as the exclusive cause of the observed failure.
+
+The correction retains history only for falling 0x40 during proven rising support,
+with unchanged leading-foot bit 0x20, owner generation, idle selected actor and
+bounded contact/state timing. A subsequent original frame must confirm the
+cleared push and actor before normal observation resumes. It does not admit a
+mismatched input frame, renew the support deadline or consume a trigger. Tests
+cover onset, stance, owner, actor, stale and conflicting continuation at 30/60/120Hz,
+and establish original AIR separately. The previous policy fails the regression.
+
+This flight also recorded three self_hit_position query refusals. Admission stays
+closed. Development receipts now copy the existing point-reader failure stage,
+finite native point and squared ray residual, without additional native reads;
+phase-changing vert invalidations retain their original/live correlation fields
+instead of being lost to periodic logging. Native point semantics still require
+measurement before any change to that query contract. Focused sanitizer checks:
+5,063 vert, 89,993 geometry/runtime and 106 body-reader; release-mode boundary
+compilation also passes. These are offline results, not native transfer acceptance.
+
+Evidence is in the external artifact workspace under
+vert-transfers-20261122/stance-hil: vert-native-checkpoint.json,
+push-contact-replay-evidence.json and before-push-faults-result.json. After the
+independent ground checks, the game and launcher closed normally; exact prior
+5ae57786 files, all 149 rollback sets and the score pack were verified preserved.

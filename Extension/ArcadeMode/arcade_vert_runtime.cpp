@@ -58,6 +58,7 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
     std::lock_guard lock(mutex);
     const auto& frame=observation.native;
     if(!frame.valid) {
+        [[maybe_unused]] const auto before=controller.phase();
         const bool transition=frame_reason && std::strcmp(frame_reason,"frame_correlation")==0 &&
             correlation && live && controller.publication_gap(*correlation,*live,physical_owner,now);
         if(transition || (frame_reason && std::strcmp(frame_reason,"frame_lock_busy")==0))
@@ -65,12 +66,18 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
         else controller.observe(observation);
 #if defined(DINGOSDK_DEV_TOOLS)
         static std::uint64_t last_unavailable{};
-        if(now<last_unavailable || now-last_unavailable>=250) {
+        const bool lost_history=before!=controller.phase() && before!=VertPhase::idle && before!=VertPhase::cancelled;
+        if(lost_history || now<last_unavailable || now-last_unavailable>=250) {
             last_unavailable=now;
             logging::log(logging::Level::info,logging::Channel::skater,
-                "ARCADE VERT UNAVAILABLE: reason={} phase={} previous_ms={} now={} supported={} up_y={}.",
-                frame_reason?frame_reason:"unknown",static_cast<unsigned>(controller.phase()),
-                controller.observation().native.sampled_at,now,observation.supported,observation.up[1]);
+                "ARCADE VERT UNAVAILABLE: reason={} before={} phase={} previous_ms={} now={} supported={} up_y={} mismatch={} original_step={} original_ms={} original_state={} live_state={} original_mode={} live_mode={} original_contacts={} live_contacts={} original_stance={} live_stance={}.",
+                frame_reason?frame_reason:"unknown",static_cast<unsigned>(before),static_cast<unsigned>(controller.phase()),
+                controller.observation().native.sampled_at,now,observation.supported,observation.up[1],
+                correlation?correlation->mismatches:0,correlation?correlation->observed.physics_step:0,
+                correlation?correlation->observed.sampled_at:0,correlation?correlation->observed.state:0,live?live->state:0,
+                correlation?correlation->observed.mode:0,live?live->crouch_mode:0,
+                correlation?correlation->observed.contacts:0,live?(live->words[1]&0xc000u):0,
+                correlation?correlation->observed.stance_and_push:0,live?(live->words[0]&0x60u):0);
         }
 #endif
         // Withholding the ordinary Arcade air shaper is not motion authority.
@@ -155,8 +162,10 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
         if(now<reported || now-reported>=250) {
             reported=now;
             logging::log(logging::Level::info,logging::Channel::skater,
-                "ARCADE VERT PATCH: step={} valid={} reason={} context={} ray={} hits={} up={},{},{}.",
-                frame.physics_step,patch.valid,trace.reason,trace.context_reason,trace.ray,trace.hits,up[0],up[1],up[2]);
+                "ARCADE VERT PATCH: step={} valid={} reason={} context={} ray={} hits={} up={},{},{} fraction={} expected={},{},{} self_position_reason={} self_position_known={} self_position={},{},{} self_residual={}.",
+                frame.physics_step,patch.valid,trace.reason,trace.context_reason,trace.ray,trace.hits,up[0],up[1],up[2],
+                trace.value,trace.point[0],trace.point[1],trace.point[2],trace.self_position_reason,trace.self_position_known,
+                trace.self_position[0],trace.self_position[1],trace.self_position[2],trace.self_position_residual);
         }
 #endif
         std::lock_guard lock(mutex);support=patch;support_frame=frame;return;

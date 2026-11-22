@@ -76,6 +76,69 @@ void retained_rear_wheel() {
             "only real same-ramp rear-wheel support continues the measured long lip departure");
     }
 }
+struct PushBoundaryFixture {
+    VertAirController controller; NativeInputState publisher; VertObservation o; NativeRequestSample live;
+    unsigned dt;
+    explicit PushBoundaryFixture(unsigned rate):dt((1000+rate-1)/rate) {
+        live.valid=true;live.state=100;live.crouch_mode=1;live.words[0]=0x40;live.words[1]=0xc000;
+        o.enabled=o.supported=true;o.support.valid=true;
+        for(unsigned i=0;i<3;++i) {
+            const float angle=1.1f+.1f*static_cast<float>(i);
+            o.position={0,2+.15f*static_cast<float>(i),0};o.up={0,std::cos(angle),std::sin(angle)};
+            o.velocity={0,8*std::sin(angle),-8*std::cos(angle)};
+            for(auto& s:o.support.samples){s.valid=true;s.point=o.position;s.query_normal=o.up;s.body={7,8,9};s.world_owner.value=10;}
+            o.native=publisher.observe(1000+i*dt,{1,2,3,4,5},live,{true,-1,99},false,1.f/static_cast<float>(rate));
+            controller.observe(o);
+        }
+        check(controller.phase()==VertPhase::rising_support,"synthetic curvature establishes real support before the recorded push/contact boundary");
+    }
+};
+void push_clear_boundary() {
+    for(unsigned rate:{30u,60u,120u})for(unsigned fault=0;fault<17;++fault) {
+        PushBoundaryFixture x(rate);auto now=x.o.native.sampled_at+1;auto owner=x.o.native.owner;
+        x.live.words[0]=0;x.live.words[1]=0x4000;
+        NativeInputCorrelation d{};check(!x.publisher.correlate(now,owner,x.live,&d).valid,"mismatched push/contact snapshot never acquires native input authority");
+        if(fault==1)x.live.words[0]=0x20;
+        if(fault==2){d.observed.stance_and_push=0;x.live.words[0]=0x40;}
+        if(fault==3)++owner.core;
+        if(fault==4)++d.observed.owner_generation;
+        if(fault==5)now+=101;
+        if(fault==6)d.observed.physics_step+=3;
+        if(fault==7)d.observed.flip_known=false;
+        if(fault==8)d.observed.flip_id=3;
+        if(fault==9)d.observed.selection_object=100;
+        if(fault==10)x.live.state=300;
+        if(fault==11)x.live.state=500;
+        if(fault==12)x.live.crouch_mode=2;
+        if(fault==13)x.controller.cancel();
+        if(fault==14)x.live.valid=false;
+        if(fault==15)d.observed.rail_family=true;
+        if(fault==16)d.mismatches|=NativeInputCorrelation::mode_changed;
+        check(x.controller.publication_gap(d,x.live,owner,now)==(fault==0),"only falling push with unchanged stance and idle owner retains ramp history");
+    }
+    for(unsigned rate:{30u,60u,120u})for(unsigned fault=0;fault<8;++fault) {
+        PushBoundaryFixture x(rate);auto now=x.o.native.sampled_at+1;const auto owner=x.o.native.owner;
+        x.live.words[0]=0;x.live.words[1]=0x4000;NativeInputCorrelation d{};
+        check(!x.publisher.correlate(now,owner,x.live,&d).valid,"confirmation fixture begins with an unadmitted publication gap");
+        check(x.controller.publication_gap(d,x.live,owner,now),"proven falling push retains history until original confirmation");x.controller.unavailable(now,owner,true,false);
+        check(!x.controller.eligible(x.o.native,now) && !x.controller.consume(x.o.native,now,x.o.velocity),"publication gap cannot consume a transfer or grant stale input eligibility");
+        x.o.native=x.publisher.observe(now+x.dt,owner,x.live,{true,-1,99},false,1.f/static_cast<float>(rate));
+        if(fault==1)x.o.native.stance_and_push=0x40;
+        if(fault==2)x.o.native.stance_and_push=0x20;
+        if(fault==3)x.o.native.selection_object=100;
+        if(fault==4)x.o.native.flip_id=1;
+        if(fault==5)x.o.native.rail_family=true;
+        if(fault==6)x.o.native.state=500;
+        if(fault==7)x.o.native.mode=3;
+        x.controller.observe(x.o);check((x.controller.phase()==VertPhase::rising_support)==(fault==0),"the next original frame must confirm the cleared push and unchanged actor");
+        x.live.state=200;x.live.words[1]=0;x.o.support={};x.o.supported=false;
+        x.o.native=x.publisher.observe(now+2*x.dt,owner,x.live,{true,-1,99},false,1.f/static_cast<float>(rate));
+        x.controller.observe(x.o);
+        check(x.controller.eligible(x.o.native,x.o.native.sampled_at)==(fault==0),"only independently confirmed original AIR qualifies after push completion");
+        check(!x.controller.consume(x.o.native,x.o.native.sampled_at,x.o.velocity),"no trigger preserves native flight after the push/contact handoff");
+    }
+}
+
 void publication_contact_boundary() {
     for(unsigned rate:{30u,60u,120u})for(unsigned fault=0;fault<12;++fault) {
         const auto dt=static_cast<std::uint64_t>(std::ceil(1000.f/static_cast<float>(rate)));
@@ -822,4 +885,4 @@ void input_edges() {
     }
 }
 }
-int main(){idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

@@ -274,7 +274,7 @@ inline bool vert_align_target(std::array<float,16>& target,SurfaceGeometryVector
 }
 class VertAirController {
 public:
-    void cancel() noexcept {mode_gap_selection_=0;suspended_=false;landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
+    void cancel() noexcept {push_gap_selection_=0;mode_gap_selection_=0;suspended_=false;landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
     void reset() noexcept {*this={};}
     // A busy input publisher is absence of evidence, not a new contact. Keep
     // recent curvature for this physical owner, but withdraw transfer queries
@@ -296,12 +296,26 @@ public:
             const NativeInputOwner& owner,std::uint64_t now) noexcept {
         using D=NativeInputCorrelation;
         const auto& f=correlation.observed;
-        constexpr auto allowed=D::state_changed|D::contacts_changed|D::mode_changed;
+        constexpr auto allowed=D::state_changed|D::contacts_changed|D::mode_changed|D::stance_changed;
         if(!correlation.mismatches || (correlation.mismatches&~allowed) || !f.valid || !live.valid ||
            !owner.valid() || f.owner!=owner || !previous_.native.valid || owner!=previous_.native.owner ||
            f.owner_generation!=previous_.native.owner_generation || f.physics_step<previous_.native.physics_step ||
            f.physics_step-previous_.native.physics_step>2 || now<f.sampled_at || now-f.sampled_at>100 ||
-           f.mode>2 || (live.words[0]&0x60u)!=f.stance_and_push)return false;
+           f.mode>2)return false;
+        const auto stance=live.words[0]&0x60u;
+        const bool push_clear=stance!=f.stance_and_push;
+        if(push_clear) {
+            // A completed native push at the lip is not a leading-foot change.
+            // Keep history only; the next original frame must confirm the idle actor.
+            if(!(correlation.mismatches&D::stance_changed) ||
+               (correlation.mismatches&D::mode_changed) || phase_!=VertPhase::rising_support ||
+               (f.state!=100 && f.state!=103) || f.rail_family ||
+               (f.stance_and_push&0x40u)==0 || (stance&0x40u)!=0 ||
+               (stance&0x20u)!=(f.stance_and_push&0x20u) ||
+               !f.flip_known || f.flip_id!=-1 || !f.selection_object ||
+               !previous_.native.flip_known || previous_.native.flip_id!=-1 ||
+               previous_.native.selection_object!=f.selection_object)return false;
+        } else if(correlation.mismatches&D::stance_changed)return false;
         const auto contacts=live.words[1]&0xc000u;
         if(correlation.mismatches&D::mode_changed) {
             // The recorded idle native201 flight enters mode2 without a new
@@ -317,10 +331,14 @@ public:
         }
         if(live.crouch_mode!=f.mode)return false;
         const auto changed=(live.state!=f.state?D::state_changed:0u)|(contacts!=f.contacts?D::contacts_changed:0u);
-        if(changed!=correlation.mismatches)return false;
+        if((changed|(push_clear?D::stance_changed:0u))!=correlation.mismatches)return false;
         const bool ground=f.state==100 || f.state==103;
         const bool air=f.state==200 || f.state==201;
-        if(ground)return live.state==f.state || (live.state==200 && !contacts);
+        if(ground) {
+            const bool legal=live.state==f.state || (live.state==200 && !contacts);
+            if(legal && push_clear) {push_gap_selection_=f.selection_object;push_gap_stance_=stance;}
+            return legal;
+        }
         return air && ((live.state==f.state && !contacts) ||
             (f.state==200 && live.state==201 && !contacts) || vert_riding_contact_mask(live.state,contacts));
     }
@@ -354,6 +372,13 @@ public:
         if(f.physics_step<=previous_.native.physics_step)return;
         if(previous_.native.valid && unavailable_at_>previous_.native.sampled_at &&
            f.sampled_at-previous_.native.sampled_at>100) {cancel();previous_={};}
+        if(push_gap_selection_) {
+            const bool resumed=f.flip_known && f.flip_id==-1 && f.selection_object==push_gap_selection_ &&
+                f.stance_and_push==push_gap_stance_ && !f.rail_family && f.mode<=2 &&
+                (f.state==100 || f.state==103 || f.state==200 || f.state==201);
+            push_gap_selection_=0;
+            if(!resumed) {cancel();previous_={};return;}
+        }
         if(mode_gap_selection_) {
             const bool resumed=same_flight(f) && f.state==201 && f.mode==2 && !f.contacts &&
                 f.flip_known && f.flip_id==-1 && f.selection_object==mode_gap_selection_;
@@ -520,7 +545,8 @@ private:
     bool suspended_{};
     VertLandingWindow landing_{};
     VertObservation previous_{},takeoff_{},lip_{};
-    std::uintptr_t mode_gap_selection_{};
+    std::uintptr_t mode_gap_selection_{},push_gap_selection_{};
+    std::uint32_t push_gap_stance_{};
     VertRampSupport origin_{};
     SurfaceGeometryVector direction_{};
     VertPlan plan_{},released_plan_{};
