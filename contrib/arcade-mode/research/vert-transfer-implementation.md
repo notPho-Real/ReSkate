@@ -48,3 +48,25 @@ Mega Park map and exact source/DLL, and preserve rollback. Capture no more than
 one bounded representative batch per integrated checkpoint. Stop on owner/map/
 focus mismatch, unexpected collisions, missing telemetry or an unverified install.
 An input receipt, offline simulated landing or rendered frame alone is not a pass.
+
+## First native detector trial
+
+Passing build 4a5245c5 was used for one no-trigger approach while the later
+planner candidate compiled. It retained 445 physical observations, including
+100 -> 200 -> 201 -> 100 and a real supported landing, but never entered the
+qualified vert phase. Repeated unavailable command snapshots reset transition
+history immediately before departure. The earlier log did not record why each
+snapshot was unavailable, so lock contention is a hypothesis, not a proven sole
+cause. The approach also carried substantial speed along the lip; the landing
+outside that narrow ramp is not evidence that native vert return needs replacing.
+No contextual trigger was sent. This was a failed recognition test, not acceptance.
+
+The bounded fix retains recent same-owner curvature only for a busy input mutex.
+It clears staged queries and requires a newer admitted frame before any request
+or write. Route withdrawal, mismatched state/owner, OFF and long gaps still cancel.
+Released alignment cancels across an unobserved step. Development diagnostics now
+report unavailable reasons and measured support qualification. Regression tests
+exercise stale query completion, original edge expiry and repeated missing frames.
+A post-trial screenshot bookkeeping error left the physical trace intact; it did
+not justify replaying input. The game was closed normally and the exact prior
+installation, score pack and all rollback files were verified restored.

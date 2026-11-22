@@ -1,6 +1,7 @@
 #include "arcade_vert_runtime.h"
 #include "arcade_native_wall_contact.h"
 #include <mutex>
+#include <cstring>
 #if defined(DINGOSDK_DEV_TOOLS)
 #include "Engine/Core/Log/logging.h"
 #endif
@@ -42,10 +43,27 @@ SurfaceGeometryVector alignment(const NativeInputFrame& frame,std::uint64_t now)
     std::unique_lock lock(mutex,std::try_to_lock);
     return lock.owns_lock()?controller.alignment(frame,now):SurfaceGeometryVector{};
 }
-Motion step(VertObservation observation) noexcept {
+Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner& physical_owner,
+        const char* frame_reason) noexcept {
     std::unique_lock lock(mutex,std::try_to_lock);
     if(!lock.owns_lock())return {};
     const auto& frame=observation.native;
+    if(!frame.valid) {
+        if(frame_reason && std::strcmp(frame_reason,"frame_lock_busy")==0)
+            controller.unavailable(now,physical_owner,observation.enabled,observation.contested);
+        else controller.observe(observation);
+#if defined(DINGOSDK_DEV_TOOLS)
+        static std::uint64_t last_unavailable{};
+        if(now<last_unavailable || now-last_unavailable>=250) {
+            last_unavailable=now;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE VERT UNAVAILABLE: reason={} phase={} previous_ms={} now={} supported={} up_y={}.",
+                frame_reason?frame_reason:"unknown",static_cast<unsigned>(controller.phase()),
+                controller.observation().native.sampled_at,now,observation.supported,observation.up[1]);
+        }
+#endif
+        return {};
+    }
     if(support.valid && frame.valid && frame.owner==support_frame.owner &&
        frame.owner_generation==support_frame.owner_generation && !frame.airborne && !support_frame.airborne &&
        frame.sampled_at>=support_frame.sampled_at && frame.sampled_at-support_frame.sampled_at<=100 &&
@@ -72,12 +90,14 @@ Motion step(VertObservation observation) noexcept {
         }
     }
 #if defined(DINGOSDK_DEV_TOOLS)
-    if(before!=controller.phase() || plan)logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE VERT: step={} episode={} phase={} action={} position={},{},{} velocity={},{},{} planned={},{},{} supported={}.",
+    if(before!=controller.phase() || plan || (!frame.airborne && observation.up[1]<.8f && frame.physics_step%6==0))logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE VERT: step={} episode={} phase={} action={} position={},{},{} velocity={},{},{} planned={},{},{} supported={} patch={} normal={},{},{} mode={}.",
         frame.physics_step,frame.airborne_episode,static_cast<unsigned>(controller.phase()),static_cast<unsigned>(plan.action),
         observation.position[0],observation.position[1],observation.position[2],
         observation.velocity[0],observation.velocity[1],observation.velocity[2],
-        plan.velocity[0],plan.velocity[1],plan.velocity[2],observation.supported);
+        plan.velocity[0],plan.velocity[1],plan.velocity[2],observation.supported,observation.support.valid,
+        observation.support.center().query_normal[0],observation.support.center().query_normal[1],
+        observation.support.center().query_normal[2],frame.mode);
 #endif
     return {plan,controller.phase()==VertPhase::native_air || controller.phase()==VertPhase::requested ||
         controller.phase()==VertPhase::released,controller.phase()==VertPhase::released};

@@ -74,6 +74,44 @@ void lifecycle() {
     }
 }
 Vec rotate(Vec v,float a){return {v[0]*std::cos(a)-v[2]*std::sin(a),v[1],v[0]*std::sin(a)+v[2]*std::cos(a)};}
+void unavailable_snapshots() {
+    // Replay the observed missing-frame pattern with procedural support. The
+    // recording establishes the gap, not the geometry supplied by this test.
+    for(unsigned fault=0;fault<6;++fault) {
+        VertAirController c;auto o=ground();warm(c,o);c.observe(o);
+        auto owner=o.native.owner;if(fault==1)++owner.core;
+        const auto now=fault==2?1101u:fault==3?999u:1005u;
+        c.unavailable(now,owner,fault!=4,fault==5);
+        check(!c.request({},now,now,1),"unavailable frame never admits input");
+        check(!c.consume({},now,o.velocity),"unavailable frame never writes motion");
+        if(!fault)check(c.observation().native.sampled_at==1000,"gap never refreshes observation age");
+        o=fly(o);c.observe(o);
+        check(c.eligible(o.native,1010)==(fault==0),"only a short same-owner gap preserves genuine takeoff");
+        check(!c.consume(o.native,1010,o.velocity),"no trigger after gap keeps native flight");
+    }
+    VertAirController c;auto o=ground();warm(c,o);c.observe(o);
+    for(unsigned now:{1020u,1040u,1060u,1080u,1101u})c.unavailable(now,o.native.owner,true,false);
+    check(!c.observation().native.valid,"repeated absence cannot extend the observation lifetime");
+    c.reset();warm(c,o);c.observe(o);o=fly(o);c.observe(o);
+    check(c.request(o.native,1010,1010,1),"fresh request before missing publication");
+    auto plan=vert_level_out(o,{1,0,0});plan.clear=true;
+    check(c.stage(plan,o,1010),"query staged before gap");
+    c.unavailable(1015,o.native.owner,true,false);
+    check(!c.pending(o.native,1015) && !c.stage(plan,o,1015),"in-flight old query cannot reacquire authority after gap");
+    check(!c.consume(o.native,1015,o.velocity),"staged impulse withdrawn on gap");
+    ++o.native.physics_step;o.native.sampled_at=1020;c.observe(o);
+    check(c.pending(o.native,1020) && !c.consume(o.native,1020,o.velocity),"fresh frame alone cannot revive discarded plan");
+    check(c.stage(plan,o,1020) && bool(c.consume(o.native,1020,o.velocity)),"fresh query and admitted frame can execute within original deadline");
+    c.unavailable(1025,o.native.owner,true,false);
+    check(c.phase()==VertPhase::cancelled && length(c.alignment(o.native,1025))==0,"released transfer withdraws alignment across unobserved collision");
+    ++o.native.physics_step;o.native.sampled_at=1030;c.observe(o);
+    check(!c.request(o.native,1030,1030,2),"missing observation never rearms a second transfer");
+    c.reset();o=ground();warm(c,o);c.observe(o);o=fly(o);c.observe(o);
+    check(c.request(o.native,1010,1010,1),"expiry request");
+    c.unavailable(1020,o.native.owner,true,false);
+    ++o.native.physics_step;o.native.sampled_at=1030;c.observe(o);
+    check(!c.pending(o.native,1161),"gap does not renew original trigger deadline");
+}
 void destinations() {
     unsigned found{};
     for(float gravity:{9.81f,20.f,34.29f})for(float speed:{6.f,10.f,14.f})for(float angle:{0.f,.7f,1.6f,3.1f})for(float shift:{0.f,1000.f}) {
@@ -231,4 +269,4 @@ void input_edges() {
     }
 }
 }
-int main(){lifecycle();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){lifecycle();unavailable_snapshots();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

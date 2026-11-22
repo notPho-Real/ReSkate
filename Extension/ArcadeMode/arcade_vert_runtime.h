@@ -12,5 +12,6 @@ void geometry(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,cons
 // Called inside the existing validated physical body writer before staging.
 SurfaceGeometryVector alignment(const NativeInputFrame&,std::uint64_t now) noexcept;
 struct Motion {VertPlan plan{};bool native_flight{},aligning{};};
-Motion step(VertObservation) noexcept;
+Motion step(VertObservation,std::uint64_t now,const NativeInputOwner& physical_owner,
+    const char* frame_reason) noexcept;
 }

@@ -1783,7 +1783,7 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
         const char* wall_frame_reason="frame_not_read";
         const auto native_frame = arcade_mode::native_air_context(now,
             {owner.base,owner.entity,owner.core,owner.context,owner.rig},sampled,&cleanup,
-            wall_probe.input?&wall_frame_reason:nullptr);
+            &wall_frame_reason);
         wall_writer(4,wall_frame_reason);
         // Angular writer observation begin. Reuse only the reads above.
         arcade_mode::AngularWriterObservation angular_observation{
@@ -1899,7 +1899,8 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
                 vert_observation.contacted_shape={hit.shape.world,hit.shape.index,hit.shape.generation};break;
             }
         }
-        const auto vert_motion=arcade_mode::vert_runtime::step(vert_observation);
+        const auto vert_motion=arcade_mode::vert_runtime::step(vert_observation,now,
+            {owner.base,owner.entity,owner.core,owner.context,owner.rig},wall_frame_reason);
         const auto& vert_plan=vert_motion.plan;a.vert_aligning=vert_motion.aligning;
         if(vert_motion.native_flight)a.controller.yield_ordinary_motion();
         auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,

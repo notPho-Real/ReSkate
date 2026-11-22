@@ -113,8 +113,20 @@ class VertAirController {
 public:
     void cancel() noexcept {phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
     void reset() noexcept {*this={};}
+    // A busy input publisher is absence of evidence, not a new contact. Keep
+    // recent curvature for this physical owner, but withdraw every command and
+    // require a newer admitted frame before input, queries or writes can resume.
+    void unavailable(std::uint64_t now,const NativeInputOwner& owner,bool enabled,bool contested) noexcept {
+        plan_={};
+        unavailable_at_=std::max(unavailable_at_,now);
+        if(!enabled || contested || !owner.valid() || !previous_.native.valid ||
+           owner!=previous_.native.owner || now<previous_.native.sampled_at ||
+           now-previous_.native.sampled_at>100 || phase_==VertPhase::released) {
+            cancel();previous_={};
+        }
+    }
     bool matches(const NativeInputFrame& f,std::uint64_t now) const noexcept {
-        return f.valid && f.owner==takeoff_.native.owner && f.owner_generation==takeoff_.native.owner_generation &&
+        return f.valid && f.sampled_at>unavailable_at_ && f.owner==takeoff_.native.owner && f.owner_generation==takeoff_.native.owner_generation &&
             f.airborne && f.airborne_episode==takeoff_.native.airborne_episode &&
             f.air_departure==takeoff_.native.air_departure && now>=f.sampled_at && now-f.sampled_at<=150;
     }
@@ -129,6 +141,7 @@ public:
            !finite(value.velocity) || !std::isfinite(f.physics_seconds) || f.physics_seconds<.001f || f.physics_seconds>.1f) {
             cancel();previous_={};return;
         }
+        if(f.sampled_at<=unavailable_at_)return;
         if(previous_.native.valid && (f.owner!=previous_.native.owner || f.owner_generation!=previous_.native.owner_generation ||
            f.sampled_at<previous_.native.sampled_at || f.sampled_at-previous_.native.sampled_at>150)) {
             reset();
@@ -245,7 +258,7 @@ private:
     VertPatch origin_{};
     SurfaceGeometryVector direction_{};
     VertPlan plan_{},released_plan_{};
-    std::uint64_t released_at_{};
+    std::uint64_t released_at_{},unavailable_at_{};
     NativeInputFrame planned_{};
     static bool finite_motion(const VertObservation& o) noexcept {
         return vert_math::finite(o.position) && vert_math::finite(o.velocity);
