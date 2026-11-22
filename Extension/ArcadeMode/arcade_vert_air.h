@@ -74,7 +74,8 @@ struct VertObservation {
     VertRampSupport ramp() const noexcept {return native_ramp.valid?native_ramp:VertRampSupport{support};}
     bool enabled{}, supported{}, contested{};
     SurfaceGeometryBody contacted_shape{};
-    SurfaceGeometryVector contact_normal{};
+    SurfaceGeometryVector contact_normal{},contact_point{};
+    SurfaceGeometryWorldOwner contact_owner{};
 };
 // Recognition evidence only. The trigger journal owns the physical edge and
 // the existing native Revert actuator owns movement. A predicted approach may
@@ -331,11 +332,27 @@ public:
                 // Wheel contact can end a few original steps before AIR is
                 // published. Preserve that departure, not a new launch: its
                 // deadline remains anchored to the last real curved support.
+                // A native transition can retain only its rear wheel at the
+                // lip. That real contact may continue an already proven curved
+                // ramp, but a single contact can never recognize a new ramp.
+                const bool retained=phase_==VertPhase::rising_support && curved && value.supported && !ramp.valid &&
+                    lip_.native.valid && f.sampled_at>=lip_.native.sampled_at && f.sampled_at-lip_.native.sampled_at<=100 &&
+                    f.owner==lip_.native.owner && f.owner_generation==lip_.native.owner_generation &&
+                    (f.state==100 || f.state==103) && f.mode<=2 && !f.rail_family && value.velocity[1]>2 &&
+                    finite(value.contact_point) && finite(value.contact_normal) &&
+                    std::abs(dot(value.contact_normal,value.contact_normal)-1)<.02f &&
+                    dot(value.contact_normal,origin_.normal)>.9f && dot(value.up,value.contact_normal)>.7f &&
+                    std::abs(dot(value.velocity,value.contact_normal))<2 &&
+                    length(sub(value.position,value.contact_point))<1.2f && length(sub(value.position,lip_.position))<2 &&
+                    std::any_of(origin_.contacts.begin(),origin_.contacts.end(),[&](const auto& contact) {
+                        return contact.shape==value.contacted_shape && contact.owner==value.contact_owner;
+                    });
+                if(retained) {lip_=value;origin_.point=value.contact_point;origin_.normal=value.contact_normal;}
                 const bool departing=phase_==VertPhase::rising_support && (!value.supported || !ramp.valid) &&
                     lip_.native.valid && f.owner==lip_.native.owner && f.owner_generation==lip_.native.owner_generation &&
                     f.sampled_at>=lip_.native.sampled_at && f.sampled_at-lip_.native.sampled_at<=100 &&
                     (f.state==100 || f.state==103) && f.mode<=2 && !f.rail_family && value.velocity[1]>2 &&
-                    dot(value.up,lip_.ramp().normal)>.7f && length(sub(value.position,lip_.position))<2;
+                    dot(value.up,origin_.normal)>.7f && length(sub(value.position,lip_.position))<2;
                 phase_=departing?VertPhase::rising_support:landed?VertPhase::landed:VertPhase::idle;
             }
         } else if(!previous_.native.airborne) {

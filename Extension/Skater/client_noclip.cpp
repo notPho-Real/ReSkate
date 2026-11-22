@@ -1898,10 +1898,12 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
                    !arcade_mode::native_wall_contact::current(hit,hit.shape.world))continue;
                 vert_observation.supported=true;
                 vert_observation.contacted_shape={hit.shape.world,hit.shape.index,hit.shape.generation};
-                vert_observation.contact_normal=hit.normal;
+                vert_observation.contact_normal=hit.normal;vert_observation.contact_owner={};
                 arcade_mode::SurfaceGeometryWorldOwner stamp{};
-                if(arcade_mode::native_wall_contact::static_world_owner(vert_observation.contacted_shape,stamp))
+                if(arcade_mode::native_wall_contact::static_world_owner(vert_observation.contacted_shape,stamp)) {
+                    vert_observation.contact_point=hit.point;vert_observation.contact_owner=stamp;
                     ramp_contacts[ramp_count++]={hit.point,hit.normal,vert_observation.contacted_shape,stamp};
+                }
             }
             vert_observation.native_ramp=arcade_mode::vert_ramp_contacts(
                 std::span<const arcade_mode::VertRampContact>{ramp_contacts.data(),ramp_count},

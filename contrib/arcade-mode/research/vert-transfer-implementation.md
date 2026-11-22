@@ -132,3 +132,11 @@ for destinations, with native collision authoritative for landing. Development-o
 query receipts identify the callback gate and exact ray/owner rejection without
 relaxing them. The contact-source correction and landing qualifier have offline
 coverage; their native integration and playable outcomes remain unverified.
+
+The recorded contact sequence additionally retains only the rear wheel for about
+109ms before AIR. Fresh contact with the same validated shape and owner can now
+continue a previously proven curved transition. A lone contact cannot establish
+curvature, and missing contacts still retain only the existing 100ms grace. An
+external replay of the measured geometry reaches 17 qualified support and 12 AIR
+observations without issuing a motion plan. That replay supplies fixture owner
+stamps and input lineage; it is not proof of native admission or playable return.

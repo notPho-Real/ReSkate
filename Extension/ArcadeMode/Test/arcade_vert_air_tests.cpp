@@ -56,6 +56,25 @@ void original_contact_support() {
         check(!c.consume(o.native,o.native.sampled_at,o.velocity),"contact-based recognition leaves no-input trajectory native");
     }
 }
+void retained_rear_wheel() {
+    for(unsigned fault=0;fault<5;++fault) {
+        VertAirController c;auto o=ground();warm(c,o);c.observe(o);
+        const auto original=o.support.center();o.support={};o.native_ramp={};
+        o.contact_normal=original.query_normal;o.contacted_shape=original.body;o.contact_owner=original.world_owner;
+        for(unsigned i=0;i<8;++i) {
+            ++o.native.physics_step;o.native.sampled_at+=17;o.position[1]+=.12f;o.contact_point=o.position;
+            if(fault==1)o.contact_owner.value++;
+            if(fault==2)o.contact_normal={0,1,0};
+            if(fault==3)o.supported=false;
+            if(fault==4)o.contacted_shape.generation++;
+            c.observe(o);
+        }
+        o.supported=false;++o.native.physics_step;o.native.sampled_at+=17;c.observe(o);
+        o=fly(o);c.observe(o);
+        check(c.eligible(o.native,o.native.sampled_at)==(fault==0),
+            "only real same-ramp rear-wheel support continues the measured long lip departure");
+    }
+}
 void trigger_qualification() {
     for(unsigned channel:{0u,1u}) {
         VertAirController c;auto o=ground();warm(c,o);c.observe(o);o=fly(o);c.observe(o);
@@ -423,4 +442,4 @@ void input_edges() {
     }
 }
 }
-int main(){original_contact_support();trigger_qualification();landing_windows();lifecycle();contact_departure_delay();unavailable_snapshots();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();lifecycle();contact_departure_delay();unavailable_snapshots();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
