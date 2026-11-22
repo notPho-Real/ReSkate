@@ -70,8 +70,8 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
         if(lost_history || now<last_unavailable || now-last_unavailable>=250) {
             last_unavailable=now;
             logging::log(logging::Level::info,logging::Channel::skater,
-                "ARCADE VERT UNAVAILABLE: reason={} before={} phase={} previous_ms={} now={} supported={} up_y={} mismatch={} original_step={} original_ms={} original_state={} live_state={} original_mode={} live_mode={} original_contacts={} live_contacts={} original_stance={} live_stance={}.",
-                frame_reason?frame_reason:"unknown",static_cast<unsigned>(before),static_cast<unsigned>(controller.phase()),
+                "ARCADE VERT UNAVAILABLE: reason={} before={} phase={} landing_pending={} previous_ms={} now={} supported={} up_y={} mismatch={} original_step={} original_ms={} original_state={} live_state={} original_mode={} live_mode={} original_contacts={} live_contacts={} original_stance={} live_stance={}.",
+                frame_reason?frame_reason:"unknown",static_cast<unsigned>(before),static_cast<unsigned>(controller.phase()),controller.landing_contact_pending(),
                 controller.observation().native.sampled_at,now,observation.supported,observation.up[1],
                 correlation?correlation->mismatches:0,correlation?correlation->observed.physics_step:0,
                 correlation?correlation->observed.sampled_at:0,correlation?correlation->observed.state:0,live?live->state:0,
@@ -127,7 +127,7 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
         observation.ramp().normal[0],observation.ramp().normal[1],observation.ramp().normal[2],frame.mode);
 #endif
     return {plan,controller.phase()==VertPhase::native_air || controller.phase()==VertPhase::requested ||
-        controller.phase()==VertPhase::released,controller.phase()==VertPhase::released};
+        controller.phase()==VertPhase::released,controller.phase()==VertPhase::released,controller.landing_contact_pending()};
 }
 void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryContext& context,
         const NativeInputFrame& frame,SurfaceGeometryVector board,SurfaceGeometryVector up) noexcept {

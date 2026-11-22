@@ -274,7 +274,7 @@ inline bool vert_align_target(std::array<float,16>& target,SurfaceGeometryVector
 }
 class VertAirController {
 public:
-    void cancel() noexcept {push_gap_selection_=0;mode_gap_selection_=0;suspended_=false;landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
+    void cancel() noexcept {landing_gap_frame_={};push_gap_selection_=0;mode_gap_selection_=0;suspended_=false;landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
     void reset() noexcept {*this={};}
     // A busy input publisher is absence of evidence, not a new contact. Keep
     // recent curvature for this physical owner, but withdraw transfer queries
@@ -284,6 +284,7 @@ public:
         plan_={};
         unavailable_at_=std::max(unavailable_at_,now);
         if(!enabled || contested || !owner.valid() || !previous_.native.valid ||
+           (landing_gap_frame_.valid && (now<landing_gap_frame_.sampled_at || now-landing_gap_frame_.sampled_at>100)) ||
            owner!=previous_.native.owner || now<previous_.native.sampled_at ||
            now-previous_.native.sampled_at>100) {
             cancel();previous_={};
@@ -326,8 +327,23 @@ public:
                 !f.contacts && !contacts && f.flip_known && f.flip_id==-1 && f.selection_object &&
                 previous_.native.flip_known && previous_.native.flip_id==-1 &&
                 previous_.native.selection_object==f.selection_object;
-            if(idle)mode_gap_selection_=f.selection_object;
-            return idle;
+            if(idle) {mode_gap_selection_=f.selection_object;return true;}
+            const bool touchdown=correlation.mismatches==(D::mode_changed|D::contacts_changed) &&
+                (phase_==VertPhase::native_air || phase_==VertPhase::requested || phase_==VertPhase::released) &&
+                same_flight(f) && landing_.flight(f) && f.state==201 && live.state==201 &&
+                f.mode==2 && live.crouch_mode==1 && !f.contacts &&
+                (contacts==0x4000u || contacts==0x8000u || contacts==0xc000u) &&
+                f.sampled_at>=takeoff_.native.sampled_at && f.sampled_at-takeoff_.native.sampled_at>=150 &&
+                previous_.velocity[1]<-.1f && f.stance_and_push==previous_.native.stance_and_push &&
+                f.flip_known && f.flip_id==-1 && f.selection_object && previous_.native.flip_known &&
+                previous_.native.flip_id==-1 && previous_.native.selection_object==f.selection_object;
+            if(touchdown) {
+                // Contact publication withdraws transfer motion immediately. It
+                // preserves only the prior landing lineage until original support.
+                landing_gap_frame_=f;mode_gap_selection_=0;phase_=VertPhase::cancelled;
+                plan_={};released_plan_={};request_=0;suspended_=false;
+            }
+            return touchdown;
         }
         if(live.crouch_mode!=f.mode)return false;
         const auto changed=(live.state!=f.state?D::state_changed:0u)|(contacts!=f.contacts?D::contacts_changed:0u);
@@ -344,7 +360,7 @@ public:
     }
     bool preserves_native() const noexcept {
         return previous_.native.valid && (phase_==VertPhase::rising_support || phase_==VertPhase::native_air ||
-            phase_==VertPhase::requested || phase_==VertPhase::released);
+            phase_==VertPhase::requested || phase_==VertPhase::released || landing_gap_frame_.valid);
     }
     bool same_flight(const NativeInputFrame& f) const noexcept {
         return f.valid && f.owner==takeoff_.native.owner && f.owner_generation==takeoff_.native.owner_generation &&
@@ -372,6 +388,22 @@ public:
         if(f.physics_step<=previous_.native.physics_step)return;
         if(previous_.native.valid && unavailable_at_>previous_.native.sampled_at &&
            f.sampled_at-previous_.native.sampled_at>100) {cancel();previous_={};}
+        if(landing_gap_frame_.valid) {
+            const auto& gap=landing_gap_frame_;
+            const bool contact=f.contacts==0x4000u || f.contacts==0x8000u || f.contacts==0xc000u;
+            const bool resumed=f.owner==gap.owner && f.owner_generation==gap.owner_generation &&
+                f.sampled_at>=gap.sampled_at && f.sampled_at-gap.sampled_at<=100 &&
+                f.airborne_episode==gap.airborne_episode && !f.rail_family && f.mode==1 &&
+                f.stance_and_push==gap.stance_and_push && f.flip_known && f.flip_id==-1 &&
+                f.selection_object==gap.selection_object && contact &&
+                (f.airborne?(f.state==201 && f.air_departure==gap.air_departure):
+                    ((f.state==100 || f.state==103) && f.air_departure==gap.air_departure+1));
+            if(!resumed) {cancel();previous_={};return;}
+            // Keep the last pre-contact descent witness. Native contact may
+            // already have arrested vertical velocity before riding publishes.
+            if(f.airborne) {previous_=value;return;}
+            landing_gap_frame_={};
+        }
         if(push_gap_selection_) {
             const bool resumed=f.flip_known && f.flip_id==-1 && f.selection_object==push_gap_selection_ &&
                 f.stance_and_push==push_gap_stance_ && !f.rail_family && f.mode<=2 &&
@@ -532,6 +564,7 @@ public:
            !f.flip_known || f.flip_id!=-1 || f.mode>2)return {};
         return released_plan_.normal;
     }
+    bool landing_contact_pending() const noexcept {return landing_gap_frame_.valid;}
     VertLandingWindow& landing() noexcept {return landing_;}
     const VertLandingWindow& landing() const noexcept {return landing_;}
     const VertObservation& observation() const noexcept {return previous_;}
@@ -551,7 +584,7 @@ private:
     SurfaceGeometryVector direction_{};
     VertPlan plan_{},released_plan_{};
     std::uint64_t released_at_{},unavailable_at_{};
-    NativeInputFrame planned_{};
+    NativeInputFrame planned_{},landing_gap_frame_{};
     static bool finite_motion(const VertObservation& o) noexcept {
         return vert_math::finite(o.position) && vert_math::finite(o.velocity);
     }

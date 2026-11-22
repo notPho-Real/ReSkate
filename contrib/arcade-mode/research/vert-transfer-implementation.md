@@ -263,3 +263,26 @@ vert-transfers-20261122/stance-hil: vert-native-checkpoint.json,
 push-contact-replay-evidence.json and before-push-faults-result.json. After the
 independent ground checks, the game and launcher closed normally; exact prior
 5ae57786 files, all 149 rollback sets and the score pack were verified preserved.
+
+## Contact before riding publication
+
+The same 6f trace explicitly records mismatch 192 at original step 17794: idle 201
+mode 2 becomes mode 1 while contacts change from zero to 8000, with unchanged owner.
+The previous policy rejected this boundary and reset the landing window. A focused
+replay demonstrates the lost Revert lineage versus direct original support.
+
+A bounded 100 ms bridge now withdraws transfer velocity/tilt requests immediately,
+retains the existing landing lineage and preserves native contact response. The
+next original observation must confirm owner, flight, stance, idle actor, mode
+and contacts. Only original supported 100/103 establishes landing; Revert still
+requires the existing 100/c000/mode<=1 gate. No mismatch executes input, and neither
+partial contact nor repeated observations renew the bridge or trigger deadline.
+
+The bridge retains the last pre-contact descent witness. Retained native samples
+remain descending; arrested/reversed post-contact velocity is an explicit synthetic
+counterexample, not a claimed native observation. Removing contact or changing
+owner, actor, stance, mode, direction before contact, or timing cancels safely.
+Focused strict sanitizer results: 6,443 vert and 89,999 geometry/runtime checks;
+release-mode compilation passes. The runtime test verifies native-preservation
+without motion authority through partial 201 contact and original support before
+both LT/RT Revert readiness. Native transfer/Revert acceptance remains outstanding.

@@ -70,6 +70,42 @@ void vert_runtime_mode_gap_checks() {
         const auto resumed=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
         check(resumed.native_flight==(fault==0) && !resumed.plan && !resumed.aligning,
             "runtime resumes only a fully admitted matching idle actor after mode2 publication");
+        if(fault)continue;
+        for(unsigned i=0;i<10;++i) {
+            ++o.native.physics_step;o.native.sampled_at+=17;o.velocity={4,-3,0};context();
+            (void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        }
+        diagnostic={o.native,NativeInputCorrelation::mode_changed|NativeInputCorrelation::contacts_changed};
+        live.crouch_mode=1;live.words[1]=0x8000;missing=o;missing.native={};
+        const auto contact_gap=vert_runtime::step(missing,f.time+1,o.native.owner,"frame_correlation",&diagnostic,&live);
+        check(contact_gap.preserve_native && !contact_gap.native_flight && !contact_gap.plan && !contact_gap.aligning,
+            "real runtime withdraws transfer motion while preserving bounded landing history");
+        ++o.native.physics_step;o.native.sampled_at+=17;o.native.mode=1;o.native.contacts=0x8000;
+        o.velocity[1]=0;context();
+        const auto partial=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        check(partial.preserve_native && !partial.native_flight && !partial.plan && !partial.aligning &&
+            !vert_runtime::surface(f.time,o.native,{}).can_transfer,
+            "original AIR contact preserves native response without transfer or tilt authority");
+        ++o.native.physics_step;o.native.sampled_at+=17;o.native.state=100;o.native.airborne=false;
+        ++o.native.air_departure;o.native.contacts=0xc000;o.up=o.contact_normal={0,1,0};context();
+        (void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        TriggerPress presses[2];
+        for(unsigned channel=0;channel<2;++channel) {
+            auto& press=presses[channel];press.press.sequence=channel+1;
+            press.press.token={InputSource::triggers,static_cast<std::int16_t>(channel),InputEdge::press};
+            press.press.at=f.time;press.context=InputContext::ground;press.native=InputNativeContext::from_frame(o.native);
+            const auto decision=vert_runtime::qualify(nullptr,press,press.native,f.time);
+            check(decision.owner==TriggerOwner::landing_revert && !decision.ready,
+                "ground publication alone reserves LT or RT but cannot execute Revert");
+            press.owner=TriggerOwner::landing_revert;
+        }
+        ++o.native.physics_step;o.native.sampled_at+=17;o.supported=true;context();
+        (void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        for(const auto& press:presses) {
+            const auto decision=vert_runtime::qualify(nullptr,press,InputNativeContext::from_frame(o.native),f.time);
+            check(decision.owner==TriggerOwner::landing_revert && decision.ready && decision.deadline<=press.press.at+430,
+                "only original wheel support releases the same landing edge after native velocity response");
+        }
     }
 }
 void vert_runtime_scene_checks() {
