@@ -98,7 +98,7 @@ enum class TrickCategory : std::uint8_t { flips, grabs, grinds, manuals, footpla
 enum class TrickStatus : std::uint8_t { verified, experimental, planned };
 enum class TrickExecutor : std::uint8_t { none, native_flip, native_grab, held_flip, native_ollie, native_manual, native_revert, native_footplant, native_ground_grab, native_rail, native_fingerflip, ground_turn, custom_flatland };
 enum class BindingPattern : std::uint8_t { named, extended_grab, selected_grab, neutral_flip, held_repeat, ollie_release, manual_pair, footplant, ground_grab, revert, rail_entry, fingerflip, rail_change, sequence, ground_turn, flatland_pair, extended_flip };
-enum class BindingContext : std::uint8_t { air, ground, ground_or_air, rail_approach, established_rail, established_manual, held_flatland };
+enum class BindingContext : std::uint8_t { air, ground, ground_or_air, rail_approach, established_rail, established_manual, held_flatland, qualified_vert_landing };
 inline constexpr unsigned footplant_single_ms=300, footplant_repeat_ms=500;
 inline constexpr unsigned grab_repeat_ms=250, flip_repeat_ms=233;
 enum class StepKind : std::uint8_t { press, hold, release, direction, release_direction, then, together };
@@ -383,7 +383,7 @@ std::array entries{
     TrickDefinition{ArcadeTrick::nose_manual,"nose_manual","Nose Manual",TrickCategory::manuals,TrickExecutor::native_manual,
         {{{BindingPattern::manual_pair,TrickDirection::down,1,ArcadeTrick::nose_manual,BindingContext::ground_or_air,0}}},1,0,0,0,{{}},0,rc3_evidence},
     TrickDefinition{ArcadeTrick::revert,"revert","Revert",TrickCategory::manuals,TrickExecutor::native_revert,
-        {{{BindingPattern::revert,TrickDirection::none,1,ArcadeTrick::revert,BindingContext::ground,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::revert,TrickDirection::none,1,ArcadeTrick::revert,BindingContext::qualified_vert_landing,0}}},1,0,0,0,{{}},0,rc3_evidence},
     TrickDefinition{ArcadeTrick::no_comply,"no_comply","No Comply",TrickCategory::footplants,TrickExecutor::native_footplant,
         {{{BindingPattern::footplant,TrickDirection::up,1,ArcadeTrick::no_comply,BindingContext::ground,1}}},1,0,0,0,{{}},0,rc3_evidence},
     TrickDefinition{ArcadeTrick::boneless,"boneless","Boneless",TrickCategory::footplants,TrickExecutor::native_footplant,

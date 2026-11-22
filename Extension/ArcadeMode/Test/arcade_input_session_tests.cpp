@@ -71,11 +71,11 @@ void native_adapters() {
     check(!h.poll(985).action.requested, "held B cannot replay after native recipe completes");
     h.admission.pose = SkatePose::riding;
     check(h.poll(1002, {0x2000}).buttons == 0, "grounded B remains Arcade-only and cannot publish native brake");
-    { Harness h;h.admission.triggers=mock_landing_revert();
+    { Harness landing;landing.admission.triggers=mock_landing_revert();
     const auto landing_poll=[&](std::uint64_t now,PhysicalInputSample pad={},unsigned mode=1){
-        h.admission.native_context={true,true,{1,1,1},now+1,now};
-        h.admission.native_context.flip={true,-1,100,100,mode,0,1,1,1};
-        return h.poll(now,pad);
+        landing.admission.native_context={true,true,{1,1,1},now+1,now};
+        landing.admission.native_context.flip={true,-1,100,100,mode,0,1,1,1};
+        return landing.poll(now,pad);
     };
     landing_poll(1000);
     out = landing_poll(1017, {0, 0, 0, 0, 255});
@@ -84,7 +84,7 @@ void native_adapters() {
     check(landing_poll(1047, {0, 0, 0, 0, 255}).action.pad.left_x > 32000, "revert rotation follows existing absolute-time recipe");
     for(unsigned t=1064;t<2017;t+=17)landing_poll(t, {0,0,0,0,255});
     check(!landing_poll(2017, {0,0,0,0,255}).action.owned, "revert releases within its fixed bound without repeated held-trigger commands");
-    h.session.reset(); landing_poll(2300,{},2);
+    landing.session.reset(); landing_poll(2300,{},2);
     out = landing_poll(2317, {0, 0, 0, 0, 255},2);
     check(!out.action.owned && !out.action.pad.owns_left_stick && !out.action.pad.owns_right_stick,
         "unqualified native mode cannot own revert sticks even with a touchdown reservation");

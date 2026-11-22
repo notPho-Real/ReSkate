@@ -121,6 +121,7 @@ inline std::string context_name(BindingContext context) {
     case BindingContext::established_manual:return "Established Manual; keep balancing";
     case BindingContext::held_flatland:return "Held Casper; wait for entry to settle";
     case BindingContext::established_rail:return "Established grind; compatible source contact required";
+    case BindingContext::qualified_vert_landing:return "Landing from a qualified vert air";
     }
     return {};
 }
@@ -195,7 +196,8 @@ inline InputDiagram diagram(const TrickDefinition& trick,const TrickBinding& b,
         out.window_ms=b.presses==2?footplant_repeat_ms:footplant_single_ms;
         out.condition+="; ordinary stance; native push/grab preparation must complete";break;
     case BindingPattern::revert:
-        step(StepKind::press,TrickControls::trigger_mask(TrickControls::revert_trigger));out.condition+="; also during an admitted manual";break;
+        step(StepKind::press,TrickControls::trigger_mask(TrickControls::revert_trigger));
+        out.condition+="; either trigger at touchdown";break;
     case BindingPattern::ground_grab:
         step(StepKind::hold,TrickControls::mask(TrickControls::grab_layer));together();
         if(b.direction!=TrickDirection::none){direction(b.direction);together();}
@@ -356,10 +358,22 @@ template<class ButtonLabel> NativeCardGuidance native_card_guidance(const TrickD
         out.inputs.push_back(std::move(text));
     }
     if(out.inputs.empty())out.inputs.emplace_back("Arcade controls are not assigned.");
-    if(nollie)out.inputs.emplace_back("Hold "+label(TrickControls::trigger_mask(0))+" for nollie inputs.");
+    if(nollie || trick.id==ArcadeTrick::ollie) {
+        const auto lt=label(TrickControls::trigger_mask(0));
+        out.inputs.emplace_back("Tap "+lt+" before the Ollie to select Nollie; tap again for normal setup.");
+        out.inputs.emplace_back("Hold "+lt+" selects Pressure setup; Pressure tricks are not available yet.");
+    }
+    if(trick.id==ArcadeTrick::revert) {
+        const auto rt=label(TrickControls::trigger_mask(1));
+        out.inputs.emplace_back("Press "+label(TrickControls::trigger_mask(0))+" or "+rt+" at touchdown from a qualified vert air.");
+        out.inputs.emplace_back("On the ground, "+rt+" selects Switch. During Manual / Nose Manual, "+rt+" requests Pivot / Nose Pivot.");
+    }
+    if(trick.id==ArcadeTrick::manual || trick.id==ArcadeTrick::nose_manual)
+        out.inputs.emplace_back("During an established "+std::string(trick.name)+", "+label(TrickControls::trigger_mask(1))+
+            " requests "+(trick.id==ArcadeTrick::manual?"Pivot":"Nose Pivot")+"; keep balancing.");
     if(trick.id==ArcadeTrick::frontfoot_impossible)
         out.inputs.emplace_back(nollie?"Nollie Back Foot Impossible.":
-            "With "+label(TrickControls::trigger_mask(0))+": Nollie Back Foot Impossible.");
+            "After tapping "+label(TrickControls::trigger_mask(0))+": Nollie Back Foot Impossible.");
     if(trick.id==ArcadeTrick::casper) {
         out.inputs.emplace_back("During Manual; keep balancing.");
         out.inputs.emplace_back(label(TrickControls::trigger_mask(0))+" / "+

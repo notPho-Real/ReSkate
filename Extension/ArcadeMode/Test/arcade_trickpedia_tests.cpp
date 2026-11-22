@@ -246,6 +246,27 @@ int main() {
         require(!trickpedia::native_card_binding(title).trick,"missing or ambiguous variant borrowed another trick");
     const auto nollie_guidance=trickpedia::native_card_guidance(*trick_definition(ArcadeTrick::kickflip),
         [](std::uint32_t b){return b==TrickControls::trigger_mask(0)?std::string("LT"):label(b);},ArcadeTrick::double_grab,true);
-    require(nollie_guidance.inputs.back()=="Hold LT for nollie inputs.","nollie card omitted its trigger modifier");
+    require(nollie_guidance.inputs[nollie_guidance.inputs.size()-2]=="Tap LT before the Ollie to select Nollie; tap again for normal setup."&&
+        nollie_guidance.inputs.back().find("Hold LT selects Pressure setup")!=std::string::npos,
+        "Nollie card distinguishes tap selection from held Pressure without inventing a supported Pressure launch");
+    const auto trigger_label=[](std::uint32_t b){return b==TrickControls::trigger_mask(0)?std::string("LT"):
+        b==TrickControls::trigger_mask(1)?std::string("RT"):label(b);};
+    const auto* revert=trick_definition(ArcadeTrick::revert);
+    require(revert&&revert->executor==TrickExecutor::native_revert&&revert->bindings[0].context==BindingContext::qualified_vert_landing,
+        "Revert keeps its exact native identity while its display binding requires a qualified vert landing");
+    const auto revert_diagram=trickpedia::diagram(*revert,revert->bindings[0]);
+    require(revert_diagram.condition.starts_with("Landing from a qualified vert air")&&
+        revert_diagram.condition.find("also during an admitted manual")==std::string::npos,
+        "Revert diagram cannot advertise ordinary ground or Manual admission");
+    const auto revert_guidance=trickpedia::native_card_guidance(*revert,trigger_label);
+    require(revert_guidance.inputs[1]=="Press LT or RT at touchdown from a qualified vert air."&&
+        revert_guidance.inputs.back().find("RT selects Switch")!=std::string::npos&&
+        revert_guidance.inputs.back().find("RT requests Pivot / Nose Pivot")!=std::string::npos,
+        "native Revert card explains exclusive landing, ground Switch and Manual Pivot trigger contexts");
+    for(const auto id:{ArcadeTrick::manual,ArcadeTrick::nose_manual}){
+        const auto guidance=trickpedia::native_card_guidance(*trick_definition(id),trigger_label);
+        require(guidance.inputs.back().find(id==ArcadeTrick::manual?"RT requests Pivot":"RT requests Nose Pivot")!=std::string::npos,
+            "native Manual card shows its contextual Pivot without relabeling it as Revert");
+    }
     std::cout<<trick_registry.size()<<" canonical tricks: registry and guide checks passed; native UI/gameplay acceptance remains separate\n";
 }

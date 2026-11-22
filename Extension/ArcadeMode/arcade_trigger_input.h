@@ -44,7 +44,7 @@ public:
             if(event.sequence<=cursor_)continue;
             cursor_=event.sequence;
             if(event.token.source!=InputSource::triggers || event.token.code<0 || event.token.code>1)continue;
-            auto& value=presses_[static_cast<unsigned>(event.token.code)];
+            auto& value=presses_[static_cast<std::size_t>(event.token.code)];
             if(event.token.edge==InputEdge::press) {
                 // InputEvents is the sole edge producer. Never reconstruct an
                 // edge from a held trigger after reset, takeoff or touchdown.

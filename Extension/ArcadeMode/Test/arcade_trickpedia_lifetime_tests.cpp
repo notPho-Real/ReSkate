@@ -150,8 +150,9 @@ int main(){
     reset();Context variants;update_trickpedia(variants,1000);
     variants.models.at(3).title="ID_SKATEPEDIA_NOLLIE_KICKFLIP";
     variants.models.at(3).inputs={"Original nollie diagram"};update_trickpedia(variants,1010);
-    require(variants.models.at(3).inputs.front().find("Hold LT for nollie")!=std::string::npos,
-        "same native card lost its nollie modifier");
+    require(variants.models.at(3).inputs.front().find("Tap LT before the Ollie to select Nollie")!=std::string::npos&&
+        variants.models.at(3).inputs.front().find("Hold LT selects Pressure")!=std::string::npos,
+        "same native card must distinguish Nollie tap from Pressure hold");
     variants.models.at(3).title="ID_SKATEPEDIA_FS_POPSHUVIT";
     variants.models.at(3).inputs={"Original distinct frontside diagram"};update_trickpedia(variants,1020);
     require(variants.models.at(3).inputs.front().find("Experimental")!=std::string::npos &&
@@ -163,6 +164,22 @@ int main(){
     arcade_mode::on=false;update_trickpedia(variants,1030);
     require(variants.models.at(3).inputs==std::vector<std::string>{"Original distinct frontside diagram"},
         "frontside guidance did not restore the native diagram on OFF");
+    for(bool playstation:{false,true})for(unsigned card=0;card<3;++card){
+        reset();Context triggers;
+        controller_style=playstation?ControllerStyle::dualsense:ControllerStyle::xbox;
+        triggers.models.at(3).title=card==0?"ID_SKATEPEDIA_REVERT":card==1?"ID_SKATEPEDIA_MANUAL":"ID_SKATEPEDIA_NOSE_MANUAL";
+        const auto before=triggers.models;update_trickpedia(triggers,1000);
+        const auto& text=triggers.models.at(3).inputs.front();
+        const std::string rt=playstation?"R2":"RT",lt=playstation?"L2":"LT";
+        require(text.find(card==0?"Press "+lt+" or "+rt+" at touchdown from a qualified vert air.":
+            rt+" requests "+(card==1?"Pivot":"Nose Pivot"))!=std::string::npos,
+            "visible native card must show its contextual trigger action with the current controller labels");
+        if(card==0)require(text.find(rt+" selects Switch")!=std::string::npos&&
+            text.find("also during an admitted manual")==std::string::npos,
+            "visible Revert card must distinguish ground Switch from balance Pivot");
+        arcade_mode::on=false;update_trickpedia(triggers,1010);
+        require(triggers.models==before,"corrected trigger guidance must restore the exact native card on OFF");
+    }
     for(bool nollie:{false,true}) {
         reset();Context impossible;
         impossible.models.at(3).title=nollie?"ID_SKATEPEDIA_NOLLIE_BACKFOOTIMPOSSIBLE":"ID_SKATEPEDIA_FRONTFOOTIMPOSSIBLE";

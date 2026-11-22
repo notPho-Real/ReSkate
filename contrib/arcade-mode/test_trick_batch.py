@@ -408,7 +408,8 @@ class BatchTests(unittest.TestCase):
                 self.assertEqual(batch.native_revert_link_result(bad)['revert_continuation'], 'FAIL')
 
     def test_combo_chain_requires_one_lifecycle_and_native_ids_at_each_takeoff(self):
-        expected = {'poses': [2, 3, 2, 4, 2, 1], 'air_ids': [1, 1, 1]}
+        # Short sections exercise lifecycle ordering, not physical Manual acceptance.
+        expected = {'poses': [2, 3, 2, 4, 2, 1], 'air_ids': [1, 1, 1], 'minimum_balance_ms': 200}
         events = []
         for i, (ms, pose) in enumerate([(0, 2), (1000, 3), (1500, 2), (2300, 4),
                                         (2800, 1), (3200, 2), (4000, 1), (4450, 1)]):
@@ -449,6 +450,33 @@ class BatchTests(unittest.TestCase):
             value['candidates'][0]['expected']['chain'] = bad
             with self.assertRaises(ValueError):
                 batch.validate_plan(value)
+
+    def test_manual_three_second_acceptance_bound_and_observed_duration(self):
+        expected = {'poses': [4, 2], 'air_ids': [1], 'minimum_balance_ms': 3000}
+        value = plan()
+        value['candidates'][0]['expected']['chain'] = expected
+        for validator in (batch.validate_plan, plan_schema.validate_plan):
+            self.assertIs(validator(value), value)
+            for invalid in (3001, -1, True):
+                rejected = copy.deepcopy(value)
+                rejected['candidates'][0]['expected']['chain']['minimum_balance_ms'] = invalid
+                with self.subTest(validator=validator.__module__, invalid=invalid), self.assertRaises(ValueError):
+                    validator(rejected)
+        for duration, wanted in ((2000, 'FAIL'), (2999, 'FAIL'), (3000, 'PASS'), (3500, 'PASS')):
+            def event(ms, pose):
+                return dict(ms=ms, pose=pose, active=True, failed=False,
+                            fatigue=.1, grind_fatigue=0, manual_fatigue=.1)
+            observation = {'combo': {'events': [event(0, 4), event(duration, 2)],
+                                    'dropped': 0, 'baseline_available': True},
+                           'flip': {'samples': [dict(ms=duration, id=1, valid=True)], 'dropped': 0},
+                           'grind_result': {'evidence': 'COMPLETE'}}
+            with self.subTest(duration=duration):
+                result = batch.combo_chain_result(expected, observation)
+                self.assertEqual(result['continuous'], wanted)
+                self.assertEqual(result['score_banking'], 'UNVERIFIED')
+                defaults = dict(expected)
+                defaults.pop('minimum_balance_ms')
+                self.assertEqual(batch.combo_chain_result(defaults, observation)['continuous'], wanted)
 
     def test_fixture_baseline_reuses_only_fresh_confirmed_reset(self):
         env = batch.DeckEnvironment(Mock())
@@ -1038,7 +1066,8 @@ class BatchTests(unittest.TestCase):
                                 if isinstance(node, (ast.FunctionDef, ast.ClassDef))}
         self.assertTrue(required <= names(payload))
         (batch.ROOT / 'artifacts').mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=batch.ROOT / 'artifacts') as temp:
+        # The workspace artifacts link points to SSD storage; stage beneath its real path.
+        with tempfile.TemporaryDirectory(dir=(batch.ROOT / 'artifacts').resolve()) as temp:
             output = Path(temp) / 'bundle'
             with contextlib.redirect_stdout(io.StringIO()):
                 build_trusted_bundle.build(output)
