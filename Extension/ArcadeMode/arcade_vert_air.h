@@ -265,24 +265,27 @@ inline bool vert_align_target(std::array<float,16>& target,SurfaceGeometryVector
 }
 class VertAirController {
 public:
-    void cancel() noexcept {landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
+    void cancel() noexcept {suspended_=false;landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
     void reset() noexcept {*this={};}
     // A busy input publisher is absence of evidence, not a new contact. Keep
-    // recent curvature for this physical owner, but withdraw every command and
-    // require a newer admitted frame before input, queries or writes can resume.
+    // recent curvature for this physical owner, but withdraw transfer queries
+    // and execution until a newer admitted frame proves continuation. Independent
+    // landing input can remain reserved; actual contact alone permits Revert.
     void unavailable(std::uint64_t now,const NativeInputOwner& owner,bool enabled,bool contested) noexcept {
         plan_={};
         unavailable_at_=std::max(unavailable_at_,now);
         if(!enabled || contested || !owner.valid() || !previous_.native.valid ||
            owner!=previous_.native.owner || now<previous_.native.sampled_at ||
-           now-previous_.native.sampled_at>100 || phase_==VertPhase::released) {
+           now-previous_.native.sampled_at>100) {
             cancel();previous_={};
-        }
+        } else if(phase_==VertPhase::released)suspended_=true;
+    }
+    bool same_flight(const NativeInputFrame& f) const noexcept {
+        return f.valid && f.owner==takeoff_.native.owner && f.owner_generation==takeoff_.native.owner_generation &&
+            f.airborne && f.airborne_episode==takeoff_.native.airborne_episode && f.air_departure==takeoff_.native.air_departure;
     }
     bool matches(const NativeInputFrame& f,std::uint64_t now) const noexcept {
-        return f.valid && f.sampled_at>unavailable_at_ && f.owner==takeoff_.native.owner && f.owner_generation==takeoff_.native.owner_generation &&
-            f.airborne && f.airborne_episode==takeoff_.native.airborne_episode &&
-            f.air_departure==takeoff_.native.air_departure && now>=f.sampled_at && now-f.sampled_at<=150;
+        return same_flight(f) && f.sampled_at>unavailable_at_ && now>=f.sampled_at && now-f.sampled_at<=150;
     }
     bool eligible(const NativeInputFrame& f,std::uint64_t now) const noexcept {
         return phase_==VertPhase::native_air && matches(f,now) && now>=takeoff_.native.sampled_at &&
@@ -301,11 +304,24 @@ public:
             reset();
         }
         if(f.physics_step<=previous_.native.physics_step)return;
+        if(phase_==VertPhase::released && suspended_) {
+            // A busy publisher withdraws authority, not the physical impulse
+            // already delivered. Resume only from bounded original-step proof;
+            // a collision or changed cadence cannot borrow the old prediction.
+            const float elapsed=static_cast<float>(f.physics_step-previous_.native.physics_step)*previous_.native.physics_seconds;
+            auto expected=previous_.velocity;expected[1]-=gravity_*elapsed;
+            const auto delta=sub(value.velocity,expected);
+            if(!same_flight(previous_.native) || f.sampled_at-previous_.native.sampled_at>100 || elapsed>.1f ||
+               std::abs(f.physics_seconds-previous_.native.physics_seconds)>.00001f ||
+               (f.airborne && (!same_flight(f) || std::hypot(delta[0],delta[2])>.3f || std::abs(delta[1])>.5f ||
+                length(sub(value.position,position(previous_.position,previous_.velocity,gravity_,elapsed)))>.25f)))cancel();
+            suspended_=false;
+        }
         landing_.observe(value);
         if(!f.airborne) {
             // Only a real supported riding observation records landing. A query
             // destination or a state departure on its own cannot do so.
-            const bool landed=matches(previous_.native,previous_.native.sampled_at) && value.supported &&
+            const bool landed=same_flight(previous_.native) && value.supported &&
                 (f.state==100 || f.state==103) && phase_==VertPhase::released &&
                 (released_plan_.action==VertAction::level_out ||
                  (length(sub(value.position,released_plan_.landing))<=1.5f &&
@@ -431,7 +447,7 @@ public:
         plan_={};request_=0;phase_=VertPhase::released;previous_.velocity=result.velocity;return result;
     }
     SurfaceGeometryVector alignment(const NativeInputFrame& f,std::uint64_t now) const noexcept {
-        if(phase_!=VertPhase::released || !matches(f,now) || now<released_at_ || now-released_at_>2500 ||
+        if(phase_!=VertPhase::released || suspended_ || !matches(f,now) || now<released_at_ || now-released_at_>2500 ||
            !f.flip_known || f.flip_id!=-1 || f.mode>2)return {};
         return released_plan_.normal;
     }
@@ -445,6 +461,7 @@ public:
     VertPhase phase() const noexcept {return phase_;}
 private:
     VertPhase phase_{};
+    bool suspended_{};
     VertLandingWindow landing_{};
     VertObservation previous_{},takeoff_{},lip_{};
     VertRampSupport origin_{};

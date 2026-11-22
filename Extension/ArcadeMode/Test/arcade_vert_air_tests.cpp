@@ -277,7 +277,7 @@ void unavailable_snapshots() {
     check(c.pending(o.native,1020) && !c.consume(o.native,1020,o.velocity),"fresh frame alone cannot revive discarded plan");
     check(c.stage(plan,o,1020) && bool(c.consume(o.native,1020,o.velocity)),"fresh query and admitted frame can execute within original deadline");
     c.unavailable(1025,o.native.owner,true,false);
-    check(c.phase()==VertPhase::cancelled && length(c.alignment(o.native,1025))==0,"released transfer withdraws alignment across unobserved collision");
+    check(c.phase()==VertPhase::released && length(c.alignment(o.native,1025))==0,"released transfer suspends alignment until original physics can prove continuation");
     ++o.native.physics_step;o.native.sampled_at=1030;c.observe(o);
     check(!c.request(o.native,1030,1030,2),"missing observation never rearms a second transfer");
     c.reset();o=ground();warm(c,o);c.observe(o);o=fly(o);c.observe(o);
@@ -285,6 +285,88 @@ void unavailable_snapshots() {
     c.unavailable(1020,o.native.owner,true,false);
     ++o.native.physics_step;o.native.sampled_at=1030;c.observe(o);
     check(!c.pending(o.native,1161),"gap does not renew original trigger deadline");
+}
+void released_snapshot_gaps() {
+    for(unsigned rate:{30u,60u,120u})for(unsigned gap:{1u,2u})for(unsigned fault=0;fault<11;++fault) {
+        VertAirController c;auto o=ground();o.native.physics_seconds=1.f/static_cast<float>(rate);
+        const auto milliseconds=static_cast<std::uint64_t>(std::ceil(1000.f/static_cast<float>(rate)));
+        warm(c,o);c.observe(o);o=fly(o);c.observe(o);
+        const auto advance=[&](unsigned steps) {
+            const float seconds=static_cast<float>(steps)*o.native.physics_seconds;
+            o.position=position(o.position,o.velocity,9.81f,seconds);o.velocity[1]-=9.81f*seconds;
+            o.native.physics_step+=steps;o.native.sampled_at+=milliseconds*steps;
+        };
+        for(unsigned i=0;i<4;++i){advance(1);c.observe(o);}
+        const auto edge=o.native.sampled_at;
+        check(c.request(o.native,edge,edge,1),"gap fixture owns one original transfer edge");
+        auto plan=vert_level_out(o,c.direction());plan.clear=true;
+        check(c.stage(plan,o,edge),"gap fixture stages one clear impulse");
+        const auto applied=c.consume(o.native,edge,o.velocity);check(bool(applied),"gap fixture releases one impulse");
+        o.velocity=applied.velocity;
+        c.unavailable(edge+1,o.native.owner,true,false);
+        auto duplicate=o;duplicate.native.sampled_at=edge+2;c.observe(duplicate);
+        check(length(c.alignment(duplicate.native,edge+2))==0,"new timestamp without newer original step cannot resume alignment");
+        check(!c.request(duplicate.native,edge+2,edge+2,2) && !c.consume(duplicate.native,edge+2,o.velocity),
+            "suspension admits no second trigger or physical impulse");
+        advance(gap);
+        if(fault==1)o.velocity[0]+=.6f;
+        if(fault==2)o.velocity[1]+=.8f;
+        if(fault==3)o.position[0]+=.4f;
+        if(fault==4)++o.native.owner.core;
+        if(fault==5)++o.native.owner_generation;
+        if(fault==6)++o.native.airborne_episode;
+        if(fault==7)o.native.physics_seconds*=2;
+        if(fault==8)o.native.sampled_at+=101;
+        if(fault==9)o.contested=true;
+        if(fault==10)o.enabled=false;
+        c.observe(o);
+        check((c.phase()==VertPhase::released)==(fault==0),"only matching bounded original trajectory resumes released transfer");
+        check((length(c.alignment(o.native,o.native.sampled_at))>.9f)==(fault==0),
+            "collision, displacement, owner, episode, cadence, stale frame, bail or OFF denies alignment");
+        check(!c.request(o.native,o.native.sampled_at,o.native.sampled_at,2) &&
+              !c.consume(o.native,o.native.sampled_at,o.velocity),"resumption never rearms an edge or repeats the impulse");
+        if(fault)continue;
+        while(o.velocity[1]>=-.5f || o.native.sampled_at-c.landing().takeoff().sampled_at<150) {
+            advance(1);c.observe(o);
+        }
+        check(c.phase()==VertPhase::released,"fresh original flight continues after a proven gap");
+        auto target=o.position;target[1]-=.01f;
+        check(c.landing().approach(o.native,patch(target,{0,1,0})),"original descending approach may reserve touchdown input");
+        c.unavailable(o.native.sampled_at+1,o.native.owner,true,false);
+        std::array<TriggerPress,2> landing_inputs{};
+        for(unsigned channel:{0u,1u}) {
+            auto& press=landing_inputs[channel];press.press.sequence=channel+2;
+            press.press.token={InputSource::triggers,static_cast<std::int16_t>(channel),InputEdge::press};
+            press.press.at=o.native.sampled_at+2;press.context=InputContext::air;
+            press.native=InputNativeContext::from_frame(o.native);
+            auto decision=qualify_vert_trigger(c,press,press.native,press.press.at);
+            check(decision.owner==TriggerOwner::landing_revert && !decision.ready && decision.deadline==press.press.at+430,
+                "suspended transfer permits only original landing reservation, never ready execution");
+            press.owner=TriggerOwner::landing_revert;
+            decision=qualify_vert_trigger(c,press,press.native,press.press.at+3);
+            check(decision.owner==TriggerOwner::landing_revert && !decision.ready && decision.deadline==press.press.at+430,
+                "repeated suspended observations preserve original landing edge deadline");
+            auto published=o.native;++published.physics_step;published.sampled_at+=milliseconds;
+            published.airborne=false;published.state=100;published.contacts=0xc000;++published.air_departure;
+            decision=qualify_vert_trigger(c,press,InputNativeContext::from_frame(published),published.sampled_at);
+            check(decision.owner==TriggerOwner::landing_revert && !decision.ready && decision.deadline==press.press.at+430,
+                "ground publication without original contact cannot execute reserved Revert or fall through to Switch");
+            auto consumed=press;consumed.owner=TriggerOwner::transfer;
+            check(qualify_vert_trigger(c,consumed,press.native,press.press.at).owner==TriggerOwner::none,
+                "suspension cannot recycle the already transfer-consumed edge");
+        }
+        advance(1);o.native.airborne=false;o.native.state=100;o.native.contacts=0xc000;++o.native.air_departure;
+        o.supported=true;o.up=o.contact_normal={0,1,0};o.contacted_shape={7,8,9};
+        c.observe(o);
+        check(c.phase()==VertPhase::landed && c.landing().ready(o.native,o.native.sampled_at),
+            "actual supported touchdown after a short busy gap retains independent landing Revert lineage");
+        for(const auto& press:landing_inputs) {
+            const auto decision=qualify_vert_trigger(c,press,InputNativeContext::from_frame(o.native),o.native.sampled_at);
+            check(decision.owner==TriggerOwner::landing_revert && decision.ready && decision.deadline<=press.press.at+430,
+                "only fresh original contact releases reserved LT or RT Revert with no renewed deadline");
+        }
+        check(!c.request(o.native,o.native.sampled_at,o.native.sampled_at,2),"actual touchdown cannot replay transfer");
+    }
 }
 void occupied_actor_expiry() {
     VertAirController c;auto o=ground();warm(c,o);c.observe(o);o=fly(o);c.observe(o);
@@ -571,4 +653,4 @@ void input_edges() {
     }
 }
 }
-int main(){retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();lifecycle();contact_departure_delay();unavailable_snapshots();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
