@@ -271,14 +271,81 @@ void transient_acknowledgement() {
         const auto delivery=revert_at==0?frame(55,6,stance):revert_at==2?frame(60,6,stance):changed;
         check(input.delivered(delivery,release,0,delivery.sampled_at,revert_at==2?6u:5u),
             "final released packet is published even when the leading foot returns");
-        check(!input.controls(frame(70,7,stance),70,7).owned&&!input.observed_change(),
+        check(input.controls(frame(70,7,stance),70,7).owned&&!input.observed_change(),
             "latched transient leading-foot change cannot acknowledge original stance after final release");
-        check(!input.controls(frame(80,8,stance),80,8).owned&&!input.observed_change(),
+        check(input.controls(frame(80,8,stance),80,8).owned&&!input.observed_change(),
             "phase5 repeated observations cannot revive a transient acknowledgment");
         check(!input.controls(frame(90,9,stance^0x20u),90,9).owned&&input.observed_change(),
             "current actual changed leading foot can complete after the finalized release");
     }
 }
 
+void awaiting_acknowledgement_reserves_neutral() {
+    for(unsigned cadence:{8u,17u,33u})for(unsigned stance:{0u,0x20u})for(bool acknowledge:{false,true}) {
+        StanceInput input;check(input.start(press(frame(10,1,stance)),frame(10,1,stance),10),
+            "observation reservation starts from original physical RT");
+        for(unsigned phase=0;phase<5;++phase) {
+            const auto native=frame(10+phase*cadence,phase+1,stance);
+            const auto output=input.controls(native,native.sampled_at,phase+1);
+            check(input.delivered(native,output,output.buttons,native.sampled_at,phase+1),
+                "observation reservation follows exact finite double tap");
+        }
+        const auto first_down=10+cadence;
+        unsigned step=6;
+        for(auto at=10+5*cadence;at<=first_down+1000;at+=cadence,++step) {
+            const auto native=frame(at,step,stance);
+            const auto output=input.controls(native,at,step);
+            // Same final-controls rule as arcade_mode.cpp. Returning an unowned
+            // phase5 lets auto-push immediately cancel this native observation.
+            const bool automatic_push=true;
+            const auto native_faces=automatic_push&&!output.owned?0x4000u:0u;
+            check(!native_faces&&output.owned&&output.phase==5&&output.buttons==0,
+                "pending stance acknowledgment suppresses automatic X with owned neutral B");
+            check(input.delivered(native,output,static_cast<std::uint16_t>(native_faces),at,step),
+                "phase5 accepts only its final neutral receipt");
+            check(input.controls(native,at,step)==output&&
+                input.delivered(native,output,0,at,step)&&!input.observed_change(),
+                "duplicate neutral polls neither advance phase nor invent native success");
+            if(acknowledge) {
+                const auto changed=frame(at+cadence,step+1,stance^0x20u);
+                check(!input.controls(changed,changed.sampled_at,step+1).owned&&
+                    input.observed_change()&&!input.active(),"actual delayed foot change releases the reservation immediately");
+                break;
+            }
+        }
+        if(!acknowledge) {
+            auto native=frame(first_down+1000,++step,stance);
+            const auto boundary=input.controls(native,native.sampled_at,step);
+            check(boundary.owned&&input.delivered(native,boundary,0,native.sampled_at,step),
+                "existing inclusive observation ceiling remains valid");
+            native=frame(first_down+1001,++step,stance);
+            check(!input.controls(native,native.sampled_at,step).owned&&!input.active()&&!input.observed_change(),
+                "repeated phase5 delivery cannot renew original one-second observation ceiling");
+        }
+    }
+    for(unsigned cadence:{8u,17u,33u})for(unsigned fault=0;fault<8;++fault) {
+        StanceInput input;input.start(press(),frame(),10);
+        for(unsigned phase=0;phase<5;++phase) {
+            const auto native=frame(10+phase*cadence,phase+1);
+            const auto output=input.controls(native,native.sampled_at,phase+1);
+            check(input.delivered(native,output,output.buttons,native.sampled_at,phase+1),"negative reaches final B release");
+        }
+        auto native=frame(10+5*cadence,6);
+        const auto neutral=input.controls(native,native.sampled_at,6);
+        check(neutral.owned&&neutral.phase==5,"negative starts during acknowledgment observation");
+        if(fault==0)++native.generations.owner;
+        if(fault==1)++native.generations.contact;
+        if(fault==2)++native.flip.object;
+        if(fault==3)native.airborne=true;
+        if(fault==4)native.flip.stance=0x40;
+        if(fault==5)native.flip.state=602;
+        if(fault==6)input.cancel(); // Existing callsite cancels on OFF or conflicting physical input.
+        if(fault==7)check(!input.delivered(native,neutral,0x2000,native.sampled_at,6),
+            "foreign final B cannot be mistaken for the observation neutral");
+        check(!input.controls(native,native.sampled_at,6).owned&&!input.active()&&!input.observed_change(),
+            "owner loss, push, AIR, bail, explicit cancellation and foreign final output release observation");
+    }
 }
-int main(){exported_asset_identity();original_edge_and_delivery();interruptions();denied_sources();finite_double_tap();packet_and_phase_guards();completion_requires_release();lifecycle_and_journal();transient_acknowledgement();std::printf("stance input: %u checks passed\n",checks);}
+
+}
+int main(){awaiting_acknowledgement_reserves_neutral();exported_asset_identity();original_edge_and_delivery();interruptions();denied_sources();finite_double_tap();packet_and_phase_guards();completion_requires_release();lifecycle_and_journal();transient_acknowledgement();std::printf("stance input: %u checks passed\n",checks);}
