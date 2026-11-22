@@ -11,7 +11,7 @@ std::string label(std::uint32_t button){return button==0x1000?"A":button==0x4000
 }
 #include "arcade_evidence_tests.inl"
 int main() {
-    for(const auto title:{"ID_SKATEPEDIA_FS_POPSHUVIT","ID_SKATEPEDIA_NOLLIE_BS_POPSHUVIT",
+    for(const auto title:{"ID_SKATEPEDIA_FS_360_POPSHUVIT","ID_SKATEPEDIA_NOLLIE_BS_POPSHUVIT",
                           "ID_SKATEPEDIA_HOSPITALFLIP","ID_SKATEPEDIA_FRONTFOOTIMPOSSIBLE"}) {
         const auto binding=dingosdk::arcade_mode::trickpedia::native_card_binding(title);
         if(binding.trick || !binding.planned)return 1;
@@ -19,6 +19,19 @@ int main() {
 
     const auto errors=validate_registry(trick_registry);for(const auto& e:errors)std::cerr<<e<<'\n';
     require(errors.empty(),"registry invalid");
+    for(bool nollie:{false,true}) {
+        const auto binding=trickpedia::native_card_binding(nollie?"ID_SKATEPEDIA_NOLLIE_FS_POPSHUVIT":"ID_SKATEPEDIA_FS_POPSHUVIT");
+        require(binding.trick && binding.trick->id==ArcadeTrick::fs_pop_shove_it && binding.nollie==nollie,
+            "frontside native card selects only its exact registry identity");
+        require(native_flip_id(binding.trick->id,nollie)==(nollie?22:7) &&
+            trick_status(*binding.trick)==TrickStatus::experimental,"source mapping is executable but not native verified");
+        require(binding.trick->evidence.remaining.find("binding implemented")!=std::string_view::npos &&
+            binding.trick->evidence.trials.empty(),"implemented binding has source evidence without fabricated native receipts");
+        const auto diagram=trickpedia::diagram(*binding.trick,binding.trick->bindings[0]);
+        require(!diagram.proposed && diagram.steps.front().buttons==0x80 &&
+            diagram.steps[2].direction==TrickDirection::down && diagram.steps.back().buttons==0x4000,
+            "frontside guide uses R3 plus Down plus X from its registry binding");
+    }
     for(const auto& t:trick_registry) {
         require(trick_definition(t.id)==&t,"identity lookup");
         require(trick_status(t)!=TrickStatus::verified,"candidate has no full gameplay receipt");
@@ -178,7 +191,7 @@ int main() {
         require(binding.trick && binding.trick->id==sample.trick && binding.nollie==sample.nollie,
             "observed native variant did not resolve to its own binding");
     }
-    for(const auto title:{"ID_SKATEPEDIA_FS_POPSHUVIT","ID_SKATEPEDIA_FS_360_POPSHUVIT",
+    for(const auto title:{"ID_SKATEPEDIA_FS_360_POPSHUVIT",
         "ID_SKATEPEDIA_FRONTFOOTIMPOSSIBLE","ID_SKATEPEDIA_NOLLIE_BACKFOOTIMPOSSIBLE",
         "ID_SKATEPEDIA_NOLLIE_BS_POPSHUVIT","ID_SKATEPEDIA_NOLLIE_METHOD"})
         require(!trickpedia::native_card_binding(title).trick,"missing or ambiguous variant borrowed another trick");

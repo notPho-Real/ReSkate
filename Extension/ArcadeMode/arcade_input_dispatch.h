@@ -486,8 +486,10 @@ public:
         native_grab_recognized_after_=0;
         wallplant_edge_={};
         grab_choice_event_=0;grab_choice_=ArcadeTrick::double_grab;
+        extended_flip_held_=false;
     }
     const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
+    bool owns_flip_modifier() const noexcept {return extended_flip_held_;}
     bool pending_stick() const noexcept {
         if (previous_context_ == InputContext::air) for (const auto& event : events_.history().events())
             if (event.sequence > air_flip_after_ && event.token == InputToken{InputSource::buttons,TrickControls::flip,InputEdge::press} &&
@@ -509,6 +511,7 @@ public:
         pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
         wallplant_edge_={};
         active_flip_ = grab_repeat_available_ = false; direction_ = 0;
+        extended_flip_held_=false;
         // Keep physical held state and independently queued Manual/rail intent.
         if (!preserve_history) events_.discard_intent();
     }
@@ -635,6 +638,8 @@ public:
         // Physical held state always updates. Balance-event exclusions apply
         // from the preceding admitted context, separately from native ownership.
         events_.sample(now, physical, balance_controls_, environment.manual_active, environment.policy);
+        constexpr auto extended_chord=TrickControls::mask(TrickControls::flip)|TrickControls::mask(TrickControls::grab_layer);
+        if((physical.buttons&extended_chord)!=extended_chord)extended_flip_held_=false;
         balance_controls_ = environment.balance_controls;
         if (!balance_controls_.admitted && environment.context == InputContext::balance && environment.branch_ready)
             balance_controls_ = InputBalanceControls::vertical(environment.balance_branch == 13 ? InputBalanceKind::nose : InputBalanceKind::manual);
@@ -645,6 +650,7 @@ public:
             diagnostic_.stick_first = diagnostic_.pad_first = 0;
             diagnostic_.stick_at = diagnostic_.pad_at = 0; diagnostic_.suppress_reverse = false;
             direction_ = 0; active_flip_ = grab_repeat_available_ = false;
+            extended_flip_held_=false;
             previous_context_ = environment.context;
             return;
         }
@@ -654,6 +660,7 @@ public:
             pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
             wallplant_edge_={};
             direction_ = 0; active_flip_ = grab_repeat_available_ = false;
+            extended_flip_held_=false;
         }
         previous_context_ = environment.context;
         const auto held_direction = events_.held_direction();
@@ -726,6 +733,7 @@ public:
                 }
             }
             if (event.token.edge != InputEdge::press) continue;
+            if(code==TrickControls::flip)extended_flip_held_=false;
             if(code==TrickControls::flip && environment.context==InputContext::air && environment.native_fingerflips &&
                 (physical.buttons&TrickControls::mask(TrickControls::grab))) {
                 // The original physical X edge belongs to the held grab, even
@@ -787,15 +795,19 @@ public:
         recognize_board(now, environment);
         if (environment.context == InputContext::rail) pending_.bind_rail_selection(now,environment.rail);
         pending_.dispatch(now, session_, environment.context, adapter, [&](InputDispatchEvent event) {
+            if(event.request.action==InputAction::flip && event.request.modifier==1 &&
+                event.request.input_sequence==extended_flip_sequence_ &&
+                event.disposition!=InputDisposition::waiting && event.disposition!=InputDisposition::started)
+                extended_flip_held_=false;
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::jump_variant)
                 pending_.clear_ordinary();
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::lip_select) {
                 pending_.cancel(InputAction::lip_select); pending_.cancel(InputAction::rail_select);
             }
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::flip) {
-                active_flip_ = event.request.form == InputForm::ordinary || (environment.native_held_flip &&
+                active_flip_ = !event.request.modifier && (event.request.form == InputForm::ordinary || (environment.native_held_flip &&
                     (event.request.form == InputForm::neutral_press || event.request.form == InputForm::neutral_release ||
-                     event.request.form == InputForm::held_repeat));
+                     event.request.form == InputForm::held_repeat)));
                 active_flip_count_ = active_flip_ ? event.request.presses : 0; flip_started_ = now;
                 if (environment.native_held_flip && (active_flip_count_==1 || event.request.form==InputForm::held_repeat))
                     flip_started_=event.request.physical_pressed_at;
@@ -1008,6 +1020,8 @@ private:
             }
             if(action==InputAction::grab && modifier==1)
                 request.air.trick=native_grab::extended_grab(request.direction,environment.selected_grab);
+            if(action==InputAction::flip && modifier==1)
+                request.air.trick=extended_flip_binding(request.direction);
             // Original physical edges are evidence for the adapter; recognition
             // time cannot turn a released buffered tap into a newly held press.
             if (footprint) for (const auto& event : events_.history().events()) {
@@ -1380,6 +1394,25 @@ private:
         // edge into real AIR; mode 2 and selection retirement are not required
         // to present the next native stick gesture after the pop flick ends.
         const InputToken face{InputSource::buttons,TrickControls::flip,InputEdge::press};
+        // Capture the modifier and direction on the physical X edge, just as
+        // extended grabs do. Later direction/R3 changes cannot relabel a queue.
+        const std::array face_tokens{face};
+        const auto alternate=events_.history().match({face_tokens,InputTiming::direction_ms,ordinary_reject},now);
+        if(alternate && air_face_eligible(alternate,TrickControls::flip,true))
+            for(const auto& event:events_.history().events())
+                if(event.sequence==alternate.events[0] &&
+                   (event.physical_buttons&TrickControls::mask(TrickControls::grab_layer)) &&
+                   extended_flip_binding(event.physical_direction)!=ArcadeTrick::none) {
+                    if(!events_.history().consume(alternate,InputConsumption::regular,ordinary_reject))return false;
+                    extended_flip_held_=events_.held(face) &&
+                        events_.held({InputSource::buttons,TrickControls::grab_layer,InputEdge::press});
+                    extended_flip_sequence_=event.sequence;
+                    auto selected=environment;selected.policy.bounded_handoff=true;
+                    const auto age=now-event.at;
+                    enqueue(InputAction::flip,now,age<InputTiming::readiness_ms?InputTiming::readiness_ms-age:0,selected,
+                        1,0,0,1,{},&alternate,InputForm::ordinary,event.physical_direction);
+                    direction_=0;return true;
+                }
         InputMatch match{}; unsigned presses = 1;
         InputForm form{}; std::int16_t defined_direction{};
         const InputRequest* queued_prefix=nullptr;
@@ -1830,6 +1863,7 @@ private:
     std::uint64_t session_{1}, last_{}, last_event_{}, direction_at_{}, flip_started_{}, grab_pressed_at_{};
     std::uint64_t grab_choice_event_{};
     std::uint64_t flip_input_sequence_{};
+    std::uint64_t extended_flip_sequence_{};
     ArcadeTrick grab_choice_{ArcadeTrick::double_grab};
     std::int16_t direction_{}, flip_direction_{}, grab_direction_{};
     InputSource direction_source_{InputSource::stick}, flip_source_{InputSource::stick}, grab_source_{InputSource::stick};
@@ -1837,7 +1871,7 @@ private:
     InputJumpBinding jump_binding_{};
     std::uint64_t jump_generation_{};
     unsigned active_flip_count_{}, active_grab_count_{}, previous_balance_branch_{};
-    bool active_flip_{}, grab_repeat_available_{};
+    bool active_flip_{}, grab_repeat_available_{},extended_flip_held_{};
     bool clocked_{}, crouched_{}, crouch_nollie_{}, flip_nollie_{}, manual_unknown_{};
 };
 }

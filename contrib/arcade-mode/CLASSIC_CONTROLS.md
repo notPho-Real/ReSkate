@@ -67,10 +67,11 @@ A qualified ordinary first flip can instead follow its exact admitted pop throug
 native setup; owner, pop withdrawal and landing checks still cancel it. These
 windows add no fixed wait and do not establish native trick completion.
 
-Manual pairs accept direct reversal or a neutral gap within220ms on the ground
-or400ms in the air. Ground matching has an explicit55ms usability/sampling
-allowance: physical250ms pairs can span267–272ms in30Hz sampled input.
-Air lifetime and actuation do not receive that allowance.
+Production Manual pairs accept direct reversal or a neutral gap within450ms,
+inclusive on the ground and strict in the air. Both timestamps belong to the
+physical direction edges; steering across octants cannot renew the first throw.
+The compatibility policy retains its220ms ground window plus55ms sampling
+allowance and400ms air window. Air lifetime and actuation receive no sampling allowance.
 Moderate stick throws and diagonal travel through center retain the first edge.
 A held baseline is not an edge, but subsequent fresh reversals rearm without
 requiring perfect neutral. D-pad
@@ -81,7 +82,7 @@ flight; releasing or losing that input cannot renew it. The first qualified
 landing starts the separate1200ms native acquisition window. The held entry
 direction is reserved until contact, then existing balance controls take over. D-pad Up/Down
 can correct an established manual balance.
-The first grounded left-stick Down is reserved for the pair for up to275ms including that sampling allowance;
+The first grounded left-stick Down is reserved for the production pair for up to450ms;
 a continued hold then passes through. B braking and horizontal steering stay native.
 The entry direction does not immediately push the balance meter: release it or
 tap the opposite direction to begin correction. Short taps change the meter's
@@ -113,6 +114,12 @@ exists. A dash means this contract assigns no variant to that combination.
 | Up-Right | Inward Heelflip | 360 Inward Heelflip | — |
 | Down-Left | Varial Kickflip | 360 Flip | — |
 | Down-Right | Varial Heelflip | 360 Heelflip | — |
+
+Hold R3 and Down when pressing X to request **FS Pop Shove-It**. This uses
+the original frontside native identity (7, or 22 in nollie context); ordinary
+Down+X retains Pop Shove-It. The modifier and direction are captured on the X
+edge, and no repeated frontside variant is assigned. The mapping is implemented;
+exact-candidate native actor, rotation, catch and landing verification is pending.
 
 Directional Triple Kickflip and Triple Heelflip extend the existing held double
 only when a fresh third X reaches that same owned flight before its catch. The
@@ -217,6 +224,15 @@ model, including fatigue retained throughout the same unbanked combo.
 RT requests the appropriate switch/revert action for the observed context. Native
 revert identity must be observed. A landing revert creates one continuation
 opportunity; repeated revert cannot keep extending grace or farming multiplier.
+
+The active Manual acceptance recipe is entry → at least three continuous seconds
+of independently qualified physical balance → Ollie out. Begin timing at qualified
+entry, not the direction pair. Check actual wheel support and pose, stable balance
+HUD, owner/stance continuity, and the native exit and landing. Then check
+Manual → RT → Nose Manual → Ollie → Flip continuity separately. Three seconds is
+a test minimum, never a gameplay cutoff; balanced holds must continue beyond it.
+Retained two-second or ten-second payloads are historical recipes and must be
+updated before reuse, with their existing physical, freshness and cleanup guards.
 
 ## Live mode boundary
 

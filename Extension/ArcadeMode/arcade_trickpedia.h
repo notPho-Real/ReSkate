@@ -213,6 +213,11 @@ inline InputDiagram diagram(const TrickDefinition& trick,const TrickBinding& b,
             else out.condition+=" (not currently selected)";
         }
         out.condition+="; release B to exit";break;
+    case BindingPattern::extended_flip:
+        step(StepKind::hold,TrickControls::mask(TrickControls::grab_layer));together();
+        direction(b.direction);together();step(StepKind::press,TrickControls::mask(TrickControls::flip));
+        out.window_ms=InputTiming::readiness_ms;
+        out.condition+="; modifier and direction held when X is pressed; single flip only";break;
     default: {
         const bool grab=trick.category==TrickCategory::grabs;
         const auto face=grab?TrickControls::mask(TrickControls::grab):trick.category==TrickCategory::grinds?TrickControls::mask(TrickControls::grind):TrickControls::mask(TrickControls::flip);
@@ -270,9 +275,9 @@ inline NativeCardBinding native_card_binding(std::string_view title) {
     else if(token.starts_with("NOLLIE_")){token.remove_prefix(7);nollie=true;}
     else if(token.starts_with("N_")){token.remove_prefix(2);nollie=true;}
     const auto key=card_key(token);
-    constexpr std::array<std::string_view,9> unavailable{
+    constexpr std::array<std::string_view,8> unavailable{
         "bspopshuvitunderflip","frontfootimpossible","fspopshuvitunderflip",
-        "fs360popshuvit","fspopshuvit","grabbstweak","heelflipunderflip",
+        "fs360popshuvit","grabbstweak","heelflipunderflip",
         "hospitalflip","kickflipunderflip"};
     if(std::find(unavailable.begin(),unavailable.end(),key)!=unavailable.end())return {nullptr,nollie,true};
     // Native card identifiers differ from their displayed names. Keep these
@@ -280,6 +285,7 @@ inline NativeCardBinding native_card_binding(std::string_view title) {
     struct Alias {std::string_view key;ArcadeTrick trick;};
     constexpr std::array aliases{
         Alias{"bspopshuvit",ArcadeTrick::pop_shove_it},
+        Alias{"fspopshuvit",ArcadeTrick::fs_pop_shove_it},
         Alias{"360popshuvit",ArcadeTrick::shove_it_360},
         Alias{"inwardheel",ArcadeTrick::inward_heelflip},
         Alias{"360inwardheel",ArcadeTrick::inward_heelflip_360},
@@ -306,7 +312,7 @@ inline NativeCardBinding native_card_binding(std::string_view title) {
     };
     // Directional nollie labels and their diagrams use different side names.
     // They need an explicit identity match before receiving Arcade guidance.
-    if(nollie && (key.find("popshuvit")!=std::string::npos))return {nullptr,nollie,true};
+    if(nollie && key!="fspopshuvit" && (key.find("popshuvit")!=std::string::npos))return {nullptr,nollie,true};
     const TrickDefinition* result=nullptr;
     for(const auto& alias:aliases)if(key==alias.key){result=trick_definition(alias.trick);break;}
     for(const auto& trick:trick_registry) {

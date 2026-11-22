@@ -154,12 +154,24 @@ int main(){
         "same native card lost its nollie modifier");
     variants.models.at(3).title="ID_SKATEPEDIA_FS_POPSHUVIT";
     variants.models.at(3).inputs={"Original distinct frontside diagram"};update_trickpedia(variants,1020);
-    require(variants.models.at(3).inputs.front().find("Planned")!=std::string::npos &&
-        variants.models.at(3).inputs.front().find("not available yet")!=std::string::npos,
-        "unsupported frontside card must explain availability instead of borrowing backside controls");
+    require(variants.models.at(3).inputs.front().find("Experimental")!=std::string::npos &&
+        variants.models.at(3).inputs.front().find("R3")!=std::string::npos &&
+        variants.models.at(3).inputs.front().find("Down")!=std::string::npos &&
+        variants.models.at(3).inputs.front().find("X")!=std::string::npos &&
+        variants.models.at(3).inputs.front().find("not available yet")==std::string::npos,
+        "frontside card must show its implemented extended binding and experimental status");
     arcade_mode::on=false;update_trickpedia(variants,1030);
     require(variants.models.at(3).inputs==std::vector<std::string>{"Original distinct frontside diagram"},
-        "planned guidance did not restore the native diagram on OFF");
+        "frontside guidance did not restore the native diagram on OFF");
+    reset();Context unsupported;
+    unsupported.models.at(3).title="ID_SKATEPEDIA_FS_360_POPSHUVIT";
+    unsupported.models.at(3).inputs={"Original frontside 360 diagram"};
+    const auto unsupported_original=unsupported.models;update_trickpedia(unsupported,1000);
+    require(unsupported.models.at(3).inputs.front().find("Planned")!=std::string::npos &&
+        unsupported.models.at(3).inputs.front().find("not available yet")!=std::string::npos,
+        "unsupported frontside 360 card must explain availability instead of borrowing single controls");
+    arcade_mode::on=false;update_trickpedia(unsupported,1010);
+    require(unsupported.models==unsupported_original,"unsupported guidance did not restore exact native models on OFF");
     reset();Context rewritten;update_trickpedia(rewritten,1000);
     rewritten.models.at(3).inputs={"Native stance changed"};update_trickpedia(rewritten,1010);
     arcade_mode::on=false;update_trickpedia(rewritten,1020);

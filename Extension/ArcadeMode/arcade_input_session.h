@@ -542,6 +542,10 @@ public:
             (native.flip.state==100 || native.flip.state==103)) environment.takeoff_release_at=now;
         environment.takeoff_actor_busy=authored_.busy() || auxiliary_.busy();
         input_.poll(now, physical, environment, {this, &receive});
+        if(action_enabled && admission.action_fresh && admission.action_mode==ActionExperiment::classic &&
+            (context==InputContext::air || (admission.normal_flip.submit && takeoff_release_at_ &&
+                now>=takeoff_release_at_ && now-takeoff_release_at_<InputTiming::direction_ms)) && input_.owns_flip_modifier())
+            output.action.consume_buttons|=0x0080u;
         flatland_y_held_=reserve_y && flatland_y_accepted_;
         // A rejected adapter cannot keep the provisional reservation. No new
         // pending queue or replay of an expired first button is introduced.
@@ -892,8 +896,12 @@ private:
                      request.air.trick != ArcadeTrick::kickflip || request.air.predicate != AirInputPredicate::face)) {
                     out.unsupported = true; return InputDisposition::unsupported;
                 }
-                const auto selected=(request.form == InputForm::neutral_release || request.form == InputForm::neutral_press) ? neutral_flip_trick() :
+                if(request.modifier && (request.modifier!=1 || request.form!=InputForm::ordinary || request.presses!=1))
+                    return InputDisposition::unsupported;
+                const auto selected=request.modifier==1?extended_flip_binding(request.direction):
+                    (request.form == InputForm::neutral_release || request.form == InputForm::neutral_press) ? neutral_flip_trick() :
                     select_named_trick(TrickFamily::flip,direction(request.direction),request.presses);
+                if(selected==ArcadeTrick::none)return InputDisposition::unsupported;
                 if(request.air.trick!=ArcadeTrick::none && (request.air.family!=TrickFamily::flip || request.air.trick!=selected)){
                     out.unsupported=true;return InputDisposition::unsupported;
                 }

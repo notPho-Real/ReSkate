@@ -13,25 +13,28 @@ struct Route {
     ArcadeInput input{true}; NativeInputState producer; NativeInputReadiness readiness;
     NativeInputOwner owner{1,2,3,4,5}; NativeInputFrame frame{};
     std::vector<PreparedGesture> recipes;
-    unsigned starts{},recognized{}; bool exact_clock{};NativeFlipRequest normal_flip{};
+    unsigned starts{},recognized{}; bool exact_clock{},nollie{},switched{};NativeFlipRequest normal_flip{};
     NativeGesture::Output output{};
     Route() {
-        for(const unsigned id:{1u,2u,3u,4u,5u,6u,8u,9u,36u})
+        for(const unsigned id:{1u,2u,3u,4u,5u,6u,7u,8u,9u,36u})
             recipes.emplace_back(static_cast<std::uint8_t>(id),false,GestureContext::ground,
                 std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
         input.enable(true);input.set_recognition_capture(0,true);
+        for(const unsigned id:{16u,22u})recipes.emplace_back(static_cast<std::uint8_t>(id),true,GestureContext::ground,
+            std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
     }
     NativeGesture::Output poll(std::uint64_t now,PhysicalInputSample pad={},std::uint32_t state=201,
             std::int32_t selection=-1,std::uint32_t mode=2,bool gameplay=true) {
         NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=mode;
+        sample.words[0]=switched?0x20u:0u;
         sample.words[1]=state==100?0xc000u:0u;
         frame=producer.observe(now,owner,sample,{true,selection,16});
         readiness.publish(frame,{true,state==100&&mode==1,false,false,false,false,false,false,true,0});
         input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
         const auto admit=readiness.sample(now,frame);
         output=input.poll(0,now,pad.buttons,pad.x,pad.y,0,0,gameplay,admit.start,false,0,false,false,
-            true,exact_clock?now*60/1000:now/17,false,recipes,admit.mirror_x,false,frame.airborne?SkatePose::air:SkatePose::riding,
-            false,false,false,false,admit.flip_ready,false,0,0,ActionExperiment::classic,admit.action,admit.mirror_x,false,normal_flip);
+            true,exact_clock?now*60/1000:now/17,nollie,recipes,admit.mirror_x,false,frame.airborne?SkatePose::air:SkatePose::riding,
+            false,false,false,false,admit.flip_ready,false,0,0,ActionExperiment::classic,admit.action,admit.stance_known,false,normal_flip);
         starts+=output.requested_id?1u:0u;
         const auto* diagnostic=input.input_diagnostic(0);
         recognized+=static_cast<unsigned>(diagnostic->recognition_count);
@@ -298,7 +301,7 @@ void native_transition_requests() {
     for(unsigned rate:{30u,60u,120u})
     for(bool delayed_selection:{false,true})
     for(bool retired_selection:{false,true})
-    for(unsigned delay:{0u,100u,500u}) for(auto choice:{Choice{0,2},Choice{2,4},Choice{8,3},Choice{5,9}}) {
+    for(unsigned delay:{0u,100u,500u}) for(auto choice:{Choice{0,2},Choice{2,4},Choice{8,3},Choice{5,9},Choice{0x82,7}}) {
         auto h=std::make_unique<Route>();Sink sink;h->normal_flip={&sink,Sink::submit};
         h->poll(1000,{},100,-1,1);h->poll(1020,{0x1000},100,-1,1);
         h->poll(1060,{0x1000},100,delayed_selection?-1:1,delayed_selection?1:0);
@@ -321,4 +324,107 @@ void native_transition_requests() {
             "A-to-X at release,100ms,500ms queues exactly one normal native selection");
     }
 }
-int main() {native_entry_tests::run();native_transition_requests();delivered_pop_handoff();early_press_cadences();neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}
+void frontside_shove_inputs() {
+    for(unsigned hz:{30u,60u,120u})for(bool analog:{false,true})for(bool nollie:{false,true})for(bool switched:{false,true}) {
+        const auto dt=1000u/hz;
+        auto h=std::make_unique<Route>();h->nollie=nollie;h->switched=switched;h->poll(1000);
+        const PhysicalInputSample chord{static_cast<std::uint16_t>(analog?0x4080:0x4082),0,
+            static_cast<std::int16_t>(analog?-25000:0)};
+        auto out=h->poll(1000+dt,chord);
+        check(out.requested_id==(nollie?22:7) && out.authored_playback,
+            "R3 plus analog or digital Down-X routes the exact frontside regular/nollie native gesture");
+        const auto* diagnostic=h->input.input_diagnostic(0);
+        check(diagnostic->recognition_count==1 && diagnostic->recognition[0].request.modifier==1 &&
+            diagnostic->recognition[0].request.air.trick==ArcadeTrick::fs_pop_shove_it &&
+            diagnostic->recognition[0].request.physical_pressed_at==1000+dt &&
+            diagnostic->recognition[0].request.deadline==1000+dt+InputTiming::readiness_ms,
+            "frontside input has one immutable physical edge and unchanged200ms readiness window");
+        check((out.action.consume_buttons&0x80u)!=0,"frontside chord owns R3 during native delivery");
+        h->poll(1000+2*dt,chord);h->poll(1000+3*dt,{});
+        check(h->starts==1,"holding or releasing frontside input cannot repeat it");
+    }
+    for(bool direction_late:{false,true}) {
+        auto h=std::make_unique<Route>();h->poll(1000);
+        h->poll(1010,{static_cast<std::uint16_t>(direction_late?0x4084:0x4002)});
+        const auto out=h->poll(1040,{0x4082});
+        check(!(out.action.consume_buttons&0x80u),
+            "late R3 or Down cannot acquire modifier ownership for an ordinary X edge");
+    }
+    {
+        auto h=std::make_unique<Route>();h->poll(1000);h->poll(1010,{0x4082});
+        h->poll(1040,{0x4002});const auto out=h->poll(1070,{0x4082});
+        check(!(out.action.consume_buttons&0x80u) && h->starts==1,
+            "fresh R3 after modifier release is not owned by the older held X occurrence");
+    }
+    {
+        auto h=std::make_unique<Route>();
+        h->recipes.erase(std::remove_if(h->recipes.begin(),h->recipes.end(),[](const auto& recipe){return recipe.native_id==7;}),h->recipes.end());
+        h->poll(1000);const auto out=h->poll(1010,{0x4082});
+        check(out.unsupported && !out.requested_id && !out.authored_playback,
+            "missing exact frontside gesture cannot substitute the ordinary backside shove");
+    }
+    {
+        auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);
+        const auto out=h->poll(1033,{0x4082},100,-1,1);
+        check(!out.requested_id && !(out.action.consume_buttons&0x80u),
+            "unrelated grounded R3 Down-X starts no flip and retains R3");
+    }
+    struct Capture {
+        unsigned calls{};InputRequest last{};
+        static InputDisposition request(void* state,const InputRequest& request) noexcept {
+            auto& self=*static_cast<Capture*>(state);++self.calls;self.last=request;return InputDisposition::waiting;
+        }
+    };
+    for(unsigned fault=0;fault<4;++fault) {
+        UnifiedInput input;Capture capture;InputEnvironment environment{InputContext::air,true};
+        environment.policy=InputPolicy::production();
+        const InputAdapter adapter{&capture,Capture::request};
+        input.poll(1000,{},environment,adapter);input.poll(1010,{0x4082},environment,adapter);
+        check(capture.calls==1 && capture.last.air.trick==ArcadeTrick::fs_pop_shove_it,"frontside request waits without a substitute");
+        if(fault==0)environment.context=InputContext::ground;
+        if(fault==1)environment.gameplay=false;
+        if(fault==2)environment.conflict=true;
+        input.poll(fault==3?1210:1020,{0x4004},environment,adapter);
+        check(capture.calls==1 && !input.owns_flip_modifier(),"landing, OFF, conflict and exact expiry cancel the pending frontside request");
+    }
+    {
+        UnifiedInput input;Capture capture;InputEnvironment environment{InputContext::air,true};
+        environment.policy=InputPolicy::production();const InputAdapter adapter{&capture,Capture::request};
+        input.poll(1000,{},environment,adapter);input.poll(1010,{0x4082},environment,adapter);
+        input.poll(1050,{0x4004},environment,adapter);
+        check(capture.calls==2 && capture.last.modifier==1 && capture.last.direction==2 &&
+            capture.last.air.trick==ArcadeTrick::fs_pop_shove_it && capture.last.deadline==1210,
+            "later direction and modifier release do not relabel or renew the queued frontside input");
+    }
+    {
+        UnifiedInput input;Capture capture;InputEnvironment environment{InputContext::air,true};
+        environment.policy=InputPolicy::production();const InputAdapter adapter{&capture,Capture::request};
+        input.poll(1000,{},environment,adapter);input.poll(1010,{0x4082},environment,adapter);
+        input.poll(1040,{0x82},environment,adapter);input.poll(1210,{0x4082},environment,adapter);
+        check(input.owns_flip_modifier() && capture.last.physical_pressed_at==1210,
+            "expiry of an older frontside request cannot release a newer physical modifier occurrence");
+    }
+    {
+        struct Started {
+            unsigned calls{};
+            static InputDisposition request(void* state,const InputRequest& request) noexcept {
+                auto& self=*static_cast<Started*>(state);++self.calls;
+                check(request.presses==1 && request.form==InputForm::ordinary && request.modifier==1 &&
+                    request.air.trick==ArcadeTrick::fs_pop_shove_it,
+                    "rapid frontside presses remain separate exact singles, never BS360 or a held flip");
+                return InputDisposition::started;
+            }
+        } started;
+        UnifiedInput input;InputEnvironment environment{InputContext::air,true};environment.policy=InputPolicy::production();
+        const InputAdapter adapter{&started,Started::request};
+        input.poll(1000,{},environment,adapter);input.poll(1010,{0x4082},environment,adapter);
+        input.poll(1040,{0x82},environment,adapter);input.poll(1070,{0x4082},environment,adapter);
+        check(started.calls==2,"two fresh frontside X edges each use one ordinary admission");
+        environment.context=InputContext::ground;input.poll(1100,{0x4082},environment,adapter);
+        check(!input.owns_flip_modifier(),"landing releases even an already-started frontside modifier");
+        environment.context=InputContext::air;input.poll(1200,{0x4082},environment,adapter);
+        check(!input.owns_flip_modifier() && started.calls==2,
+            "a new flight cannot inherit the old held chord without a fresh X edge");
+    }
+}
+int main() {native_entry_tests::run();frontside_shove_inputs();native_transition_requests();delivered_pop_handoff();early_press_cadences();neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}

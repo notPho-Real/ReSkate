@@ -299,7 +299,10 @@ RC5 fixes `8d5a184a` and `1bbb02f0`, including fast-suite coverage; do not dupli
 their implementation. Baseline runtime compilation and packaging remain distinct
 from those preflight results.
 
-## Prioritized gap and effort matrix
+## Historical gap and effort matrix
+
+This records earlier checkpoint decisions. [ROADMAP.md](ROADMAP.md) supersedes its
+implementation priorities, including the former deferral of directional triples.
 
 Order considers player impact, existing implementation reuse, cost, regression
 risk, native evidence and independent verification. Existing implementation is

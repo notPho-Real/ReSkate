@@ -11,6 +11,10 @@ inline constexpr TrickEvidence planned_evidence{
     "9906af3b5d4816c15d4506430d51afb7d860b970", "Pinned 20260929; design only",
     "contrib/arcade-mode/research/trickpedia-implementation.md",
     "No executable Arcade binding is available for this trick in this build."};
+inline constexpr TrickEvidence frontside_shove_evidence{
+    "6d8dda8f9431aef21268c74455a5f1ec930df8d8", "Pinned 20260929; source catalog identities7/22",
+    "contrib/arcade-mode/research/native-flip-source-catalog.json",
+    "R3 plus Down plus X binding implemented using the original native flip route. Native identity, actor, rotations, catch, landing and scoring acceptance remain unverified."};
 // Add independently reviewed receipts by canonical ID here. Changes to this
 // evidence-only file do not change the gameplay source fingerprint.
 #include "arcade_trick_capture_data.inl"

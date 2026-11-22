@@ -1,10 +1,15 @@
 {
   "schema": 1,
-  "branch": "arcade-stage-upstream-8515e164",
-  "milestone": "Official upstream 8515e164 integration; exact-candidate CI and native acceptance recorded separately",
+  "branch": "arcade-stage-rc51-core-20261122",
+  "milestone": "RC5.1 responsive core and general wallplant routing on integrated 6d8dda8f; exact-candidate compilation and native acceptance recorded separately",
   "game_build": 20260929,
   "accepted": false,
   "sources": {
+    "integrated": {
+      "repository": "notPho-Real/ReSkate",
+      "ref": "arcade-stage-upstream-8515e164",
+      "sha": "6d8dda8f9431aef21268c74455a5f1ec930df8d8"
+    },
     "rc3": {
       "repository": "notPho-Real/ReSkate",
       "ref": "arcade-stage-rc3-gameplay",
