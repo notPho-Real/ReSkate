@@ -1,10 +1,19 @@
 #pragma once
+#include "Engine/Game/Skater/physics_state_read.h"
 #include <array>
 #include <cmath>
 #include <cstdint>
 #include <optional>
 
 namespace dingosdk::arcade_mode::native_flip {
+template<class ReadState,class SameOwner>
+bool sample_airborne(ReadState&& read_state,SameOwner&& same_owner) noexcept {
+    // The ordinary bridge shares the grab/held-flip current-read contract.
+    // A transient zero must not retire its already-airborne lease before the
+    // queued immediate flip reaches the native selection callback.
+    const auto phase=game::skater::read_current_physics_state(read_state,same_owner);
+    return phase.known() && (phase.state==200 || phase.state==201);
+}
 using Guid = std::array<std::uint8_t, 16>;
 // Memory-order GUIDs from the original animation assets, not animation IDs.
 inline constexpr Guid pop_guid{0x66,0x22,0x52,0xa1,0xa0,0x61,0xdc,0xb9,0xa1,0x52,0x22,0x66,0x61,0xa0,0xb9,0xdc};

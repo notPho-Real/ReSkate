@@ -8,6 +8,7 @@
 #include "Engine/Game/Abi/native_data.h"
 #include "Engine/Game/Build/image_identity.h"
 #include "Engine/Game/Build/20260929/arcade_flip_transition.h"
+#include "Engine/Game/Build/20260929/skater_state.h"
 #include <atomic>
 #include <mutex>
 #include <type_traits>
@@ -82,7 +83,12 @@ bool valid(const Lease& l) noexcept {
     return no_bail_skater(owner) && owner==l.owner && state_block(owner)==l.block;
 }
 bool in_air(const Lease& l) noexcept {
-    std::uint32_t value{};return read(l.owner.context+0x1414,value) && (value==200 || value==201);
+    return sample_airborne([&](std::uint32_t& value) noexcept {
+        return read(l.owner.context+game::build::v20260929::skater_state::physics_state_offset,value);
+    },[&]() noexcept {
+        NoBailSkater owner{};
+        return no_bail_skater(owner) && owner==l.owner && state_block(owner)==l.block;
+    });
 }
 bool rising(const Lease& l) noexcept {
     const auto board=pointer(pointer(l.owner.core+0x430)+0x18);

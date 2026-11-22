@@ -47,6 +47,36 @@ struct Memory {
 };
 inline void check(bool ok,const char* why) { if(!ok){std::cerr<<"FAIL native entry: "<<why<<'\n';std::exit(1);} }
 inline void run() {
+    for(unsigned state:{200u,201u}) {
+        unsigned reads{},owners{};
+        check(sample_airborne([&](std::uint32_t& value) {
+            value=reads++?state:0u;return true;
+        },[&] {++owners;return true;}),
+            "a fresh same-owner airborne reread preserves the ordinary flip bridge");
+        check(reads==2 && owners==2,"zero receives exactly one read bracketed by owner and state-block checks");
+    }
+    for(unsigned fault=0;fault<10;++fault) {
+        unsigned reads{},owners{};
+        check(!sample_airborne([&](std::uint32_t& value) {
+            const auto index=reads++;
+            value=index?(fault==0?0u:fault==1?100u:fault==2?403u:fault==3?504u:201u):0u;
+            return fault!=4 && !(fault==5 && index==1);
+        },[&] {
+            ++owners;
+            const bool same_skater=owners!=(fault==6?1u:fault==7?2u:99u);
+            const bool same_block=owners!=(fault==8?1u:fault==9?2u:99u);
+            return same_skater && same_block;
+        }),
+            "persistent zero, landing, rail, bail, failed reads and changed owner or block reject an ordinary flip");
+        check(reads<=2 && owners<=2,"unknown phase never polls, waits or reuses an earlier airborne frame");
+    }
+    for(unsigned state:{100u,103u,200u,201u,403u,504u,601u}) {
+        unsigned reads{},owners{};
+        const bool air=sample_airborne([&](std::uint32_t& value) {++reads;value=state;return true;},
+            [&] {++owners;return false;});
+        check(air==(state==200 || state==201) && reads==1 && owners==0,
+            "qualified nonzero native states retain their original result without a reread");
+    }
     {
         // Reproduce the map-load failure: the same readable address now holds
         // another original resource. A non-null pointer alone is not current.
