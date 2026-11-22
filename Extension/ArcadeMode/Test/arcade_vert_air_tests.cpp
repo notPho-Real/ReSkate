@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_vert_air.h"
+#include "Extension/ArcadeMode/arcade_vert_trigger.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_input_session.h"
 #include "Engine/Game/Abi/orientation_target.h"
@@ -31,6 +32,123 @@ void warm(VertAirController& c,VertObservation o) {
     o.native.sampled_at-=20;o.native.physics_step=1;o.position[1]-=.2f;
     o.up={-.8660254f,.5f,0};o.velocity={4,6.928203f,0};o.support=patch(o.position,o.up);
     c.observe(o);
+}
+void original_contact_support() {
+    for(float yaw:{0.f,.8f,2.4f})for(float shift:{0.f,1000.f}) {
+        const auto turn=[&](Vec v){return Vec{v[0]*std::cos(yaw)-v[2]*std::sin(yaw),v[1],v[0]*std::sin(yaw)+v[2]*std::cos(yaw)};};
+        VertAirController c;auto o=ground();
+        for(unsigned i=0;i<3;++i) {
+            const float angle=.9f+.2f*static_cast<float>(i);
+            o.native.physics_step=i+1;o.native.sampled_at=1000+17*i;
+            o.position=add(turn({4*std::sin(angle),4*(1-std::cos(angle)),0}),{shift,0,shift});
+            o.up=turn({-std::sin(angle),std::cos(angle),0});o.velocity=turn({8*std::cos(angle),8*std::sin(angle),0});
+            std::array<VertRampContact,2> hits;
+            for(unsigned j=0;j<2;++j)hits[j]={add(o.position,turn({0,0,j?.22f:-.22f})),o.up,{7,j+1,9},{}};
+            for(auto& hit:hits)hit.owner.value=10;
+            o.native_ramp=vert_ramp_contacts(hits,o.position,o.up);o.support={};
+            check(o.native_ramp.valid,"distinct original wheel contacts validate a map-independent origin");c.observe(o);
+            auto duplicate=hits;duplicate[1]=duplicate[0];
+            check(!vert_ramp_contacts(duplicate,o.position,o.up).valid,"duplicate contact rows cannot fabricate footprint support");
+            auto unknown=hits;unknown[1].owner.value=0;
+            check(!vert_ramp_contacts(unknown,o.position,o.up).valid,"unknown static incarnation cannot qualify ramp");
+        }
+        o=fly(o);c.observe(o);check(c.eligible(o.native,o.native.sampled_at),"actual curved contacts recognize takeoff without a query patch");
+        check(!c.consume(o.native,o.native.sampled_at,o.velocity),"contact-based recognition leaves no-input trajectory native");
+    }
+}
+void trigger_qualification() {
+    for(unsigned channel:{0u,1u}) {
+        VertAirController c;auto o=ground();warm(c,o);c.observe(o);o=fly(o);c.observe(o);
+        TriggerPress press;press.press.sequence=1;press.press.token={InputSource::triggers,static_cast<std::int16_t>(channel),InputEdge::press};
+        press.press.at=o.native.sampled_at;press.context=InputContext::air;press.native=InputNativeContext::from_frame(o.native);
+        auto decision=qualify_vert_trigger(c,press,press.native,press.press.at);
+        check(decision.owner==TriggerOwner::transfer && decision.ready,"LT and RT share eligible transfer behavior");
+        auto held=press;held.context=InputContext::ground;held.native=InputNativeContext::from_frame(ground().native);
+        check(qualify_vert_trigger(c,held,press.native,press.press.at).owner==TriggerOwner::none,"ground-held setup cannot become a transfer");
+        for(unsigned i=0;i<20;++i) {
+            ++o.native.physics_step;o.native.sampled_at+=10;o.velocity={4,-3,0};o.position={0,.3f,0};c.observe(o);
+        }
+        press.press.at=o.native.sampled_at;press.native=InputNativeContext::from_frame(o.native);
+        check(c.landing().approach(o.native,patch({0,0,0},{0,1,0})),"landing geometry corroborates descending approach");
+        decision=qualify_vert_trigger(c,press,press.native,press.press.at);
+        check(decision.owner==TriggerOwner::landing_revert && !decision.ready,"near-touchdown edge reserves Revert ahead of transfer");
+        press.owner=TriggerOwner::landing_revert;
+        auto touchdown=o;++touchdown.native.physics_step;touchdown.native.sampled_at+=10;
+        touchdown.native.airborne=false;touchdown.native.state=100;++touchdown.native.air_departure;
+        touchdown.native.contacts=0xc000;touchdown.supported=true;touchdown.up={0,1,0};touchdown.contact_normal={0,1,0};touchdown.contacted_shape={7,8,9};
+        const auto published=InputNativeContext::from_frame(touchdown.native);
+        decision=qualify_vert_trigger(c,press,published,touchdown.native.sampled_at);
+        check(decision.owner==TriggerOwner::landing_revert && !decision.ready,"ground publication before original support retains reserved edge");
+        auto ground_edge=press;ground_edge.owner=TriggerOwner::none;ground_edge.context=InputContext::ground;
+        ground_edge.native=published;ground_edge.press.at=touchdown.native.sampled_at;
+        decision=qualify_vert_trigger(c,ground_edge,published,touchdown.native.sampled_at);
+        check(decision.owner==TriggerOwner::landing_revert && !decision.ready,"fresh ground edge during publication gap cannot be stolen by Switch");
+        c.observe(touchdown);
+        decision=qualify_vert_trigger(c,press,published,touchdown.native.sampled_at);
+        check(decision.owner==TriggerOwner::landing_revert && decision.ready,"real supported touchdown releases reserved native Revert");
+        press.owner=TriggerOwner::transfer;
+        check(qualify_vert_trigger(c,press,published,touchdown.native.sampled_at).owner==TriggerOwner::none,"transfer-consumed edge cannot request touchdown Revert");
+        press.owner=TriggerOwner::landing_revert;press.context=InputContext::balance;
+        check(qualify_vert_trigger(c,press,published,touchdown.native.sampled_at).owner==TriggerOwner::none,"vert qualifier never steals established Manual ownership");
+        c.reset();check(qualify_vert_trigger(c,ground_edge,published,touchdown.native.sampled_at).owner==TriggerOwner::none,"ordinary ground cannot borrow a cancelled vert window");
+    }
+}
+void landing_windows() {
+    for(unsigned hz:{30u,60u,120u})for(unsigned fault=0;fault<10;++fault) {
+        auto o=fly(ground());VertLandingWindow window;window.begin(o);
+        const auto takeoff=o.native.sampled_at;
+        const auto interval=1000u/hz;
+        for(unsigned ms=interval;ms<250;ms+=interval) {
+            ++o.native.physics_step;o.native.sampled_at=takeoff+ms;o.velocity={4,-3,0};o.position={0,.3f,0};
+            window.observe(o);
+        }
+        const auto nearby=patch({0,0,0},{0,1,0});
+        check(!window.available(o.native,o.native.sampled_at),"descending AIR alone cannot reserve landing input");
+        check(window.approach(o.native,nearby),"fresh near-surface descending approach qualifies reservation");
+        check(window.available(o.native,o.native.sampled_at),"reservation is available before actual contact");
+        check(!window.contact().valid,"geometry never manufactures native landing");
+        const auto air_origin=InputNativeContext::from_frame(o.native);
+        const auto edge=o.native.sampled_at;
+        check(window.deadline(air_origin,edge,o.native,edge)==edge+430,"reservation deadline is anchored to original edge");
+        check(!window.ready(o.native,edge),"predicted approach cannot execute Revert");
+        auto old_origin=InputNativeContext::from_frame(ground().native);
+        check(!window.deadline(old_origin,edge,o.native,edge),"pre-takeoff ground origin cannot become landing input");
+        auto bad=nearby;bad.valid=false;
+        check(!window.approach(o.native,bad),"missing footprint cannot update landing proof");
+        auto landing=o;++landing.native.physics_step;landing.native.sampled_at+=interval;
+        landing.native.airborne=false;landing.native.state=100;++landing.native.air_departure;
+        landing.native.contacts=0xc000;landing.supported=true;landing.up={0,1,0};
+        landing.contact_normal={0,1,0};landing.contacted_shape={7,8,9};
+        if(fault==1)landing.enabled=false;
+        if(fault==2)landing.contested=true;
+        if(fault==3)++landing.native.owner_generation;
+        if(fault==4)landing.native.state=500;
+        if(fault==5)landing.native.air_departure+=1;
+        if(fault==6)landing.contact_normal={1,0,0};
+        if(fault==7)landing.up={0,-1,0};
+        if(fault==8)landing.native.sampled_at+=101;
+        if(fault==9)landing.supported=false;
+        window.observe(landing);
+        check(window.contact().valid==(fault==0),"only original supported same-flight touchdown opens execution window");
+        if(fault==0) {
+            const auto contact=landing.native.sampled_at;
+            check(window.deadline(air_origin,edge,landing.native,contact)==contact+250,"air edge survives actual touchdown publication");
+            check(window.ready(landing.native,contact),"actual supported riding authorizes native Revert actuator");
+            auto ground_origin=InputNativeContext::from_frame(landing.native);
+            check(window.deadline(ground_origin,contact,landing.native,contact)==contact+250,"fresh touchdown ground edge qualifies");
+            ++ground_origin.air_departure;
+            check(!window.deadline(ground_origin,contact,landing.native,contact),"different departure cannot borrow landing window");
+            for(unsigned ms=interval;ms<=250;ms+=interval) {
+                ++landing.native.physics_step;landing.native.sampled_at=contact+ms;window.observe(landing);
+                check(window.available(landing.native,landing.native.sampled_at),"touchdown buffer survives ordinary frame rates");
+                check(window.contact().sampled_at==contact,"repeated support never refreshes landing deadline");
+            }
+            ++landing.native.physics_step;landing.native.sampled_at=contact+251;window.observe(landing);
+            check(!window.available(landing.native,landing.native.sampled_at),"landing window expires into ordinary ground control");
+        }
+    }
+    VertLandingWindow unqualified;auto o=ground();unqualified.observe(o);
+    check(!unqualified.available(o.native,o.native.sampled_at),"ordinary ground never manufactures a vert Revert");
 }
 void lifecycle() {
     auto o=ground();VertAirController c;warm(c,o);c.observe(o);check(c.phase()==VertPhase::rising_support,"steep support qualifies");
@@ -305,4 +423,4 @@ void input_edges() {
     }
 }
 }
-int main(){lifecycle();contact_departure_delay();unavailable_snapshots();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){original_contact_support();trigger_qualification();landing_windows();lifecycle();contact_departure_delay();unavailable_snapshots();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

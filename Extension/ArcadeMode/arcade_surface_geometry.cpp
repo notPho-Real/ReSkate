@@ -247,12 +247,14 @@ bool revalidate_surface_geometry(const SurfaceGeometryNativeApi& api,const Surfa
     return revalidate(api,ctx,sample,nullptr);
 }
 VertPatch query_vert_patch(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
-        SurfaceGeometryVector point,SurfaceGeometryVector normal,float reach) noexcept {
+        SurfaceGeometryVector point,SurfaceGeometryVector normal,float reach,SurfaceGeometryTrace* trace) noexcept {
     using namespace vert_math;
     VertPatch patch;
+    if(trace)*trace={};
+    const auto fail=[&](const char* reason)->VertPatch {if(trace)trace->reason=reason;return {};};
     try {
-        if(!current(api,ctx) || !api.static_world_owner || !api.surface.contact_ready || !finite(point) ||
-           !finite(normal) || !unit(normal) || normal[1]<-.01f || !std::isfinite(reach) || reach<=0 || reach>12)return {};
+        if(!current(api,ctx,trace) || !api.static_world_owner || !api.surface.contact_ready || !finite(point) ||
+           !finite(normal) || !unit(normal) || normal[1]<-.01f || !std::isfinite(reach) || reach<=0 || reach>12)return fail("vert_patch_context");
         auto right=cross(normal,{0,1,0});
         if(!unit(right))right={1,0,0};
         const auto forward=cross(right,normal);
@@ -262,17 +264,19 @@ VertPatch query_vert_patch(const SurfaceGeometryNativeApi& api,const SurfaceGeom
         for(std::size_t i=0;i<offsets.size();++i) {
             const auto center=add(point,add(scale(right,offsets[i][0]),scale(forward,offsets[i][1])));
             const SurfaceGeometrySegment ray{add(center,scale(normal,.5f)),add(center,scale(normal,-reach))};
-            const auto hit=cast(api,ctx,ray,excluded,nullptr,nullptr,true);
-            if(!hit || !hit->world_owner.value || dot(hit->normal,normal)<.85f || hit->normal[1]<-.01f)return {};
+            if(trace)trace->ray=static_cast<unsigned>(i);
+            const auto hit=cast(api,ctx,ray,excluded,trace,nullptr,true);
+            if(!hit)return {};
+            if(!hit->world_owner.value || dot(hit->normal,normal)<.85f || hit->normal[1]<-.01f)return fail("vert_patch_normal");
             auto& sample=patch.samples[i];
             sample.context=ctx;sample.body=hit->body;sample.body_owner=hit->owner;sample.world_owner=hit->world_owner;
             sample.point=hit->point;sample.query_normal=hit->normal;sample.queried_at=api.now(api.user);sample.valid=true;
             if(i && (std::abs(dot(sub(sample.point,patch.center().point),patch.center().query_normal))>.12f ||
-                     dot(sample.query_normal,patch.center().query_normal)<.85f))return {};
+                     dot(sample.query_normal,patch.center().query_normal)<.85f))return fail("vert_patch_discontinuous");
         }
-        for(const auto& sample:patch.samples)if(!revalidate_surface_geometry(api,ctx,sample))return {};
-        patch.valid=exclusions_current(api,ctx,excluded);return patch;
-    } catch(...) {return {};}
+        for(const auto& sample:patch.samples)if(!revalidate(api,ctx,sample,trace))return fail("vert_patch_revalidate");
+        patch.valid=exclusions_current(api,ctx,excluded,trace);if(trace)trace->reason=patch.valid?"vert_patch_valid":"vert_patch_exclusions";return patch;
+    } catch(...) {return fail("vert_patch_exception");}
 }
 bool query_vert_clearance(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
         SurfaceGeometryVector point,SurfaceGeometryVector velocity,float gravity,float seconds) noexcept {

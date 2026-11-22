@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_native_input_state.h"
+#include "arcade_input_policy.h"
 #include "arcade_surface_geometry.h"
 #include <algorithm>
 #include <span>
@@ -26,12 +27,164 @@ struct VertPatch {
     bool valid{};
     const SurfaceGeometrySample& center() const noexcept {return samples[0];}
 };
+struct VertRampContact {
+    SurfaceGeometryVector point{},normal{};
+    SurfaceGeometryBody shape{};
+    SurfaceGeometryWorldOwner owner{};
+};
+// Origin geometry can come from independently validated original wheel
+// contacts. Destination admission still requires its complete query footprint.
+struct VertRampSupport {
+    SurfaceGeometryVector point{},normal{};
+    std::array<VertRampContact,2> contacts{};
+    bool valid{};
+    VertRampSupport()=default;
+    VertRampSupport(const VertPatch& patch) noexcept : point(patch.center().point),
+        normal(patch.center().query_normal),valid(patch.valid) {
+        for(std::size_t i=0;i<contacts.size();++i) {
+            const auto& sample=patch.samples[i];contacts[i]={sample.point,sample.query_normal,sample.body,sample.world_owner};
+        }
+    }
+};
+inline VertRampSupport vert_ramp_contacts(std::span<const VertRampContact> contacts,
+        SurfaceGeometryVector board,SurfaceGeometryVector up) noexcept {
+    using namespace vert_math;
+    if(!finite(board) || !finite(up))return {};
+    for(std::size_t i=0;i<contacts.size();++i)for(std::size_t j=i+1;j<contacts.size();++j) {
+        const auto& first=contacts[i];const auto& second=contacts[j];
+        const auto qualifies=[&](const auto& c) {
+            return c.shape.world && c.shape.index!=UINT32_MAX && c.owner.value && finite(c.point) && finite(c.normal) &&
+                std::abs(dot(c.normal,c.normal)-1)<.02f && c.normal[1]>=-.01f && dot(c.normal,up)>.7f &&
+                length(sub(c.point,board))<1.2f;
+        };
+        const float separation=length(sub(first.point,second.point));
+        if(!qualifies(first) || !qualifies(second) || first.shape.world!=second.shape.world ||
+           separation<.15f || separation>1.5f || dot(first.normal,second.normal)<.9f)continue;
+        VertRampSupport result;result.point=scale(add(first.point,second.point),.5f);
+        result.normal=add(first.normal,second.normal);if(!unit(result.normal))continue;
+        result.contacts={first,second};result.valid=true;return result;
+    }
+    return {};
+}
 struct VertObservation {
     NativeInputFrame native{};
     SurfaceGeometryVector position{},velocity{},up{0,1,0};
     VertPatch support{};
+    VertRampSupport native_ramp{};
+    VertRampSupport ramp() const noexcept {return native_ramp.valid?native_ramp:VertRampSupport{support};}
     bool enabled{}, supported{}, contested{};
     SurfaceGeometryBody contacted_shape{};
+    SurfaceGeometryVector contact_normal{};
+};
+// Recognition evidence only. The trigger journal owns the physical edge and
+// the existing native Revert actuator owns movement. A predicted approach may
+// reserve input, but only original wheel contact opens execution permission.
+class VertLandingWindow {
+public:
+    static constexpr std::uint64_t before_ms=180,after_ms=250;
+    void reset() noexcept {*this={};}
+    void begin(const VertObservation& value) noexcept {reset();takeoff_=last_air_=value;}
+    bool flight(const NativeInputFrame& f) const noexcept {
+        return takeoff_.native.valid && f.valid && f.owner==takeoff_.native.owner &&
+            f.owner_generation==takeoff_.native.owner_generation && f.airborne &&
+            f.airborne_episode==takeoff_.native.airborne_episode && f.air_departure==takeoff_.native.air_departure;
+    }
+    void observe(const VertObservation& value) noexcept {
+        using namespace vert_math;
+        if(!takeoff_.native.valid)return;
+        const auto& f=value.native;
+        const auto& previous=last_air_.native;
+        if(!value.enabled || value.contested || !f.valid || !finite(value.position) || !finite(value.velocity) ||
+           f.owner!=takeoff_.native.owner || f.owner_generation!=takeoff_.native.owner_generation ||
+           f.rail_family || f.mode>2 || f.sampled_at<previous.sampled_at ||
+           f.sampled_at-takeoff_.native.sampled_at>5000) {reset();return;}
+        if(f.physics_step<=previous.physics_step)return;
+        if(f.airborne) {
+            if(contact_.valid || !flight(f) || f.sampled_at-previous.sampled_at>100)reset();
+            else last_air_=value;
+            return;
+        }
+        if(f.airborne_episode!=previous.airborne_episode || f.air_departure!=previous.air_departure+1 ||
+           (f.state!=100 && f.state!=103 && f.state!=101)) {reset();return;}
+        if(contact_.valid) {
+            if(f.sampled_at-contact_.sampled_at>after_ms)reset();
+            return;
+        }
+        if(f.sampled_at-previous.sampled_at>100 || f.sampled_at-takeoff_.native.sampled_at<150 ||
+           last_air_.velocity[1]>=-.1f) {reset();return;}
+        // State publication may lead contact by an original step. It cannot
+        // extend the last AIR timestamp or establish landing by itself.
+        if(!value.supported)return;
+        auto normal=value.contact_normal;
+        if((f.state!=100 && f.state!=103) || !unit(normal) || normal[1]<.1f ||
+           dot(value.up,normal)<.5f || std::hypot(value.velocity[0],value.velocity[2])<1 ||
+           !value.contacted_shape.world) {reset();return;}
+        contact_=f;
+    }
+    bool approach(const NativeInputFrame& source,const VertPatch& patch) noexcept {
+        using namespace vert_math;
+        if(!flight(source) || source.physics_step!=last_air_.native.physics_step || !patch.valid ||
+           last_air_.velocity[1]>=-.1f || source.sampled_at-takeoff_.native.sampled_at<150)return false;
+        const auto normal=patch.center().query_normal;
+        if(!finite(normal) || normal[1]<.1f || std::abs(dot(normal,normal)-1)>.02f)return false;
+        const float distance=dot(sub(last_air_.position,patch.center().point),normal);
+        const float closing=-dot(last_air_.velocity,normal);
+        if(!std::isfinite(distance) || distance<0 || distance>1.5f || closing<.2f ||
+           distance/closing>static_cast<float>(before_ms)*.001f)return false;
+        approach_=source;return true;
+    }
+    bool available(const NativeInputFrame& current,std::uint64_t now) const noexcept {
+        if(!takeoff_.native.valid || !current.valid || current.owner!=takeoff_.native.owner ||
+           current.owner_generation!=takeoff_.native.owner_generation || now<current.sampled_at ||
+           now-current.sampled_at>100 || current.rail_family || current.mode>2)return false;
+        if(contact_.valid)return !current.airborne && current.physics_step>=contact_.physics_step &&
+            current.airborne_episode==contact_.airborne_episode && current.air_departure==contact_.air_departure &&
+            (current.state==100 || current.state==103 || current.state==101) &&
+            now>=contact_.sampled_at && now-contact_.sampled_at<=after_ms;
+        return flight(current) && approach_.valid && now>=approach_.sampled_at &&
+            now-approach_.sampled_at<=100 && current.physics_step>=approach_.physics_step;
+    }
+    std::uint64_t deadline(const InputNativeContext& origin,std::uint64_t edge,
+            const NativeInputFrame& current,std::uint64_t now) const noexcept {
+        if(!available(current,now) || !origin.required || !origin.fresh(edge) ||
+           origin.generations.owner!=takeoff_.native.owner_generation ||
+           origin.physics_step<takeoff_.native.physics_step || edge<takeoff_.native.sampled_at ||
+           now<edge || now-edge>before_ms+after_ms || origin.rail_family ||
+           origin.airborne_episode!=takeoff_.native.airborne_episode)return 0;
+        if(origin.airborne) {
+            if(origin.air_departure!=takeoff_.native.air_departure)return 0;
+        } else if(!contact_.valid || origin.air_departure!=contact_.air_departure ||
+                  (origin.flip.state!=100 && origin.flip.state!=103))return 0;
+        if(contact_.valid) {
+            if((edge<contact_.sampled_at && contact_.sampled_at-edge>before_ms) ||
+               (edge>=contact_.sampled_at && edge-contact_.sampled_at>after_ms))return 0;
+            return std::min(edge+before_ms+after_ms,contact_.sampled_at+after_ms);
+        }
+        // Reserve only a fresh AIR edge near the corroborated approach. Its
+        // bounded expiry belongs to that original press, never to a later poll.
+        if(!origin.airborne || (edge<approach_.sampled_at ? approach_.sampled_at-edge : edge-approach_.sampled_at)>100)return 0;
+        return edge+before_ms+after_ms;
+    }
+    bool contact_publication_pending(const InputNativeContext& current,std::uint64_t now) const noexcept {
+        const auto& air=last_air_.native;
+        return !contact_.valid && air.valid && current.fresh(now) && !current.airborne && !current.rail_family &&
+            current.generations.owner==air.owner_generation && current.physics_step>air.physics_step &&
+            current.physics_step-air.physics_step<=2 && current.sampled_at>=air.sampled_at &&
+            current.sampled_at-air.sampled_at<=100 && current.airborne_episode==air.airborne_episode &&
+            current.air_departure==air.air_departure+1 && (current.flip.state==100 || current.flip.state==103) &&
+            current.flip.mode<=2 && last_air_.velocity[1]<-.1f &&
+            current.sampled_at-takeoff_.native.sampled_at>=150;
+    }
+    bool ready(const NativeInputFrame& current,std::uint64_t now) const noexcept {
+        return contact_.valid && available(current,now) && current.contacts==0xc000u &&
+            current.state==100 && current.mode<=1;
+    }
+    const NativeInputFrame& takeoff() const noexcept {return takeoff_.native;}
+    const NativeInputFrame& contact() const noexcept {return contact_;}
+    const NativeInputFrame& approach_frame() const noexcept {return approach_;}
+private:
+    VertObservation takeoff_{},last_air_{};
+    NativeInputFrame approach_{},contact_{};
 };
 struct VertPlan {
     VertAction action{};
@@ -44,7 +197,7 @@ struct VertPlan {
 };
 // Analytic reachability only, not a replacement integrator. Gravity is measured
 // from consecutive original physics observations; native collision keeps control.
-inline VertPlan vert_destination(const VertObservation& from,const VertPatch& origin,
+inline VertPlan vert_destination(const VertObservation& from,const VertRampSupport& origin,
         const VertPatch& destination,SurfaceGeometryVector direction,float gravity,float time) noexcept {
     using namespace vert_math;
     VertPlan result;
@@ -65,8 +218,8 @@ inline VertPlan vert_destination(const VertObservation& from,const VertPatch& or
        arrival[1]>=-.5f || impact<.1f || impact>std::min(6.f,along*.65f) || along<2)return result;
     auto downhill=horizontal(n);
     if(dot(horizontal(arrival),downhill)<.5f)return result;
-    const float alignment=dot(horizontal(origin.center().query_normal),downhill);
-    const float drop=origin.center().point[1]-target.point[1];
+    const float alignment=dot(horizontal(origin.normal),downhill);
+    const float drop=origin.point[1]-target.point[1];
     if(from.velocity[1]<-.5f && drop>.75f)result.action=VertAction::acid_drop;
     else if(alignment<-.7f)result.action=VertAction::spine;
     else if(alignment<.7f)result.action=VertAction::hip;
@@ -111,7 +264,7 @@ inline bool vert_align_target(std::array<float,16>& target,SurfaceGeometryVector
 }
 class VertAirController {
 public:
-    void cancel() noexcept {phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
+    void cancel() noexcept {landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
     void reset() noexcept {*this={};}
     // A busy input publisher is absence of evidence, not a new contact. Keep
     // recent curvature for this physical owner, but withdraw every command and
@@ -147,6 +300,7 @@ public:
             reset();
         }
         if(f.physics_step<=previous_.native.physics_step)return;
+        landing_.observe(value);
         if(!f.airborne) {
             // Only a real supported riding observation records landing. A query
             // destination or a state departure on its own cannot do so.
@@ -158,38 +312,38 @@ public:
                   std::any_of(released_plan_.destination.samples.begin(),released_plan_.destination.samples.end(),
                     [&](const auto& sample){return sample.body==value.contacted_shape;})));
             request_=0;plan_={};gravity_=0;gravity_samples_=0;
-            const auto n=value.support.center().query_normal;
-            const auto& before=previous_.support;
+            const auto ramp=value.ramp();const auto n=ramp.normal;
+            const auto before=previous_.ramp();
             // A steep plane alone is not a transition. Observe the concave
             // change of support normal while physically climbing the ramp.
-            if(value.support.valid && value.supported && before.valid && previous_.supported &&
+            if(ramp.valid && value.supported && before.valid && previous_.supported &&
                !previous_.native.airborne && f.sampled_at>=previous_.native.sampled_at &&
-               f.sampled_at-previous_.native.sampled_at<=100 && n[1]<before.center().query_normal[1]-.005f &&
-               dot(sub(n,before.center().query_normal),value.velocity)<-.05f &&
+               f.sampled_at-previous_.native.sampled_at<=100 && n[1]<before.normal[1]-.005f &&
+               dot(sub(n,before.normal),value.velocity)<-.05f &&
                value.position[1]>previous_.position[1]+.005f &&
                length(sub(value.position,previous_.position))<3)transition_at_=f.sampled_at;
             const bool curved=transition_at_ && f.sampled_at>=transition_at_ && f.sampled_at-transition_at_<=500;
-            const bool steep=curved &&value.support.valid && value.supported && (f.state==100 || f.state==103) &&
+            const bool steep=curved &&ramp.valid && value.supported && (f.state==100 || f.state==103) &&
                 f.mode<=2 && n[1]>=-.01f && n[1]<.55f && value.velocity[1]>2 &&
                 dot(value.up,n)>.7f && std::abs(dot(value.velocity,n))<2;
-            if(steep) {origin_=value.support;lip_=value;phase_=VertPhase::rising_support;}
+            if(steep) {origin_=ramp;lip_=value;phase_=VertPhase::rising_support;}
             else {
                 // Wheel contact can end a few original steps before AIR is
                 // published. Preserve that departure, not a new launch: its
                 // deadline remains anchored to the last real curved support.
-                const bool departing=phase_==VertPhase::rising_support && (!value.supported || !value.support.valid) &&
+                const bool departing=phase_==VertPhase::rising_support && (!value.supported || !ramp.valid) &&
                     lip_.native.valid && f.owner==lip_.native.owner && f.owner_generation==lip_.native.owner_generation &&
                     f.sampled_at>=lip_.native.sampled_at && f.sampled_at-lip_.native.sampled_at<=100 &&
                     (f.state==100 || f.state==103) && f.mode<=2 && !f.rail_family && value.velocity[1]>2 &&
-                    dot(value.up,lip_.support.center().query_normal)>.7f && length(sub(value.position,lip_.position))<2;
+                    dot(value.up,lip_.ramp().normal)>.7f && length(sub(value.position,lip_.position))<2;
                 phase_=departing?VertPhase::rising_support:landed?VertPhase::landed:VertPhase::idle;
             }
         } else if(!previous_.native.airborne) {
             if(phase_==VertPhase::rising_support && previous_.native.valid &&
                f.airborne_started_known && lip_.native.valid && f.airborne_started_at>=lip_.native.sampled_at &&
                f.sampled_at>=lip_.native.sampled_at && f.sampled_at-lip_.native.sampled_at<=100 && value.velocity[1]>2 && !f.rail_family && f.mode<=2) {
-                takeoff_=value;phase_=VertPhase::native_air;
-                direction_=scale(horizontal(origin_.center().query_normal),-1);
+                takeoff_=value;phase_=VertPhase::native_air;landing_.begin(value);
+                direction_=scale(horizontal(origin_.normal),-1);
             } else cancel();
         } else if((phase_==VertPhase::native_air || phase_==VertPhase::requested || phase_==VertPhase::released) &&
                   !matches(f,f.sampled_at))cancel();
@@ -256,16 +410,19 @@ public:
            !f.flip_known || f.flip_id!=-1 || f.mode>2)return {};
         return released_plan_.normal;
     }
+    VertLandingWindow& landing() noexcept {return landing_;}
+    const VertLandingWindow& landing() const noexcept {return landing_;}
     const VertObservation& observation() const noexcept {return previous_;}
-    const VertPatch& origin() const noexcept {return origin_;}
+    const VertRampSupport& origin() const noexcept {return origin_;}
     const VertPlan& released_plan() const noexcept {return released_plan_;}
     SurfaceGeometryVector direction() const noexcept {return direction_;}
     float gravity() const noexcept {return gravity_samples_>=2?gravity_:0;}
     VertPhase phase() const noexcept {return phase_;}
 private:
     VertPhase phase_{};
+    VertLandingWindow landing_{};
     VertObservation previous_{},takeoff_{},lip_{};
-    VertPatch origin_{};
+    VertRampSupport origin_{};
     SurfaceGeometryVector direction_{};
     VertPlan plan_{},released_plan_{};
     std::uint64_t released_at_{},unavailable_at_{};

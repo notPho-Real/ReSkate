@@ -381,6 +381,17 @@ static void update_arcade_surface_geometry(std::uintptr_t client,bool collision_
  const auto probe=wallplant_runtime::geometry_probe();
  const auto note=[&](unsigned stage,const char* reason){
   if(diagnostic)diagnostic->geometry_reason=reason?reason:"motion_frame_unavailable";
+#if defined(DINGOSDK_DEV_TOOLS)
+  if(!worker && arcade_mode::enabled() && stage<32) {
+   static std::array<std::uint64_t,32> reported{};
+   const auto now=GetTickCount64();
+   if(now<reported[stage] || now-reported[stage]>=500) {
+    reported[stage]=now;
+    logging::log(logging::Level::info,logging::Channel::skater,
+     "ARCADE VERT QUERY SCOPE: stage={} reason={}.",stage,reason?reason:"unknown");
+   }
+  }
+#endif
   if(!motion)wallplant_runtime::geometry_event(probe,stage,reason);
  };
  note(0,"client_entry");
@@ -469,10 +480,13 @@ static void update_arcade_surface_geometry(std::uintptr_t client,bool collision_
    board_offsets[0]=surface_geometry_detail::sub(callback.board_support.point,root);
    supports=board_offsets;
   }
-  if(!worker && !admission.wallplant_only && read_surface_board_support(owner,callback.board_support) &&
-     motion_surface_api.contact_ready) {
-   auto vert_api=api;vert_api.surface=motion_surface_api;vert_api.current=&wallplant_surface_callback_current;
-   vert_runtime::geometry(vert_api,origin,frame,callback.board_support.point,callback.board_support.up);
+  if(!worker && !admission.wallplant_only) {
+   if(!read_surface_board_support(owner,callback.board_support))note(20,"vert_board_support");
+   else if(!motion_surface_api.contact_ready)note(21,"vert_contact_contracts");
+   else {
+    auto vert_api=api;vert_api.surface=motion_surface_api;vert_api.current=&wallplant_surface_callback_current;
+    vert_runtime::geometry(vert_api,origin,frame,callback.board_support.point,callback.board_support.up);
+   }
   }
   note(11,"before_publish");
   if(motion)

@@ -13,6 +13,10 @@ VertPatch support;
 NativeInputFrame support_frame;
 }
 void cancel() noexcept {std::lock_guard lock(mutex);controller.reset();support={};support_frame={};}
+TriggerDecision qualify(void*,const TriggerPress& press,const InputNativeContext& current,std::uint64_t now) noexcept {
+    std::unique_lock lock(mutex,std::try_to_lock);
+    return lock.owns_lock()?qualify_vert_trigger(controller,press,current,now):TriggerDecision{};
+}
 InputSurfaceState surface(std::uint64_t now,const NativeInputFrame& frame,InputSurfaceState other) noexcept {
     std::unique_lock lock(mutex,std::try_to_lock);
     if(!lock.owns_lock() || !controller.eligible(frame,now))return other;
@@ -71,6 +75,14 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
         if(std::any_of(support.samples.begin(),support.samples.end(),[&](const auto& sample) {
             return sample.body==observation.contacted_shape;
         }))observation.support=support;
+    if(frame.airborne && controller.origin().valid) {
+        for(const auto& contact:controller.origin().contacts) {
+            SurfaceGeometryWorldOwner current{};
+            if(!native_wall_contact::static_world_owner(contact.shape,current) || current!=contact.owner) {
+                controller.cancel();break;
+            }
+        }
+    }
     if(controller.phase()==VertPhase::released) {
         const auto& released=controller.released_plan();
         for(const auto& sample:released.destination.samples)if(released.destination.valid) {
@@ -91,13 +103,12 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
     }
 #if defined(DINGOSDK_DEV_TOOLS)
     if(before!=controller.phase() || plan || (!frame.airborne && observation.up[1]<.8f && frame.physics_step%6==0))logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE VERT: step={} episode={} phase={} action={} position={},{},{} velocity={},{},{} planned={},{},{} supported={} patch={} normal={},{},{} mode={}.",
+        "ARCADE VERT: step={} episode={} phase={} action={} position={},{},{} velocity={},{},{} planned={},{},{} supported={} patch={} native_ramp={} normal={},{},{} mode={}.",
         frame.physics_step,frame.airborne_episode,static_cast<unsigned>(controller.phase()),static_cast<unsigned>(plan.action),
         observation.position[0],observation.position[1],observation.position[2],
         observation.velocity[0],observation.velocity[1],observation.velocity[2],
-        plan.velocity[0],plan.velocity[1],plan.velocity[2],observation.supported,observation.support.valid,
-        observation.support.center().query_normal[0],observation.support.center().query_normal[1],
-        observation.support.center().query_normal[2],frame.mode);
+        plan.velocity[0],plan.velocity[1],plan.velocity[2],observation.supported,observation.support.valid,observation.native_ramp.valid,
+        observation.ramp().normal[0],observation.ramp().normal[1],observation.ramp().normal[2],frame.mode);
 #endif
     return {plan,controller.phase()==VertPhase::native_air || controller.phase()==VertPhase::requested ||
         controller.phase()==VertPhase::released,controller.phase()==VertPhase::released};
@@ -112,22 +123,59 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
             SurfaceGeometryWorldOwner& owner) noexcept {
         return native_wall_contact::local_component_owner(shape,ctx.owner[1],owner);
     };
-    if(!api.now || !api.current || !api.current(api.user,context))return;
+    if(!api.now || !api.current)return;
+    if(!api.current(api.user,context)) {
+#if defined(DINGOSDK_DEV_TOOLS)
+        static std::uint64_t reported{};const auto failed_at=api.now(api.user);
+        if(failed_at<reported || failed_at-reported>=250) {
+            reported=failed_at;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE VERT QUERY REJECT: reason={}.",api.current_failure?api.current_failure(api.user):"unknown");
+        }
+#endif
+        return;
+    }
     const auto now=api.now(api.user);
     if(!frame.airborne) {
         // The board basis chooses probe orientation; the measured normal and
         // independently observed wheel contacts, not that basis, admit takeoff.
-        const auto patch=query_vert_patch(api,context,board,up,.9f);
+        SurfaceGeometryTrace trace;
+        const auto patch=query_vert_patch(api,context,board,up,.9f,&trace);
+#if defined(DINGOSDK_DEV_TOOLS)
+        static std::uint64_t reported{};
+        if(now<reported || now-reported>=250) {
+            reported=now;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE VERT PATCH: step={} valid={} reason={} context={} ray={} hits={} up={},{},{}.",
+                frame.physics_step,patch.valid,trace.reason,trace.context_reason,trace.ray,trace.hits,up[0],up[1],up[2]);
+        }
+#endif
         std::lock_guard lock(mutex);support=patch;support_frame=frame;return;
     }
     VertAirController snapshot;
     {
         std::unique_lock lock(mutex,std::try_to_lock);
-        if(!lock.owns_lock() || !controller.pending(frame,now))return;
+        if(!lock.owns_lock() || (!controller.pending(frame,now) && !controller.landing().flight(frame)))return;
         snapshot=controller;
     }
     using namespace vert_math;
     const auto observation=snapshot.observation();const auto direction=snapshot.direction();
+    if(snapshot.landing().flight(frame) && observation.velocity[1]<-.1f) {
+        // A short footprint query reserves touchdown input only. The original
+        // physics callback must still observe actual wheel support to execute.
+        SurfaceGeometryRequest probe;
+        constexpr std::array<std::array<float,2>,5> offsets{{{0,0},{-.025f,0},{.025f,0},{0,-.025f},{0,.025f}}};
+        for(std::size_t i=0;i<5;++i)probe.segments[i]={{board[0]+offsets[i][0],board[1]+.05f,board[2]+offsets[i][1]},
+            {board[0]+offsets[i][0],board[1]-1.5f,board[2]+offsets[i][1]}};
+        const auto hit=query_surface_geometry(api,context,probe);
+        if(hit.valid) {
+            const auto patch=query_vert_patch(api,context,hit.point,hit.query_normal,.5f);
+            bool current=patch.valid && api.current(api.user,context);
+            for(const auto& sample:patch.samples)if(current && !revalidate_surface_geometry(api,context,sample))current=false;
+            if(current) {std::lock_guard lock(mutex);(void)controller.landing().approach(frame,patch);}
+        }
+    }
+    if(!snapshot.pending(frame,now))return;
     const auto right=cross(direction,{0,1,0});const float gravity=snapshot.gravity();
     VertPlan selected;
     if(gravity>0) {
@@ -161,8 +209,8 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
                         float highest=-100000;
                         for(std::size_t k=0;k<crest.size();++k) {
                             const float fraction=static_cast<float>(k+1)*.25f;
-                            auto middle=add(snapshot.origin().center().point,
-                                scale(sub(candidate.landing,snapshot.origin().center().point),fraction));
+                            auto middle=add(snapshot.origin().point,
+                                scale(sub(candidate.landing,snapshot.origin().point),fraction));
                             middle[1]=std::max(observation.position[1],candidate.landing[1])+3;
                             for(std::size_t i=0;i<5;++i)probe.segments[i]={{middle[0]+offsets[i][0],middle[1],middle[2]+offsets[i][1]},
                                 {middle[0]+offsets[i][0],middle[1]-12,middle[2]+offsets[i][1]}};
@@ -173,7 +221,7 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
                         // The connection must rise back toward the originating
                         // lip. Missing support anywhere across it rejects a gap;
                         // a sloped crest need not have a flat midpoint.
-                        crest_valid=crest_valid && highest>=std::max(snapshot.origin().center().point[1],candidate.landing[1])-.25f;
+                        crest_valid=crest_valid && highest>=std::max(snapshot.origin().point[1],candidate.landing[1])-.25f;
                     }
                     if(!crest_valid)continue;
                     candidate.crest=crest;

@@ -1890,14 +1890,22 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
         const auto support_contacts=arcade_mode::native_wall_contact::riding_support(owner,now);
         if(support_contacts.valid && support_contacts.state==physics && contacts==0xc000u &&
            arcade_mode::AirMotion::same_velocity(support_contacts.seconds,bodies.seconds)) {
+            std::array<arcade_mode::VertRampContact,64> ramp_contacts{};std::size_t ramp_count{};
             for(std::size_t i=0;i<support_contacts.count;++i) {
                 const auto& hit=support_contacts.contacts[i];
                 if(hit.bone>=4 || !hit.identity_valid || !hit.static_body || !hit.categories_known ||
                    hit.kind==4 || hit.kind==5 || hit.kind==8 || hit.kind==11 ||
                    !arcade_mode::native_wall_contact::current(hit,hit.shape.world))continue;
                 vert_observation.supported=true;
-                vert_observation.contacted_shape={hit.shape.world,hit.shape.index,hit.shape.generation};break;
+                vert_observation.contacted_shape={hit.shape.world,hit.shape.index,hit.shape.generation};
+                vert_observation.contact_normal=hit.normal;
+                arcade_mode::SurfaceGeometryWorldOwner stamp{};
+                if(arcade_mode::native_wall_contact::static_world_owner(vert_observation.contacted_shape,stamp))
+                    ramp_contacts[ramp_count++]={hit.point,hit.normal,vert_observation.contacted_shape,stamp};
             }
+            vert_observation.native_ramp=arcade_mode::vert_ramp_contacts(
+                std::span<const arcade_mode::VertRampContact>{ramp_contacts.data(),ramp_count},
+                vert_observation.position,vert_observation.up);
         }
         const auto vert_motion=arcade_mode::vert_runtime::step(vert_observation,now,
             {owner.base,owner.entity,owner.core,owner.context,owner.rig},wall_frame_reason);

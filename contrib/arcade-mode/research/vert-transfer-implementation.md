@@ -98,3 +98,37 @@ cover spines, angled hips, lower transitions, missing crest connections and
 obstructions under translation and rotation. These join the procedural curved,
 split-shape, category and ownership tests. Native collision, posture and landing
 remain acceptance requirements; a selected simulated trajectory is not a landing.
+
+## Contextual landing input and original contact support
+
+The shared trigger contract supersedes the earlier generic ground RT Revert
+mapping. The primary input owner controls Nollie/Pressure, Switch and Manual
+Pivot. The vert qualifier consumes the same timestamped trigger record through
+`TriggerRouting`; it does not sample another edge stream or replace those handlers.
+A descending geometry approach can reserve an edge within 180ms before contact.
+Only independently observed original wheel support opens native Revert execution,
+with a fixed 250ms post-contact window. Native ground publication can precede the
+contact bridge by up to two steps; that gap reserves input without granting motion.
+Transfer-owned edges cannot reclassify at touchdown. The existing native auxiliary
+Revert actuator remains the execution path; neither qualification nor a request
+awards score or proves stance completion. Shared dispatcher wiring is pending the
+primary engineer's reviewed implementation checkpoint.
+
+A second no-trigger native run on validated source 66bed252 recorded 443 physical
+samples at 60Hz, including AIR200/201 and supported riding afterward. It again
+failed vert recognition: every reported origin query patch was unavailable, despite
+original wheel contacts on the curved transition. Diagnostics also established
+both mutex contention and native-frame correlation failures. This does not prove
+that either alone caused the absent query patches. The native detector remains
+unaccepted. No trigger was sent; the ordinary Arcade air shaper was still active
+because recognition failed, so this trace cannot isolate unmodified native vert
+return. The exact prior installation and all 146 rollback folders were restored.
+
+Origin recognition now accepts two spatially distinct original wheel contacts with
+validated static shape/owner stamps, coherent normals and plausible board distance.
+Observed concave climbing remains required; a steep wall alone, duplicate contact
+rows or an ordinary Ollie cannot qualify. Complete query footprints remain required
+for destinations, with native collision authoritative for landing. Development-only
+query receipts identify the callback gate and exact ray/owner rejection without
+relaxing them. The contact-source correction and landing qualifier have offline
+coverage; their native integration and playable outcomes remain unverified.

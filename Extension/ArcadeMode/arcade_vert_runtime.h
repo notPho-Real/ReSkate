@@ -1,9 +1,11 @@
 #pragma once
 #include "arcade_vert_air.h"
+#include "arcade_vert_trigger.h"
 #include "arcade_input_dispatch.h"
 #include "arcade_surface_geometry_native.h"
 namespace dingosdk::arcade_mode::vert_runtime {
 void cancel() noexcept;
+TriggerDecision qualify(void*,const TriggerPress&,const InputNativeContext&,std::uint64_t now) noexcept;
 InputSurfaceState surface(std::uint64_t now,const NativeInputFrame&,InputSurfaceState other) noexcept;
 InputDisposition request(const InputRequest&,std::uint64_t now,const NativeInputFrame&) noexcept;
 // Runs in the existing authorized geometry callback; never owns a new hook.
