@@ -392,6 +392,88 @@ void complete_direct_families() {
         check(!out.action.pad.owns_triggers,"landing cannot retain a native grab input owner");
     }
 }
+void extended_grab_modifier_ownership() {
+    for(unsigned hz:{30u,60u,120u}) {
+        const unsigned dt=(1000u+hz-1)/hz;
+        auto late=std::make_unique<Route>();late->poll(1000);
+        late->poll(1000+dt,0x2000);
+        auto out=late->poll(1000+2*dt,0x2080);
+        check(late->tricks.size()==1 && late->tricks[0]==ArcadeTrick::basic_bs_grab &&
+            !(out.action.consume_buttons&0x80u),"R3 pressed after ordinary B retains its native ownership");
+        auto owned=std::make_unique<Route>();owned->poll(1000);
+        out=owned->poll(1000+dt,0x2080);
+        check((out.action.consume_buttons&0x80u)!=0,"extended B edge owns its held R3 modifier");
+        owned->poll(1000+2*dt,0x2000);out=owned->poll(1000+3*dt,0x2080);
+        check(owned->tricks.size()==1 && !(out.action.consume_buttons&0x80u),
+            "released R3 cannot reacquire ownership without another B edge");
+        auto landed=std::make_unique<Route>();landed->poll(1000);landed->poll(1000+dt,0x2080);
+        landed->poll(1000+2*dt,0x2080,100);out=landed->poll(1000+3*dt,0x2080,200);
+        check(!(out.action.consume_buttons&0x80u),"new flight cannot inherit old held grab modifier ownership");
+        auto missing=std::make_unique<Route>();missing->selector_available=false;missing->selected=ArcadeTrick::nosegrab;
+        missing->poll(1000);out=missing->poll(1000+dt,0x2080);
+        check(missing->requests.empty() && !(out.action.consume_buttons&0x80u),
+            "unsupported extended grab cannot retain R3 ownership");
+    }
+    struct Waiting {
+        InputRequest last{};
+        static InputDisposition submit(void* state,const InputRequest& request) noexcept {
+            static_cast<Waiting*>(state)->last=request;return InputDisposition::waiting;
+        }
+    };
+    for(unsigned fault=0;fault<7;++fault) {
+        auto input=std::make_unique<UnifiedInput>();Waiting waiting;
+        InputEnvironment env{InputContext::air,true};env.named_grabs=env.native_grab_transition=true;
+        env.policy.bounded_handoff=true;
+        const InputAdapter adapter{&waiting,Waiting::submit};
+        input->poll(1000,{},env,adapter);input->poll(1010,{0x2080},env,adapter);
+        check(input->owns_grab_modifier() && waiting.last.modifier==1 && waiting.last.input_sequence,
+            "waiting extended grab owns only its captured physical sequence");
+        auto now=std::uint64_t{1020};
+        if(fault==0)env.context=InputContext::ground;
+        if(fault==1)env.gameplay=false;
+        if(fault==2)env.conflict=true;
+        if(fault==3)now=waiting.last.deadline;
+        if(fault==4)input->cancel_auxiliary();
+        if(fault==5)env.auxiliary_enabled=false;
+        if(fault==6)env.native_grab_transition=false;
+        input->poll(now,{0x2080},env,adapter);
+        check(!input->owns_grab_modifier(),"landing, OFF, conflict, expiry, cancellation and lost admission release held R3");
+    }
+    {
+        auto input=std::make_unique<UnifiedInput>();Waiting waiting;
+        InputEnvironment env{InputContext::air,true};env.named_grabs=env.native_grab_transition=true;
+        env.policy.bounded_handoff=true;
+        const InputAdapter adapter{&waiting,Waiting::submit};
+        input->poll(1000,{},env,adapter);input->poll(1010,{0x2080},env,adapter);
+        const auto expiry=waiting.last.deadline;const auto old_sequence=waiting.last.input_sequence;
+        input->poll(1040,{0x80},env,adapter);input->poll(expiry,{0x2080},env,adapter);
+        check(input->owns_grab_modifier() && waiting.last.physical_pressed_at==expiry &&
+            waiting.last.input_sequence!=old_sequence,"older grab expiry cannot revoke a newer physical R3 occurrence");
+    }
+    for(bool repress:{false,true}) {
+        auto buffered=std::make_unique<Route>();buffered->poll(900,0,100);buffered->poll(1000,0,200,1);
+        buffered->client_action_ready=false;buffered->poll(1010,0x2080,200,1);
+        buffered->poll(1020,0x2000,200,1);
+        if(repress)buffered->poll(1025,0x2080,200,1);
+        buffered->client_action_ready=true;
+        const auto out=buffered->poll(1030,repress?0x2080:0x2000,201,1);
+        check(buffered->tricks.size()==1 && buffered->tricks[0]==ArcadeTrick::double_grab &&
+            !(out.action.consume_buttons&0x80u),"buffered extended B keeps its identity without reclaiming released R3");
+    }
+    {
+        auto input=std::make_unique<UnifiedInput>();Waiting waiting;
+        InputEnvironment env{InputContext::air,true};env.named_grabs=env.native_grab_transition=true;
+        const InputAdapter adapter{&waiting,Waiting::submit};input->poll(1000,{},env,adapter);
+        for(unsigned i=0;i<=InputRequestQueue::capacity;++i) {
+            input->poll(1001+2*i,{0x80},env,adapter);input->poll(1002+2*i,{0x2080},env,adapter);
+        }
+        check(input->diagnostic().queue_full && !input->owns_grab_modifier(),
+            "full pending queue cannot reserve R3 for a dropped extended grab");
+        input->poll(1210,{0x80},env,adapter);input->poll(1211,{0x4082},env,adapter);
+        check(input->diagnostic().queue_full>=2 && !input->owns_flip_modifier(),
+            "full pending queue cannot reserve R3 for a dropped extended flip");
+    }
+}
 void selected_native_families() {
     const auto* seatbelt=native_grab::pilot(ArcadeTrick::seatbelt_bs_shifty);
     check(seatbelt && seatbelt->family==4 && seatbelt->detail==24 && seatbelt->x==1 && seatbelt->y==0 &&
@@ -1059,4 +1141,4 @@ void repeated_grab_after_clock_reset() {
           "reset prefix timestamp cannot suppress a new queued repeat after clock rollback");
 }
 
-int main(){queued_grab_released_pop_retirement();repeated_grab_after_clock_reset();queued_grab_retirement_requires_native_owner();native_family_change_waits_for_exit();native_footer_exit_contract();current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();repeated_grab_before_native_admission();input_order_and_launch();native_air_before_client_readiness();repeated_grab_before_client_readiness();repeated_grab_wait_deadlines();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){extended_grab_modifier_ownership();queued_grab_released_pop_retirement();repeated_grab_after_clock_reset();queued_grab_retirement_requires_native_owner();native_family_change_waits_for_exit();native_footer_exit_contract();current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();repeated_grab_before_native_admission();input_order_and_launch();native_air_before_client_readiness();repeated_grab_before_client_readiness();repeated_grab_wait_deadlines();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}

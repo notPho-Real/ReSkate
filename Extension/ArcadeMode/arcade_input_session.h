@@ -493,9 +493,6 @@ public:
         output.action.consume_buttons = action_enabled && admission.action_fresh &&
             (admission.action_mode == ActionExperiment::grabs ||
              (admission.action_mode == ActionExperiment::classic && context == InputContext::air)) ? 0x2000 : 0;
-        if(output.action.consume_buttons && admission.action_mode==ActionExperiment::classic &&
-            admission.normal_grab.submit && (physical.buttons&0x2080u)==0x2080u)
-            output.action.consume_buttons|=0x0080u;
         output.action.consume_rt = action_enabled && ((revert_trigger_owned_ && revert_context(admission,now)) || admission.action_fresh) &&
             (admission.action_mode == ActionExperiment::classic || admission.action_mode == ActionExperiment::revert_frontside ||
              admission.action_mode == ActionExperiment::revert_backside);
@@ -542,6 +539,9 @@ public:
             (native.flip.state==100 || native.flip.state==103)) environment.takeoff_release_at=now;
         environment.takeoff_actor_busy=authored_.busy() || auxiliary_.busy();
         input_.poll(now, physical, environment, {this, &receive});
+        if(action_enabled && admission.action_fresh && admission.action_mode==ActionExperiment::classic &&
+            context==InputContext::air && admission.normal_grab.submit && input_.owns_grab_modifier())
+            output.action.consume_buttons|=0x0080u;
         if(action_enabled && admission.action_fresh && admission.action_mode==ActionExperiment::classic &&
             (context==InputContext::air || (admission.normal_flip.submit && takeoff_release_at_ &&
                 now>=takeoff_release_at_ && now-takeoff_release_at_<InputTiming::direction_ms)) && input_.owns_flip_modifier())
