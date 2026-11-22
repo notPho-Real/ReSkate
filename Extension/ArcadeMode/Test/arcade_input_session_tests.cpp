@@ -1177,6 +1177,102 @@ void established_manual_revert_retains_pressure() {
   check(!poll(3001,100).manual.owns,"missing successor cannot retain manual pressure indefinitely");
  }
 }
+void manual_revert_publication_deadline() {
+ for(bool nose:{false,true})for(unsigned lag:{0u,17u,33u})
+ for(unsigned delay:{0u,1u,8u,16u,17u,33u,34u,149u,150u,151u}) {
+  Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
+  raw.valid=true;raw.state=100;raw.crouch_mode=1;raw.words[1]=0xc000u;
+  const auto native=[&](std::uint64_t at){h.admission.native_context=InputNativeContext::from_frame(producer.observe(at,owner,raw,{true,-1}));};
+  native(900);h.admission.balance_generations=h.admission.native_context.generations;h.poll(900);
+  native(920);h.poll(920,{0,0,static_cast<short>(nose?-25000:25000)});
+  native(940);h.poll(940,{0,0,static_cast<short>(nose?25000:-25000)});
+  raw.words[1]=nose?0x8000u:0x4000u;native(1000);
+  h.admission.pose=nose?SkatePose::nose_manual:SkatePose::manual;
+  h.admission.balance_generations=h.admission.native_context.generations;
+  const auto established=h.poll(1000);
+  check(established.manual.owns&&established.manual.confirmed,"deadline fixture establishes physical Manual authority");
+  h.session.set_recognition_capture(true);
+  raw.words[1]=0xc000u;native(1100-lag); // Native contact moves before its client publication.
+  h.admission.manual_balance_admitted=false;
+  const auto waiting=h.poll(1100,{0,0,0,0,255});
+  const auto& captured=h.session.diagnostic();
+  check(waiting.manual.owns&&!waiting.action.owned&&captured.recognition_count==1,
+        "established Manual holds RS while the captured RT awaits fresh correlation");
+  const auto request=captured.recognition[0].request;
+  check(request.manual_direction==(nose?1:-1)&&request.manual_request_at==established.manual.request_at&&
+        request.physical_pressed_at==1100&&request.input_sequence&&request.deadline==1250-lag&&
+        request.inclusive_deadline&&request.generation_mask==7,
+        "Manual RT preserves physical edge and exact origin, capped by original native evidence lease");
+  if(delay>1){native(1101);h.poll(1101,{0,0,0,0,255});}
+  // New current evidence may authorize delivery, but never renew the original deadline.
+  native(1100+delay);h.admission.balance_generations=h.admission.native_context.generations;
+  h.admission.manual_balance_admitted=true;
+  const auto admitted=h.poll(1100+delay,{0,0,0,0,255});
+  const bool expected=delay+lag<=InputTiming::native_sample_lease_ms;
+  check(admitted.action.owned==expected,"Manual publication wait respects cadence gaps and exact inclusive native lease bound");
+  const auto& dispatched=h.session.diagnostic();
+  if(dispatched.dispatched!=1 || dispatched.dispatch[0].request!=request ||
+     dispatched.dispatch[0].disposition!=(expected?InputDisposition::started:InputDisposition::expired))
+   std::cerr<<"manual RT nose="<<nose<<" lag="<<lag<<" delay="<<delay<<" count="<<dispatched.dispatched
+       <<" same="<<(dispatched.dispatch[0].request==request)<<" disposition="<<static_cast<unsigned>(dispatched.dispatch[0].disposition)<<'\n';
+  check(dispatched.dispatched==1&&dispatched.dispatch[0].request==request&&
+        dispatched.dispatch[0].disposition==(expected?InputDisposition::started:InputDisposition::expired),
+        "waiting polls and newer observations cannot replace recognition identity or extend RT expiry");
+  check(!h.poll(1101+delay,{0,0,0,0,255}).action.requested,"held RT cannot replay a dispatched or expired Manual edge");
+ }
+ for(bool nose:{false,true})for(unsigned fault=0;fault<11;++fault) {
+  Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
+  raw.valid=true;raw.state=100;raw.crouch_mode=1;raw.words[1]=0xc000u;
+  const auto native=[&](std::uint64_t at){h.admission.native_context=InputNativeContext::from_frame(producer.observe(at,owner,raw,{true,-1}));};
+  native(900);h.poll(900);native(920);h.poll(920,{0,0,static_cast<short>(nose?-25000:25000)});
+  native(940);h.poll(940,{0,0,static_cast<short>(nose?25000:-25000)});
+  raw.words[1]=nose?0x8000u:0x4000u;native(1000);
+  h.admission.pose=nose?SkatePose::nose_manual:SkatePose::manual;
+  h.admission.balance_generations=h.admission.native_context.generations;
+  if(fault==9)h.admission.manual_balance_admitted=false;
+  const auto established=h.poll(1000);
+  h.session.set_recognition_capture(true);
+  raw.words[1]=0xc000u;native(1100);h.admission.manual_balance_admitted=false;
+  h.poll(1100,{0,0,0,0,255});
+  if(fault==9) {
+   const auto& diagnostic=h.session.diagnostic();
+   check(diagnostic.recognition_count==1&&!diagnostic.recognition[0].request.manual_direction&&
+         diagnostic.recognition[0].request.deadline==1101,
+         "unconfirmed busy Manual retains the original one-millisecond RT policy");
+  }
+  if(fault==0)++owner.rig;
+  if(fault==1)raw.words[1]=nose?0x8000u:0x4000u;
+  if(fault==2)raw.state=101;
+  if(fault==3)h.admission.pose=SkatePose::riding;
+  if(fault==4)h.admission.external_owner=true;
+  if(fault==5)h.admission.action_mode=ActionExperiment::off;
+  if(fault==7 || fault==8) {
+   h.session.cancel_manual();
+   if(fault==8) {
+    auto replacement=established.manual;++replacement.request_at;
+    h.session.resume_manual_episode(replacement,h.admission.native_context);
+   }
+  }
+  if(fault==10) {
+   const auto hop=h.poll(1108,{classic_a,0,0,0,255});
+   check(hop.jump.setup_started&&hop.authored_playback&&!hop.action.owned,
+         "fresh A cancels a waiting Manual RT and immediately starts the ordinary owned pop");
+  }
+  if(fault!=6)native(1117);
+  h.admission.balance_generations=h.admission.native_context.generations;h.admission.manual_balance_admitted=true;
+  const auto at=fault==6?1251u:1117u;
+  const auto refused=h.poll(at,{static_cast<std::uint16_t>(fault==10?classic_a:0),0,0,0,255});
+  check(!refused.action.owned,
+        "pending RT rejects changed native identity, exit, conflicts, stale evidence or replaced/unconfirmed Manual authority");
+  if(fault==10) {
+   check(refused.authored_playback&&!refused.action.requested,
+         "returned balance correlation cannot revive RT or steal the newer A owner");
+   const auto release=h.poll(1134);
+   check(release.jump.released&&release.jump.setup_admitted&&!release.action.owned,
+         "pending RT cancellation preserves the matching physical A release");
+  }
+ }
+}
 void native_manual_revert_links() {
  for(bool nose:{false,true})for(bool initial_fakie:{false,true})for(unsigned fault=0;fault<9;++fault) {
   Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
@@ -1278,7 +1374,7 @@ int main() {
     takeoff_followup_tests::run();
     accepted_wallplant_handoff_ownership();
     entry_wallplant_air_followup();held_wallplant_entry_followup();delayed_wallplant_entry_receipt();
-    established_manual_revert_retains_pressure();
+    established_manual_revert_retains_pressure();manual_revert_publication_deadline();
     revert_crouch_ownership(); native_manual_revert_links(); native_revert_stances(); jump_idle_tests::run();
     grounded_manual_readiness_wait(); manual_context_window_contracts(); manual_transition_continuity_negatives();
     native_pending_and_active_flights(); auxiliary_mode_contract(); auxiliary_release_handoff_contract();

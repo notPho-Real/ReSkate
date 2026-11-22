@@ -92,6 +92,10 @@ struct InputRequest {
     InputFlipObservation waiting_flip{};
     std::uint64_t pop_release_at{}; // Qualified original release; recognition only, never AIR authority.
     std::uint64_t parent_input_sequence{}; // Exact prior X request, not a native completion.
+    // Existing Manual actuator which owned RS when this physical RT arrived.
+    // Direction is the presence flag; request_at may legitimately be zero.
+    std::uint64_t manual_request_at{};
+    int manual_direction{};
     constexpr GrindChangeTarget grind_target() const noexcept {
         return action == InputAction::rail_change ? grind_change_target(variant) : GrindChangeTarget::none;
     }
@@ -132,6 +136,8 @@ struct InputEnvironment {
     bool native_footplants{};
     bool native_ground_grabs{};
     bool native_fingerflips{};
+    std::uint64_t manual_revert_request_at{};
+    int manual_revert_direction{}; // Established actuator only, never pending acquisition.
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -975,6 +981,21 @@ private:
             // The held adapter additionally proves its own first flip and exact
             // current base ID; owner and airborne episode remain mandatory here.
             if (action==InputAction::flip && form==InputForm::held_repeat) request.generation_mask=1;
+        }
+        if(action==InputAction::revert && environment.context==InputContext::balance &&
+           environment.manual_revert_direction && environment.native_context.required &&
+           environment.native_context.fresh(now) && footprint && footprint->count) {
+            request.manual_request_at=environment.manual_revert_request_at;
+            request.manual_direction=environment.manual_revert_direction;
+            request.physical_pressed_at=footprint->first_at;
+            request.input_sequence=footprint->events[0];
+            // Client balance correlation may lag the original physics contact.
+            // Wait only within THAT observation's existing native lease; later
+            // polls cannot refresh the deadline or relax any generation check.
+            const auto sampled=environment.native_context.sampled_at;
+            request.deadline=sampled>limit-InputTiming::native_sample_lease_ms?
+                limit:sampled+InputTiming::native_sample_lease_ms;
+            request.inclusive_deadline=true;
         }
         if (action == InputAction::rail_request || action == InputAction::lip_request || (action==InputAction::wall_command && variant==1)) {
             request.control = static_cast<std::uint16_t>(TrickControls::mask(

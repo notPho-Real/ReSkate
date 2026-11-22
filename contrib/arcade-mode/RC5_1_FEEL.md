@@ -24,6 +24,24 @@ the measured5-0 and50-50 returns into Nosegrind/Crooked with separate native
 completion gates. Exact-candidate native execution remains pending for all
 these changes. No Deck operation was needed for this implementation batch.
 
+## Manual RT publication correction — November 22
+
+The composed Manual→RT fixture previously admitted a pending RT only because
+input and client publication shared one millisecond. Advancing publication by
+just1ms reproduces the lost input. The corrected route retains that edge for
+the original native observation's150ms lease only when an independently
+established Manual owns the stick. It preserves the exact Manual request,
+direction, native generations and physical timestamp; a fresh observation
+cannot renew expiry. Current balance proof is still mandatory before execution.
+Ground/unconfirmed Manual RT keeps its1ms policy, and a new A immediately
+cancels pending RT while preserving the ordinary Ollie setup and release.
+
+The corrected production-composed lifecycle passes700,263 sanitizer checks,
+including same-ms,1ms and one-frame gaps at30/60/120Hz. Session tests pass6,907
+checks plus648 takeoff and326 jump-idle checks, including lease-age/expiry,
+same-generation Manual replacement, owner loss and duplicate suppression.
+Windows integration and native chain acceptance remain separate requirements.
+
 ## Manual acceptance checkpoint — November 22
 
 Focused episode tests now explicitly check the three-second minimum, continued

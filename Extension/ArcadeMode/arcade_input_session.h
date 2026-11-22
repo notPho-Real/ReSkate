@@ -517,6 +517,15 @@ public:
         environment.native_held_flip=admission.held_flip.available;
         environment.selected_grab=admission.normal_grab.selected;
         environment.native_fingerflips=admission.normal_grab.fingerflip!=nullptr;
+        if(context==InputContext::balance && manual.owns_stick && manual_.established_balance() &&
+           admission.action_mode==ActionExperiment::classic && !flatland_triggers &&
+           !authored_.busy() && !auxiliary_.busy() && !admission.external_owner &&
+           physical.lt<=30 && !(physical.buttons&0x5330u) &&
+           native.required && native.fresh(now) && native.flip.state==100 && native.flip.mode==1 &&
+           !(native.flip.stance&0x40u)) {
+            environment.manual_revert_request_at=manual_.requested_at();
+            environment.manual_revert_direction=manual_.requested();
+        }
         // A wall contact cannot steal a live native input lease. The collision
         // provider owns geometry; this session owns physical command admission.
         environment.surface.can_plant = environment.surface.can_plant &&
@@ -1051,6 +1060,13 @@ private:
             (auxiliary_.busy() ? 16u : 0u) | (rail_ ? 32u : 0u) |
             (request.form != InputForm::ordinary ? 64u : 0u);
         if (!admission.action_fresh || admission.action_mode == ActionExperiment::off) return InputDisposition::cancelled;
+        if(!grab && request.manual_direction) {
+            // A pending Manual RT cannot become an ordinary ground revert or
+            // borrow a replacement actuator after the original hold ended.
+            if(!manual_.established_balance() || manual_.requested_at()!=request.manual_request_at ||
+               manual_.requested()!=request.manual_direction)return InputDisposition::cancelled;
+            if(!verified_manual(admission,now_))return InputDisposition::waiting;
+        }
         if (authored_.busy() || (manual_.busy() && (grab || !verified_manual(admission,now_))) || auxiliary_.busy() || rail_) return InputDisposition::waiting;
         if (request.form != InputForm::ordinary) return request_extension(request);
         out.requested = true; out.request_kind = grab ? 1u : admission.action_mode == ActionExperiment::revert_backside ? 4u : 3u;

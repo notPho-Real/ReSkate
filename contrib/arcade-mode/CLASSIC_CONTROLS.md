@@ -247,6 +247,12 @@ model, including fatigue retained throughout the same unbanked combo.
 RT requests the appropriate switch/revert action for the observed context. Native
 revert identity must be observed. A landing revert creates one continuation
 opportunity; repeated revert cannot keep extending grace or farming multiplier.
+During an established Manual, a physical RT press survives a delayed client
+balance publication only until the original native observation's150ms expiry.
+It runs immediately when current Manual proof arrives; later polls do not renew
+it. Losing or replacing that Manual, changing native generations or pressing A
+cancels the pending revert. Ordinary ground and unconfirmed Manual RT retain
+their immediate-only policy.
 
 The active Manual acceptance recipe is entry → at least three continuous seconds
 of independently qualified physical balance → Ollie out. Begin timing at qualified
