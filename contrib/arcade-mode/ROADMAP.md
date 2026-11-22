@@ -20,6 +20,12 @@ references establish the corrected identities. All868 stance sanitizer checks
 pass; old pins fail the admission regression. These changes await the next runtime
 batch; retained incomplete captures remain incomplete.
 
+The same batch corrects generalized geometry queries that rejected authenticated
+self hits before applying native exclusion. Only the self surface normal is
+unneeded; native position, query readiness, ownership, ordering and actual world
+surface validation remain required. No recorded map failure is attributed to this
+source defect without native evidence.
+
 Implementation, compilation, offline tests, native observation and owner acceptance
 are separate states. Historical captures support only their recorded source and
 conditions. No current feature has blanket owner acceptance from this checkpoint.
@@ -68,6 +74,13 @@ solver for Spine Transfer, Hip Transfer and Acid Drop. It reuses native body
 ownership, the timestamped input journal, static-owner geometry, collision and
 physical orientation limits. No new map IDs, native state fabrication or scoring
 awards are introduced.
+
+The `ec28f738` native trial reached rising support but lost qualification before
+AIR. The follow-up preserves original rear-wheel contacts and bounded history
+across the recorded contact/state and idle AIR mode transitions. Mismatched
+frames grant no transfer or motion authority; fresh matching observations are
+required. Fixtures based on the recording, runtime tests and integrated controller
+tests pass. Corrected native flight, transfer and landing acceptance remain pending.
 
 Portable tests cover transformed curved ramps, independent shape owners, holes,
 clearance failures, bounded momentum, trigger timing, ownership cancellation and
