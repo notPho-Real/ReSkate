@@ -145,6 +145,31 @@ void borrowed_vectors_not_guessed() {
     m.write(data + 0x20, UINTPTR_MAX - std::uintptr_t{2});
     check(!vectors(data, 1, {0, 3, 0}, {0, 4, 0}, {0, 0, 0}, v, read), "vector element overflow accepted");
 }
+void borrowed_position_requires_original_ray() {
+    for(unsigned fault=0;fault<9;++fault) {
+        Memory m;
+        const std::uintptr_t data=0x400000,points=0x410000;
+        m.write(data+0x18,points);m.write(points+16,V4{0,3,0,1});
+        Vec expected{0,3,0},out{1,2,3};unsigned ordinal=1;
+        if(fault==1)m.write(points+16,V4{0,NAN,0,1});
+        if(fault==2)expected[1]=2;
+        if(fault==3)ordinal=2;
+        if(fault==4)m.write(data+0x18,UINTPTR_MAX-std::uintptr_t{2});
+        if(fault==5)expected[0]=NAN;
+        bool changed{};
+        if(fault>=6)m.after=[&](std::uintptr_t at) {
+            if(changed || at!=points+16)return;
+            changed=true;
+            if(fault==6)m.write(data+0x18,points+16);
+            if(fault==7)m.write(points+16,V4{0,3.01f,0,1});
+            if(fault==8)m.write(points+16,V4{-0.f,3,0,1});
+        };
+        const auto read=[&](auto at,auto& value){return m.read(at,value);};
+        check(position(data,ordinal,expected,out,read)==(fault==0),
+            "position-only exclusion rejects missing, nonfinite, inconsistent, replaced and unstable native points");
+        check(out==(fault==0?Vec{0,3,0}:Vec{}),"failed position observation publishes no partial point");
+    }
+}
 void batch_optional_details_and_final_fence() {
     body_query::Request request;
     request.count = 1;
@@ -193,8 +218,9 @@ int main() {
         native_identity_and_ring_refusals();
         closing_changes_and_signed_zero();
         borrowed_vectors_not_guessed();
+        borrowed_position_requires_original_ray();
         batch_optional_details_and_final_fence();
-        std::cout << "Body contact read: 5 cases, " << checks << " checks passed\n";
+        std::cout << "Body contact read: 6 cases, " << checks << " checks passed\n";
         return 0;
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

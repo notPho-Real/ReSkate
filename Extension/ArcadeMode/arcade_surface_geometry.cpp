@@ -201,6 +201,12 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
                 // A reciprocally authenticated local component is excluded by
                 // its native owner below. Its hit vectors never describe a
                 // destination, including when the ray starts inside that body.
+                // Its original hit position must still match the ray fraction.
+                if(local_component && measure_contact) {
+                    const auto read_position=[&]<class T>(std::uintptr_t at,T& value) {return read(api,at,value);};
+                    if(!body_contact_read::position(result.data,selected,point,found.point,read_position))
+                        return fail("self_hit_position");
+                }
                 // Requested nonlocal measurements retain their validation.
                 if(!local_component && (measure_contact || (patch_owner && owner!=ctx.self_entity && world_owner!=*patch_owner))) {
                     body_contact_read::Vectors vectors;

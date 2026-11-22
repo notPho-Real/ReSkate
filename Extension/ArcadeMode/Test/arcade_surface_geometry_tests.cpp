@@ -359,6 +359,7 @@ struct Fixture {
             if(f.self_vector_fault==2)for(float& axis:f.hit_normals[f.first])axis=-axis;
             if(f.self_vector_fault==3)f.hit_positions[f.first][0]=std::numeric_limits<float>::quiet_NaN();
             if(f.self_vector_fault==4)f.data[4]=0;
+            if(f.self_vector_fault==5)f.data[3]=0;
         }
         if (f.changed_context) ++f.live.world_generation;
         if (f.throw_query) throw std::runtime_error("partial result");
@@ -439,7 +440,7 @@ bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) no
 #include "arcade_vert_runtime_scenarios.h"
 int main() {
     vert_runtime_scene_checks();
-    for(unsigned vector_fault=1;vector_fault<=4;++vector_fault)for(unsigned fault=0;fault<8;++fault) {
+    for(unsigned vector_fault=1;vector_fault<=5;++vector_fault)for(unsigned fault=0;fault<8;++fault) {
         Fixture f;f.wall=f.allow_world_owner=f.unknown=f.self=f.native_self=true;f.wall_normal={-1,0,0};
         f.self_vector_fault=vector_fault;
         if(fault==1)f.foreign_component=true;
@@ -450,8 +451,8 @@ int main() {
         if(fault==6)f.bad_fraction=true;
         if(fault==7)f.contact_ready=false;
         const auto result=query_vert_patch(f.api(),f.live,f.wall_point,f.wall_normal,.5f);
-        check(result.valid==(fault==0),
-            "only authenticated self is excluded before hit-vector validation; actual world surfaces remain strict");
+        check(result.valid==(fault==0 && vector_fault!=3 && vector_fault!=5),
+            "only authenticated self with a valid native position skips normal validation; actual world surfaces remain strict");
         if(result.valid)check(result.center().body.index<100 && result.center().query_normal==f.wall_normal && f.calls>=10,
             "self vectors never supply landing geometry; native exclusion must query the actual surface");
         check(f.calls==f.pops && f.calls==f.frees,"self exclusion and malformed hits release every original query");

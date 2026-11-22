@@ -88,6 +88,29 @@ bool motion_current(std::uintptr_t world, std::uintptr_t state, const Motion& va
     for (std::size_t i = 0; i < again.values.size(); ++i) if (!same(again.values[i], value.values[i])) return false;
     return true;
 }
+// Position-only observation for an already authenticated exclusion. It retains
+// the same borrowed-array, ordinal, endpoint and ray-fraction checks as vectors;
+// callers needing a surface orientation must still use vectors below.
+template<class Read>
+bool position(std::uintptr_t data, std::uint32_t ordinal, const Vec& expected, Vec& out, Read&& read) {
+    namespace c = addr::body_contact;
+    out = {};
+    if (!field_span(data, c::result_positions, sizeof(std::uintptr_t)) || !owned_body::finite(expected, 100000)) return false;
+    std::uintptr_t points{}, after{};
+    V4 p{}, again{};
+    if (!read(data + c::result_positions, points) || !body_hit_identity::element(read, points, ordinal, p) ||
+        !read(data + c::result_positions, after) || after != points ||
+        !body_hit_identity::element(read, points, ordinal, again) || !same(p, again)) return false;
+    double residual{};
+    for (std::size_t i = 0; i < 3; ++i) {
+        if (!std::isfinite(p[i])) return false;
+        const double error = double(p[i]) - expected[i];
+        residual += error * error;
+    }
+    if (residual > .0004) return false;
+    out = {p[0], p[1], p[2]};
+    return true;
+}
 struct Vectors { Vec position{}, normal{}; };
 // Borrowed result arrays are read only while the native result's Release scope
 // is alive. The caller supplies the actual native first+ordinal and closest ray.
