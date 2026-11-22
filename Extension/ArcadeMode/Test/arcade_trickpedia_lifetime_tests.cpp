@@ -132,6 +132,43 @@ int main(){
         "selected grab change did not refresh open guidance");
     arcade_mode::on=false;update_trickpedia(style,1030);
     require(style.models==original,"controller refresh restored another override instead of native inputs");
+    reset();Context pose;pose.models.at(3).title="ID_SKATEPEDIA_GRABBSSHIFTYTAILGRAB";
+    pose.models.at(3).inputs={"Native Tail BS Shifty controls"};const auto pose_original=pose.models;
+    update_trickpedia(pose,1000);
+    require(pose.models.at(3).inputs.front().find("Choose Tail BS Shifty")!=std::string::npos &&
+        pose.models.at(3).inputs.front().find("currently Double Grab")!=std::string::npos &&
+        pose.models.at(3).inputs.front().find("Release B to exit")!=std::string::npos,
+        "native selected-grab card must expose selector mismatch and release controls");
+    arcade_mode::grab_selection=arcade_mode::ArcadeTrick::tail_bs_shifty;update_trickpedia(pose,1010);
+    require(pose.models.at(3).inputs.front().find("Selected pose: Tail BS Shifty")!=std::string::npos &&
+        pose.models.at(3).inputs.front().find("currently Double Grab")==std::string::npos,
+        "open card must replace the stale selector prerequisite when the required pose is selected");
+    controller_style=ControllerStyle::dualsense;update_trickpedia(pose,1020);
+    require(pose.models.at(3).inputs.front().find("Release Circle to exit")!=std::string::npos &&
+        pose.models.at(3).inputs.front().find("Release B to exit")==std::string::npos,
+        "grab release guidance follows the active controller labels");
+    arcade_mode::on=false;update_trickpedia(pose,1030);
+    require(pose.models==pose_original,"pose prerequisites and controller refresh preserve exact OFF restoration");
+    for(bool playstation:{false,true}) {
+        reset();controller_style=playstation?ControllerStyle::dualsense:ControllerStyle::xbox;
+        Context card;card.models.at(3).title="ID_SKATEPEDIA_FINGERFLIP";
+        const auto before=card.models;update_trickpedia(card,1000);
+        const auto grab=playstation?"Circle":"B";
+        require(card.models.at(3).inputs.front().find("holding Nosegrab with both feet on the board")!=std::string::npos &&
+            card.models.at(3).inputs.front().find(std::string("Keep ")+grab+" held through the catch")!=std::string::npos,
+            "native fingerflip card publishes source-grab and controller-aware catch instructions");
+        arcade_mode::on=false;update_trickpedia(card,1010);
+        require(card.models==before,"fingerflip guidance restores the exact original card");
+        reset();controller_style=playstation?ControllerStyle::dualsense:ControllerStyle::xbox;
+        Context flip;flip.models.at(3).title="ID_SKATEPEDIA_FS_POPSHUVIT";
+        const auto flip_before=flip.models;update_trickpedia(flip,1000);
+        const auto button=playstation?"Square":"X";
+        require(flip.models.at(3).inputs.front().find(std::string("and the direction held when pressing ")+button)!=std::string::npos &&
+            flip.models.at(3).inputs.front().find("single flip only")!=std::string::npos,
+            "extended flip card explains the physical modifier-at-press requirement with the correct face button");
+        arcade_mode::on=false;update_trickpedia(flip,1010);
+        require(flip.models==flip_before,"extended flip prerequisites preserve exact OFF restoration");
+    }
     for(unsigned reason=0;reason<4;++reason){
         reset();Context ignored;
         if(reason==0)ignored.models.at(2).back="MapBack";

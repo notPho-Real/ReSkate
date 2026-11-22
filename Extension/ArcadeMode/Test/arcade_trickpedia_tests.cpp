@@ -11,6 +11,20 @@ std::string label(std::uint32_t button){return button==0x1000?"A":button==0x4000
 }
 #include "arcade_evidence_tests.inl"
 int main() {
+    const auto shifty=trickpedia::native_card_guidance(*trick_definition(ArcadeTrick::tail_bs_shifty),label);
+    require(shifty.inputs.front().find("Choose Tail BS Shifty")!=std::string::npos &&
+        shifty.inputs.front().find("currently Double Grab")!=std::string::npos &&
+        shifty.inputs.front().find("Center the left stick")!=std::string::npos,
+        "selected-grab card must explain the required pose instead of advertising another selected grab");
+    const auto finger=trickpedia::native_card_guidance(*trick_definition(ArcadeTrick::finger_1),label);
+    require(finger.inputs.front().find("holding Nosegrab with both feet on the board")!=std::string::npos &&
+        finger.inputs.front().find("Keep B held through the catch")!=std::string::npos,
+        "fingerflip card must retain its actual source grab and catch hold prerequisite");
+    const auto double_grab=trickpedia::native_card_guidance(*trick_definition(ArcadeTrick::double_grab),label);
+    require(double_grab.inputs.size()==2 && double_grab.inputs[0].starts_with("In the air:") &&
+        double_grab.inputs[1].starts_with("On the ground:") &&
+        double_grab.inputs[1].find("Choose ")==std::string::npos,
+        "ground and selected airborne grab alternatives must remain distinct");
     for(const auto title:{"ID_SKATEPEDIA_FS_POPSHUVIT_UNDERFLIP","ID_SKATEPEDIA_NOLLIE_BS_POPSHUVIT",
                           "ID_SKATEPEDIA_HOSPITALFLIP","ID_SKATEPEDIA_NOLLIE_FRONTFOOTIMPOSSIBLE",
                           "ID_SKATEPEDIA_BACKFOOTIMPOSSIBLE"}) {

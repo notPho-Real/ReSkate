@@ -351,9 +351,31 @@ template<class ButtonLabel> NativeCardGuidance native_card_guidance(const TrickD
         return out;
     }
     for(unsigned i=0;i<trick.binding_count;++i) {
-        const auto d=diagram(trick,trick.bindings[i],selected);
+        const auto& binding=trick.bindings[i];
+        const auto d=diagram(trick,binding,selected);
         auto text=diagram_text(d,label);
         if(text.empty())continue;
+        // Native cards publish these strings alone. Keep the prerequisites
+        // needed to perform the displayed input, without copying diagnostic
+        // ownership/geometry conditions from the developer-facing diagram.
+        const auto grab=label(TrickControls::mask(TrickControls::grab));
+        if(trick.executor==TrickExecutor::native_grab) {
+            if(binding.context==BindingContext::air)text="In the air: "+text;
+            else if(binding.context==BindingContext::ground)text="On the ground: "+text;
+            if(binding.pattern==BindingPattern::selected_grab) {
+                text+=". Center the left stick. ";
+                if(selected==binding.variant)text+="Selected pose: "+std::string(trick_name(binding.variant));
+                else text+="Choose "+std::string(trick_name(binding.variant))+
+                    " in the grab selector under Skater > Cheats (currently "+std::string(trick_name(selected))+")";
+            }
+            text+=". Release "+grab+" to exit.";
+        } else if(binding.pattern==BindingPattern::fingerflip) {
+            text="In the air, while holding "+grab_family_name(trick.fingerflip.family)+
+                " with both feet on the board: "+text+". Keep "+grab+" held through the catch; then release "+grab+" to exit.";
+        } else if(binding.pattern==BindingPattern::extended_flip) {
+            text="In the air: "+text+". Keep "+label(TrickControls::mask(TrickControls::grab_layer))+
+                " and the direction held when pressing "+label(TrickControls::mask(TrickControls::flip))+"; single flip only.";
+        }
         if(d.proposed)text="Planned: "+text;
         out.inputs.push_back(std::move(text));
     }
