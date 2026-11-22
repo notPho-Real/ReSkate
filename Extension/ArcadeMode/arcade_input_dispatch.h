@@ -1013,7 +1013,9 @@ private:
             request.air = air_selection(action == InputAction::flip ? TrickFamily::flip : TrickFamily::grab,
                 request.direction,presses);
             if (action==InputAction::flip && form==InputForm::held_repeat && !request.direction) {
-                request.air=air_selection(TrickFamily::flip,4,2);
+                // Neutral repeats retain their physical button lineage while
+                // selecting the same supported Kickflip count as Left+X.
+                request.air=air_selection(TrickFamily::flip,4,presses);
                 request.direction_source=InputSource::buttons;
             }
             if (action == InputAction::flip && (form == InputForm::neutral_release || form == InputForm::neutral_press)) {
@@ -1454,7 +1456,7 @@ private:
                     (request.form==InputForm::ordinary || request.form==InputForm::neutral_press || request.form==InputForm::neutral_release) &&
                     (request.air.trick==ArcadeTrick::kickflip || request.air.trick==ArcadeTrick::heelflip);
                 const bool repeat=request.presses==2 && request.form==InputForm::held_repeat &&
-                    (request.direction==4 || request.direction==6) &&
+                    (request.direction==0 || request.direction==4 || request.direction==6) &&
                     (request.air.trick==ArcadeTrick::double_kickflip || request.air.trick==ArcadeTrick::double_heelflip);
                 if(request.action!=InputAction::flip || (!base && !repeat) || request.nollie ||
                     (preair && (request.pop_release_at!=takeoff_release_at_ || request.physical_pressed_at<takeoff_release_at_)) ||
@@ -1473,7 +1475,7 @@ private:
         const auto held_started=queued_prefix?queued_prefix->physical_pressed_at:flip_started_;
         const bool held_child=environment.native_held_flip && active_flip_ &&
             (active_flip_count_==1 || active_flip_count_==2) &&
-            !flip_nollie_ && ((active_flip_count_==1 && flip_direction_==0) || flip_direction_==4 || flip_direction_==6) &&
+            !flip_nollie_ && (flip_direction_==0 || flip_direction_==4 || flip_direction_==6) &&
             now>=flip_started_ && now-flip_started_<=InputTiming::extra_press_ms;
         if (held_child || queued_prefix) {
             const std::array tokens{face};

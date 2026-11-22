@@ -11,6 +11,10 @@ inline constexpr TrickEvidence planned_evidence{
     "9906af3b5d4816c15d4506430d51afb7d860b970", "Pinned 20260929; design only",
     "contrib/arcade-mode/research/trickpedia-implementation.md",
     "No executable Arcade binding is available for this trick in this build."};
+inline constexpr TrickEvidence triple_flip_evidence{
+    "7abb02fabed9c96e0157fbd5691df003b29e2b11", "Pinned 20260929; existing held actor extended to two extra rotations",
+    "Extension/ArcadeMode/arcade_held_flip.h",
+    "Third-X binding implemented by extending the original owned double. Native identity, physical rotations, catch, landing and scoring acceptance remain unverified."};
 inline constexpr TrickEvidence frontside_shove_evidence{
     "6d8dda8f9431aef21268c74455a5f1ec930df8d8", "Pinned 20260929; source catalog identities7/22",
     "contrib/arcade-mode/research/native-flip-source-catalog.json",

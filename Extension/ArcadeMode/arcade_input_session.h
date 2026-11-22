@@ -829,7 +829,7 @@ private:
                         physical_.lt<=30 && physical_.rt<=30 && !(physical_.buttons&0xb030u) &&
                         !manual_.busy() && !auxiliary_.busy() && authored_.busy();
                     if((request.air.trick!=ArcadeTrick::triple_kickflip && request.air.trick!=ArcadeTrick::triple_heelflip) ||
-                        (request.direction!=4 && request.direction!=6) || !held_request_sequence_ ||
+                        (request.direction!=0 && request.direction!=4 && request.direction!=6) || !held_request_sequence_ ||
                         request.parent_input_sequence!=held_request_sequence_ || request.input_sequence<=held_request_sequence_ ||
                         request.physical_pressed_at<=held_request_pressed_at_ || request.physical_pressed_at>now_ ||
                         !held_flip_.extend(now_,id,admission.held_flip,same_flight)) return InputDisposition::cancelled;

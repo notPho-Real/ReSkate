@@ -227,7 +227,9 @@ inline InputDiagram diagram(const TrickDefinition& trick,const TrickBinding& b,
         out.window_ms=b.presses>1?InputTiming::extra_press_ms:InputTiming::direction_ms;
         if(b.presses>1 && grab)out.window_ms=grab_repeat_ms;
         else if(b.presses>1 && trick.executor!=TrickExecutor::held_flip)out.window_ms=flip_repeat_ms;
-        if(trick.executor==TrickExecutor::held_flip)out.condition+="; same flight, one repeat, ordinary stance; native held preparation still open";
+        if(trick.executor==TrickExecutor::held_flip)out.condition+=b.presses==3?
+            "; same flight, third X before the double catches, ordinary stance; extends the original held actor":
+            "; same flight, one repeat, ordinary stance; native held preparation still open";
         else if(grab)out.condition+="; hold B; release B to exit";
         break;
     }
