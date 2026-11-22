@@ -5,6 +5,25 @@ This candidate is not hardware accepted. Development is on
 The accepted updater and historical builds are unchanged. [ROADMAP.md](ROADMAP.md)
 tracks current priorities; dated evidence below remains scoped to its recorded source.
 
+## Offline gameplay expansion — November 22
+
+Neutral third X now uses the existing owned Triple Kickflip path, superseding
+the double-only neutral limitation in the November20 snapshot below. Its own
+physical deadline, parent request, actor lifetime and catch rules remain intact.
+The guide distinguishes implemented triples from native-accepted execution.
+R3+Left+X adds native Front Foot Impossible37, or Nollie Back Foot Impossible39
+with LT; ordinary directional mappings and exact-gesture refusal remain.
+
+Wall and floor patches now span independently authenticated static pieces.
+Each piece retains its own complete lifetime stamp and must present a native
+normal agreeing with the measured plane. Obstructions, missing geometry,
+stale ownership and unsuitable normals still reject. Allocation/owner stamps
+are not transform stamps: same-incarnation editor relocation remains unproven,
+including for the original center body. Bluntslide can also continue through
+the measured5-0 and50-50 returns into Nosegrind/Crooked with separate native
+completion gates. Exact-candidate native execution remains pending for all
+these changes. No Deck operation was needed for this implementation batch.
+
 ## Manual acceptance checkpoint — November 22
 
 Focused episode tests now explicitly check the three-second minimum, continued

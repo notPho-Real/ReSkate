@@ -105,7 +105,7 @@ exists. A dash means this contract assigns no variant to that combination.
 
 | Direction | X | X,X | X,X,X |
 | --- | --- | --- | --- |
-| Neutral X | Kickflip | Double Kickflip | — |
+| Neutral X | Kickflip | Double Kickflip | Triple Kickflip |
 | Left | Kickflip | Double Kickflip | Triple Kickflip |
 | Up | Impossible | Double Impossible | Triple Impossible |
 | Right | Heelflip | Double Heelflip | Triple Heelflip |
@@ -127,11 +127,17 @@ This is one native 360 shove request through the same captured-edge binding,
 not an inferred repeat of the 180 shove. Native execution and landing acceptance
 remain pending.
 
-Directional Triple Kickflip and Triple Heelflip extend the existing held double
+Hold R3 and Left when pressing X for **Front Foot Impossible** (native37).
+With LT nollie context, the same chord selects **Nollie Back Foot Impossible**
+(native39). Ordinary Left+X remains Kickflip and Up+X remains Impossible.
+These use their exact native gestures; a missing gesture never substitutes
+another trick. Native execution and landing acceptance remain pending.
+
+Neutral or directional Triple Kickflip and directional Triple Heelflip extend the existing held double
 only when a fresh third X reaches that same owned flight before its catch. The
 third edge keeps its own200ms deadline; it cannot borrow the double's successor
 allowance or restart the native base actor. The original held-entry and lifetime
-limits remain unchanged. Neutral X retains its double-only mapping. These routes
+limits remain unchanged. A fourth X cannot extend the triple or delay its catch. These routes
 are implemented but require exact-candidate native triple acceptance.
 
 After releasing an ordinary Ollie, a prompt neutral X tap can wait through
@@ -223,7 +229,12 @@ orientation or which end of the board meets the rail.
 On an established Bluntslide, X→Y now requests Tailslide and X→X requests
 Smith through the existing native 5-0 return. The same rail segment, completed
 return, retired transition and observed neutral controls are required before
-the final leg. These composed routes are offline-tested; exact-candidate native
+the final leg. Y→B requests Nosegrind and B→B requests Crooked through that
+5-0 and a separately completed 50-50 return before the final sweep. Each
+intermediate keeps its own original native admission and completion checks;
+the original physical button timestamps remain unchanged. These routes require
+the existing qualified horizontal rail segment of at least12m; available travel
+still determines whether the entire chain can finish. They are offline-tested; exact-candidate native
 execution, animation and combo acceptance remain pending.
 
 ## Manual, revert and balance
