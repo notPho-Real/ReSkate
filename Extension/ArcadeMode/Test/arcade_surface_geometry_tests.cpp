@@ -226,20 +226,20 @@ struct Fixture {
             for(bool landing:{false,true}) {
                 const float dx=landing?std::cos(f.scene_hip):1.f,dz=landing?std::sin(f.scene_hip):0.f;
                 const float cx=landing?4+(4+f.scene_gap)*dx:0,cz=landing?(4+f.scene_gap)*dz:0,cy=4-(landing?f.scene_drop:0);
-                const float x=(a[0]-cx)*dx+(a[2]-cz)*dz,y=a[1]-cy;
+                const float radial_x=(a[0]-cx)*dx+(a[2]-cz)*dz,y=a[1]-cy;
                 const float vx=delta[0]*dx+delta[2]*dz,vy=delta[1];
-                const float aa=vx*vx+vy*vy,bb=2*(x*vx+y*vy),cc=x*x+y*y-16;
+                const float aa=vx*vx+vy*vy,bb=2*(radial_x*vx+y*vy),cc=radial_x*radial_x+y*y-16;
                 const float disc=bb*bb-4*aa*cc;
                 if(aa>0 && disc>=0)for(float sign:{-1.f,1.f}) {
                     const float t=(-bb+sign*std::sqrt(disc))/(2*aa);
-                    const float hx=x+t*vx,hy=y+t*vy;
+                    const float hx=radial_x+t*vx,hy=y+t*vy;
                     if(hy<=0 && ((!landing && hx>=0 && hx<=4) || (landing && hx<=0 && hx>=-4)))
                         admit(t,{-hx/4*dx,-hy/4,-hx/4*dz});
                 }
             }
             if(delta[1]!=0) {
-                const float t=(4-a[1])/delta[1],x=a[0]+t*delta[0];
-                if(f.scene_gap<1 && x>=4 && x<=4+f.scene_gap)admit(t,{0,1,0});
+                const float t=(4-a[1])/delta[1],crest_x=a[0]+t*delta[0];
+                if(f.scene_gap<1 && crest_x>=4 && crest_x<=4+f.scene_gap)admit(t,{0,1,0});
             }
             if(f.scene_blocked && delta[0]!=0) {
                 const float t=(4.5f-a[0])/delta[0],y=a[1]+t*delta[1];
