@@ -42,8 +42,11 @@ remain in force. Experimental branches and packages are authorized; accepted
 branches, the public updater and release channel remain unchanged.
 
 The earlier bounded review made no gameplay change. Its history remains in Git;
-it does not restrict the current roadmap. Current native Manual acceptance again
-requires a ten-second physically qualified hold, per the owner's latest request.
+it does not restrict the current roadmap. Current native Manual acceptance
+requires at least three continuous physically qualified seconds, followed by an
+Ollie exit. This supersedes the earlier two-, two-to-three- and ten-second test
+requirements, without changing their historical evidence. Three seconds is not
+a gameplay timeout; balanced Manuals must continue beyond it.
 
 ## Joined finite controller observations — local follow-on, 2026-10-20
 

@@ -22,6 +22,38 @@ struct Pipeline {
 };
 }
 int main(){
+ // Three seconds is the minimum acceptance interval, never a lifetime cap.
+ // Exercise the existing episode path with original physics intervals and
+ // digital corrections; this is simulated contact, not native hold evidence.
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
+  NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
+  ManualPhysics physics;ManualPhysicsSteps steps;PhysicalBalanceSample result{};
+  NativeRequestSample raw{};raw.valid=true;raw.state=100;raw.crouch_mode=1;
+  raw.words[1]=nose?0x8000u:0x4000u;
+  const auto pose=nose?SkatePose::nose_manual:SkatePose::manual;
+  std::uint64_t admitted{};unsigned corrections{};
+  for(unsigned i=0;i<=hz*6;++i){
+   const auto now=1000+std::uint64_t{i}*1000/hz;
+   const auto frame=producer.observe(now,owner,raw,{true,-1});
+   if(!admitted)admitted=frame.physics_step;
+   const auto predicted=result.position+result.velocity*24;
+   const auto direction=predicted>.03f?-1:predicted<-.03f?1:0;
+   InputDigitalState input{};input.available=true;input.sampled_at=now;
+   input.buttons=input.stick_buttons=direction>0?1u:direction<0?2u:0u;
+   steps.observe(frame,1.f/static_cast<float>(hz),input);
+   result=steps.sample_episode(physics,frame,pose,now,true,admitted);
+   check(result.valid&&result.active,"original native intervals and digital correction sustain an episode beyond the three-second acceptance minimum");
+   corrections+=result.applied_correction!=0;
+   const auto original=physics.snapshot();
+   for(unsigned duplicate=0;duplicate<3;++duplicate){
+    const auto repeated=steps.sample_episode(physics,frame,pose,now+duplicate,true,admitted);
+    check(same(repeated,original)&&steps.seconds()==0,
+          "repeated episode callbacks preserve balance state without integrating extra time");
+   }
+   if(i==hz*3)check(result.elapsed>=3.f&&result.active,"three seconds is a successful minimum, never an episode timeout");
+  }
+  check(corrections>0&&result.elapsed>6.f,"sustained episode exercises actual nonzero corrections and continues beyond six seconds");
+ }
  for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned lag:{0u,1u,2u,3u}){
   Pipeline p(nose,dt);ManualPhysics oracle;BalanceControl controls;PhysicalBalanceSample expected{};
   for(unsigned i=0;i<36;++i){

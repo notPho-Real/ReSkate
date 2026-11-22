@@ -84,15 +84,16 @@ inherited device receipt does not establish the merged candidate's acceptance.
 
 ## Current native Manual acceptance duration
 
-The owner's November 20, 2026 engineering request restores the native Manual
-acceptance hold to **ten seconds**. Measure at least ten seconds from qualified
+The current native Manual acceptance hold is **at least three continuous seconds,
+followed by an Ollie exit**. Measure from qualified
 physical Manual entry, with continuous bounded contact, balance, stance, motion
 and score/HUD observations. Button-hold time, a queued request or a lingering
 label does not establish this interval. Keep existing owner, freshness, bail,
 landing, entry/exit and Arcade OFF checks unchanged.
 
-This supersedes the November 16 two-second requirement for future acceptance
-trials. Preserve historical results, failures, pending observations and portable
+Three seconds is a test minimum, not a gameplay timeout: maintained balance must
+continue beyond it. This supersedes earlier two-second, two-to-three-second and
+ten-second acceptance recipes. Preserve historical results, failures, pending observations and portable
 lifetime regressions as recorded. No duration change waives the approach
 prerequisites or establishes native acceptance on a different DLL.
 

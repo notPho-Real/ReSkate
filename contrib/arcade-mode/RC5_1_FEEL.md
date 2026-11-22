@@ -1,7 +1,26 @@
 # RC5.1 feel checkpoint
 
-This candidate is not hardware accepted. Development stays on
-`arcade-stage-rc51-feel`; the accepted updater and historical builds are unchanged.
+This candidate is not hardware accepted. Development is on
+`arcade-stage-rc51-core-20261122`, based on integrated `6d8dda8f`.
+The accepted updater and historical builds are unchanged. [ROADMAP.md](ROADMAP.md)
+tracks current priorities; dated evidence below remains scoped to its recorded source.
+
+## Manual acceptance checkpoint — November 22
+
+Focused episode tests now explicitly check the three-second minimum, continued
+six-second Manual/Nose balance at30/60/120Hz, and duplicate client callbacks that
+must not integrate extra physics time. The existing native-interval buffer and
+digital balance model are exercised without changing runtime tuning or native
+stick routing. These are simulated contact observations, not proof of a physical
+hold in the game. Exact-candidate native hold, revert-chain and exit acceptance
+remain pending.
+
+The active Manual recipe requires **at least three continuous physically qualified
+seconds, followed by an Ollie exit**. Three seconds is a minimum test duration,
+never a gameplay timeout. Balanced holds must continue beyond it. Earlier two-,
+two-to-three- and ten-second recipes/evidence remain historical; do not reuse a
+retained payload without updating its threshold and exit timing under the existing
+runner review. No new hardware authority or test prerequisite is implied.
 
 ## Native triple follow-on — November 20
 
@@ -48,8 +67,9 @@ strict package verification. Two further production input defects are corrected:
 Both regressions fail against the preceding production code and pass with the
 corrections under ASan/UBSan and warnings as errors. Candidate Windows compilation
 and native acceptance remain required. The owner's current Manual acceptance is
-a ten-second physically qualified hold, superseding the historical two-second
-requirement below. The trusted status runner currently cannot resolve
+at least three continuous physically qualified seconds followed by an Ollie exit,
+superseding the historical two-second and ten-second requirements below. Three
+seconds is a test minimum, not a gameplay timeout. The trusted status runner currently cannot resolve
 `steamdeck.local`; no input, deployment or reuse of expired hardware authority
 occurred. Checkpoint receipts and packaging reside in the SSD artifact directory
 `rc51-responsive-core-20261120`.
@@ -89,12 +109,12 @@ Current feedback and source work:
 | Manual after plain landing | Implemented and compiled; native pending | Production-composed short-flight landing regression fails before correction; airborne retention no longer grants timeless old pressure on four-wheel landing | Owner replay with physical and HUD evidence |
 | Manual without meter | Implemented and compiled; native pending | Fresh independent native history/contact can readmit after proved physical exit. Old production-composed cases fail; stale labels, same failed section, owner change and duplicate frames remain rejected | Replay trick-to-Manual landing with exact DLL |
 | Main-map Casper/wallplants | Casper entry observed; wall routing compiled and native pending | No map-name allowlist found. Geometry1631/static-owner48 checks pass; independent static/allocation/entity proof and self exclusion retained | Verify San Vansterdam free skate with exact candidate |
-| Manual acceptance duration | Two seconds; slow native observation recorded below |173 offline checks; entry and exit gates, freshness, owner/contact/stance, scoring and landing requirements retained | Use the new inactive recipe at the next authorized native session |
+| Manual acceptance duration | At least three continuous physically qualified seconds, then Ollie out; exact-candidate native pending | Historical two-second proposal has173 offline checks; it does not meet the current duration | Update the retained recipe before reuse, preserving entry/exit, freshness, owner/contact/stance, scoring and landing guards |
 
-The new native Manual hold threshold is **two qualified seconds**, superseding
-ten seconds for future acceptance. Existing ten-second recordings and offline
+The November 16 proposal used **two qualified seconds**; this is historical and
+is superseded by the current three-second minimum. Existing ten-second recordings and offline
 endurance regressions remain historical evidence/tests, not a new hardware
-requirement. The new recipe retains the15-second overall observation for exit,
+requirement. That recipe retains the15-second overall observation for exit,
 landing and banking. Proposal provenance:
 `artifacts/rc51-manual-two-second-proposal/proposal-provenance.json`.
 
@@ -203,7 +223,8 @@ recorded hashes and preserve all older rollback sets and the stock backup.
 The new backup exists and its prior-file hashes and HUD copy were independently
 verified. Preserve all138 rollback sets. Never restore while either process runs.
 
-Remaining independent acceptance work: two-second Manual lifetime and
+At this November 16 checkpoint, remaining acceptance included two-second Manual
+lifetime (superseded by the current three-second minimum) and
 trick-to-Manual meter acquisition, directional native bails/putdowns, all
 supported Casper stance/support combinations, and physical wallplant rebound
 in San Vansterdam free skate and Mega Park. Main-map causality and durable
@@ -297,7 +318,7 @@ explicitly tied to this candidate's exact DLL.
 | 2: Repeated-input expiry | Existing request policy and deadline gate | `39ef1c70` stores a repeat deadline but inherits an unbounded ordinary policy; enforce the new repeat's physical-edge window | S | Fresh native observations and unavailable admission through exact second-edge +200 ms | Negative regression reproduces the defect; new repeated paths bounded; ordinary first-request policy preserved |
 | 2: Pre-AIR repeated X | Existing released-pop journal and bounded dependency queue | Preserve physical repeats through late first-action readiness | S | Same owner/pop, immutable first-AIR bounds, actual native actor and board rotation | Exact ae9c827e preserves all three immediate-pair requests beyond 200 ms; physical doubles 2/3 at 30 Hz, with a retained post-request execution failure |
 | 2: Queued double flip | Existing held-flip adapter and queue eligibility | Matching native observation can disappear before held actor entry | S | Actual actor/preparation/rotation, current owner and phase; no cached phase or renewed deadline | Source18de7d3a compiled in986fb8c0; scoped doubles5/5 at30Hz and1/1 at60Hz with native release/landing; zero-reread path unobserved, causal effect and full acceptance unproven |
-| 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S observer correction; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | Exact36 corridor/native braking passes; shorter-approach Manual is inconclusive after startup backlog/truncation guard rejection. Lossless startup draining passes421 offline checks; current two-second physical hold remains pending (owner reduced the requirement on November 16) |
+| 3: Manuals/reverts | Analog reversal/diagonal/neutral recognizer, landing acquisition and native episode; historical 10-second contact/stance captures | Exact unified lifetime, immediate landing acquisition and chains not accepted | S observer correction; M only if native defect found | Sequences A/B/G, contact/stance/balance plus score, both stances | Exact36 corridor/native braking passes; shorter-approach Manual is inconclusive after startup backlog/truncation guard rejection. Lossless startup draining passes421 offline checks; current three-second physical hold remains pending |
 | 4: Camera | Shortest yaw, rigid orbit, native pivot, elapsed duplicate sampling and restoration already fixed | Reverse restart remains inconclusive; exact candidate switch/revert follow pending | S verification | Sequence C and OFF, root/motion unchanged | Exact 2427231d right/up orbit and neutral recenter observed with complete camera captures and stable body heading; switch/revert follow and OFF restoration remain pending |
 | 5: Ollie/movement | Native release, charge, launch descriptors and bounded push budget already implemented | No new source-proved tuning defect; short/held jumps and momentum need comparative evidence | S verification / M tuning | Native cadence, trajectory, catch/contact, collision/bail controls | Preserve coherent current parameters; measure before tuning |
 | 6: HUD/scoring | Native-plus-custom combo model, integer ring and retained native stack entries | 39ef1c70 rendered Casper/Casper Flip names and x10 in the separate RC5 HUD session | S verification / M if binding defect remains | Sequence F, actual rendered names, banking/bail/OFF; RC5 chat owns HUD investigation | Native rendered names and OFF cleanup observed on 39ef1c70; integrated 32535ec4 full chain pending |

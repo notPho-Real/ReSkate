@@ -124,9 +124,12 @@ Serialize every input and console job. Preserve prior DLL/settings/receipt and
 rollback artifacts. A prior session's revoked transport is not reusable.
 
 Run auto-push/Ollie; immediate single/double flips; Manual and Nose Manual held
-for two to three seconds; revert; LB/RB prewind; native grabs; grind and rail-pop
+for at least three continuous physically qualified seconds, then Ollie out;
+revert; LB/RB prewind; native grabs; grind and rail-pop
 exits; Casper and Casper Flip; Wallplant contact/rebound; camera; Trickpedia;
-native/custom HUD scoring; and Arcade OFF restoration. Keep source/compilation,
+native/custom HUD scoring; and Arcade OFF restoration. Three seconds is the
+minimum acceptance interval; maintained balance must continue beyond it.
+Keep source/compilation,
 rendering, physics and operator observations separate. At rate-dependent trials,
 verify clock cadence and the local skater cached step, not only ForceSimRate.
 
