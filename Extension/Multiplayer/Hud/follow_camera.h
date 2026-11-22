@@ -16,6 +16,7 @@ void note_local_skater(const Transform &root) noexcept;
 // against the local skater of the previous tick. Only the game's own camera is measured.
 void observe_gameplay_camera(std::uintptr_t base, const GameView &view) noexcept;
 // The camera for spectating `id` standing at `root` this frame (world matrix rows: right, up,
-// back, position), and the FOV to give it.
-std::array<float, 16> follow_camera(std::uint64_t id, const Transform &root, float &fov) noexcept;
+// back, position), and the FOV to give it. A new caller-owned camera lifetime
+// can restart heading from the current body even when its numeric id is reused.
+std::array<float, 16> follow_camera(std::uint64_t id, const Transform &root, float &fov, bool restart = false) noexcept;
 } // namespace dingosdk::multiplayer

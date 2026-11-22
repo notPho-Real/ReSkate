@@ -1874,7 +1874,9 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_c
         if (!local.ready || local.entity != input.owner.entity) { camera_diagnostics::reason(camera_diagnostics::Reason::local); restore(); return; }
         camera_diagnostics::root(local.pose.root.position);
         float fov{};
-        const auto follow = multiplayer::follow_camera(UINT64_MAX, local.pose.root, fov);
+        // A restored/rebound lease must also retire the shared follow heading.
+        // Its fixed local id cannot identify a new controller or native owner.
+        const auto follow = multiplayer::follow_camera(UINT64_MAX, local.pose.root, fov, camera_at == 0);
         camera_diagnostics::pose(4,0,0,follow,fov);
         // The captured root is already at hip height; an extra metre can
         // put the ordinary follow frame below the upward-look orbit limit.

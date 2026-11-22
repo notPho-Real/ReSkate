@@ -325,6 +325,7 @@ void initial_ground_acquisition(){
 bool camera_publish_input=true,camera_override_input=false;
 unsigned camera_selected_slot{};
 ArcadeInput::Physical camera_selected_pad{};
+NativeInputOwner camera_producer_owner{1,2,3,4,5};
 std::function<void()> camera_capture_hook;
 namespace dingosdk::multiplayer {
 struct CameraUI { bool available=true,in_menu=false; } camera_ui;
@@ -332,11 +333,12 @@ struct CameraRoot { std::array<float,3> position{}; };
 struct CameraLocal { bool ready=true; std::uintptr_t entity=2; struct { CameraRoot root; } pose; };
 CameraLocal camera_local;
 std::array<float,16> camera_follow{1,0,0,0,0,1,0,0,0,0,1,0,0,2,5,1};
+bool camera_follow_restarted{};
 CameraUI sample_game_ui_state(std::uintptr_t){return camera_ui;}
 bool party_camera_requested(){return false;}
 CameraLocal capture_local(std::uintptr_t,std::uintptr_t,bool){if(camera_capture_hook){auto hook=std::move(camera_capture_hook);camera_capture_hook={};hook();}return camera_local;}
-std::array<float,16> follow_camera(std::uint64_t,const CameraRoot&,float& fov){
- fov=60;return camera_follow;
+std::array<float,16> follow_camera(std::uint64_t,const CameraRoot&,float& fov,bool restart=false){
+ camera_follow_restarted=restart;fov=60;return camera_follow;
 }
 }
 ControllerInput camera_input;
@@ -351,7 +353,7 @@ void DingoSDKOverlayReadControllerInput(ControllerInput* out){
  if(!camera_publish_input)return;
  static NativeInputState camera_producer;
  NativeRequestSample sample{};sample.valid=true;sample.state=100;sample.crouch_mode=1;sample.words[0]=0x20;sample.words[1]=0xc000;
- const auto frame=camera_producer.observe(clock_ms,{1,2,3,4,5},sample,{true,-1,16});
+ const auto frame=camera_producer.observe(clock_ms,camera_producer_owner,sample,{true,-1,16});
  arcade_input.publish_native_context(frame);arcade_input.publish_authority(clock_ms,frame.owner_generation,1,true);
  const auto physical=camera_override_input?camera_selected_pad:ArcadeInput::Physical{true,clock_ms,camera_input.buttons,0,0,camera_input.right_x,camera_input.right_y,0,0};
  controller_route.observe(camera_selected_slot,physical);
@@ -409,21 +411,29 @@ void camera_routing_lifecycle(){
  camera_toggle(false);on_camera_tick(1,6,true,true);camera_toggle(true);
  camera_selected_pad={true,clock_ms,0,0,0,0,0,0,0};camera_input={};
  on_camera_tick(1,6,true,true);const auto baseline=last_camera_transform;
+ check(multiplayer::camera_follow_restarted,"new camera lease must restart the follow heading as well as the orbit");
  clock_ms+=17;camera_selected_pad.at=clock_ms;camera_input.right_x=32767;
  on_camera_tick(1,6,true,true);
  check(last_camera_transform==baseline,"unselected merged overlay axes cannot rotate the local camera");
+ check(!multiplayer::camera_follow_restarted,"continuous camera callbacks retain travel-heading smoothing");
  clock_ms+=17;camera_selected_pad.at=clock_ms;camera_selected_pad.rx=25000;camera_input.right_x=0;
  on_camera_tick(1,6,true,true);
  check(last_camera_transform!=baseline,"selected physical axis controls the camera independently of merged overlay axes");
  clock_ms+=17;camera_selected_slot=1;camera_selected_pad.at=clock_ms;camera_selected_pad.rx=0;
  on_camera_tick(1,6,true,true);
  check(last_camera_transform==baseline,"source reassignment retires the old orbit before a fresh source acquires");
+ check(multiplayer::camera_follow_restarted,"source reassignment cannot inherit the old follow heading");
+ clock_ms+=17;camera_selected_pad.at=clock_ms;++camera_producer_owner.rig;
+ on_camera_tick(1,6,true,true);
+ check(multiplayer::camera_follow_restarted,"changed native owner generation starts behind the new body immediately");
+ camera_producer_owner={1,2,3,4,5};
  camera_publish_input=false;arcade_input.invalidate_authority();controller_route.clear();
  on_camera_tick(1,6,true,true);
  check(!camera_lease_requested&&camera_events.back()=='R',"withdrawn gameplay authority retires camera ownership");
  controller_route.reset();camera_publish_input=true;camera_selected_pad.at=clock_ms;
  on_camera_tick(1,6,true,true);
  check(camera_lease_requested,"fresh selected source and native owner can reacquire");
+ check(multiplayer::camera_follow_restarted,"authority recovery starts a new follow-heading lifetime");
  camera_publish_input=false;clock_ms+=151;on_camera_tick(1,6,true,true);
  check(!camera_lease_requested,"camera reading cannot renew stale source or native evidence");
  camera_publish_input=true;camera_selected_pad.at=clock_ms;on_camera_tick(1,6,true,true);
@@ -460,8 +470,10 @@ void camera_lifecycle(){
   check(camera_events.size()==before+2&&camera_events[before]=='R'&&camera_events[before+1]=='A',
    "OFF-to-ON between camera callbacks must retire the old native camera lease before reacquisition");
   check(last_camera_transform==fresh,"re-enabled camera starts from fresh orbit state instead of inheriting old aim");
+  check(multiplayer::camera_follow_restarted,"quick OFF-to-ON resets the follow heading without waiting for its inactivity timeout");
   const auto retired=camera_events.size();clock_ms+=dt;on_camera_tick(1,6,true,true);
   check(camera_events.size()==retired+1&&camera_events.back()=='A',"acknowledged toggle cannot replay camera restoration on later phases");
+  check(!multiplayer::camera_follow_restarted,"acknowledged toggle cannot repeatedly reset the follow heading");
   camera_toggle(false);on_camera_tick(1,6,true,true);
   check(!camera_lease_requested&&camera_events.back()=='R',"ordinary OFF relinquishes camera ownership without an ON request");
  }

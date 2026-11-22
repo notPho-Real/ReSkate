@@ -84,12 +84,12 @@ void observe_gameplay_camera(std::uintptr_t base, const GameView &view) noexcept
     }
 }
 
-std::array<float, 16> follow_camera(std::uint64_t id, const Transform &root, float &fov) noexcept {
+std::array<float, 16> follow_camera(std::uint64_t id, const Transform &root, float &fov, bool restart) noexcept {
     auto &s = state();
     std::lock_guard lock(s.mutex);
     const auto now = Clock::now();
     const auto &pos = root.position;
-    if (s.id != id || now - s.at > std::chrono::milliseconds(500)) {
+    if (restart || s.id != id || now - s.at > std::chrono::milliseconds(500)) {
         // Start behind the way the skater faces; their travel takes over once they move.
         const auto body = to_matrix(root);
         float hx = body[8], hz = body[10];
