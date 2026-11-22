@@ -13,7 +13,8 @@ void geometry(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,cons
     SurfaceGeometryVector board,SurfaceGeometryVector up) noexcept;
 // Called inside the existing validated physical body writer before staging.
 SurfaceGeometryVector alignment(const NativeInputFrame&,std::uint64_t now) noexcept;
-struct Motion {VertPlan plan{};bool native_flight{},aligning{};};
+struct Motion {VertPlan plan{};bool native_flight{},aligning{},preserve_native{};};
 Motion step(VertObservation,std::uint64_t now,const NativeInputOwner& physical_owner,
-    const char* frame_reason) noexcept;
+    const char* frame_reason,const NativeInputCorrelation* correlation=nullptr,
+    const NativeRequestSample* live=nullptr) noexcept;
 }

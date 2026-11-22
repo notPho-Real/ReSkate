@@ -1781,9 +1781,10 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
         sampled.words[0]=requests;sampled.words[1]=contacts;
         arcade_mode::MotionCleanupProof cleanup{};
         const char* wall_frame_reason="frame_not_read";
+        arcade_mode::NativeInputCorrelation vert_correlation{};
         const auto native_frame = arcade_mode::native_air_context(now,
             {owner.base,owner.entity,owner.core,owner.context,owner.rig},sampled,&cleanup,
-            &wall_frame_reason);
+            &wall_frame_reason,&vert_correlation);
         wall_writer(4,wall_frame_reason);
         // Angular writer observation begin. Reuse only the reads above.
         arcade_mode::AngularWriterObservation angular_observation{
@@ -1888,7 +1889,8 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
         vert_observation.contested=manual.admitted || mode>2 ||
             arcade_mode::wallplant_runtime::preserves_combo(native_frame,now);
         const auto support_contacts=arcade_mode::native_wall_contact::riding_support(owner,now);
-        if(support_contacts.valid && support_contacts.state==physics && contacts==0xc000u &&
+        if(support_contacts.valid && support_contacts.state==physics &&
+           arcade_mode::vert_riding_contact_mask(physics,contacts) &&
            arcade_mode::AirMotion::same_velocity(support_contacts.seconds,bodies.seconds)) {
             std::array<arcade_mode::VertRampContact,64> ramp_contacts{};std::size_t ramp_count{};
             for(std::size_t i=0;i<support_contacts.count;++i) {
@@ -1910,14 +1912,15 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
                 vert_observation.position,vert_observation.up);
         }
         const auto vert_motion=arcade_mode::vert_runtime::step(vert_observation,now,
-            {owner.base,owner.entity,owner.core,owner.context,owner.rig},wall_frame_reason);
+            {owner.base,owner.entity,owner.core,owner.context,owner.rig},wall_frame_reason,&vert_correlation,&sampled);
         const auto& vert_plan=vert_motion.plan;a.vert_aligning=vert_motion.aligning;
-        if(vert_motion.native_flight)a.controller.yield_ordinary_motion();
+        const bool preserve_vert=vert_motion.native_flight || vert_motion.preserve_native;
+        if(preserve_vert)a.controller.yield_ordinary_motion();
         auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,
             bodies.root[1], velocities[0][1], spins[0][1], ordinary, velocities[0][0], velocities[0][2],true,
             arcade_mode::NativeAirSpinProof::from_frame(native_frame),
             {native_frame.flip_known,native_frame.flip_id,native_frame.selection_object},
-            arcade_mode::wallplant_runtime::preserves_combo(native_frame,now),vert_motion.native_flight});
+            arcade_mode::wallplant_runtime::preserves_combo(native_frame,now),preserve_vert});
         if(vert_plan) {
             output.ready=output.vertical=output.horizontal=true;
             output.velocity_y=vert_plan.velocity[1];

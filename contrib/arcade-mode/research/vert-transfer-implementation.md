@@ -176,3 +176,38 @@ cancel. Native contact alone establishes touchdown; no landing is predicted into
 existence. The old controller fails the new regression. Current ASan/UBSan runs
 pass 2,583 vert checks and 87,398 geometry/runtime checks, including transformed
 spine, hip and acid scenes. This remains offline evidence, not native acceptance.
+
+
+The integrated `ec28f738` candidate passed full CI (run 45017393061) and was
+installed for one no-trigger native trial. Steep original ramp contacts reached
+`rising_support`, but the flight did not reach `native_air`; this is a failed
+playable checkpoint. The external evidence is
+`vert-transfers-20261122/integrated-hil/vert-native-checkpoint.json` and its pinned
+physical/capture recording. No transfer input or temporary park objects were
+introduced. Exact prior installation, rollback inventory and score pack were
+restored after the trial.
+
+That recording shows the native rear wheel pair continuing on the lip with
+contact mask `0x4000`, which the writer's former `0xc000` gate discarded. The
+writer now inspects original contacts for either wheel pair while retaining all
+state, thread, category, shape-incarnation and geometry checks. These bits alone
+never prove a ramp or landing, and an admitted Manual remains a competing owner.
+
+The optional existing native correlation diagnostic now reaches the vert writer;
+normal frame admission is unchanged. Fresh same-owner contact/state publication
+gaps retain history for at most 100ms from the last admitted observation. No plan,
+transfer input or alignment is authorized in a gap. Only ordinary Arcade air
+shaping is withheld, leaving native physics in charge. A new admitted frame is
+required, and missing support cannot renew the launch deadline. Owner, stale,
+rail, bail, stance and unrelated mode changes still cancel.
+
+The recording also contains an idle `201` mode `1` to `2` transition with no
+selected flip, no wheel contacts and an unchanged owner. Existing
+`NativeInputState::defer_client_phase` already treats both as ordinary native AIR
+while correlation remains invalid. This exact transition can retain no-input
+flight history only: it cannot retain a pending or released transfer. The next
+fully admitted frame must confirm the same airborne episode, idle selection
+object, state `201`, mode `2` and no contacts within the same 100ms limit. Changed
+actors, reverse mode transitions and combined mismatches reject. This correction
+has offline regression evidence; native return, transfers and landing Revert
+remain unaccepted until a compiled corrected candidate demonstrates them.
