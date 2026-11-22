@@ -275,6 +275,8 @@ void set_arcade_push_intent(bool value){push=value;}
 void set_arcade_air_intent(bool value,unsigned,unsigned,unsigned,unsigned,bool){air=value;}
 @controller_route_packet_retire@
 @controller_route_binding_api@
+NativeInputFrame native_air_context(std::uint64_t,const NativeInputOwner&,const NativeRequestSample&,
+    MotionCleanupProof*,const char**,NativeInputCorrelation* = nullptr) noexcept;
 @controller_route_binding_context@
 void run(){
     unsigned checks{};
@@ -340,13 +342,24 @@ void run(){
     auto changed=sample;changed.state=201;
     require(!native_air_context(1000,owner,changed,&cleanup,&diagnostic).valid&&
         std::string_view(diagnostic)=="frame_correlation","writer diagnostic distinguishes changed native state from route rejection");++checks;
+    NativeInputCorrelation correlation{};
+    require(!native_air_context(1000,owner,changed,&cleanup,&diagnostic,&correlation).valid &&
+        correlation.mismatches==NativeInputCorrelation::state_changed && correlation.observed.owner==owner &&
+        correlation.observed.physics_step==frame.physics_step,"optional diagnostic copies the rejected original frame without admitting it");++checks;
+    changed=sample;changed.words[1]=0x4000;
+    require(!native_air_context(1000,owner,changed,&cleanup,&diagnostic,&correlation).valid &&
+        correlation.mismatches==NativeInputCorrelation::contacts_changed,"optional diagnostic distinguishes native rear-contact timing");++checks;
+    require(native_air_context(1000,owner,sample,&cleanup,&diagnostic,&correlation).valid && !correlation.mismatches,
+        "successful correlation clears prior mismatch evidence");++checks;
     bool contention_reported{};
     {
         std::lock_guard held(ollie_mutex);
         std::thread consumer([&] {
             MotionCleanupProof local_cleanup{};const char* reason{};
-            const auto unavailable=native_air_context(1000,owner,sample,&local_cleanup,&reason);
-            contention_reported=!unavailable.valid&&!local_cleanup.inspected&&std::string_view(reason)=="frame_lock_busy";
+            NativeInputCorrelation stale{frame,NativeInputCorrelation::contacts_changed};
+            const auto unavailable=native_air_context(1000,owner,sample,&local_cleanup,&reason,&stale);
+            contention_reported=!unavailable.valid&&!local_cleanup.inspected&&std::string_view(reason)=="frame_lock_busy" &&
+                !stale.observed.valid && !stale.mismatches;
         });
         consumer.join();
     }

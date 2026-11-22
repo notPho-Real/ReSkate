@@ -76,6 +76,121 @@ void retained_rear_wheel() {
             "only real same-ramp rear-wheel support continues the measured long lip departure");
     }
 }
+void publication_contact_boundary() {
+    for(unsigned rate:{30u,60u,120u})for(unsigned fault=0;fault<12;++fault) {
+        const auto dt=static_cast<std::uint64_t>(std::ceil(1000.f/static_cast<float>(rate)));
+        VertAirController c;auto o=ground();NativeInputState publisher;
+        NativeRequestSample live{};live.valid=true;live.state=100;live.crouch_mode=1;live.words[1]=0xc000;
+        const auto owner=o.native.owner;
+        for(unsigned i=0;i<3;++i) {
+            const float angle=.9f+.2f*static_cast<float>(i);
+            o.position={4*std::sin(angle),4*(1-std::cos(angle)),0};
+            o.up={-std::sin(angle),std::cos(angle),0};o.velocity={8*std::cos(angle),8*std::sin(angle),0};
+            o.support=patch(o.position,o.up);
+            o.native=publisher.observe(1000+i*dt,owner,live,{true,-1,99},false,1.f/static_cast<float>(rate));
+            c.observe(o);
+        }
+        check(c.phase()==VertPhase::rising_support,"record-shaped curved riding establishes history before the contact edge");
+        auto now=o.native.sampled_at+1;auto observed_owner=owner;
+        live.words[1]=0x4000;
+        if(fault==1)++observed_owner.core;
+        if(fault==2)live.crouch_mode=2;
+        if(fault==3)live.words[0]=0x20;
+        if(fault==4)now+=151;
+        if(fault==5)now=o.native.sampled_at-1;
+        if(fault==6)live.state=500;
+        if(fault==7)live.valid=false;
+        if(fault==8)live.state=300;
+        NativeInputCorrelation diagnostic{};
+        check(!publisher.correlate(now,observed_owner,live,&diagnostic).valid,"contact/publication mismatch never admits a native input frame");
+        if(fault==9)++diagnostic.observed.owner_generation;
+        if(fault==10)diagnostic.observed.physics_step+=3;
+        if(fault==11)diagnostic.mismatches=0;
+        const bool permitted=c.publication_gap(diagnostic,live,observed_owner,now);
+        check(permitted==(fault==0),"only fresh same-owner contact timing retains vert history; bail, rail, mode and stance reject");
+        if(!permitted)continue;
+        c.unavailable(now,owner,true,false);
+        check(c.preserves_native() && !c.eligible(o.native,now) && !c.consume(o.native,now,o.velocity),
+            "contact gap withholds the ordinary shaper but has no stale motion or trigger authority");
+        const auto source=o.support.center();o.support={};o.supported=true;
+        o.contact_point=o.position;o.contact_normal=source.query_normal;o.contacted_shape=source.body;o.contact_owner=source.world_owner;
+        check(vert_riding_contact_mask(live.state,live.words[1]),"observed0x4000 rear-wheel contact reaches original-contact inspection");
+        o.native=publisher.observe(now+dt,owner,live,{true,-1,99},false,1.f/static_cast<float>(rate));c.observe(o);
+        check(c.phase()==VertPhase::rising_support,"original rear contact continues the measured ramp");
+        live.state=200;live.words[1]=0;
+        check(!publisher.correlate(now+dt+1,owner,live,&diagnostic).valid && c.publication_gap(diagnostic,live,owner,now+dt+1),
+            "native ground-to-air publication gap preserves history without a synthetic takeoff");
+        c.unavailable(now+dt+1,owner,true,false);
+        o.supported=false;o.native=publisher.observe(now+2*dt,owner,live,{true,-1,99},false,1.f/static_cast<float>(rate));c.observe(o);
+        check(c.eligible(o.native,o.native.sampled_at),"only fresh original AIR establishes the genuine episode after rear contact");
+        live.state=201;
+        check(!publisher.correlate(now+2*dt+1,owner,live,&diagnostic).valid && c.publication_gap(diagnostic,live,owner,now+2*dt+1),
+            "native200-to201 publication retains the same flight without admitting the mismatched frame");
+        c.unavailable(now+2*dt+1,owner,true,false);
+        o.native=publisher.observe(now+3*dt,owner,live,{true,-1,99},false,1.f/static_cast<float>(rate));c.observe(o);
+        check(c.eligible(o.native,o.native.sampled_at) && !c.consume(o.native,o.native.sampled_at,o.velocity),
+            "no-input flight remains native after the current201 publication");
+        const auto deadline=o.native.sampled_at;
+        for(unsigned gap=20;gap<=120;gap+=20)c.unavailable(deadline+gap,owner,true,false);
+        check(!c.preserves_native(),"repeated publication gaps cannot renew the historical owner deadline");
+    }
+    for(auto mask:{0u,0x4000u,0x8000u,0xc000u,0x4001u})for(auto state:{100u,103u,200u,201u,300u,500u})
+        check(vert_riding_contact_mask(state,mask)==((state==100 || state==103) && (mask==0x4000 || mask==0x8000 || mask==0xc000)),
+            "contact inspection cannot admit unrelated airborne, rail, bail or unknown contact masks");
+}
+void idle_air_mode_boundary() {
+    for(unsigned fault=0;fault<12;++fault) {
+        VertAirController c;auto o=ground();o.native.selection_object=99;warm(c,o);c.observe(o);o=fly(o);c.observe(o);
+        ++o.native.physics_step;o.native.sampled_at+=10;o.native.state=201;c.observe(o);
+        NativeInputCorrelation diagnostic{o.native,NativeInputCorrelation::mode_changed};
+        NativeRequestSample live{};live.valid=true;live.state=201;live.crouch_mode=2;
+        auto owner=o.native.owner;auto now=o.native.sampled_at+1;
+        if(fault==1)live.crouch_mode=3;
+        if(fault==2){diagnostic.observed.mode=2;live.crouch_mode=1;}
+        if(fault==3)diagnostic.observed.flip_id=8;
+        if(fault==4)++owner.core;
+        if(fault==5)++diagnostic.observed.airborne_episode;
+        if(fault==6)live.words[1]=0x4000;
+        if(fault==7)diagnostic.observed.flip_known=false;
+        if(fault==8){live.state=200;diagnostic.mismatches|=NativeInputCorrelation::state_changed;}
+        if(fault==9)check(c.request(o.native,now,now,1),"mode boundary negative has a pending transfer");
+        if(fault==10)now+=101;
+        if(fault==11)live.words[0]=0x20;
+        check(c.publication_gap(diagnostic,live,owner,now)==(fault==0),
+            "only the recorded idle201 mode1-to2 boundary preserves no-input history");
+    }
+    for(unsigned fault=0;fault<9;++fault) {
+        VertAirController c;auto o=ground();o.native.selection_object=99;warm(c,o);c.observe(o);o=fly(o);c.observe(o);
+        ++o.native.physics_step;o.native.sampled_at+=10;o.native.state=201;c.observe(o);
+        const auto before=o.native;
+        NativeInputCorrelation diagnostic{before,NativeInputCorrelation::mode_changed};
+        NativeRequestSample live{};live.valid=true;live.state=201;live.crouch_mode=2;
+        check(c.publication_gap(diagnostic,live,o.native.owner,o.native.sampled_at+1),"recorded idle mode boundary staged");
+        c.unavailable(o.native.sampled_at+1,o.native.owner,true,false);
+        check(c.preserves_native() && !c.eligible(before,before.sampled_at+1) && !c.consume(before,before.sampled_at+1,o.velocity),
+            "mode gap never executes a plan or admits a trigger using old publication");
+        ++o.native.physics_step;o.native.sampled_at+=10;o.native.mode=2;
+        if(fault==1)o.native.flip_id=8;
+        if(fault==2)o.native.flip_known=false;
+        if(fault==3)++o.native.selection_object;
+        if(fault==4)++o.native.airborne_episode;
+        if(fault==5)o.native.mode=1;
+        if(fault==6)o.native.contacts=0x4000;
+        if(fault==7){o.native.state=100;o.native.airborne=false;}
+        if(fault==8)o.native.sampled_at+=91;
+        c.observe(o);
+        check(c.eligible(o.native,o.native.sampled_at)==(fault==0),
+            "only fully admitted same-episode idle201 mode2 can resume; changed actor/contact/state cancels");
+    }
+    VertAirController c;auto o=ground();warm(c,o);c.observe(o);
+    NativeInputCorrelation diagnostic{o.native,NativeInputCorrelation::contacts_changed};
+    NativeRequestSample live{};live.valid=true;live.state=100;live.crouch_mode=1;
+    check(c.publication_gap(diagnostic,live,o.native.owner,1001),"zero-contact riding can withdraw authority briefly");
+    c.unavailable(1001,o.native.owner,true,false);o.support={};o.supported=false;
+    for(unsigned i=0;i<8;++i){++o.native.physics_step;o.native.sampled_at+=17;c.observe(o);}
+    o=fly(o);c.observe(o);
+    check(!c.eligible(o.native,o.native.sampled_at),"unsupported ground after a publication gap cannot mint a later vert launch");
+}
 void trigger_qualification() {
     for(unsigned channel:{0u,1u}) {
         VertAirController c;auto o=ground();warm(c,o);c.observe(o);o=fly(o);c.observe(o);
@@ -707,4 +822,4 @@ void input_edges() {
     }
 }
 }
-int main(){retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

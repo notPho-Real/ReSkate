@@ -13,6 +13,7 @@ struct NativeInputFrame;
 struct NativeInputOwner;
 struct NativeRequestSample;
 struct MotionCleanupProof;
+struct NativeInputCorrelation;
 struct WallplantExecutionProof;
 struct GroundWriterEvidence;
 struct AngularWriterEvidence;
@@ -28,7 +29,8 @@ void finish_ground_writer_observation(const GroundWriterEvidence&) noexcept;
 // the returned input frame valid while mode/authority is disabled.
 NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
                                    const NativeRequestSample& sample, MotionCleanupProof* cleanup = nullptr,
-                                   const char** diagnostic_reason = nullptr) noexcept;
+                                   const char** diagnostic_reason = nullptr,
+                                   NativeInputCorrelation* correlation = nullptr) noexcept;
 // Pending wallplant only, before native selection and before acquiring source
 // busy: serialize admission, then sample live state and time. Releases the
 // input lock before returning; caller must revalidate its owner/selector.

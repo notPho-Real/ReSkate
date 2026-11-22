@@ -54,11 +54,13 @@ SurfaceGeometryVector alignment(const NativeInputFrame& frame,std::uint64_t now)
     return controller.alignment(frame,now);
 }
 Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner& physical_owner,
-        const char* frame_reason) noexcept {
+        const char* frame_reason,const NativeInputCorrelation* correlation,const NativeRequestSample* live) noexcept {
     std::lock_guard lock(mutex);
     const auto& frame=observation.native;
     if(!frame.valid) {
-        if(frame_reason && std::strcmp(frame_reason,"frame_lock_busy")==0)
+        const bool transition=frame_reason && std::strcmp(frame_reason,"frame_correlation")==0 &&
+            correlation && live && controller.publication_gap(*correlation,*live,physical_owner,now);
+        if(transition || (frame_reason && std::strcmp(frame_reason,"frame_lock_busy")==0))
             controller.unavailable(now,physical_owner,observation.enabled,observation.contested);
         else controller.observe(observation);
 #if defined(DINGOSDK_DEV_TOOLS)
@@ -71,7 +73,9 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
                 controller.observation().native.sampled_at,now,observation.supported,observation.up[1]);
         }
 #endif
-        return {};
+        // Withholding the ordinary Arcade air shaper is not motion authority.
+        // Native gravity/collision continue during this bounded history gap.
+        return {{},false,false,controller.preserves_native()};
     }
     if(support.valid && frame.valid && frame.owner==support_frame.owner &&
        frame.owner_generation==support_frame.owner_generation && !frame.airborne && !support_frame.airborne &&

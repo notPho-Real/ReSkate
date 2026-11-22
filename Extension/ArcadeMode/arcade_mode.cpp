@@ -1679,14 +1679,15 @@ static NativeInputFrame native_air_context_locked(std::uint64_t now,const Native
 }
 NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
                                    const NativeRequestSample& sample, MotionCleanupProof* cleanup,
-                                   const char** diagnostic_reason) noexcept {
+                                   const char** diagnostic_reason, NativeInputCorrelation* correlation) noexcept {
     if (cleanup) *cleanup={};
+    if (correlation) *correlation={};
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
     if (!lock.owns_lock()) {
         if(diagnostic_reason)*diagnostic_reason="frame_lock_busy";
         return {};
     }
-    return native_air_context_locked(now,owner,sample,cleanup,diagnostic_reason);
+    return native_air_context_locked(now,owner,sample,cleanup,diagnostic_reason,correlation);
 }
 WallplantExecutionProof native_wallplant_context(const NativeInputOwner& owner,std::uint64_t& now,
                                          const char** diagnostic_reason) noexcept {

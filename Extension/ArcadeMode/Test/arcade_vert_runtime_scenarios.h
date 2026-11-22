@@ -36,7 +36,44 @@ bool local_component_owner(const SurfaceGeometryBody& shape,std::uintptr_t entit
     return entity==Fixture::running->live.owner[1] && Fixture::component_owner(Fixture::running,Fixture::running->live,shape,owner);
 }
 }
+void vert_runtime_mode_gap_checks() {
+    for(unsigned fault=0;fault<2;++fault) {
+        vert_runtime::cancel();Fixture f;f.allow_world_owner=f.unknown=true;f.curve_radius=4;
+        VertObservation o;o.enabled=o.supported=true;o.native.valid=true;o.native.owner={1,2,3,4,5};
+        o.native.owner_generation=o.native.contact_generation=o.native.action_generation=o.native.mode_generation=1;
+        o.native.flip_known=true;o.native.flip_id=-1;o.native.selection_object=99;
+        o.native.physics_seconds=1.f/60;o.native.state=100;o.native.mode=1;o.native.contacts=0xc000;
+        o.native.sampled_at=1000;o.contacted_shape={7,1,9};
+        const auto context=[&] {f.time=o.native.sampled_at;f.live.native=InputNativeContext::from_frame(o.native);};
+        for(float angle:{.8f,1.1f,1.3f}) {
+            ++o.native.physics_step;o.native.sampled_at+=17;context();
+            o.position={4*std::sin(angle),4*(1-std::cos(angle)),0};
+            o.up={-std::sin(angle),std::cos(angle),0};o.velocity={8*std::cos(angle),8*std::sin(angle),0};
+            vert_runtime::geometry(f.api(),f.live,o.native,o.position,o.up);
+            (void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        }
+        for(unsigned state:{200u,201u}) {
+            ++o.native.physics_step;o.native.sampled_at+=17;o.native.state=state;o.native.airborne=true;
+            o.native.contacts=0;o.native.airborne_episode=1;o.native.airborne_started_known=true;
+            if(state==200)o.native.airborne_started_at=o.native.sampled_at;
+            o.supported=false;context();
+            check(vert_runtime::step(o,f.time,o.native.owner,"frame_valid").native_flight,"runtime mode fixture has real qualified flight history");
+        }
+        NativeInputCorrelation diagnostic{o.native,NativeInputCorrelation::mode_changed};
+        NativeRequestSample live{};live.valid=true;live.state=201;live.crouch_mode=2;
+        auto missing=o;missing.native={};
+        const auto gap=vert_runtime::step(missing,f.time+1,o.native.owner,"frame_correlation",&diagnostic,&live);
+        check(gap.preserve_native && !gap.native_flight && !gap.plan && !gap.aligning &&
+            !vert_runtime::surface(f.time+1,o.native,{}).can_transfer,
+            "runtime idle mode gap withholds all transfer authority and preserves native no-input trajectory");
+        ++o.native.physics_step;o.native.sampled_at+=17;o.native.mode=2;if(fault)++o.native.selection_object;context();
+        const auto resumed=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        check(resumed.native_flight==(fault==0) && !resumed.plan && !resumed.aligning,
+            "runtime resumes only a fully admitted matching idle actor after mode2 publication");
+    }
+}
 void vert_runtime_scene_checks() {
+    vert_runtime_mode_gap_checks();
     for(unsigned scenario=0;scenario<9;++scenario) {
         const unsigned fault=scenario<5?scenario:0;
         vert_runtime::cancel();Fixture f;f.allow_world_owner=f.unknown=true;f.curve_radius=4;
@@ -54,6 +91,13 @@ void vert_runtime_scene_checks() {
         }
         auto missing=o;missing.native={};
         check(!vert_runtime::step(missing,f.time+5,o.native.owner,"frame_lock_busy").native_flight,"missing publication has no runtime motion authority");
+        NativeInputCorrelation diagnostic{o.native,NativeInputCorrelation::contacts_changed};
+        NativeRequestSample live{};live.valid=true;live.state=100;live.crouch_mode=1;live.words[1]=0x4000;
+        o.native.contacts=0xc000;diagnostic.observed=o.native;
+        const auto withheld=vert_runtime::step(missing,f.time+6,o.native.owner,"frame_correlation",&diagnostic,&live);
+        check(withheld.preserve_native && !withheld.native_flight && !withheld.plan && !withheld.aligning,
+            "actual runtime retains contact-only history while withholding input and physical authority");
+        o.native.contacts=0x4000;
         o.supported=false;
         for(unsigned i=0;i<2;++i) {
             ++o.native.physics_step;o.native.sampled_at+=17;context();o.position[1]+=.13f;
@@ -63,6 +107,16 @@ void vert_runtime_scene_checks() {
         o.native.airborne_episode=1;o.native.airborne_started_known=true;o.native.airborne_started_at=o.native.sampled_at;context();
         auto motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
         check(motion.native_flight && !motion.plan,"actual runtime recognizes queried curved support through the native departure pattern without input");
+        o.native.contacts=0;diagnostic={o.native,NativeInputCorrelation::state_changed};
+        live.state=201;live.words[1]=0;
+        missing=o;missing.native={};
+        const auto air_gap=vert_runtime::step(missing,f.time+1,o.native.owner,"frame_correlation",&diagnostic,&live);
+        check(air_gap.preserve_native && !air_gap.native_flight && !air_gap.plan && !air_gap.aligning,
+            "actual200-to201 gap preserves native trajectory without another flight command");
+        check(!vert_runtime::surface(f.time+1,o.native,{}).can_transfer,"old frame cannot request transfer during publication gap");
+        ++o.native.physics_step;o.native.sampled_at+=17;o.native.state=201;context();
+        motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        check(motion.native_flight && !motion.plan,"fresh201 resumes same native flight with no impulse");
         auto surface=vert_runtime::surface(f.time,o.native,{});check(surface.can_transfer,"runtime exposes fresh transfer context");
         if(!fault && scenario<5)for(unsigned sample=0;sample<4;++sample) {
             const unsigned channel=sample%2;const bool touchdown=sample>=2;
