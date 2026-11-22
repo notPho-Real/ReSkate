@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_input_telemetry.h"
+#include "Extension/ArcadeMode/arcade_input_dispatch.h"
 #include <cstdlib>
 #include <iostream>
 #include <thread>
@@ -426,6 +427,20 @@ void recognition_v2_rows(){
     row.recognition_id=7;row.recognition_session=3;row.action=3;row.context=2;row.footprint_kind=1;row.member_count=2;
     row.first_event=2;row.last_event=8;row.first_ms=1000;row.last_ms=1034;row.held_reuse=2;
     check(capture_correlation_valid(row),"v2 summary retains exact membership count and original held footprint bounds");
+    for(unsigned schema:{2u,3u,4u}) {
+        auto action_row=row;action_row.schema=schema;
+        for(unsigned action=1;action<=static_cast<unsigned>(InputAction::manual_pivot);++action) {
+            action_row.action=action;
+            check(capture_correlation_valid(action_row),"every current input action retains its recognition summary");
+            action_row.member_index=1;action_row.member_event=8;
+            check(capture_correlation_valid(action_row),"every current input action retains its original physical member");
+            action_row.member_index=action_row.member_event=0;
+        }
+        for(unsigned action:{0u,static_cast<unsigned>(InputAction::manual_pivot)+1u,std::numeric_limits<unsigned>::max()}) {
+            action_row.action=action;
+            check(!capture_correlation_valid(action_row),"none and unknown input actions cannot enter recognition capture");
+        }
+    }
     row.member_index=1;row.member_event=8;check(capture_correlation_valid(row),"matcher order may put newest edge before reused older edge");
     row.member_index=2;row.member_event=2;check(capture_correlation_valid(row),"held reuse keeps its real old event identity");
     const auto valid=row;row.member_event=9;check(!capture_correlation_valid(row),"member cannot lie outside original exact bounds");

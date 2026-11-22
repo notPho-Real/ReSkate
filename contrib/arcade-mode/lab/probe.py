@@ -256,6 +256,9 @@ CAPTURE_RECOGNITION_NUMBERS = ('recognition_id', 'recognition_session', 'action'
                                'member_index', 'member_count', 'member_event', 'held_reuse')
 CAPTURE_CORRELATION_V2_NUMBERS = CAPTURE_CORRELATION_NUMBERS[:19] + CAPTURE_RECOGNITION_NUMBERS + CAPTURE_CORRELATION_NUMBERS[19:]
 CAPTURE_CORRELATION_V2_FLAGS = CAPTURE_CORRELATION_FLAGS + ('queue_admitted',)
+# Last current InputAction is manual_pivot; contract tests keep this wire bound
+# aligned with the C++ enum without reading repository files during parsing.
+CAPTURE_RECOGNITION_ACTION_MAX = 25
 
 
 
@@ -315,7 +318,7 @@ def parse_capture_correlation(text):
             state['errors'].add('mixed_schema')
         recognition = row['schema'] == 2 and kind == 1 and row['source'] == 2
         if recognition:
-            bad = (not row['recognition_id'] or not 0 < row['action'] <= 21 or row['context'] > 6 or
+            bad = (not row['recognition_id'] or not 0 < row['action'] <= CAPTURE_RECOGNITION_ACTION_MAX or row['context'] > 6 or
                    row['footprint_kind'] > 2 or row['member_count'] > 100 or
                    row['member_index'] > row['member_count'] or row['recognized_ms'] != row['ms'])
             if row['footprint_kind'] == 1:
