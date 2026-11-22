@@ -27,11 +27,12 @@ FAST = workflow("arcade-fast.yml")
 INTEGRATION = workflow("arcade-integration.yml")
 
 
-def context(branch="arcade-stage-rc3-gameplay", event="push", message="", run=1, full=False, name="Arcade Mode development"):
+def context(branch="arcade-stage-rc3-gameplay", event="push", message="", run=1, full=False, name="Arcade Mode development", tests_only=False):
     return dict(github=NS(workflow=name, event_name=event, ref="refs/heads/" + branch,
+                          repository="notPho-Real/ReSkate",
                           run_id=run, run_attempt=1,
                           event=NS(head_commit=NS(message=message))),
-                inputs=NS(full_integration=full))
+                inputs=NS(full_integration=full, tests_only=tests_only))
 
 
 def expression(source, ctx):
@@ -39,6 +40,7 @@ def expression(source, ctx):
     source = source.replace("&&", " and ").replace("||", " or ")
     source = re.sub(r"!(?!=)", " not ", source)
     return eval(source, {"__builtins__": {}, "true": True, "false": False,
+                        "always": lambda: True,
                         "contains": lambda s, part: part.lower() in s.lower(),
                         "startsWith": lambda s, part: s.lower().startswith(part.lower()),
                         "format": lambda pattern, *args: pattern.format(*args)}, ctx)
@@ -110,6 +112,35 @@ class SchedulingTests(unittest.TestCase):
             with self.subTest(target=target):
                 self.assertIn(target, compile_step.split())
                 self.assertIn("-D" + option + "=ON", configure.split())
+
+    def test_test_only_dispatch_keeps_all_preflight_and_cannot_release(self):
+        selection = ENTRY["jobs"]["validation"]["with"]["tests_only"]
+        policy = DEV["jobs"]["policy"]["steps"][0]["env"]["FULL"]
+        for branch in ("arcade-stage-rc3-gameplay", "arcade-stage-wallplant-rc4"):
+            ctx = context(branch=branch, event="workflow_dispatch", full=True, tests_only=True)
+            self.assertTrue(expression(selection, ctx))
+            self.assertFalse(expression(policy, ctx))
+            self.assertFalse(expression(DEV["jobs"]["build"]["if"], ctx))
+            for name in ("windows-tests", "linux-tests", "macos-lab"):
+                self.assertTrue(expression(DEV["jobs"][name]["if"], ctx))
+            self.assertNotIn("if", DEV["jobs"]["targeted"])
+            ctx["needs"] = NS(policy=NS(outputs=NS(full="false")),
+                              validation=NS(outputs=NS(full="false")))
+            self.assertFalse(expression(DEV["jobs"]["linux-integration"]["if"], ctx))
+            self.assertFalse(expression(DEV["jobs"]["release-eligibility"]["if"], ctx))
+            self.assertFalse(expression(ENTRY["jobs"]["publish"]["if"], ctx))
+        for branch, event in (("main", "workflow_dispatch"), ("arcade-mode", "workflow_dispatch"),
+                              ("coding/example", "workflow_dispatch"),
+                              ("arcade-stage-rc3-gameplay", "push"),
+                              ("arcade-stage-rc3-gameplay", "pull_request")):
+            ctx = context(branch=branch, event=event, full=True, tests_only=True)
+            self.assertFalse(expression(selection, ctx))
+            self.assertTrue(expression(policy, ctx))
+            self.assertTrue(expression(DEV["jobs"]["build"]["if"], ctx))
+        ctx = context(event="workflow_dispatch", full=True)
+        self.assertFalse(expression(selection, ctx))
+        self.assertTrue(expression(policy, ctx))
+        self.assertTrue(expression(DEV["jobs"]["build"]["if"], ctx))
 
     def test_failure_or_skipped_gate_blocks_release(self):
         gate = DEV["jobs"]["release-eligibility"]
