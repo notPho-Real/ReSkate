@@ -114,7 +114,7 @@ def generate(root,variant='current'):
         raise ValueError('mismatched remap fixture signature and axis declaration')
     once(signatures[remap_form],r'''
     struct PadResult {short x{},y{},rx{},ry{};unsigned buttons{},controls{};bool correction{},drive{};unsigned lt{},rt{},physical{};}last_pad;
-    bool competing_left_owner{};
+    bool competing_left_owner{},omit_contextual_trigger_ownership{};
     NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,short physical_x=0,
                                unsigned char lt=0,unsigned char rt=0){''')
     once(declarations[remap_form],
@@ -128,12 +128,26 @@ def generate(root,variant='current'):
              'remap(0,state.velocity+.02f*state.position>0?-25000:25000,0,0,clock_ms-began<1200?255:0)')
         once('remap(0,feedback.velocity+.02f*feedback.position>0?-25000:25000,0,clock_ms-began<1200?255:0)',
              'remap(0,feedback.velocity+.02f*feedback.position>0?-25000:25000,0,0,clock_ms-began<1200?255:0)')
-    once('const bool reference=false;const unsigned char physical_right_trigger='+('physical_rt' if remap_form==2 else '0')+';',
-         'const bool reference=false;const unsigned char physical_left_trigger=lt,physical_right_trigger=rt;')
+    # Physical triggers now precede poll so grab/stance arbitration sees the
+    # original packet. Keep that ordering and the later reference declaration.
+    once('const unsigned char physical_left_trigger=0,physical_right_trigger='+('physical_rt' if remap_form==2 else '0')+';',
+         'const unsigned char physical_left_trigger=lt,physical_right_trigger=rt;')
+    # This consumer exercises Manual/scalar delivery, not native Switch. Retain
+    # the complete final writer with an unavailable, nonactuating stance seam.
+    once('void cancel()noexcept{++cancellations;live=false;}',
+         'void cancel()noexcept{++cancellations;live=false;}\n'
+         'StanceControl controls(const NoBailSkater&,const InputNativeContext&,std::uint64_t,std::uint64_t)noexcept{return {};}')
+    once('const InputAdapter stance_adapter{};',
+         'const bool stance_permitted=false;const auto native_flip_owner=owner;\nconst InputAdapter stance_adapter{};')
     once(' const auto admission=native_readiness.sample(now,arcade_input.native_context(now));\n const bool game_input=active&&fixture_watch&&admission.gameplay,may_start=admission.start,may_push=false,may_toggle_board=false,offboard=admission.offboard;',
          ' bool game_input=active&&fixture_watch,capture_game_input{};\n'+control_owner+'\n (void)capture_game_input;')
     once('const bool flip_ready=admission.flip_ready,action_safe=admission.action;', '')
-    once('bool competing_left_owner{};', 'std::atomic<bool> input_clock_valid{true};bool competing_left_owner{};')
+    once('bool competing_left_owner{},omit_contextual_trigger_ownership{};',
+         'std::atomic<bool> input_clock_valid{true};bool competing_left_owner{},omit_contextual_trigger_ownership{};')
+    once(' if(corrupt_manual_delivery)result.right_y=0;',
+         ' if(corrupt_manual_delivery)result.right_y=0;\n'
+         ' // Negative delivery boundary: the correction consumer receives no LT ownership receipt.\n'
+         ' if(omit_contextual_trigger_ownership)result.trigger_owned=0;')
     once('struct PadResult {short x{},y{},rx{},ry{};',
          'NativeManualContact writer_manual;AirMotionIntent writer_intent;bool writer_manual_hold{};\nstruct PadResult {short x{},y{},rx{},ry{};')
     # Deliberately grant outer drive eligibility to stress the real inner balance/
@@ -363,14 +377,24 @@ def generate(root,variant='current'):
       enter_ground(nose,hz);remap(0,outward,15000);physical_step(hz,contact);remap(0,outward,15000);
       expect(last_pad.correction&&last_pad.y==0&&last_pad.ry==(nose?20000:-20000),"first-second outward protection suppresses projection while retaining RS hold");
       trace("protected-outward",hz,nose,outward);
-      // Trigger-only input is permitted to retain the established Manual RS hold,
-      // but makes native-correction compatibility false in the actual mode block.
-      remap(0,outward,15000,31,0);
-      expect(!last_pad.correction&&last_pad.y==0&&last_pad.ry==(nose?20000:-20000),"trigger-only veto cannot leak raw vertical input beside retained Manual RS");
-      expect(!last_pad.drive&&!(last_pad.buttons&0x4000u),"trigger veto still cannot acquire SDK drive/native X push");
-      trace("trigger-veto-reserved-y",hz,nose,outward);
+      // Contextual LT is owned by the established balance and preserves its
+      // correction. It must not become a raw native trigger or ground setup.
+      const auto contextual=remap(0,outward,15000,31,0);
+      expect((contextual.trigger_owned&1u)&&last_pad.correction&&last_pad.y==0&&last_pad.ry==(nose?20000:-20000),
+             "owned contextual LT preserves correction and established Manual RS support");
+      expect(last_pad.lt==0&&!contextual.jump.setup_started&&!contextual.authored_playback,
+             "contextual LT is consumed without starting a ground setup actor");
+      expect(!last_pad.drive&&!(last_pad.buttons&0x4000u),"contextual LT cannot acquire SDK drive/native X push");
+      trace("contextual-lt-reserved-y",hz,nose,outward);
+      // Withhold only the delivered receipt, keeping the same actual physical
+      // LT and established RS owner. Raw trigger magnitude is not permission.
+      omit_contextual_trigger_ownership=true;remap(0,outward,15000,31,0);
+      expect(!last_pad.correction&&last_pad.y==0&&last_pad.ry==(nose?20000:-20000),
+             "unowned LT cannot grant correction or leak raw vertical input beside retained Manual RS");
+      omit_contextual_trigger_ownership=false;remap(0,outward,15000,31,0);
+      expect(last_pad.correction&&last_pad.y==0,"current contextual LT receipt restores correction without a new trigger edge");
       remap(0,outward,15000);
-      expect(last_pad.correction&&last_pad.y==0,"removing trigger restores protected zero ownership on the same physical interval");
+      expect(last_pad.correction&&last_pad.y==0,"releasing contextual LT preserves protected zero ownership on the same physical interval");
 
       // A newer physical contact generation revokes correction publication,
       // while the existing actuator still owns its reserved vertical axis.

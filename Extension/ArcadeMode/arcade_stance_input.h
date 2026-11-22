@@ -65,7 +65,7 @@ public:
     bool observed_change() const noexcept {return changed_;}
     std::uint64_t sequence() const noexcept {return request_.press.sequence;}
 private:
-    static constexpr auto stance_mask=game::build::v20260929::launches::stance_switch_mask;
+    static constexpr std::uint32_t stance_mask=game::build::v20260929::launches::stance_switch_mask;
     static bool ground(const InputNativeContext& native,std::uint64_t now) noexcept {
         return native.required && native.fresh(now) && native.flip.valid && native.flip.object &&
             !native.airborne && !native.rail_family && !(native.flip.stance&0x40u) &&
