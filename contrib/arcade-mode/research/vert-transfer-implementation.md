@@ -140,3 +140,12 @@ curvature, and missing contacts still retain only the existing 100ms grace. An
 external replay of the measured geometry reaches 17 qualified support and 12 AIR
 observations without issuing a motion plan. That replay supplies fixture owner
 stamps and input lineage; it is not proof of native admission or playable return.
+
+Controller-state contention now waits for the bounded existing state read instead
+of reporting ordinary ground or relinquishing native-flight preservation. Query
+callbacks that acquire input ownership remain outside the controller mutex. The
+regression pauses original owner validation and overlaps both LT and RT events in
+AIR and the ground-before-contact publication gap. Each retains its original
+transfer or landing owner and deadline; reservation alone never executes Revert.
+The shared-journal session fixtures use the primary engineer's reviewed dispatcher
+contract, not a parallel transfer sampler.

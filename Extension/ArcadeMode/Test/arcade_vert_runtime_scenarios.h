@@ -2,6 +2,23 @@
 // Uses the geometry test fixture to exercise the real runtime bridge. No native
 // contact or landing is inferred from these procedural query responses.
 #include "Extension/ArcadeMode/arcade_vert_runtime.h"
+#include <condition_variable>
+#include <future>
+#include <mutex>
+
+namespace {
+struct VertOwnerReadPause {
+    std::mutex mutex;
+    std::condition_variable changed;
+    bool entered{}, released{};
+    static inline VertOwnerReadPause* active{};
+    void wait() {
+        std::unique_lock lock(mutex);
+        entered=true;changed.notify_all();
+        changed.wait(lock,[&] {return released;});
+    }
+};
+}
 #if defined(DINGOSDK_DEV_TOOLS)
 #include "Engine/Core/Log/logging.h"
 namespace dingosdk::logging {
@@ -12,6 +29,7 @@ void write(Level,Channel,std::string_view) noexcept{}
 #endif
 namespace dingosdk::arcade_mode::native_wall_contact {
 bool static_world_owner(const SurfaceGeometryBody& shape,SurfaceGeometryWorldOwner& owner) noexcept {
+    if(VertOwnerReadPause::active)VertOwnerReadPause::active->wait();
     return Fixture::static_owner(Fixture::running,shape,owner);
 }
 bool local_component_owner(const SurfaceGeometryBody& shape,std::uintptr_t entity,SurfaceGeometryWorldOwner& owner) noexcept {
@@ -45,6 +63,55 @@ void vert_runtime_scene_checks() {
         auto motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
         check(motion.native_flight && !motion.plan,"actual runtime recognizes queried curved support through the native departure pattern without input");
         auto surface=vert_runtime::surface(f.time,o.native,{});check(surface.can_transfer,"runtime exposes fresh transfer context");
+        if(!fault)for(unsigned sample=0;sample<4;++sample) {
+            const unsigned channel=sample%2;const bool touchdown=sample>=2;
+            if(sample==2)for(unsigned i=0;i<10;++i) {
+                ++o.native.physics_step;o.native.sampled_at+=17;o.velocity={4,-3,0};context();
+                (void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+            }
+            // Pause the existing bounded owner read while step holds its mutex.
+            // A contending qualifier must see that completed proof, not report
+            // ordinary ground merely because another thread is validating it.
+            ++o.native.physics_step;o.native.sampled_at+=17;context();
+            TriggerPress press;press.press.sequence=channel+1;
+            press.press.token={InputSource::triggers,static_cast<std::int16_t>(channel),InputEdge::press};
+            auto published=o.native;
+            if(touchdown) {
+                ++published.physics_step;++published.sampled_at;++published.air_departure;
+                published.airborne=false;published.state=100;published.contacts=0xc000;
+            }
+            const auto current=InputNativeContext::from_frame(published);
+            press.press.at=published.sampled_at;press.context=touchdown?InputContext::ground:InputContext::air;
+            press.native=current;
+            VertOwnerReadPause pause;VertOwnerReadPause::active=&pause;
+            auto stepping=std::async(std::launch::async,[&] {
+                return vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+            });
+            bool entered{};
+            {
+                std::unique_lock lock(pause.mutex);
+                entered=pause.changed.wait_for(lock,std::chrono::seconds(2),[&] {return pause.entered;});
+            }
+            std::promise<void> started;
+            auto qualifying=std::async(std::launch::async,[&] {
+                started.set_value();
+                return vert_runtime::qualify(nullptr,press,current,f.time+7);
+            });
+            started.get_future().wait();
+            const auto status=qualifying.wait_for(std::chrono::milliseconds(20));
+            {
+                std::lock_guard lock(pause.mutex);pause.released=true;
+            }
+            pause.changed.notify_all();
+            const auto completed=stepping.get();const auto decision=qualifying.get();
+            VertOwnerReadPause::active=nullptr;
+            check(entered && status==std::future_status::timeout,
+                "contended trigger qualification waits for original physics proof");
+            check(completed.native_flight && decision.owner==(touchdown?TriggerOwner::landing_revert:TriggerOwner::transfer) &&
+                decision.ready!=touchdown,"both contended triggers retain transfer or pending touchdown ownership");
+            check(decision.deadline==press.press.at+(touchdown?430:150),
+                "waiting for controller proof never renews the original trigger deadline");
+        }
         InputRequest input;input.action=InputAction::transfer_command;input.context=InputContext::air;
         input.air_episode=f.live.native.air_episode();input.generations=f.live.native.generations;
         input.physical_pressed_at=input.first_input_at=f.time;input.input_sequence=1;

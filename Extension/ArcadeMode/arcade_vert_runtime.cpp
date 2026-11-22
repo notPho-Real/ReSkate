@@ -7,6 +7,9 @@
 #endif
 namespace dingosdk::arcade_mode::vert_runtime {
 namespace {
+// Controller state is short-lived and never calls back into input ownership.
+// Query scopes and their input-context validation stay outside this mutex.
+// Contention cannot revoke flight/trigger authority or enable ground fallback.
 std::mutex mutex;
 VertAirController controller;
 VertPatch support;
@@ -14,20 +17,23 @@ NativeInputFrame support_frame;
 }
 void cancel() noexcept {std::lock_guard lock(mutex);controller.reset();support={};support_frame={};}
 TriggerDecision qualify(void*,const TriggerPress& press,const InputNativeContext& current,std::uint64_t now) noexcept {
-    std::unique_lock lock(mutex,std::try_to_lock);
-    return lock.owns_lock()?qualify_vert_trigger(controller,press,current,now):TriggerDecision{};
+    // Contention is not evidence of ordinary ground. All query callbacks that
+    // acquire input ownership run outside this mutex; locked owner validation
+    // uses bounded memory reads only. Observe the completed controller proof
+    // before allowing the shared dispatcher to fall through to ground controls.
+    std::lock_guard lock(mutex);
+    return qualify_vert_trigger(controller,press,current,now);
 }
 InputSurfaceState surface(std::uint64_t now,const NativeInputFrame& frame,InputSurfaceState other) noexcept {
-    std::unique_lock lock(mutex,std::try_to_lock);
-    if(!lock.owns_lock() || !controller.eligible(frame,now))return other;
+    std::lock_guard lock(mutex);
+    if(!controller.eligible(frame,now))return other;
     other.fresh=other.can_transfer=true;other.transfer_buttons=0;
     other.generation=frame.airborne_episode;other.physics_step=frame.physics_step;
     other.generations=InputNativeContext::from_frame(frame).generations;
     other.can_plant=other.can_push=false;return other;
 }
 InputDisposition request(const InputRequest& input,std::uint64_t now,const NativeInputFrame& frame) noexcept {
-    std::unique_lock lock(mutex,std::try_to_lock);
-    if(!lock.owns_lock())return InputDisposition::cancelled;
+    std::lock_guard lock(mutex);
     if(input.action!=InputAction::transfer_command || input.context!=InputContext::air ||
        input.air_episode!=InputNativeContext::from_frame(frame).air_episode() ||
        input.generations.owner!=frame.owner_generation || input.first_input_at!=input.physical_pressed_at)
@@ -44,13 +50,12 @@ InputDisposition request(const InputRequest& input,std::uint64_t now,const Nativ
         InputDisposition::started:InputDisposition::cancelled;
 }
 SurfaceGeometryVector alignment(const NativeInputFrame& frame,std::uint64_t now) noexcept {
-    std::unique_lock lock(mutex,std::try_to_lock);
-    return lock.owns_lock()?controller.alignment(frame,now):SurfaceGeometryVector{};
+    std::lock_guard lock(mutex);
+    return controller.alignment(frame,now);
 }
 Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner& physical_owner,
         const char* frame_reason) noexcept {
-    std::unique_lock lock(mutex,std::try_to_lock);
-    if(!lock.owns_lock())return {};
+    std::lock_guard lock(mutex);
     const auto& frame=observation.native;
     if(!frame.valid) {
         if(frame_reason && std::strcmp(frame_reason,"frame_lock_busy")==0)
