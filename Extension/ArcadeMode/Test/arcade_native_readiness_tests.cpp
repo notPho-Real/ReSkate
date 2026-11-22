@@ -3,9 +3,12 @@
 #include "Extension/ArcadeMode/arcade_camera_input.h"
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
+// Full controller journals belong to heap-owned fixtures so separate cases
+// cannot accumulate beyond the Windows test process's 1 MiB stack reserve.
 void check(bool value,const char* why){++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
 NativeRequestSample sample(unsigned state=100,unsigned stance=0,unsigned mode=1){NativeRequestSample s{};s.valid=true;s.state=state;s.crouch_mode=mode;s.words[0]=stance;s.words[1]=0xc000;return s;}
 void control_ownership() {
@@ -29,7 +32,7 @@ void client_phase_gap() {
         unsigned selected_slot()const{return 1u;}unsigned generation()const{return 7u;}} route;
     const NativeInputOwner owner{1,2,3,4,5};
     for(unsigned state:{101u,103u,200u,201u}) {
-        NativeInputState physics;ArcadeInput input(true);input.enable(true);NativeInputReadiness readiness;
+        NativeInputState physics;const auto fixture=std::make_unique<ArcadeInput>(true);auto& input=*fixture;input.enable(true);NativeInputReadiness readiness;
         const auto original=physics.observe(1000,owner,sample(),{true,1,16});
         input.publish_native_context(original);input.publish_authority(1000,original.owner_generation,1,true);
         readiness.publish(original,{true,true,true,true,true,true,false,false,true,0});
@@ -61,7 +64,7 @@ void rail_client_lag() {
     // but before the client publishes that contact/action generation.
     for(unsigned hz:{30u,60u,120u})for(unsigned stance:{0u,0x20u})
     for(unsigned rail:{400u,401u,402u,403u,404u,405u,406u}) {
-        NativeInputState physics;NativeInputReadiness readiness;ArcadeInput input(true);
+        NativeInputState physics;NativeInputReadiness readiness;const auto fixture=std::make_unique<ArcadeInput>(true);auto& input=*fixture;
         input.enable(true);NativeInputOwner owner{1,2,3,4,5};AuthoredTickClock clock;
         const std::array catalog{PreparedGesture{1,false,GestureContext::from_grind,
             std::vector<AuthoredStickStep>{{0,0,-28000},{18,0,28000},{21,0,0},{24,0,0}}}};
@@ -158,7 +161,7 @@ void rail_client_lag() {
 }
 void prepared_air_manual() {
     for(unsigned hz:{30u,60u,120u})for(int direction:{-1,1})for(bool pad:{false,true})for(unsigned fault=0;fault<7;++fault) {
-        ArcadeInput input(true);input.enable(true);NativeInputState physics;NativeInputReadiness readiness;
+        const auto fixture=std::make_unique<ArcadeInput>(true);auto& input=*fixture;input.enable(true);NativeInputState physics;NativeInputReadiness readiness;
         NativeInputOwner owner{1,2,3,4,5};NativeGesture::Output output{};std::uint64_t recognized{};
         const auto poll=[&](std::uint64_t now,int held,unsigned state=201,unsigned contacts=0,bool allowed=true){
             auto raw=sample(state,0,state==100?1:2);raw.words[1]=contacts;
@@ -231,7 +234,7 @@ int main(){control_ownership();
     check(readiness.sample(10,air).flip_ready,"idle verified air selection allows the existing flip adapter");
     const auto ack=source.observe(15,owner,sample(201),{true,2,12});const auto active=readiness.sample(15,ack);
     check(active.gameplay&&active.action&&!active.flip_ready&&!active.start,"own selection acknowledgment retains actor context but removes idle-selection readiness");
-    ArcadeInput transported(true);transported.enable(true);
+    const auto transported_fixture=std::make_unique<ArcadeInput>(true);auto& transported=*transported_fixture;transported.enable(true);
     transported.publish_native_context(ack);transported.publish_authority(15,ack.owner_generation,1,true);
     check(transported.native_context(15).airborne_episode==ack.airborne_episode &&
         transported.native_context(15).air_departure==ack.air_departure,"existing facade exposes original physics flight identity without restamping");
@@ -240,7 +243,7 @@ int main(){control_ownership();
     check(!readiness.sample(20,unavailable).manual,"new not-ready mode cannot reuse generic Manual safety");
     auto bad=unavailable;bad.valid=false;check(!readiness.sample(20,bad).gameplay,"invalid current context cannot borrow a valid proof");
     {
-        ArcadeInput input(true);input.enable(true);NativeInputState physics;NativeInputReadiness gate;
+        const auto fixture=std::make_unique<ArcadeInput>(true);auto& input=*fixture;input.enable(true);NativeInputState physics;NativeInputReadiness gate;
         auto frame=physics.observe(100,owner,sample(200),{true,-1});gate.publish(frame,all);
         auto poll=[&](std::uint64_t now,short y){
             input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
@@ -257,7 +260,7 @@ int main(){control_ownership();
     // Exercise actual facade/session physical edge lifetime around an authority
     // replacement, using the same readiness selection as production remapping.
     for(unsigned stance:{0u,0x20u}) {
-        ArcadeInput input(true);input.enable(true);NativeInputState observer;NativeInputReadiness gate;
+        const auto fixture=std::make_unique<ArcadeInput>(true);auto& input=*fixture;input.enable(true);NativeInputState observer;NativeInputReadiness gate;
         NativeInputOwner current_owner=owner;
         auto frame=observer.observe(1000,current_owner,sample(100,stance),{true,-1});gate.publish(frame,all);
         const std::array prepared{PreparedGesture{1,false,GestureContext::ground,

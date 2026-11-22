@@ -5,6 +5,9 @@ on:
       full_integration:
         type: boolean
         default: true
+      tests_only:
+        type: boolean
+        default: false
       cold_cache:
         type: boolean
         default: false
@@ -25,7 +28,7 @@ jobs:
     steps:
       - id: level
         env:
-          FULL: ${{ inputs.full_integration == true || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/arcade-mode' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full integration]') || contains(github.event.head_commit.message, '[release candidate]') }}
+          FULL: ${{ !(inputs.tests_only == true && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/arcade-stage-')) && (inputs.full_integration == true || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/arcade-mode' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full integration]') || contains(github.event.head_commit.message, '[release candidate]')) }}
         run: echo "full=$FULL" >> "$GITHUB_OUTPUT"
 
   targeted:
@@ -71,7 +74,7 @@ jobs:
         run: python contrib/arcade-mode/test_ci_build.py
 
   build:
-    if: github.repository == 'notPho-Real/ReSkate' && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[windows-test-diagnostic]'))
+    if: github.repository == 'notPho-Real/ReSkate' && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[windows-test-diagnostic]')) && !(inputs.tests_only == true && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/arcade-stage-'))
     concurrency:
       group: ${{ github.workflow }}-build-${{ github.event_name }}-${{ github.ref }}-${{ (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/arcade-stage-') || github.ref == 'refs/heads/ci-optimization/arcade') && !inputs.full_integration && !contains(github.event.head_commit.message, '[full integration]') && !contains(github.event.head_commit.message, '[release candidate]')) && 'development' || format('{0}-{1}', github.run_id, github.run_attempt) }}
       cancel-in-progress: ${{ github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/arcade-stage-') || github.ref == 'refs/heads/ci-optimization/arcade') && !inputs.full_integration && !contains(github.event.head_commit.message, '[full integration]') && !contains(github.event.head_commit.message, '[release candidate]') }}

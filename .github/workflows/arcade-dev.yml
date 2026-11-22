@@ -8,6 +8,10 @@ on:
         description: Complete integration for an exact-source candidate
         type: boolean
         default: true
+      tests_only:
+        description: Run complete test preflight without rebuilding binaries (experimental branches only)
+        type: boolean
+        default: false
       cold_cache:
         description: Bypass Cargo caches for a measured cold run
         type: boolean
@@ -23,6 +27,7 @@ jobs:
     uses: ./.github/workflows/arcade-validation.yml
     with:
       full_integration: ${{ inputs.full_integration == true || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/arcade-mode' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full integration]') || contains(github.event.head_commit.message, '[release candidate]') }}
+      tests_only: ${{ inputs.tests_only == true && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/arcade-stage-') }}
       cold_cache: ${{ inputs.cold_cache == true }}
       benchmark: ${{ inputs.benchmark == true }}
 
