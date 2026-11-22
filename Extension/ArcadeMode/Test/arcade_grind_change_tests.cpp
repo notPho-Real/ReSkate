@@ -805,13 +805,100 @@ int main() {
         if(fault==2 || fault==3 || fault==4 || fault==7 || fault==9)
             check(!p.change.active(),"invalid handoff or native arm failure withdraws composed return");
     }
-    for(bool simultaneous:{false,true}) {
+    for(unsigned hz:{30u,60u,120u})for(bool smith:{false,true}) {
         auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=31;p.contact.end[2]=-12;
         p.step(1000,402);p.poll();p.step(1100,402);p.poll();
-        if(simultaneous) {p.step(1200,402);p.poll(classic_x|test_b);}
-        else {p.step(1200,402);p.poll(classic_x);p.step(1210,402);p.poll();p.step(1230,402);p.poll(classic_x);}
+        p.step(1200,402);p.poll(classic_x);p.step(1210,402);p.poll();
+        const auto held=smith?classic_x:test_y;
+        p.step(1230,402);p.poll(held);
+        const auto initial_serial=p.change.serial();
+        check(p.arms==1 && p.change.active() && p.control==GrindAdmissionControl::slide_tail_return &&
+            p.dispatched.grind_target()==(smith?GrindChangeTarget::smith:GrindChangeTarget::tailslide),
+            "Bluntslide XX/XY starts only the measured5-0 preparation for the requested name");
+        for(unsigned i=0;i<=950*hz/1000 && !p.change.evidence().final_leg_serial;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            if(elapsed>=550){p.contact.actor=32;p.contact.identity=24;}
+            p.step(1230+elapsed,elapsed<250?402:elapsed<550?406:403);
+            p.controls.valid=p.controls.neutral=elapsed>=850;
+            p.poll(held);p.poll(held);
+            p.change.verify(p.now,elapsed>=550?NativeGrindCompletion{true,402,403,1,{}}:
+                NativeGrindCompletion{true,401,403,1,{}},p.contact,p.animation);
+            check(!p.change.evidence().completed && !p.change.evidence().physics_changed &&
+                !p.change.evidence().animation_changed,"intermediate5-0 never credits Smith or Tailslide");
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns && pad.x==(elapsed<200 || elapsed>=800?0:32767) &&
+                pad.y==(elapsed<200?-32767:elapsed<800?-8192:0),
+                "new continuations preserve the full402 pulse before neutral handoff");
+            p.advance(elapsed>=820);p.advance(elapsed>=820);
+            if(elapsed<850)check(!p.change.evidence().final_leg_serial,
+                "destination publication cannot bypass retirement and observed neutral");
+        }
+        const auto start=p.change.evidence().final_leg_started_at;
+        check(start>=2080 && p.change.serial()==initial_serial+1 && p.arms==(smith?1u:2u) &&
+            p.change.requires_transition()!=smith,"one new leg begins only after qualified5-0");
+        if(!smith)check(p.control==GrindAdmissionControl::lateral_tail_reverse && p.last_deadline==start+1500,
+            "Tailslide reuses the original opposite-heading native admission");
+        const unsigned target=smith?26u:22u;
+        for(unsigned i=0;i<=2300*hz/1000;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            const auto state=smith?403u:elapsed<150?403u:elapsed<700?406u:402u;
+            if(smith)p.contact.identity=elapsed<800?24u:elapsed<1200?71u:26u;
+            else if(elapsed>=700){p.contact.actor=40;p.contact.identity=22;}
+            p.step(start+elapsed,state);
+            p.animation.grind_type=elapsed<(smith?1400u:900u)?24u:target;
+            p.poll(held);p.poll(held);
+            p.change.verify(p.now,!smith && elapsed>=700?NativeGrindCompletion{true,403,402,1,{}}:
+                NativeGrindCompletion{true,402,403,1,{}},p.contact,p.animation);
+            p.advance();p.advance();
+            const auto& e=p.change.evidence();
+            check(p.arms==(smith?1u:2u) && e.first_input_at==1200 && e.last_input_at==1230 &&
+                e.serial==initial_serial && e.final_leg_serial==initial_serial+1,
+                "continuations retain physical edge times without retriggering held input");
+            if(elapsed<(smith?1200u:700u))check(!e.physics_changed && !e.animation_changed,
+                "old completion and intermediate names cannot credit the final trick");
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns==(elapsed<(smith?2200u:1500u)),"final leg has its own bounded control lifetime");
+            if(pad.owns && smith) {
+                constexpr std::array<std::int16_t,5> ramp{6553,13106,19660,26213,32767};
+                const auto step=elapsed>=800?(elapsed-800)/100:0;
+                check(pad.x==(elapsed>=200 && elapsed<500?24000:0) &&
+                    pad.y==(elapsed<500?-32767:elapsed<800 || elapsed>=2000?0:ramp[step<4?step:4]),
+                    "Smith owns its captured-reference ramp rather than stale402 controls");
+            } else if(pad.owns) {
+                const bool neutral=elapsed<50 || elapsed>=1050;
+                check(pad.x==(neutral?0:-32767) && pad.y==(neutral?0:-8192),
+                    "Tailslide owns its opposite-heading pulse and neutral withdrawal");
+            }
+        }
+        check(p.change.evidence().physics_changed && p.change.evidence().animation_changed && !p.change.active(),
+            "final changed physics and animation survive bounded control retirement");
+    }
+    for(bool smith:{false,true})for(unsigned fault=0;fault<10;++fault) {
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=31;p.contact.end[2]=-12;
+        p.step(1000,402);p.poll();p.step(1100,402);p.poll();
+        p.step(1200,402);p.poll(classic_x);p.step(1210,402);p.poll();p.step(1230,402);p.poll(smith?classic_x:test_y);
+        for(unsigned t=1330;t<2030;t+=100){p.step(t,406);p.poll();}
+        p.contact.actor=32;p.contact.identity=fault==0?23u:24u;
+        p.step(2030,403);p.poll();
+        p.change.verify(p.now,{fault!=1,402,403,1,{}},p.contact,p.animation);
+        if(fault==2)p.contact.actor++;
+        if(fault==3)p.contact.segment_identity[0]++;
+        if(fault==4)p.contact.valid=false;
+        if(fault==5)p.controls.valid=false;
+        if(fault==6)p.controls.neutral=false;
+        if(fault==7)p.now=2181;
+        if(fault==9){p.step(2040,403);p.poll(classic_a);}
+        if(fault==5 || fault==6){p.step(2040,403);p.poll();}
+        p.advance(fault!=8);
+        check(p.arms==1 && !p.change.evidence().final_leg_serial && !p.change.evidence().physics_changed,
+            "missing completion,wrong5-0,replaced owner/contact,stale,nonneutral,live lease or Ollie blocks continuation");
+    }
+    {
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=31;p.contact.end[2]=-12;
+        p.step(1000,402);p.poll();p.step(1100,402);p.poll();
+        p.step(1200,402);p.poll(classic_x|test_b);
         check(p.arms==0 && !p.change.active(),
-            "simultaneous BX remains unchanged Bluntslide and unqualified402 Smith is rejected");
+            "simultaneous BX remains unchanged Bluntslide without a pointless return composition");
     }
     for(unsigned fault=0;fault<7;++fault) {
         auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=31;p.contact.end[2]=-12;

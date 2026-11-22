@@ -18,6 +18,8 @@ namespace dingosdk::arcade_mode {
 // The measured slide/Smith routes may begin in401/20: independently verify
 // original403 preparation before admitting the lateral lease or Smith controls.
 // Measured active402/31 controls also return through406 to403/24 (5-0).
+// After that return and observed neutral, the existing5-0 controls can continue
+// to50-50, Tailslide or Smith without another physical request.
 // From403/23 or24, the measured401/20 return may prepare the opposite truck
 // grind or Crooked sweep.
 // Crooked32 returns via a measured Up/opposite-heading pulse, neutral, then
@@ -89,7 +91,9 @@ public:
                                       request.grind_target()==GrindChangeTarget::grind_5_0)) ||
              ((source_.identity==23 || source_.identity==24) && request.grind_target()==GrindChangeTarget::crooked));
         const bool prepare_slide_return=source_.state==402 && source_.identity==31 &&
-            request.grind_target()==GrindChangeTarget::grind_50_50;
+            (request.grind_target()==GrindChangeTarget::grind_50_50 ||
+             request.grind_target()==GrindChangeTarget::tailslide ||
+             request.grind_target()==GrindChangeTarget::smith);
         const bool slide_return=source_.state==402 && source_.identity==31 &&
             (request.grind_target()==GrindChangeTarget::grind_5_0 || prepare_slide_return);
         const bool crooked_return=source_.state==403 && source_.identity==32 &&
@@ -177,6 +181,10 @@ public:
         // A still-live original406 lease cannot be replaced by a new lease.
         // During retirement the executor owns neutral, as in the native trial.
         if(!native_idle)return;
+        // All continuations from402 first withdraw the measured return pulse.
+        // The next403 recipe needs observed neutral, not merely a published5-0
+        // identity while the previous heading controls are still decaying.
+        if(slide_return_ && (!controls_.valid || !controls_.neutral))return;
         if(final_target_==GrindChangeTarget::nosegrind || final_target_==GrindChangeTarget::crooked ||
            final_target_==GrindChangeTarget::grind_5_0) {
             // Only the measured403/23,24 or32->401/20 returns reach this branch.
@@ -215,6 +223,7 @@ public:
             if(!controls_.valid || !controls_.neutral)return;
             source_=contact;++serial_;leg_started_at_=now;
             preparing_=preparation_ready_=false;smith_=true;lateral_=tail_release_=false;
+            slide_return_=crooked_return_=false;
             target_identity_=26;target_state_=403;hold_ms_=2200;duration_ms_=2200;
             evidence_.control_only=true;evidence_.final_leg_serial=serial_;evidence_.final_leg_started_at=now;
             return;
@@ -227,6 +236,7 @@ public:
         if(!arm(next,now+1500,control)) { cancel();return; }
         source_=contact;serial_=next;leg_started_at_=now;
         preparing_=preparation_ready_=false;lateral_=true;tail_release_=!nose && reverse;
+        slide_return_=crooked_return_=false;
         sweep_x_=reverse?-32767:32767;held_y_=nose?8192:-8192;
         target_identity_=nose?(reverse?30u:21u):(reverse?22u:31u);target_state_=402;
         hold_ms_=1500;duration_ms_=1500;
