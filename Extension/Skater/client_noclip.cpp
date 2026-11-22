@@ -1972,6 +1972,22 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
                 resistance_change=change;
             }
         } else if (ground_step.status == arcade_mode::GroundStepStatus::unavailable) a.ground_resistance.reset();
+        if(vert_plan) {
+            // Reuse the existing owner-checked native packet and setter used by
+            // contact exits. Both planner velocities must describe this same
+            // one-shot impulse; an old vert landing fan must not remain active.
+            auto trajectory=wallplant_release_trajectory(owner.base,owner,vert_plan.velocity,reader);
+            reader.verify();
+            source_require(no_bail_skater(after) && after==owner,"Vert trajectory owner changed.");
+            const bool submitted=trainer::submit_native_trajectory(owner.base,trajectory.object,trajectory.parameters,true);
+#if defined(DINGOSDK_DEV_TOOLS)
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE VERT PLANNER: episode={} step={} action={} submitted={} landing={},{},{}.",
+                native_frame.airborne_episode,native_frame.physics_step,static_cast<unsigned>(vert_plan.action),
+                submitted,vert_plan.landing[0],vert_plan.landing[1],vert_plan.landing[2]);
+#endif
+            source_require(submitted,"Vert native trajectory submission failed.");
+        }
         a.ground_output=a.ground_yaw.step(intent,native_frame,now,bodies.seconds,velocities[0],ordinary,manual.admitted,&ground_turn);
         auto applied=a.ground_output.ready ? arcade_mode::GroundYaw::body_output(a.ground_output) : output;
         angular_row.ground_selected=a.ground_output.ready; // Angular writer observation.

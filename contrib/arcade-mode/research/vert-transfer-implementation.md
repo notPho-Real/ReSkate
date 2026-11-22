@@ -25,7 +25,8 @@ no expected position, simulation endpoint or HUD label does so.
 The request has a 150ms physical-edge lifetime. Query results have a 50ms maximum
 execution interval and must agree with the original sampled trajectory. Unexpected
 velocity or displacement, stale owners, bail, landing, menu/focus loss and OFF
-withdraw authority. The writer applies a single uniform velocity delta and lets
+withdraw authority. The writer reuses the existing native packet preparation and world-velocity
+trajectory setter before its single uniform velocity delta. It then lets
 native gravity/collision continue. Alignment changes only the native physical
 target, with bounded tilt and the existing fingerprinted orientation error budget;
 active native trick actors retain their supplied pitch/roll. No scoring is invented.
@@ -37,8 +38,10 @@ contact and controllable exit; flips/grabs/spins and ground LT/RT/A-to-X; native
 combo banking and OFF restoration. Query ray bundles are not articulated capsule
 sweeps. Static allocation stamps do not prove same-incarnation editor relocation.
 Runtime candidate admission may conservatively decline narrow crests or interrupted
-footprints. Native landing-fan retargeting may also supersede a requested impulse;
-this must be measured rather than hidden by continuous velocity restoration.
+footprints. The native planner receives both requested and reference velocities
+through the existing setter, rather than retaining its pre-transfer landing fan.
+Its chosen candidate and physical collision still require native measurement; no
+continuous velocity restoration hides a native trajectory takeover.
 
 Hardware gate: use the existing exclusive reviewed runner, verify the selected
 Mega Park map and exact source/DLL, and preserve rollback. Capture no more than
