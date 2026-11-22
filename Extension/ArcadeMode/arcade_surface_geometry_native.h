@@ -43,7 +43,8 @@ struct SurfaceGeometryNativeApi {
 VertPatch query_vert_patch(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
     SurfaceGeometryVector point,SurfaceGeometryVector normal,float reach,SurfaceGeometryTrace* = nullptr) noexcept;
 bool query_vert_clearance(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
-    SurfaceGeometryVector point,SurfaceGeometryVector velocity,float gravity,float seconds) noexcept;
+    SurfaceGeometryVector point,SurfaceGeometryVector velocity,float gravity,float seconds,
+    SurfaceGeometryVector direction={}) noexcept;
 // Ground patches retain exact-shape admission unless static_world_owner proves
 // each contributing shape's static body incarnation. Independent bodies also
 // require fingerprinted native hit vectors agreeing with the measured plane.

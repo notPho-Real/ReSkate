@@ -170,6 +170,60 @@ void landing_windows() {
     VertLandingWindow unqualified;auto o=ground();unqualified.observe(o);
     check(!unqualified.available(o.native,o.native.sampled_at),"ordinary ground never manufactures a vert Revert");
 }
+void low_speed_level_out() {
+    for(float yaw:{0.f,.8f,2.4f})for(float vy:{-8.f,-1.f,-.01f,0.f,.01f,1.f,8.f}) {
+        const Vec direction{std::cos(yaw),0,std::sin(yaw)};
+        auto o=ground();o.velocity={0,vy,0};const auto plan=vert_level_out(o,direction);
+        check(plan.action==VertAction::level_out,"valid direction admits Level Out on either side of the apex");
+        const float speed=length(o.velocity);
+        check(length(plan.velocity)<=speed+.00001f &&
+            length(sub(plan.velocity,o.velocity))<=std::min(8.f,speed*.65f)+.00001f,
+            "low-speed Level Out retains the existing kinetic and impulse bounds");
+        check(plan.velocity[1]*vy>=0 && std::abs(plan.velocity[1])<=std::abs(vy),
+            "descending Level Out never becomes an upward relaunch");
+        check(vy==0 ? length(plan.velocity)==0 : dot(plan.velocity,direction)>0,
+            "nonzero vertical motion redirects physically; exact rest invents no momentum");
+        check(!plan.clear,"apex admission does not bypass the existing clearance query");
+    }
+    for(unsigned hz:{30u,60u,120u})for(unsigned channel:{0u,1u})for(float vy:{-5.f,-1.f,0.f,1.f}) {
+        auto o=ground();o.native.physics_seconds=1.f/static_cast<float>(hz);
+        VertAirController c;warm(c,o);c.observe(o);o=fly(o);o.velocity={0,9.81f+vy,0};c.observe(o);
+        const auto begin=o;const auto start=o.native.sampled_at;
+        for(unsigned step=1;step<=hz;++step) {
+            ++o.native.physics_step;o.native.sampled_at=start+(1000u*step)/hz;
+            const float elapsed=static_cast<float>(step)/static_cast<float>(hz);
+            o.position=position(begin.position,begin.velocity,9.81f,elapsed);
+            o.velocity={0,begin.velocity[1]-9.81f*elapsed,0};c.observe(o);
+            check(!c.consume(o.native,o.native.sampled_at,o.velocity),"no-input native ascent/apex/descent has no Level Out impulse");
+        }
+        TriggerPress press;press.press.sequence=1;press.press.token={InputSource::triggers,static_cast<std::int16_t>(channel),InputEdge::press};
+        press.press.at=o.native.sampled_at;press.context=InputContext::air;press.native=InputNativeContext::from_frame(o.native);
+        const auto decision=qualify_vert_trigger(c,press,press.native,press.press.at);
+        check(decision.owner==TriggerOwner::transfer && decision.ready && decision.deadline==press.press.at+150,
+            "both low-speed triggers retain the original fresh-edge owner and deadline");
+        check(c.request(o.native,press.press.at,press.press.at,1),"same-flight low-speed request accepted");
+        auto plan=vert_level_out(o,c.direction());check(!c.stage(plan,o,press.press.at),"zero-speed physical leveling still requires clearance");
+        plan.clear=true;check(c.stage(plan,o,press.press.at),"cleared low-speed plan stages through the existing controller");
+        const auto released=c.consume(o.native,press.press.at,o.velocity);
+        check(released.action==VertAction::level_out && c.phase()==VertPhase::released,
+            "near-apex input executes within its original timestamp lifetime");
+        check(!c.consume(o.native,press.press.at,o.velocity),"low-speed action cannot consume one physical edge twice");
+        o.position=position(o.position,released.velocity,9.81f,o.native.physics_seconds);
+        o.velocity=released.velocity;o.velocity[1]-=9.81f*o.native.physics_seconds;
+        ++o.native.physics_step;o.native.sampled_at+=1000u/hz;c.observe(o);
+        check(c.phase()==VertPhase::released && !c.consume(o.native,o.native.sampled_at,o.velocity),
+            "native gravity continues after the sole bounded Level Out impulse");
+    }
+    auto o=ground();o.position={0,5,0};o.velocity={.7f,-.7f,0};
+    const float time=1.4f;const auto target=position(o.position,o.velocity,9.81f,time);
+    const auto landing=patch(target,{.9f,std::sqrt(.19f),0});
+    const auto drop=vert_destination(o,VertRampSupport{o.support},landing,{1,0,0},9.81f,time);
+    check(drop.action==VertAction::acid_drop && length(sub(drop.velocity,o.velocity))<.00001f,
+        "a low-speed entry can reach a lower transition without added energy");
+    auto blocked=landing;blocked.valid=false;
+    check(vert_destination(o,VertRampSupport{o.support},blocked,{1,0,0},9.81f,time).action==VertAction::none,
+        "removing the initial speed floor does not admit unsupported destinations");
+}
 void lifecycle() {
     auto o=ground();VertAirController c;warm(c,o);c.observe(o);check(c.phase()==VertPhase::rising_support,"steep support qualifies");
     o=fly(o);c.observe(o);check(c.eligible(o.native,1010),"genuine takeoff qualifies");
@@ -653,4 +707,4 @@ void input_edges() {
     }
 }
 }
-int main(){retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

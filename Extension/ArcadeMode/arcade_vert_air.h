@@ -214,8 +214,10 @@ inline VertPlan vert_destination(const VertObservation& from,const VertRampSuppo
     auto arrival=velocity;arrival[1]-=gravity*time;
     const float speed=length(from.velocity),change=length(sub(velocity,from.velocity));
     const float impact=-dot(arrival,n),along=length(sub(arrival,scale(n,dot(arrival,n))));
-    // No launch energy injection and no catch by approaching the underside.
-    if(speed<2 || length(velocity)>speed*1.05f || change>std::min(8.f,speed*.65f) ||
+    // Retain the bounded speed tolerance and reject underside approaches.
+    // Initial speed alone cannot reject a reachable drop: gravity supplies
+    // the independently checked approach speed at the destination.
+    if(length(velocity)>speed*1.05f || change>std::min(8.f,speed*.65f) ||
        arrival[1]>=-.5f || impact<.1f || impact>std::min(6.f,along*.65f) || along<2)return result;
     auto downhill=horizontal(n);
     if(dot(horizontal(arrival),downhill)<.5f)return result;
@@ -237,10 +239,11 @@ inline VertPlan vert_level_out(const VertObservation& from,SurfaceGeometryVector
     using namespace vert_math;
     VertPlan result;direction=horizontal(direction);
     const float speed=length(from.velocity);
-    if(!finite(from.velocity) || speed<2 || speed>50 || length(direction)<.9f)return result;
-    // Redistribute a bounded part of upward speed into forward motion. Downward
-    // momentum and gravity remain native; this never adds a second jump.
-    const float vy=std::min(from.velocity[1],speed*.35f);
+    if(!finite(from.velocity) || speed>50 || length(direction)<.9f)return result;
+    // Redirect a bounded part of vertical motion into forward motion on either
+    // side of the apex. Preserve its sign, kinetic bound and native gravity.
+    // Exact rest permits physical leveling without inventing launch momentum.
+    const float vy=std::clamp(from.velocity[1],-speed*.35f,speed*.35f);
     const float horizontal_speed=std::sqrt(std::max(0.f,speed*speed-vy*vy));
     result.velocity={direction[0]*horizontal_speed,vy,direction[2]*horizontal_speed};
     const auto delta=sub(result.velocity,from.velocity);const float change=length(delta);

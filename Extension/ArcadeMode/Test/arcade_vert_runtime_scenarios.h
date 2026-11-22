@@ -37,7 +37,8 @@ bool local_component_owner(const SurfaceGeometryBody& shape,std::uintptr_t entit
 }
 }
 void vert_runtime_scene_checks() {
-    for(unsigned fault=0;fault<5;++fault) {
+    for(unsigned scenario=0;scenario<9;++scenario) {
+        const unsigned fault=scenario<5?scenario:0;
         vert_runtime::cancel();Fixture f;f.allow_world_owner=f.unknown=true;f.curve_radius=4;
         VertObservation o;o.enabled=o.supported=true;o.native.valid=true;o.native.owner={1,2,3,4,5};
         o.native.owner_generation=o.native.contact_generation=o.native.action_generation=o.native.mode_generation=1;
@@ -63,7 +64,7 @@ void vert_runtime_scene_checks() {
         auto motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
         check(motion.native_flight && !motion.plan,"actual runtime recognizes queried curved support through the native departure pattern without input");
         auto surface=vert_runtime::surface(f.time,o.native,{});check(surface.can_transfer,"runtime exposes fresh transfer context");
-        if(!fault)for(unsigned sample=0;sample<4;++sample) {
+        if(!fault && scenario<5)for(unsigned sample=0;sample<4;++sample) {
             const unsigned channel=sample%2;const bool touchdown=sample>=2;
             if(sample==2)for(unsigned i=0;i<10;++i) {
                 ++o.native.physics_step;o.native.sampled_at+=17;o.velocity={4,-3,0};context();
@@ -112,6 +113,16 @@ void vert_runtime_scene_checks() {
             check(decision.deadline==press.press.at+(touchdown?430:150),
                 "waiting for controller proof never renews the original trigger deadline");
         }
+        if(scenario>=5) {
+            constexpr std::array<float,4> speeds{-5.f,-1.f,0.f,1.f};
+            o.position[1]+=1;
+            for(unsigned sample=0;sample<3;++sample) {
+                ++o.native.physics_step;o.native.sampled_at+=17;
+                o.velocity={0,speeds[scenario-5]+static_cast<float>(2-sample)*9.81f*o.native.physics_seconds,0};
+                context();(void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+                if(sample<2)o.position=vert_math::position(o.position,o.velocity,9.81f,o.native.physics_seconds);
+            }
+        }
         InputRequest input;input.action=InputAction::transfer_command;input.context=InputContext::air;
         input.air_episode=f.live.native.air_episode();input.generations=f.live.native.generations;
         input.physical_pressed_at=input.first_input_at=f.time;input.input_sequence=1;
@@ -129,6 +140,8 @@ void vert_runtime_scene_checks() {
         check(bool(motion.plan)==(fault==0),"runtime clearance, query context, missing publication and owner gates control the one-shot plan");
         if(!fault)check(motion.plan.action==VertAction::level_out &&
             vert_math::length(motion.plan.velocity)<=vert_math::length(o.velocity)+.001f,"runtime fallback preserves energy");
+        if(scenario>=5)check(o.velocity[1]==0 ? vert_math::length(motion.plan.velocity)==0 :
+            motion.plan.velocity[0]>0,"real runtime fallback redirects falling motion and invents no apex energy");
         check(!vert_runtime::step(o,f.time,o.native.owner,"frame_valid").plan,"runtime cannot emit a second plan for held input");
         check(f.calls==f.pops && f.calls==f.frees,"runtime query allocations are released on success and rejection");
     }

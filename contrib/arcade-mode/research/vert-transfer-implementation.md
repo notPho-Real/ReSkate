@@ -31,6 +31,16 @@ native gravity/collision continue. Alignment changes only the native physical
 target, with bounded tilt and the existing fingerprinted orientation error budget;
 active native trick actors retain their supplied pitch/roll. No scoring is invented.
 
+Level Out redirects vertical momentum on both ascent and descent within the
+same kinetic and velocity-delta limits; it never reverses descent into ascent.
+A low initial speed is not itself a refusal: destination approach speed and impact
+still qualify transfers. At exact rest, Level Out permits native physical leveling
+with zero added momentum. Its clearance footprint uses the owned travel direction
+and measured gravity; absent gravity or a zero-length ray cannot prove clearance.
+This limiting case is not evidence of horizontal travel or a successful landing.
+The regression reproduces the previous falling/no-motion and low-speed refusal,
+including both triggers at 30/60/120 Hz without changing their deadlines.
+
 Remaining evidence requirements: exact-candidate Windows compilation and native
 quarterpipe no-input return; LT and RT Level Out with physical trajectory and
 orientation; representative spine, hip and lower-transition entry with actual
