@@ -44,13 +44,13 @@ bool static_world_owner(const SurfaceGeometryBody& body,SurfaceGeometryWorldOwne
     bool ground_shape=body==fixture::clearance_result.body;
     for(unsigned i=0;i<std::min<unsigned>(fixture::clearance_result.adjacent_shape_count,4);++i)
         ground_shape=ground_shape || body==fixture::clearance_result.adjacent_shapes[i];
-    owner=fixture::clearance_policy && ground_shape?
+    owner=ground_shape?
         fixture::clearance_owner:fixture::wall.world_owner;
-    const auto& sample=fixture::clearance_policy && ground_shape?fixture::clearance_result:fixture::wall;
+    const auto& sample=ground_shape?fixture::clearance_result:fixture::wall;
     for(unsigned i=0;i<std::min<unsigned>(sample.adjacent_shape_count,4);++i)
         if(body==sample.adjacent_shapes[i])owner=sample.adjacent_world_owners[i];
     if(fixture::changed_adjacent_owner && body!=fixture::wall.body)++owner.body.generation;
-    return fixture::motion_geometry && fixture::hit_current && body.index!=fixture::rejected_shape;
+    return (ground_shape || fixture::motion_geometry) && fixture::hit_current && body.index!=fixture::rejected_shape;
 }
 bool local_component_owner(const SurfaceGeometryBody&,std::uintptr_t,SurfaceGeometryWorldOwner&) noexcept{return false;}
 }
@@ -121,6 +121,12 @@ WallplantCommand setup() {
     c.native=tracker.observe(990,{1,2,3,4,5},sample,{},false,1.f/30);
     const auto& f=c.native;
     observed=f;permitted=takeoff=true;candidate.valid=true;in_flight=c;
+    // Even lifecycle-only candidates need the authenticated floor supplied by
+    // real geometry publication. Keep its live owner separate from the receipt.
+    auto& floor=fixture::clearance_result;floor={};
+    floor.valid=true;floor.body={7,20,1};floor.body_owner=4321;floor.queried_at=1000;
+    fixture::clearance_owner={{7,80,50331648},88,79,50331648,1,4321};
+    floor.world_owner=fixture::clearance_owner;candidate.ground=floor;
     fixture::active=c;return c;
 }
 NativeInputFrame ground(const WallplantCommand& c,std::uint64_t at) {
@@ -190,6 +196,24 @@ void clearance_policy_checks(bool motion) {
                   "published clearance retains the independently queried entity owner stamp");
             check(candidate.ground.queried_at==1000 && candidate.contact.native.sampled_at==f.sampled_at,
                   "clearance reuse correction does not renew native observation or query clocks");
+            in_flight=command;
+            fixture::rejected_shape=candidate.ground.body.index;
+            check(!enter(command,fixture::now) && !held_command(),
+                "floor center invalidated after publication cannot admit a planted hold");
+            fixture::rejected_shape=0;
+            const auto floor_owner=fixture::clearance_owner;
+            ++fixture::clearance_owner.body.generation;
+            check(!enter(command,fixture::now) && !held_command(),
+                "floor body reincarnation cannot reuse published height evidence");
+            fixture::clearance_owner=floor_owner;
+            ++fixture::clearance_owner.generation;
+            check(!enter(command,fixture::now) && !held_command(),
+                "floor owner reincarnation cannot reuse published height evidence");
+            fixture::clearance_owner=floor_owner;
+            const auto floor=candidate.ground;candidate.ground={};
+            check(!enter(command,fixture::now) && !held_command(),
+                "missing floor evidence cannot admit a planted hold");
+            candidate.ground=floor;
             if(fault==7) {
                 check(candidate.ground.adjacent_shape_count==4 && candidate.ground.adjacent_shapes==fresh_ground.adjacent_shapes,
                     "published ground-height patch retains every authenticated child shape");
@@ -203,6 +227,13 @@ void clearance_policy_checks(bool motion) {
                 check(candidate_current(),"unchanged published floor children retain admission authority");
                 in_flight={};
             }
+            in_flight=command;
+            check(enter(command,fixture::now),"unchanged single or split floor admits the existing wall hold");
+            fixture::rejected_shape=candidate.ground.body.index;
+            check(validate(command,1033,ground(command,1033)),
+                "floor evidence is admission-only and does not become a wall hold dependency");
+            fixture::rejected_shape=0;
+            finish_at(command,false,fixture::now);
         }
         if(motion)end_motion(token);
         fixture::clearance_policy=fixture::motion_geometry=fixture::geometry_mode=false;
