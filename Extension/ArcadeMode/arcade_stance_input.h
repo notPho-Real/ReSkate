@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_trigger_input.h"
 #include "Engine/Game/Build/20260929/launches.h"
+#include "Engine/Game/Build/20260929/arcade_stance.h"
 
 namespace dingosdk::arcade_mode {
 // Ownership and read-only completion proof for a native stance request. This
@@ -74,5 +75,91 @@ private:
     InputNativeContext before_{},last_{};
     std::uint64_t retired_sequence_{},last_poll_{},issued_at_{},issued_step_{};
     bool active_{},issued_{},changed_{};
+};
+struct StanceControl {
+    bool owned{};
+    std::uint16_t buttons{};
+    std::uint64_t serial{};
+    std::uint8_t phase{};
+    bool operator==(const StanceControl&) const = default;
+};
+// One original RT owns one finite native B double tap. A phase advances only
+// after its exact final packet was published and a newer native step arrived.
+// Neither input polls nor callback acceptance count as native stance change.
+class StanceInput {
+public:
+    bool start(const TriggerPress& trigger,const InputNativeContext& native,std::uint64_t now) noexcept {
+        if(active_ || !lease_.start(trigger,native,now))return false;
+        ++serial_;sequence_=trigger.press.sequence;phase_=0;published_=false;active_=true;started_=now;
+        baseline_=native;
+        first_down_=last_tick_=published_at_=published_step_=published_sample_=0;
+        changed_=second_down_=false;return true;
+    }
+    StanceControl controls(const InputNativeContext& native,std::uint64_t now,std::uint64_t tick) noexcept {
+        if(!active_)return {};
+        if(!valid_frame(native,now) || tick<last_tick_ || now<started_ ||
+           (first_down_ && now-first_down_>StanceInputLease::completion_limit_ms)) {cancel();return {};}
+        if(!lease_.observe(native,now,true)) {
+            if(lease_.observed_change() && second_down_) {
+                // Even a very fast native acknowledgment must publish B up.
+                if(phase_==5){changed_=true;active_=false;return {};}
+            } else {cancel();return {};}
+        }
+        if(!second_down_ && first_down_ && (now<first_down_ || now-first_down_>=contract::double_press_ms)) {
+            cancel();return {};
+        }
+        if(published_ && tick>last_tick_ && now>published_at_ &&
+           native.physics_step>published_step_ && native.sampled_at>published_sample_) {
+            ++phase_;published_=false;
+        }
+        if(phase_>=5) {
+            if(lease_.observed_change()){changed_=true;active_=false;}
+            return {};
+        }
+        return {true,static_cast<std::uint16_t>((phase_==1 || phase_==3)?contract::button:0),serial_,phase_};
+    }
+    bool delivered(const InputNativeContext& native,StanceControl control,std::uint16_t final_buttons,
+                   std::uint64_t now,std::uint64_t tick) noexcept {
+        if(!active_ || !control.owned || control.serial!=serial_ || control.phase!=phase_ || phase_>=5 ||
+           control.buttons!=((phase_==1 || phase_==3)?contract::button:0) ||
+           (final_buttons&contract::button)!=control.buttons || tick<last_tick_ ||
+           !valid_frame(native,now)) {cancel();return false;}
+        if(published_)return true; // Same delivered phase never renews its clocks.
+        if(phase_==1) {
+            if(!lease_.issued(native,now)){cancel();return false;}
+            first_down_=now;
+        }
+        if(phase_==3) {
+            if(now<first_down_ || now-first_down_>=contract::double_press_ms){cancel();return false;}
+            second_down_=true;
+        }
+        published_=true;last_tick_=tick;published_at_=now;
+        published_step_=native.physics_step;published_sample_=native.sampled_at;
+        return true;
+    }
+    void cancel() noexcept {lease_.cancel();active_=published_=changed_=false;}
+    bool active() const noexcept {return active_;}
+    bool same_owner(const InputNativeContext& native) const noexcept {
+        return native.generations.owner==baseline_.generations.owner &&
+            native.generations.contact==baseline_.generations.contact && native.flip.object==baseline_.flip.object;
+    }
+    bool observed_change() const noexcept {return changed_;}
+    bool double_tap_delivered() const noexcept {return second_down_;}
+    std::uint64_t sequence() const noexcept {return sequence_;}
+private:
+    struct contract {
+        static constexpr auto button=game::build::v20260929::arcade_stance::button;
+        static constexpr auto double_press_ms=game::build::v20260929::arcade_stance::double_press_ms;
+    };
+    bool valid_frame(const InputNativeContext& native,std::uint64_t now) const noexcept {
+        return native.required && native.fresh(now) && native.flip.valid && !native.airborne && !native.rail_family &&
+            !(native.flip.stance&0x40u) && native.flip.state==100 && native.flip.mode<=1 &&
+            same_owner(native);
+    }
+    StanceInputLease lease_{};
+    InputNativeContext baseline_{};
+    std::uint64_t serial_{},sequence_{},started_{},first_down_{},last_tick_{},published_at_{},published_step_{},published_sample_{};
+    std::uint8_t phase_{};
+    bool active_{},published_{},changed_{},second_down_{};
 };
 }

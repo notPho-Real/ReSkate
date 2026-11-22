@@ -31,6 +31,7 @@
 #include "arcade_native_manual_pose.h"
 #include "arcade_native_footplant.h"
 #include "arcade_native_ground_grab.h"
+#include "arcade_native_stance.h"
 #include "arcade_native_grab_transition.h"
 #include "arcade_native_grind_transition.h"
 #include "arcade_wallplant_runtime.h"
@@ -2010,6 +2011,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 // Controller route binding_api publication begin.
 // Serialized with routing, facade ownership and transport packet retirement.
 static void withdraw_controller_authority() noexcept {
+    native_stance::cancel();
     vert_runtime::cancel();
     custom_flatland_runtime::cancel();
     wallplant_runtime::cancel();
@@ -2049,6 +2051,7 @@ void disconnect_xinput_source(unsigned slot) noexcept {
 // Controller route binding_api publication end.
 
 void set_enabled(bool value, bool persist) noexcept {
+    native_stance::cancel();
     if(!value)vert_runtime::cancel();
     custom_flatland_runtime::cancel();
     wallplant_runtime::cancel();
@@ -2268,6 +2271,7 @@ void on_client_tick() noexcept {
         bool gameplay = enabled() && observed_clock && ui.available && !ui.in_menu && input.available;
         native_flip::tick(gameplay && focus_available);
         native_grab::tick(gameplay && focus_available);
+        native_stance::tick(score_probe_base,gameplay && focus_available);
         native_held_flip::tick(score_probe_base,gameplay && focus_available && native_grab::available());
         native_manual_pose::tick(score_probe_base,gameplay && focus_available && native_grab::available());
         native_footplant::tick(score_probe_base,gameplay && focus_available && native_grab::available());
@@ -2731,6 +2735,19 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 const auto& c=*static_cast<FootplantContext*>(context);
                 return native_ground_grab::controls(c.owner,c.step,held);
             }};
+        const bool stance_permitted=game_input && owns_controls && !offboard &&
+            action_experiment==ActionExperiment::classic && !(physical_buttons&0xf3f0u) &&
+            physical_left_trigger<=30 && !releasing_manual;
+        if(!stance_permitted)native_stance::cancel();
+        struct StanceContext {NoBailSkater owner;InputNativeContext native;std::uint64_t now;};
+        StanceContext stance_context{native_flip_owner,InputNativeContext::from_frame(grind_frame),now};
+        InputAdapter stance_adapter{};
+        if(stance_permitted && native_stance::available())stance_adapter={&stance_context,
+            [](void* context,const InputRequest& request) noexcept {
+                const auto& c=*static_cast<StanceContext*>(context);
+                return native_stance::request(c.owner,request,c.native,c.now)?
+                    InputDisposition::started:InputDisposition::cancelled;
+            }};
         // Preserve raw physical history above, but withhold grind intent for
         // the short contact/release exclusion interval of the owned plant.
         const auto gameplay_buttons=static_cast<unsigned short>(plant_grind_excluded?buttons&~0x8000u:buttons);
@@ -2744,7 +2761,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             action_experiment, action_safe, admission.stance_known,
             manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,normal_grab,grind_change.admission(),grind_adapter,
             held_flip,footplant,ground_grab,vert_runtime::surface(now,grind_frame,wallplant_runtime::surface(now,grind_frame)),
-            flatland_binding,{nullptr,&vert_runtime::qualify});
+            flatland_binding,{nullptr,&vert_runtime::qualify},stance_adapter);
         const bool grab_trigger_conflict=(physical_left_trigger>30 && !(result.vert_trigger_owned&1u)) ||
             (physical_right_trigger>30 && !(result.vert_trigger_owned&2u));
         native_grab::refresh(grab_context.owner,grab_context.episode,grab_context.held,grab_permitted && !grab_trigger_conflict);
@@ -2950,17 +2967,26 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         observe_grind_pad(user, now, (physical_buttons & 0x8000u) != 0,
             result.right_x, result.right_y, mode_enabled.load(std::memory_order_acquire));
         // Controller route final_controls publication begin.
+        const auto stance_native=InputNativeContext::from_frame(arcade_input.native_context(now));
+        if(!stance_permitted || reference || result.command_busy || result.authored_playback ||
+           result.manual.owns || action.owned || rail_pad.owns_right_stick || grind_pad.owns ||
+           result.phase==3)native_stance::cancel();
+        const auto stance_pad=native_stance::controls(native_flip_owner,stance_native,now,tick);
         if (owns_controls) {
             // Only admitted actuators may publish native face buttons. Raw
             // recognition history is untouched, including B/X press timestamps.
             const auto native_faces = action.pad.owns_face_buttons ? action.pad.face_buttons :
-                static_cast<std::uint16_t>((result.automatic_push ? classic_x : 0) |
+                static_cast<std::uint16_t>((result.automatic_push && !stance_pad.owned ? classic_x : 0) |
                     (result.phase==3 ? BoardChord::native_y : 0));
             result.buttons = static_cast<std::uint16_t>((result.buttons & ~0xf30fu) | (native_faces & 0xf000u));
             if (!action.pad.owns_triggers) left_trigger = right_trigger = 0;
             if (!result.authored_playback && !result.manual.owns && !action.pad.owns_right_stick && !rail_pad.owns_right_stick && !grind_pad.owns)
                 result.right_x = result.right_y = 0;
         }
+        // Only the qualified native stance producer may publish this B bit.
+        // It owns no movement axes, orientation, velocity or other face button.
+        if(owns_controls && stance_pad.owned)
+            result.buttons=static_cast<std::uint16_t>((result.buttons&~0x2000u)|stance_pad.buttons);
         // Controller route final_controls publication end.
         const auto normal_mask = synthetic_packet_mask(result.phase, result.buttons != physical_buttons || consume_nollie ||
             result.right_x != physical_right_x || result.right_y != physical_right_y ||
@@ -2984,7 +3010,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         }
         // Controller route packet_sample publication begin.
         const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask,
-            reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left || manual_correction.owns_y || rail_pad.owns_right_stick || grind_pad.owns);
+            reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left || manual_correction.owns_y || rail_pad.owns_right_stick || grind_pad.owns || stance_pad.owned);
+        if(owns_controls && stance_pad.owned)
+            native_stance::delivered(native_flip_owner,stance_native,stance_pad,result.buttons,now,tick);
         // Controller route packet_sample publication end.
         neutral_delivery[user].observe(now, tick, mode_enabled.load(std::memory_order_acquire) && game_input && !offboard,
             result.right_x, result.right_y);
