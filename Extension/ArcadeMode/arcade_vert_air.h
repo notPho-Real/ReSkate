@@ -170,14 +170,24 @@ public:
                length(sub(value.position,previous_.position))<3)transition_at_=f.sampled_at;
             const bool curved=transition_at_ && f.sampled_at>=transition_at_ && f.sampled_at-transition_at_<=500;
             const bool steep=curved &&value.support.valid && value.supported && (f.state==100 || f.state==103) &&
-                f.mode<=2 && n[1]>=.05f && n[1]<.55f && value.velocity[1]>2 &&
+                f.mode<=2 && n[1]>=-.01f && n[1]<.55f && value.velocity[1]>2 &&
                 dot(value.up,n)>.7f && std::abs(dot(value.velocity,n))<2;
-            if(steep) {origin_=value.support;phase_=VertPhase::rising_support;}
-            else phase_=landed?VertPhase::landed:VertPhase::idle;
+            if(steep) {origin_=value.support;lip_=value;phase_=VertPhase::rising_support;}
+            else {
+                // Wheel contact can end a few original steps before AIR is
+                // published. Preserve that departure, not a new launch: its
+                // deadline remains anchored to the last real curved support.
+                const bool departing=phase_==VertPhase::rising_support && (!value.supported || !value.support.valid) &&
+                    lip_.native.valid && f.owner==lip_.native.owner && f.owner_generation==lip_.native.owner_generation &&
+                    f.sampled_at>=lip_.native.sampled_at && f.sampled_at-lip_.native.sampled_at<=100 &&
+                    (f.state==100 || f.state==103) && f.mode<=2 && !f.rail_family && value.velocity[1]>2 &&
+                    dot(value.up,lip_.support.center().query_normal)>.7f && length(sub(value.position,lip_.position))<2;
+                phase_=departing?VertPhase::rising_support:landed?VertPhase::landed:VertPhase::idle;
+            }
         } else if(!previous_.native.airborne) {
             if(phase_==VertPhase::rising_support && previous_.native.valid &&
-               f.airborne_started_known && f.airborne_started_at>=previous_.native.sampled_at &&
-               f.sampled_at-previous_.native.sampled_at<=100 && value.velocity[1]>2 && !f.rail_family && f.mode<=2) {
+               f.airborne_started_known && lip_.native.valid && f.airborne_started_at>=lip_.native.sampled_at &&
+               f.sampled_at>=lip_.native.sampled_at && f.sampled_at-lip_.native.sampled_at<=100 && value.velocity[1]>2 && !f.rail_family && f.mode<=2) {
                 takeoff_=value;phase_=VertPhase::native_air;
                 direction_=scale(horizontal(origin_.center().query_normal),-1);
             } else cancel();
@@ -254,7 +264,7 @@ public:
     VertPhase phase() const noexcept {return phase_;}
 private:
     VertPhase phase_{};
-    VertObservation previous_{},takeoff_{};
+    VertObservation previous_{},takeoff_{},lip_{};
     VertPatch origin_{};
     SurfaceGeometryVector direction_{};
     VertPlan plan_{},released_plan_{};

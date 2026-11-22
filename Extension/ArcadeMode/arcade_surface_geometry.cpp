@@ -252,7 +252,7 @@ VertPatch query_vert_patch(const SurfaceGeometryNativeApi& api,const SurfaceGeom
     VertPatch patch;
     try {
         if(!current(api,ctx) || !api.static_world_owner || !api.surface.contact_ready || !finite(point) ||
-           !finite(normal) || !unit(normal) || normal[1]<.04f || !std::isfinite(reach) || reach<=0 || reach>12)return {};
+           !finite(normal) || !unit(normal) || normal[1]<-.01f || !std::isfinite(reach) || reach<=0 || reach>12)return {};
         auto right=cross(normal,{0,1,0});
         if(!unit(right))right={1,0,0};
         const auto forward=cross(right,normal);
@@ -263,7 +263,7 @@ VertPatch query_vert_patch(const SurfaceGeometryNativeApi& api,const SurfaceGeom
             const auto center=add(point,add(scale(right,offsets[i][0]),scale(forward,offsets[i][1])));
             const SurfaceGeometrySegment ray{add(center,scale(normal,.5f)),add(center,scale(normal,-reach))};
             const auto hit=cast(api,ctx,ray,excluded,nullptr,nullptr,true);
-            if(!hit || !hit->world_owner.value || dot(hit->normal,normal)<.85f || hit->normal[1]<.04f)return {};
+            if(!hit || !hit->world_owner.value || dot(hit->normal,normal)<.85f || hit->normal[1]<-.01f)return {};
             auto& sample=patch.samples[i];
             sample.context=ctx;sample.body=hit->body;sample.body_owner=hit->owner;sample.world_owner=hit->world_owner;
             sample.point=hit->point;sample.query_normal=hit->normal;sample.queried_at=api.now(api.user);sample.valid=true;

@@ -74,6 +74,42 @@ void lifecycle() {
     }
 }
 Vec rotate(Vec v,float a){return {v[0]*std::cos(a)-v[2]*std::sin(a),v[1],v[0]*std::sin(a)+v[2]*std::cos(a)};}
+void contact_departure_delay() {
+    for(bool curved:{false,true}) {
+        VertAirController c;auto o=ground();if(curved){warm(c,o);c.observe(o);}
+        ++o.native.physics_step;o.native.sampled_at+=17;o.position[1]+=.13f;
+        o.up={-1,0,0};o.velocity={0,8,0};o.support=patch(o.position,o.up);c.observe(o);
+        o=fly(o);c.observe(o);check(c.eligible(o.native,o.native.sampled_at)==curved,
+            "vertical upper transition qualifies only after actual curved climbing support");
+    }
+    { VertAirController c;auto o=ground();warm(c,o);c.observe(o);
+      ++o.native.physics_step;o.native.sampled_at+=17;o.support={};c.observe(o);
+      o=fly(o);c.observe(o);check(c.eligible(o.native,o.native.sampled_at),
+          "partial lip footprint does not erase a still-recent validated transition"); }
+    for(unsigned fault=0;fault<8;++fault) {
+        VertAirController c;auto o=ground();warm(c,o);c.observe(o);
+        o.supported=false;o.support={};
+        for(unsigned i=0;i<2;++i) {
+            ++o.native.physics_step;o.native.sampled_at+=17;o.position[1]+=.13f;
+            if(fault==1)o.native.state=401;
+            if(fault==2)o.native.mode=4;
+            if(fault==3)o.native.owner_generation++;
+            if(fault==4)o.position[0]+=3;
+            if(fault==5)o.velocity[1]=-1;
+            if(fault==6)o.up={0,1,0};
+            if(fault==7)o.native.sampled_at+=60;
+            c.observe(o);
+        }
+        o=fly(o);c.observe(o);
+        check(c.eligible(o.native,o.native.sampled_at)==(fault==0),
+            "measured contact-to-AIR delay preserves only a recent same-owner rising departure");
+        check(!c.consume(o.native,o.native.sampled_at,o.velocity),"departure delay cannot create a no-input impulse");
+    }
+    VertAirController c;auto o=ground();warm(c,o);c.observe(o);
+    o.supported=false;o.support={};
+    for(unsigned i=0;i<8;++i){++o.native.physics_step;o.native.sampled_at+=17;o.position[1]+=.1f;c.observe(o);}
+    o=fly(o);c.observe(o);check(!c.eligible(o.native,o.native.sampled_at),"unsupported riding cannot renew the real support deadline");
+}
 void unavailable_snapshots() {
     // Replay the observed missing-frame pattern with procedural support. The
     // recording establishes the gap, not the geometry supplied by this test.
@@ -269,4 +305,4 @@ void input_edges() {
     }
 }
 }
-int main(){lifecycle();unavailable_snapshots();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){lifecycle();contact_departure_delay();unavailable_snapshots();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

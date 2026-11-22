@@ -365,6 +365,9 @@ bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) no
 }
 }
 int main() {
+    { Fixture f;f.wall=f.allow_world_owner=f.unknown=true;f.wall_normal={-1,0,0};
+      check(query_vert_patch(f.api(),f.live,f.wall_point,f.wall_normal,.5f).valid,
+          "vertical lip patch is geometric evidence; curvature and native riding must separately admit takeoff"); }
     for(float radius:{2.f,4.f,8.f})for(float angle:{.4f,.9f,1.3f})for(float yaw:{0.f,.7f,2.f})for(bool split:{false,true}) {
         Fixture f;f.allow_world_owner=f.unknown=true;f.curve_radius=radius;f.curve_yaw=yaw;
         f.curve_origin={13.f,-5.f,7.f};f.partitioned_wall=split;f.partition_owner_change=split?1u:0u;

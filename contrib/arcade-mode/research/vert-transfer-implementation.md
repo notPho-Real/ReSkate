@@ -70,3 +70,15 @@ exercise stale query completion, original edge expiry and repeated missing frame
 A post-trial screenshot bookkeeping error left the physical trace intact; it did
 not justify replaying input. The game was closed normally and the exact prior
 installation, score pack and all rollback files were verified restored.
+
+The same trace shows two retained riding-state samples without wheel contacts
+before AIR, approximately 33ms. A qualified rising departure now survives that
+handoff for at most 100ms from its last actual curved support. Position, upward
+velocity, orientation, owner, mode and state must remain consistent. Unsupported
+samples never renew the support deadline. This fixes a second source-level loss
+of recognition; the external trace cannot prove query-footprint qualification.
+
+A vertical upper transition is allowed as support geometry; it still requires
+observed concave climbing to classify as a launch. A partial footprint at the lip
+may retain the preceding qualified support during the same bounded departure.
+A standalone vertical plane never supplies that missing transition history.
