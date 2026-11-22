@@ -17,6 +17,135 @@
 #include <string_view>
 #include <thread>
 using namespace dingosdk::arcade_mode;
+// The production adapter is composed with read-only native memory boundaries.
+// A live bit and its published frame deliberately advance independently.
+namespace stance_adapter_probe {
+using dingosdk::NoBailSkater;
+namespace game=dingosdk::game;
+namespace contract=game::build::v20260929::arcade_stance;
+std::mutex mutex;
+StanceInput input;
+NoBailSkater owner{},live_owner{};
+std::uintptr_t image=1;
+std::uint64_t last_poll{};
+bool permitted=true,ready=true,assets_valid=true,readable=true,owner_valid=true,replace_after_read=false;
+unsigned owner_reads{},checks{};
+std::uint32_t live_state=100,live_stance{};
+struct Evidence {std::uint64_t sequence{};bool double_tap{},changed{};};
+[[maybe_unused]] Evidence pending;
+bool assets_current()noexcept{return assets_valid;}
+bool resolve_owner(NoBailSkater& value)noexcept{
+    value=live_owner;if(replace_after_read&&owner_reads++)++value.entity;return owner_valid;
+}
+namespace memory {
+bool peek(std::uintptr_t address,std::uint32_t& value)noexcept{
+    if(!readable)return false;
+    if(address==live_owner.context+contract::physics_state){value=live_state;return true;}
+    if(address==live_owner.context+contract::stance_flags){value=live_stance;return true;}
+    return false;
+}
+}
+#define no_bail_skater resolve_owner
+@stance_adapter_current@
+#undef no_bail_skater
+@stance_adapter_retire@
+@stance_adapter_controls@
+@stance_adapter_delivered@
+void check(bool value,const char* message){++checks;if(!value){std::cerr<<message<<'\n';std::exit(1);}}
+InputNativeContext frame(std::uint64_t at,std::uint64_t step,unsigned stance=0){
+    InputNativeContext native{true,true,{1,1,1},step,at};
+    native.flip={true,-1,0x10000,100,1,stance,step,1,1};return native;
+}
+InputNativeContext begin(unsigned dt,unsigned stance=0,unsigned stop=5){
+    input={};owner=live_owner={1,2,3,0x20000,5};image=1;last_poll=0;
+    permitted=ready=assets_valid=readable=owner_valid=true;replace_after_read=false;owner_reads=0;
+    live_state=100;live_stance=stance;
+    auto native=frame(100,1,stance);
+    const TriggerPress trigger{{{InputSource::triggers,1,InputEdge::press},100,1},{},InputContext::ground,
+        native,TriggerOwner::switch_stance,250};
+    check(input.start(trigger,native,100),"adapter fixture admits original RT");
+    for(unsigned phase=0;phase<=stop;++phase){
+        native=frame(100u+phase*dt,phase+1u,stance);
+        const auto pad=controls(live_owner,native,native.sampled_at,phase+1u);
+        check(pad.owned&&pad.phase==phase,"actual adapter reaches each published finite B phase");
+        delivered(live_owner,native,pad,pad.buttons,native.sampled_at,phase+1u);
+        check(input.active(),"actual adapter retains original delivered phase");
+    }
+    return native;
+}
+void run(){
+    for(unsigned dt:{8u,17u,33u})for(unsigned stance:{0u,0x20u}){
+        auto native=begin(dt,stance);native=frame(native.sampled_at+dt,7,stance);live_stance=stance^0x20u;
+        check(!current(live_owner,native,native.sampled_at),"admission still refuses unpublished live stance");
+        auto pad=controls(live_owner,native,native.sampled_at,7);
+        check(pad.owned&&pad.phase==5&&!pad.buttons,
+            "actual adapter retains exact neutral while live foot change awaits publication");
+        delivered(live_owner,native,pad,0,native.sampled_at,7);
+        check(input.active()&&!input.observed_change(),"live bit alone neither completes nor replays native gesture");
+        // A transient live change returns without ever becoming a published acknowledgment.
+        live_stance=stance;native=frame(native.sampled_at+dt,8,stance);
+        pad=controls(live_owner,native,native.sampled_at,8);
+        check(pad.owned&&!pad.buttons&&!input.observed_change(),"unpublished transient foot change cannot fabricate completion");
+        delivered(live_owner,native,pad,0,native.sampled_at,8);
+        live_stance=stance^0x20u;native=frame(native.sampled_at+dt,9,live_stance);++native.generations.action;
+        check(current(live_owner,native,native.sampled_at),"new matching native frame satisfies original strict identity check");
+        check(!controls(live_owner,native,native.sampled_at,9).owned&&!input.active(),
+            "published native acknowledgment ends the unchanged finite lease");
+        // A bit change between final-controls and delivery is also neutral-only.
+        native=begin(dt,stance);native=frame(native.sampled_at+dt,7,stance);
+        pad=controls(live_owner,native,native.sampled_at,7);live_stance=stance^0x20u;
+        delivered(live_owner,native,pad,0,native.sampled_at,7);
+        check(input.active()&&!input.observed_change(),"neutral delivery tolerates only the bounded publication race");
+    }
+    for(unsigned phase=0;phase<5;++phase){
+        auto native=begin(17,0,phase);live_stance=0x20;
+        const StanceControl pad{true,static_cast<std::uint16_t>((phase==1||phase==3)?0x2000:0),1,static_cast<std::uint8_t>(phase)};
+        delivered(live_owner,native,pad,pad.buttons,native.sampled_at,phase+1u);
+        check(!input.active(),"live stance race cannot relax any finite gesture delivery phase");
+        native=begin(17,0,phase);live_stance=0x20;
+        check(!controls(live_owner,native,native.sampled_at,phase+1u).owned&&!input.active(),
+            "live stance race cannot relax any finite gesture control phase");
+    }
+    for(unsigned fault=0;fault<15;++fault){
+        auto native=begin(17);auto at=native.sampled_at+17;native=frame(at,7);live_stance=0x20;
+        if(fault==0)live_stance=0x60;
+        if(fault==1)live_state=103;
+        if(fault==2)++live_owner.entity;
+        if(fault==3)++native.flip.object;
+        if(fault==4)assets_valid=false;
+        if(fault==5)ready=false;
+        if(fault==6)permitted=false;
+        if(fault==7)readable=false;
+        if(fault==8)owner_valid=false;
+        if(fault==9)replace_after_read=true;
+        if(fault==10)++native.generations.contact;
+        if(fault==11)++native.generations.owner;
+        if(fault==12)at+=151;
+        if(fault==13)native.airborne=true;
+        if(fault==14)native.flip.valid=false;
+        check(!controls(owner,native,at,7).owned&&!input.active(),
+            "neutral publication exception retains native push, owner, asset, frame and state cancellations");
+    }
+    for(unsigned buttons:{0x2000u,0x4000u}){
+        auto native=begin(17);const auto pad=controls(owner,native,native.sampled_at,6);live_stance=0x20;
+        delivered(owner,native,pad,static_cast<std::uint16_t>(buttons),native.sampled_at,6);
+        check(!input.active(),"publication-race delivery requires exact neutral, never B or automatic X");
+    }
+    for(unsigned dt:{8u,17u,33u}){
+        auto native=begin(dt);const auto deadline=100u+dt+StanceInputLease::completion_limit_ms;
+        for(auto at=native.sampled_at+dt;at<=deadline;at+=dt){
+            native=frame(at,at);live_stance=0x20;
+            const auto pad=controls(owner,native,at,at);
+            check(pad.owned&&pad.phase==5&&!pad.buttons,"live mismatch cannot advance or replay either B press");
+            delivered(owner,native,pad,0,at,at);
+        }
+        native=frame(deadline+1,deadline+1);live_stance=0x20;
+        check(!controls(owner,native,deadline+1,deadline+1).owned&&!input.active(),
+            "repeated live mismatch cannot renew the original first-down completion ceiling");
+    }
+    std::cout<<checks<<" exact production stance adapter checks passed\n";
+}
+}
 // Nonactuating native bridge boundary; these tests verify controller ownership.
 namespace dingosdk::arcade_mode::native_flip {
 void arm(const NoBailSkater&, bool) noexcept {}
@@ -851,6 +980,7 @@ void run(){
 }
 
 void run_controller_publication_tests(){
+    stance_adapter_probe::run();
     stance_publication::run();
     preparation_path::run();
     unsigned checks{};

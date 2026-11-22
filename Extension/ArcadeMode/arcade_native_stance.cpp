@@ -31,12 +31,19 @@ bool guid_is(std::uintptr_t object,const contract::Guid& expected) noexcept {
         memory::peek(object-contract::asset_guid_prefix,actual) && actual==expected;
 }
 bool assets_current() noexcept {return native_assets_current(std::span{assets},guid_is);}
-bool current(const NoBailSkater& skater,const InputNativeContext& native,std::uint64_t now) noexcept {
+// Admission and tap delivery require exact live/publication agreement. Only a
+// final neutral reservation may await publication of a live leading-foot bit;
+// that observation still uses the original frame lease and completion clock.
+bool current(const NoBailSkater& skater,const InputNativeContext& native,std::uint64_t now,
+             bool neutral_observation=false) noexcept {
     NoBailSkater before{},after{};std::uint32_t state{},stance{};
     return permitted && ready && assets_current() && native.required && native.fresh(now) &&
         no_bail_skater(before) && before==skater && before.base==image &&
         memory::peek(skater.context+contract::physics_state,state) && state==native.flip.state &&
-        memory::peek(skater.context+contract::stance_flags,stance) && (stance&0x60u)==native.flip.stance &&
+        memory::peek(skater.context+contract::stance_flags,stance) &&
+        ((stance&0x60u)==native.flip.stance ||
+         (neutral_observation && input.awaiting_observation(native,now) &&
+          ((stance&0x60u)^native.flip.stance)==game::build::v20260929::launches::stance_switch_mask)) &&
         no_bail_skater(after) && after==before;
 }
 void retire() noexcept {
@@ -103,7 +110,7 @@ bool request(const NoBailSkater& skater,const InputRequest& request,const InputN
 StanceControl controls(const NoBailSkater& skater,const InputNativeContext& native,std::uint64_t now,std::uint64_t tick) noexcept {
     std::lock_guard lock(mutex);
     if(!input.active())return {};
-    if(skater!=owner || !current(skater,native,now)){retire();return {};}
+    if(skater!=owner || !current(skater,native,now,true)){retire();return {};}
     last_poll=now;
     const auto control=input.controls(native,now,tick);
     if(!input.active())retire();
@@ -112,7 +119,9 @@ StanceControl controls(const NoBailSkater& skater,const InputNativeContext& nati
 void delivered(const NoBailSkater& skater,const InputNativeContext& native,StanceControl control,
                std::uint16_t final_buttons,std::uint64_t now,std::uint64_t tick) noexcept {
     std::lock_guard lock(mutex);
-    if(skater!=owner || !current(skater,native,now) || !input.delivered(native,control,final_buttons,now,tick))retire();
+    const bool neutral_observation=control.owned && control.phase==5 && !control.buttons && !final_buttons;
+    if(skater!=owner || !current(skater,native,now,neutral_observation) ||
+       !input.delivered(native,control,final_buttons,now,tick))retire();
 }
 void cancel() noexcept {std::lock_guard lock(mutex);retire();}
 }

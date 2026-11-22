@@ -145,6 +145,14 @@ public:
     }
     void cancel() noexcept {lease_.cancel();active_=published_=changed_=false;}
     bool active() const noexcept {return active_;}
+    bool awaiting_observation(const InputNativeContext& native,std::uint64_t now) const noexcept {
+        // Only the final neutral reservation may bridge a live foot change
+        // which has not reached the published frame. Never replay either tap
+        // or accept an already changed frame as this exceptional case.
+        return active_ && phase_==5 && second_down_ && valid_frame(native,now) &&
+            !changed_now(native) && now>=started_ && first_down_ && now>=first_down_ &&
+            now-first_down_<=StanceInputLease::completion_limit_ms;
+    }
     bool same_owner(const InputNativeContext& native) const noexcept {
         return native.generations.owner==baseline_.generations.owner &&
             native.generations.contact==baseline_.generations.contact && native.flip.object==baseline_.flip.object;
