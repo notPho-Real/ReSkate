@@ -5,6 +5,7 @@
 #include "Extension/UI/score_line_hud.h"
 #include "Extension/UI/hud_corner.h"
 #include "arcade_air_motion.h"
+#include "arcade_vert_runtime.h"
 #include "arcade_movement.h"
 #include "arcade_fixture_geometry.h"
 #include "arcade_observation.h"
@@ -1929,6 +1930,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 // Controller route binding_api publication begin.
 // Serialized with routing, facade ownership and transport packet retirement.
 static void withdraw_controller_authority() noexcept {
+    vert_runtime::cancel();
     custom_flatland_runtime::cancel();
     wallplant_runtime::cancel();
     grind_change.cancel();
@@ -1967,6 +1969,7 @@ void disconnect_xinput_source(unsigned slot) noexcept {
 // Controller route binding_api publication end.
 
 void set_enabled(bool value, bool persist) noexcept {
+    if(!value)vert_runtime::cancel();
     custom_flatland_runtime::cancel();
     wallplant_runtime::cancel();
     native_grind::cancel();
@@ -2519,7 +2522,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool flip_ready = admission.flip_ready;
         if (!game_input && !owns_controls) arcade_input.invalidate_authority();
         game_input = game_input && arcade_input.admitted(NativeControllerRoute::session,now);
-        if(!game_input || !owns_controls){wallplant_runtime::cancel();custom_flatland_runtime::cancel();}
+        if(!game_input || !owns_controls){vert_runtime::cancel();wallplant_runtime::cancel();custom_flatland_runtime::cancel();}
         else if(physical_buttons&0x6000u)wallplant_runtime::interrupt_animation();
         capture_game_input=game_input;
         const auto release_deadline = manual_release_until.load(std::memory_order_acquire);
@@ -2607,6 +2610,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 return custom_flatland_runtime::request(request);
             if(request.action==InputAction::wall_command)
                 return wallplant_runtime::request(request,dispatch.now,dispatch.frame);
+            if(request.action==InputAction::transfer_command)
+                return vert_runtime::request(request,dispatch.now,dispatch.frame);
             return grind_change.request(request,dispatch.now,[&](auto serial,auto deadline,auto control) noexcept {
                 return native_grind::arm(dispatch.owner,dispatch.contact,serial,dispatch.now,deadline,control);
             });
@@ -2644,7 +2649,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             manual_prepare, offboard, grind_change.active(), flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
             action_experiment, action_safe, admission.stance_known,
             manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,normal_grab,grind_change.admission(),grind_adapter,
-            held_flip,footplant,ground_grab,wallplant_runtime::surface(now,grind_frame),flatland_binding);
+            held_flip,footplant,ground_grab,vert_runtime::surface(now,grind_frame,wallplant_runtime::surface(now,grind_frame)),flatland_binding);
         if(!result.manual.owns)custom_flatland_runtime::cancel();
         if (!result.footplant_owned) native_footplant::cancel();
         if (!result.ground_grab_owned) native_ground_grab::cancel();
@@ -2693,7 +2698,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             result.manual.release_requested && !result.manual.owns && !result.rail.held &&
             result.right_x==0 && result.right_y==0);
         result.buttons &= ~action.consume_buttons;
-        if (result.flatland_triggers_owned) left_trigger = right_trigger = 0;
+        if (result.flatland_triggers_owned || result.transfer_triggers_owned) left_trigger = right_trigger = 0;
         if (action.consume_rt) right_trigger = 0;
         if (action.pad.owns_right_stick) { result.right_x = action.pad.right_x; result.right_y = action.pad.right_y; }
         if (action.pad.owns_left_stick) { left_x = action.pad.left_x; left_y = action.pad.left_y; }

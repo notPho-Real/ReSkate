@@ -693,6 +693,13 @@ public:
                 }
                 continue;
             }
+            if(environment.surface.fresh && environment.surface.can_transfer && environment.context==InputContext::air &&
+               event.token.source==InputSource::triggers && event.token.edge==InputEdge::press && !event.owners &&
+               native.required && native.airborne && native.fresh(event.at)) {
+                const auto match=consume(event);
+                enqueue(InputAction::transfer_command,now,150,environment,1,0,0,0,{},&match);
+                continue;
+            }
             // Preserve the physical RT edge while balance publication catches
             // up. The auxiliary dispatcher still requires independently current
             // manual admission; recognition itself grants no native actuator.
@@ -967,7 +974,7 @@ private:
         if (environment.native_context.required) {
             request.generations = lineage ? *lineage : environment.native_context.generations;
             request.generation_mask = generation_dependencies(action,environment.context);
-            if (action == InputAction::flip || action == InputAction::grab || (action==InputAction::wall_command && variant==1))
+            if (action == InputAction::flip || action == InputAction::grab || action == InputAction::transfer_command || (action==InputAction::wall_command && variant==1))
                 request.air_episode = environment.native_context.air_episode();
             if (action==InputAction::flip || action==InputAction::grab)
                 request.waiting_flip=environment.native_context.flip;
@@ -976,8 +983,8 @@ private:
             // current base ID; owner and airborne episode remain mandatory here.
             if (action==InputAction::flip && form==InputForm::held_repeat) request.generation_mask=1;
         }
-        if (action == InputAction::rail_request || action == InputAction::lip_request || (action==InputAction::wall_command && variant==1)) {
-            request.control = static_cast<std::uint16_t>(TrickControls::mask(
+        if (action == InputAction::rail_request || action == InputAction::lip_request || action == InputAction::transfer_command || (action==InputAction::wall_command && variant==1)) {
+            request.control = action==InputAction::transfer_command ? 0 : static_cast<std::uint16_t>(TrickControls::mask(
                 action==InputAction::wall_command ? TrickControls::ollie : TrickControls::grind));
             request.physical_pressed_at = footprint ? footprint->first_at : now;
             request.input_sequence = footprint && footprint->count ? footprint->events[footprint->count-1] : 0;
@@ -1543,9 +1550,8 @@ private:
         if (surface.can_push && events_.held({InputSource::buttons,TrickControls::grind,InputEdge::press})) {
             enqueue(InputAction::wall_command,now,1,environment,1,2); return;
         }
-        if (surface.can_transfer && surface.transfer_buttons &&
-            (physical_buttons() & surface.transfer_buttons) == surface.transfer_buttons)
-            enqueue(InputAction::transfer_command,now,1,environment);
+        // Transfers require a fresh journaled trigger edge in recognize(),
+        // never a held button chord or a newly published geometry sample.
     }
     std::uint16_t physical_buttons() const noexcept {
         std::uint16_t result{};

@@ -78,6 +78,7 @@ inline bool wallplant_entry_lineage(const InputNativeContext& origin,
 class InputSession {
 public:
     void reset() noexcept {
+        transfer_triggers_=0;
         input_.reset(); authored_.cancel(); manual_.cancel(); auxiliary_.cancel();
         held_flip_.cancel();held_flip_used_=false;held_flip_lineage_={};
         held_request_sequence_=held_request_pressed_at_=0;
@@ -238,6 +239,7 @@ public:
     NativeGesture::Output poll(std::uint64_t now, PhysicalInputSample physical,
                               std::int16_t rx, std::int16_t ry, InputAdmission admission) noexcept {
         NativeGesture::Output output{physical.buttons, rx, ry};
+        const auto journal_physical=physical;
         // Recognition below still receives the original physical sample. A
         // gameplay-owned early return must not expose mapped face buttons.
         if (admission.gameplay && !admission.offboard && !(physical.buttons & 0x0030u))
@@ -291,11 +293,23 @@ public:
             if (admission.gameplay && admission.offboard) output.right_x = output.right_y = 0;
             return output;
         }
+        if(physical.lt<=30)transfer_triggers_&=static_cast<unsigned>(~1u);
+        if(physical.rt<=128)transfer_triggers_&=static_cast<unsigned>(~2u);
+        output.transfer_triggers_owned=transfer_triggers_!=0;
+        transfer_sample_=(physical.lt>30?1u:0u)|(physical.rt>128?2u:0u);
+        // The journal always sees the unmodified pad. In a qualified vert
+        // context the triggers do not also cancel a held flip/grab or select
+        // Nollie. Only an accepted fresh request owns the delivered channels.
+        if(native.airborne && admission.pose==SkatePose::air && !admission.external_owner &&
+           admission.action_mode==ActionExperiment::classic && admission.extensions.request &&
+           ((admission.surface.fresh && admission.surface.can_transfer) || transfer_triggers_)) {
+            physical.lt=physical.rt=0;admission.nollie=false;
+        }
         clocked_ = true; last_ = now; last_tick_ = admission.tick;
         now_ = now; physical_ = physical; admission_ = admission; current_ = &output; extension_started_ = false; wallplant_started_input_=0;
         if(ground_grab_) {
             output.right_x=output.right_y=0;
-            input_.poll(now,physical,{InputContext::unknown,true,true},{});
+            input_.poll(now,journal_physical,{InputContext::unknown,true,true},{});
             if(!admission.external_owner && admission.action_mode==ActionExperiment::classic &&
                 physical.lt<=30 && physical.rt<=30 && !(physical.buttons&0xd370u) &&
                 admission.ground_grab.controls) {
@@ -308,7 +322,7 @@ public:
             output.right_x=output.right_y=0;
             // Journal physical edges without recognizing another action or
             // replaying A when the native entry ends.
-            input_.poll(now,physical,{InputContext::unknown,true,true},{});
+            input_.poll(now,journal_physical,{InputContext::unknown,true,true},{});
             if (!admission.external_owner && admission.action_mode==ActionExperiment::classic &&
                 physical.lt<=30 && physical.rt<=30 && !(physical.buttons&0xe3f0u) &&
                 admission.footplant.controls) {
@@ -538,7 +552,7 @@ public:
             !native.airborne && native.flip.valid && native.flip.id==(jump_nollie_?16:1) && native.flip.object &&
             (native.flip.state==100 || native.flip.state==103)) environment.takeoff_release_at=now;
         environment.takeoff_actor_busy=authored_.busy() || auxiliary_.busy();
-        input_.poll(now, physical, environment, {this, &receive});
+        input_.poll(now, journal_physical, environment, {this, &receive});
         if(action_enabled && admission.action_fresh && admission.action_mode==ActionExperiment::classic &&
             context==InputContext::air && admission.normal_grab.submit && input_.owns_grab_modifier())
             output.action.consume_buttons|=0x0080u;
@@ -1003,6 +1017,7 @@ private:
         default: return InputDisposition::unsupported;
         }
     }
+    unsigned transfer_triggers_{},transfer_sample_{};
     InputDisposition request_extension(const InputRequest& request) noexcept {
         auto result = InputDisposition::unsupported;
         if (admission_.extensions.request) result = admission_.extensions.request(admission_.extensions.state,request);
@@ -1010,6 +1025,10 @@ private:
             rail_ = false; rail_request_ = {};
         }
         if(result==InputDisposition::started) {
+            if(request.action==InputAction::transfer_command) {
+                transfer_triggers_=transfer_sample_;
+                current_->transfer_triggers_owned=true;
+            }
             wallplant_started_input_=!extension_started_ && request.action==InputAction::wall_command &&
                 request.variant==1 ? request.input_sequence : 0;
             extension_started_=true;

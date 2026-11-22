@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_surface_geometry.h"
+#include "arcade_vert_air.h"
 #include <span>
 #include "Extension/Objects/ParkEditor/park_editor_surface.h"
 
@@ -39,6 +40,10 @@ struct SurfaceGeometryNativeApi {
     bool (*local_component_owner)(void*,const SurfaceGeometryContext&,const SurfaceGeometryBody&,
         SurfaceGeometryWorldOwner&) noexcept{};
 };
+VertPatch query_vert_patch(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
+    SurfaceGeometryVector point,SurfaceGeometryVector normal,float reach) noexcept;
+bool query_vert_clearance(const SurfaceGeometryNativeApi&,const SurfaceGeometryContext&,
+    SurfaceGeometryVector point,SurfaceGeometryVector velocity,float gravity,float seconds) noexcept;
 // Ground patches retain exact-shape admission unless static_world_owner proves
 // every contributing child shape belongs to the same static body incarnation.
 SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,

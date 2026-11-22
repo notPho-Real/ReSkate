@@ -47,3 +47,17 @@ Three seconds is a minimum test interval measured from qualified physical contac
 not an input-hold duration or a gameplay timeout. A balanced Manual can continue
 longer. Historical two/ten-second recipes and captures remain historical; neither
 defines current acceptance. Offline checks do not prove native animation or play feel.
+
+## Experimental vert controller
+
+The isolated vert-transfer workstream adds concave-transition takeoff recognition,
+unchanged no-input flight, contextual LT/RT Level Out, and a shared destination
+solver for Spine Transfer, Hip Transfer and Acid Drop. It reuses native body
+ownership, the timestamped input journal, static-owner geometry, collision and
+physical orientation limits. No new map IDs, native state fabrication or scoring
+awards are introduced.
+
+Portable tests cover transformed curved ramps, independent shape owners, holes,
+clearance failures, bounded momentum, trigger timing, ownership cancellation and
+query-to-physics races. Native gameplay acceptance remains pending; see
+[the implementation evidence](research/vert-transfer-implementation.md).

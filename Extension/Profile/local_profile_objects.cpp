@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_native_input_state.h"
 #include "Extension/ArcadeMode/arcade_surface_geometry_native.h"
 #include "Extension/ArcadeMode/arcade_wallplant_runtime.h"
+#include "Extension/ArcadeMode/arcade_vert_runtime.h"
 #include "Extension/ArcadeMode/arcade_native_wall_contact.h"
 #include "Extension/Objects/ParkEditor/park_editor_internal.h"
 #include "Extension/Customization/local_customization_runtime.h"
@@ -467,6 +468,11 @@ static void update_arcade_surface_geometry(std::uintptr_t client,bool collision_
   if((motion||probe.contact)&&read_surface_board_support(owner,callback.board_support)){
    board_offsets[0]=surface_geometry_detail::sub(callback.board_support.point,root);
    supports=board_offsets;
+  }
+  if(!worker && !admission.wallplant_only && read_surface_board_support(owner,callback.board_support) &&
+     motion_surface_api.contact_ready) {
+   auto vert_api=api;vert_api.surface=motion_surface_api;vert_api.current=&wallplant_surface_callback_current;
+   vert_runtime::geometry(vert_api,origin,frame,callback.board_support.point,callback.board_support.up);
   }
   note(11,"before_publish");
   if(motion)

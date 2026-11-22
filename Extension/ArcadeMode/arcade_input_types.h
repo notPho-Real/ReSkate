@@ -116,6 +116,7 @@ struct NativeGesture {
         bool footplant_owned{};
         bool ground_grab_owned{};
         bool flatland_triggers_owned{};
+        bool transfer_triggers_owned{};
     };
 };
 }

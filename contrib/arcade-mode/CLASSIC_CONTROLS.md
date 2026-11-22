@@ -260,3 +260,23 @@ and rotation work. Basic native Y grinding, exits and balance HUD now have fixed
 Deck evidence; finish their remaining integration before deferred grabs and exotic
 named variants. This table remains the target contract. STATE.md and the existing
 native-method matrix distinguish verified behavior from outstanding acceptance.
+
+## Experimental vert air and transfers
+
+A fresh LT or RT during a geometry-qualified vert flight requests the same
+contextual action. The controller searches in travel direction, biased by held
+directional intent: a reachable descending transition and verified crest can
+select Spine Transfer or Hip Transfer; an already descending flight into a lower
+transition can select Acid Drop. Without an eligible destination, Level Out
+redistributes a bounded amount of upward momentum into forward travel.
+
+A trigger held before takeoff does not request a transfer. One accepted press
+owns its trigger channels until release, including across landing. Ground LT
+Nollie and RT Revert/Switch retain their existing contexts. No fresh transfer
+input leaves native vert trajectory and gravity intact. Flips, grabs and spins
+retain their existing input paths; physical alignment yields to native trick actors.
+
+These paths are experimental source implementation. Offline trajectory, geometry
+and input tests do not establish native takeoff, actual transfer execution,
+rendered alignment, landing, combo banking or player feel. Exact-candidate native
+acceptance is required before describing them as playable or accepted.

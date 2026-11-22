@@ -1,0 +1,158 @@
+#include "arcade_vert_runtime.h"
+#include "arcade_native_wall_contact.h"
+#include <mutex>
+#if defined(DINGOSDK_DEV_TOOLS)
+#include "Engine/Core/Log/logging.h"
+#endif
+namespace dingosdk::arcade_mode::vert_runtime {
+namespace {
+std::mutex mutex;
+VertAirController controller;
+VertPatch support;
+NativeInputFrame support_frame;
+}
+void cancel() noexcept {std::lock_guard lock(mutex);controller.reset();support={};support_frame={};}
+InputSurfaceState surface(std::uint64_t now,const NativeInputFrame& frame,InputSurfaceState other) noexcept {
+    std::unique_lock lock(mutex,std::try_to_lock);
+    if(!lock.owns_lock() || !controller.eligible(frame,now))return other;
+    other.fresh=other.can_transfer=true;other.transfer_buttons=0;
+    other.generation=frame.airborne_episode;other.physics_step=frame.physics_step;
+    other.generations=InputNativeContext::from_frame(frame).generations;
+    other.can_plant=other.can_push=false;return other;
+}
+InputDisposition request(const InputRequest& input,std::uint64_t now,const NativeInputFrame& frame) noexcept {
+    std::unique_lock lock(mutex,std::try_to_lock);
+    if(!lock.owns_lock())return InputDisposition::cancelled;
+    if(input.action!=InputAction::transfer_command || input.context!=InputContext::air ||
+       input.air_episode!=InputNativeContext::from_frame(frame).air_episode() ||
+       input.generations.owner!=frame.owner_generation || input.first_input_at!=input.physical_pressed_at)
+        return InputDisposition::cancelled;
+    auto direction=controller.direction();
+    if(input.direction>=1 && input.direction<=9) {
+        const int lateral=(input.direction-1)%3-1;
+        const int longitudinal=(input.direction-1)/3-1;
+        const auto right=vert_math::cross(direction,{0,1,0});
+        direction=vert_math::add(vert_math::scale(direction,longitudinal<0?.5f:1.f),
+            vert_math::scale(right,static_cast<float>(lateral)*.65f));
+    }
+    return controller.request(frame,now,input.physical_pressed_at,input.input_sequence,direction) ?
+        InputDisposition::started:InputDisposition::cancelled;
+}
+SurfaceGeometryVector alignment(const NativeInputFrame& frame,std::uint64_t now) noexcept {
+    std::unique_lock lock(mutex,std::try_to_lock);
+    return lock.owns_lock()?controller.alignment(frame,now):SurfaceGeometryVector{};
+}
+Motion step(VertObservation observation) noexcept {
+    std::unique_lock lock(mutex,std::try_to_lock);
+    if(!lock.owns_lock())return {};
+    const auto& frame=observation.native;
+    if(support.valid && frame.valid && frame.owner==support_frame.owner &&
+       frame.owner_generation==support_frame.owner_generation && !frame.airborne && !support_frame.airborne &&
+       frame.sampled_at>=support_frame.sampled_at && frame.sampled_at-support_frame.sampled_at<=100 &&
+       vert_math::length(vert_math::sub(observation.position,support.center().point))<2)
+        if(std::any_of(support.samples.begin(),support.samples.end(),[&](const auto& sample) {
+            return sample.body==observation.contacted_shape;
+        }))observation.support=support;
+    if(controller.phase()==VertPhase::released) {
+        const auto& released=controller.released_plan();
+        for(const auto& sample:released.destination.samples)if(released.destination.valid) {
+            SurfaceGeometryWorldOwner current{};
+            if(!native_wall_contact::static_world_owner(sample.body,current) || current!=sample.world_owner) {
+                controller.cancel();break;
+            }
+        }
+    }
+    [[maybe_unused]] const auto before=controller.phase();
+    controller.observe(observation);
+    auto plan=controller.consume(frame,frame.sampled_at,observation.velocity);
+    if(plan.destination.valid)for(const auto& sample:plan.destination.samples) {
+        SurfaceGeometryWorldOwner current{};
+        if(!native_wall_contact::static_world_owner(sample.body,current) || current!=sample.world_owner) {
+            controller.cancel();plan={};break;
+        }
+    }
+#if defined(DINGOSDK_DEV_TOOLS)
+    if(before!=controller.phase() || plan)logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE VERT: step={} episode={} phase={} action={} position={},{},{} velocity={},{},{} planned={},{},{} supported={}.",
+        frame.physics_step,frame.airborne_episode,static_cast<unsigned>(controller.phase()),static_cast<unsigned>(plan.action),
+        observation.position[0],observation.position[1],observation.position[2],
+        observation.velocity[0],observation.velocity[1],observation.velocity[2],
+        plan.velocity[0],plan.velocity[1],plan.velocity[2],observation.supported);
+#endif
+    return {plan,controller.phase()==VertPhase::native_air || controller.phase()==VertPhase::requested ||
+        controller.phase()==VertPhase::released,controller.phase()==VertPhase::released};
+}
+void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryContext& context,
+        const NativeInputFrame& frame,SurfaceGeometryVector board,SurfaceGeometryVector up) noexcept {
+    auto api=supplied;
+    api.static_world_owner=[](void*,const SurfaceGeometryBody& shape,SurfaceGeometryWorldOwner& owner) noexcept {
+        return native_wall_contact::static_world_owner(shape,owner);
+    };
+    api.local_component_owner=[](void*,const SurfaceGeometryContext& ctx,const SurfaceGeometryBody& shape,
+            SurfaceGeometryWorldOwner& owner) noexcept {
+        return native_wall_contact::local_component_owner(shape,ctx.owner[1],owner);
+    };
+    if(!api.now || !api.current || !api.current(api.user,context))return;
+    const auto now=api.now(api.user);
+    if(!frame.airborne) {
+        // The board basis chooses probe orientation; the measured normal and
+        // independently observed wheel contacts, not that basis, admit takeoff.
+        const auto patch=query_vert_patch(api,context,board,up,.9f);
+        std::lock_guard lock(mutex);support=patch;support_frame=frame;return;
+    }
+    VertAirController snapshot;
+    {
+        std::unique_lock lock(mutex,std::try_to_lock);
+        if(!lock.owns_lock() || !controller.pending(frame,now))return;
+        snapshot=controller;
+    }
+    using namespace vert_math;
+    const auto observation=snapshot.observation();const auto direction=snapshot.direction();
+    const auto right=cross(direction,{0,1,0});const float gravity=snapshot.gravity();
+    VertPlan selected;
+    if(gravity>0) {
+        // A fixed travel-relative fan and fixed flight times provide stable
+        // selection without depending on allocation order or a map's axes.
+        constexpr std::array<float,5> angles{0,-.4f,.4f,-.8f,.8f};
+        for(float time:{.5f,.8f,1.1f,1.4f,1.8f})for(float angle:angles) {
+            const auto heading=add(scale(direction,std::cos(angle)),scale(right,std::sin(angle)));
+            auto center=add(observation.position,scale(heading,std::max(2.f,length(observation.velocity)*.45f)*time));
+            center[1]+=.5f;
+            // A downward cast finds the transition. A second footprint aligns
+            // to its measured normal; curved and split meshes retain all owners.
+            SurfaceGeometryRequest probe;
+            constexpr std::array<std::array<float,2>,5> offsets{{{0,0},{-.025f,0},{.025f,0},{0,-.025f},{0,.025f}}};
+            for(std::size_t i=0;i<5;++i)probe.segments[i]={{center[0]+offsets[i][0],center[1],center[2]+offsets[i][1]},
+                {center[0]+offsets[i][0],center[1]-12,center[2]+offsets[i][1]}};
+            const auto hit=query_surface_geometry(api,context,probe);
+            if(!hit.valid)continue;
+            const auto patch=query_vert_patch(api,context,hit.point,hit.query_normal,.5f);
+            auto candidate=vert_destination(observation,snapshot.origin(),patch,direction,gravity,time);
+            if(candidate.action==VertAction::none || (selected && candidate.cost>=selected.cost))continue;
+            if(candidate.action==VertAction::spine || candidate.action==VertAction::hip) {
+                auto middle=scale(add(snapshot.origin().center().point,candidate.landing),.5f);
+                middle[1]=std::max(observation.position[1],candidate.landing[1])+3;
+                for(std::size_t i=0;i<5;++i)probe.segments[i]={{middle[0]+offsets[i][0],middle[1],middle[2]+offsets[i][1]},
+                    {middle[0]+offsets[i][0],middle[1]-12,middle[2]+offsets[i][1]}};
+                candidate.crest=query_surface_geometry(api,context,probe);
+                if(!candidate.crest.valid || candidate.crest.query_normal[1]<.5f ||
+                   candidate.crest.point[1]<std::min(snapshot.origin().center().point[1],candidate.landing[1])-.25f)continue;
+            }
+            candidate.clear=query_vert_clearance(api,context,observation.position,candidate.velocity,gravity,time);
+            if(candidate)selected=candidate;
+        }
+    }
+    if(!selected) {
+        selected=vert_level_out(observation,direction);
+        // Missing gravity forbids extrapolating an unmeasured landing. Only a
+        // short immediate clearance check is required for breaking vert.
+        selected.clear=query_vert_clearance(api,context,observation.position,selected.velocity,gravity,.2f);
+    }
+    if(!selected || !api.current(api.user,context))return;
+    if(selected.crest.valid && !revalidate_surface_geometry(api,context,selected.crest))return;
+    for(const auto& sample:selected.destination.samples)
+        if(selected.destination.valid && !revalidate_surface_geometry(api,context,sample))return;
+    std::lock_guard lock(mutex);
+    (void)controller.stage(selected,observation,api.now(api.user));
+}
+}

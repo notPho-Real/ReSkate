@@ -87,6 +87,7 @@ bool start_materials(std::uintptr_t base) noexcept;
 void enable_materials(bool enabled) noexcept;
 void enable(bool enabled) noexcept;
 Snapshot observe(const NoBailSkater& owner,std::uint64_t now) noexcept;
+Snapshot riding_support(const NoBailSkater& owner,std::uint64_t now) noexcept;
 // True only inside the exact local collision predicate invocation, after the
 // native predicate ran. Neither a timer nor a cached query can create this scope.
 bool collision_current(std::uint64_t serial,const NoBailSkater&) noexcept;

@@ -83,6 +83,8 @@ struct Fixture {
     std::uint64_t time{1000};
     unsigned calls{}, pops{}, frees{}, entities{}, first{3}, delay{}, clock_step{};
     float sx{}, sz{};
+    float curve_radius{},curve_yaw{};
+    SurfaceGeometryVector curve_origin{},curve_normal{};
     bool roof{}, unknown{}, seam{}, fold{}, edge{}, miss{}, bad_fraction{}, bad_data{}, wrong_world{}, overflow{},
         bad_body{}, changed_owner{}, changed_context{}, throw_query{}, no_context{}, many_self{}, self{}, read_fail{},
         throw_pop{}, throw_free{};
@@ -205,7 +207,31 @@ struct Fixture {
                       "local exclusion carries the independently validated owner incarnation");
             } else check(b->world==f.live.world && b->generation==f.generation && b->index>=100,"native exclusions retain full body token");
         }
-        if (f.wall) {
+        if(f.curve_radius>0) {
+            const auto local=[&](const std::array<float,4>& v) {
+                const float dx=v[0]-f.curve_origin[0],dz=v[2]-f.curve_origin[2];
+                return SurfaceGeometryVector{std::cos(f.curve_yaw)*dx+std::sin(f.curve_yaw)*dz,
+                    v[1]-f.curve_origin[1]-f.curve_radius,-std::sin(f.curve_yaw)*dx+std::cos(f.curve_yaw)*dz};
+            };
+            const auto a=local(ray_value->start),b=local(ray_value->end);
+            const auto d=surface_geometry_detail::sub(b,a);
+            const double qa=double(d[0])*d[0]+double(d[1])*d[1];
+            const double qb=2*(double(a[0])*d[0]+double(a[1])*d[1]);
+            const double qc=double(a[0])*a[0]+double(a[1])*a[1]-double(f.curve_radius)*f.curve_radius;
+            const double disc=qb*qb-4*qa*qc;
+            float t=2;
+            if(qa>0 && disc>=0)for(double sign:{-1.,1.}) {
+                const auto root=static_cast<float>((-qb+sign*std::sqrt(disc))/(2*qa));
+                if(root>=0 && root<=1)t=std::min(t,root);
+            }
+            if(t>1)result->count=0;
+            f.fractions[f.first]=std::min(t,1.f);
+            const auto hit=vert_math::add(a,vert_math::scale(d,t));
+            f.curve_normal={-hit[0]/f.curve_radius*std::cos(f.curve_yaw),-hit[1]/f.curve_radius,
+                -hit[0]/f.curve_radius*std::sin(f.curve_yaw)};
+            if(f.partitioned_wall)f.partition_shape=hit[2]<-.1f?2u:hit[2]>.1f?3u:1u;
+            if(f.missing_ground_shape==f.partition_shape)result->count=0;
+        } else if (f.wall) {
             SurfaceGeometryVector start{}, end{};
             for (unsigned axis=0;axis<3;++axis) { start[axis]=ray_value->start[axis]; end[axis]=ray_value->end[axis]; }
             if(f.calls<=f.wall_segments.size())f.wall_segments[f.calls-1]={start,end};
@@ -232,7 +258,7 @@ struct Fixture {
             }
             f.fractions[f.first]=f.self_hit ? .1f : (ray_value->start[1]-height)/(ray_value->start[1]-ray_value->end[1]);
         }
-        f.fractions[f.first+1]=f.wall ? 1.f : .9f;
+        f.fractions[f.first+1]=(f.wall || f.curve_radius>0) ? 1.f : .9f;
         if (f.bad_fraction) f.fractions[f.first]=std::numeric_limits<float>::quiet_NaN();
         f.data[1]=f.bad_data ? 0 : reinterpret_cast<std::uintptr_t>(f.fractions.data());
         if (f.edge && x>0) result->count=0;
@@ -249,11 +275,11 @@ struct Fixture {
             f.fractions[0]=f.bad_fraction?std::numeric_limits<float>::quiet_NaN():.5f;
             if(!result->count)f.data[1]=0; // Native empty-vector storage may be null.
         }
-        if(f.wall && result->count) {
+        if((f.wall || f.curve_radius>0) && result->count) {
             for(unsigned axis=0;axis<3;++axis) {
                 f.hit_positions[f.first][axis]=ray_value->start[axis]+
                     (ray_value->end[axis]-ray_value->start[axis])*f.fractions[f.first];
-                f.hit_normals[f.first][axis]=f.wall_normal[axis]*(f.reversed_normal?-1.f:1.f);
+                f.hit_normals[f.first][axis]=(f.curve_radius>0?f.curve_normal[axis]:f.wall_normal[axis])*(f.reversed_normal?-1.f:1.f);
             }
             if(f.bad_position)f.hit_positions[f.first][0]+=.1f;
             if(f.bad_normal)f.hit_normals[f.first][0]=std::numeric_limits<float>::quiet_NaN();
@@ -339,6 +365,28 @@ bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) no
 }
 }
 int main() {
+    for(float radius:{2.f,4.f,8.f})for(float angle:{.4f,.9f,1.3f})for(float yaw:{0.f,.7f,2.f})for(bool split:{false,true}) {
+        Fixture f;f.allow_world_owner=f.unknown=true;f.curve_radius=radius;f.curve_yaw=yaw;
+        f.curve_origin={13.f,-5.f,7.f};f.partitioned_wall=split;f.partition_owner_change=split?1u:0u;
+        const SurfaceGeometryVector point{13+radius*std::sin(angle)*std::cos(yaw),-5+radius*(1-std::cos(angle)),7+radius*std::sin(angle)*std::sin(yaw)};
+        const SurfaceGeometryVector normal{-std::sin(angle)*std::cos(yaw),std::cos(angle),-std::sin(angle)*std::sin(yaw)};
+        const auto p=query_vert_patch(f.api(),f.live,point,normal,.5f);
+        check(p.valid,"cylindrical quarterpipe supports curved footprint across independent static shapes");
+        check(surface_geometry_detail::dot(p.center().query_normal,normal)>.999f,"native measured ramp normal is rotation invariant");
+        f.missing_ground_shape=split?2u:1u;
+        check(!query_vert_patch(f.api(),f.live,point,normal,.5f).valid,"interrupted transition rejects instead of bridging a hole");
+    }
+    for(unsigned failure=0;failure<5;++failure) {
+        Fixture f;f.anchor=true;f.first=0;
+        if(failure==1)f.anchor_block_at=6;
+        if(failure==2)f.malformed_empty=true;
+        if(failure==3)f.wrong_world=true;
+        if(failure==4)f.changed_context=true;
+        const auto context=f.live;
+        check(query_vert_clearance(f.api(),context,{0,3,0},{6,2,0},9.81f,.5f)==(failure==0),
+            "trajectory clearance rejects obstruction, malformed query, world replacement and stale context");
+    }
+
     for(bool entity_owner:{false,true})for(unsigned orientation=0;orientation<32;++orientation) {
         Fixture f;f.partitioned_ground=f.allow_world_owner=true;f.unknown=!entity_owner;
         if(entity_owner){f.world_owner.kind=1;f.world_owner.value=20;}
