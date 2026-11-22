@@ -573,17 +573,43 @@ public:
         }
         if(suspended_setup_.action!=InputAction::none) {
             const auto& before=suspended_native_;
+            // Withdrawing authored RS does not synchronously retire the native
+            // crouch. Retain only that observed selection under the original A;
+            // a supported setup can resume after actual native idle returns.
+            const bool observed_crouch=before.flip.state==103 && before.flip.valid && before.flip.object &&
+                (before.flip.id==1 || before.flip.id==16);
+            const bool retiring_crouch=observed_crouch && native.flip.state==103 && native.flip.valid &&
+                native.flip.id==before.flip.id &&
+                native.flip.mode==before.flip.mode && native.generations.action==before.generations.action;
+            // The physics producer increments both generations for103 ->100.
+            // Require the actual wheel bits too: a concurrent support change
+            // would otherwise have the same generation increments.
+            const bool crouch_retired=observed_crouch && native.flip.state==100 && native.flip.valid &&
+                (native.flip.id==before.flip.id || native.flip.id==-1) &&
+                native.physics_step>before.physics_step && native.follows(before) &&
+                native.air_episode()==before.air_episode() &&
+                native.generations.contact>before.generations.contact &&
+                native.generations.contact-before.generations.contact==1 &&
+                native.generations.action>before.generations.action &&
+                native.generations.action-before.generations.action==1 &&
+                native.flip.mode_generation && before.flip.mode_generation &&
+                native.flip.mode_generation>=before.flip.mode_generation &&
+                native.flip.mode_generation-before.flip.mode_generation==(native.flip.mode!=before.flip.mode?1u:0u) &&
+                native.contacts_known && before.contacts_known && native.contacts==before.contacts;
             const bool current=(physical.buttons&classic_a) && physical.rt<=30 && !admission.offboard &&
                 !admission.external_owner && !authored_.busy() && !auxiliary_.busy() && !manual_.busy() &&
                 admission.pose==SkatePose::riding && admission.launch==suspended_launch_ &&
                 native.required && native.fresh(now) && !native.airborne && !native.rail_family &&
-                native.generations.owner==before.generations.owner && native.generations.contact==before.generations.contact &&
+                native.generations.owner==before.generations.owner &&
+                (native.generations.contact==before.generations.contact || crouch_retired) &&
                 native.flip.object==before.flip.object && native.flip.stance==before.flip.stance &&
-                native.flip.state==100 && native.flip.mode<=1;
+                ((native.flip.state==100 && (before.flip.state==100 || crouch_retired)) || retiring_crouch) &&
+                native.flip.mode<=1;
             if(!current)suspended_setup_={};
             else {
+                if(crouch_retired)suspended_native_=native;
                 const auto selected=input_.selected_ground_setup();
-                if(selected==SetupStance::normal || selected==SetupStance::nollie) {
+                if(native.flip.state==100 && (selected==SetupStance::normal || selected==SetupStance::nollie)) {
                     auto request=suspended_setup_;suspended_setup_={};
                     request.setup=selected;request.nollie=selected==SetupStance::nollie;
                     // Resume the original held A; no new physical edge.

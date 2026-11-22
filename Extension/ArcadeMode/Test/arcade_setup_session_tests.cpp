@@ -15,8 +15,9 @@ struct Route {
     NativeInputState producer{};
     NativeInputOwner owner{1,2,3,4,5};
     InputAdmission admission{};
-    unsigned flips{},grabs{},contacts{0xc000};std::int32_t last_flip{};bool bailing{},switched{};
+    unsigned flips{},grabs{},contacts{0xc000};std::int32_t last_flip{};bool bailing{},switched{},omit_contact_proof{};
     std::uintptr_t selection_object{16};
+    InputGenerations forged_idle_generations{};
     std::vector<PreparedGesture> catalog{
         {1,false,GestureContext::ground,{{0,0,-31000},{18,0,31000},{21,0,0},{24,0,0}}},
         {16,true,GestureContext::ground,{{0,0,31000},{18,0,-31000},{21,0,0},{24,0,0}}},
@@ -44,6 +45,8 @@ struct Route {
         raw.words[1]=contacts;raw.words[0]=bailing?0x40u:switched?0x20u:0u;
         const auto frame=producer.observe(now,owner,raw,{true,selected,selection_object});
         admission.native_context=InputNativeContext::from_frame(frame);
+        if(omit_contact_proof)admission.native_context.contacts_known=false;
+        if(state==100&&forged_idle_generations.owner)admission.native_context.generations=forged_idle_generations;
         session.observe_manual_transition(admission.native_context);
         session.observe_rail_followup(admission.native_context);
         admission.pose=frame.airborne?SkatePose::air:state>=400&&state<=406?SkatePose::grind:SkatePose::riding;
@@ -212,5 +215,73 @@ void pressure_survives_rejected_releases() {
               "recovered setup replaces old launch and retains its new physical A timestamp");
     }
 }
+std::unique_ptr<Route> pressure_from_native_crouch(bool nollie,unsigned cadence,bool known_contacts=true) {
+    auto f=std::make_unique<Route>();f->omit_contact_proof=!known_contacts;f->poll(1000);
+    if(nollie){f->poll(1002,100,-1,0,255);f->poll(1004);}
+    const auto pressed=1000+cadence,lt_at=1000+3*cadence;
+    const auto pressure_at=lt_at+((PhysicalSetupSelection::pressure_hold_ms+cadence-1)/cadence)*cadence;
+    check(f->poll(pressed,100,-1,classic_a).requested_id==(nollie?16u:1u),
+          "native-crouch fixture starts the original physical A setup");
+    f->poll(1000+2*cadence,103,nollie?16:1,classic_a);
+    check(f->poll(lt_at,103,nollie?16:1,classic_a,255).requested_id==(nollie?1u:16u),
+          "short LT retargets the already observed native crouch before Pressure qualifies");
+    for(auto now=lt_at+cadence;now<pressure_at;now+=cadence)f->poll(now,103,nollie?1:16,classic_a,255);
+    const auto pressure=f->poll(pressure_at,103,nollie?1:16,classic_a,255);
+    check(!pressure.authored_playback&&!pressure.requested_id&&!pressure.jump.released,
+          "Pressure withdraws authored input without fabricating an admitted A release");
+    return f;
 }
-int main(){launch_selection();pressure_refuses_substitution();boundaries_and_grab();held_retarget_and_second_tap();pressure_release_resumes_same_a();interrupted_pressure_and_missing_recipe();aborted_ground_pop();pressure_survives_rejected_releases();std::printf("setup session: %u checks passed\n",checks);}
+void pressure_retains_observed_native_crouch() {
+    for(unsigned cadence:{8u,16u,33u})for(bool nollie:{false,true})
+    for(bool release_before_idle:{false,true})for(unsigned frames:{1u,2u}) {
+        auto f=pressure_from_native_crouch(nollie,cadence);
+        const auto pressure_at=f->admission.native_context.sampled_at;
+        for(unsigned index=0;index<frames;++index) {
+            const auto waiting=f->poll(pressure_at+(index+1)*cadence,103,nollie?1:16,classic_a,release_before_idle?0:255);
+            check(!waiting.authored_playback&&!waiting.requested_id&&!waiting.jump.released,
+                  "same native103 actor retains held A but cannot restart crouch before idle100");
+        }
+        const auto idle_at=pressure_at+(frames+1)*cadence;
+        if(!release_before_idle)f->poll(idle_at,100,-1,classic_a,255);
+        const auto resumed_at=idle_at+(release_before_idle?0:cadence);
+        const auto resumed=f->poll(resumed_at,100,-1,classic_a);
+        if(!resumed.authored_playback||resumed.requested_id!=(nollie?16u:1u)||resumed.jump.pressed_at!=1000+cadence)std::fprintf(stderr,"native103 cadence=%u nollie=%d early=%d frames=%u id=%u authored=%d setup=%d press=%llu expected=%u\n",cadence,nollie,release_before_idle,frames,resumed.requested_id,resumed.authored_playback,resumed.jump.setup_started,static_cast<unsigned long long>(resumed.jump.pressed_at),1000+cadence);
+        check(resumed.authored_playback&&resumed.requested_id==(nollie?16u:1u)&&resumed.jump.pressed_at==1000+cadence,
+              "native103 withdrawal resumes exact supported setup at idle100 under original physical A");
+        const auto release=f->poll(resumed_at+cadence,100,nollie?16:1);
+        check(release.jump.setup_admitted&&release.jump.pressed_at==1000+cadence&&release.jump.released_at==resumed_at+cadence&&
+              release.jump.nollie==nollie,"resumed native crouch preserves A edge timestamps and launch identity");
+    }
+    for(bool nollie:{false,true})for(unsigned fault=0;fault<15;++fault) {
+        auto f=pressure_from_native_crouch(nollie,16,fault!=12);
+        const auto pressure_at=f->admission.native_context.sampled_at;
+        if(fault==2)++f->owner.entity;
+        if(fault==3)f->contacts=0x4000;
+        if(fault==5) {
+            // Native publication sees another actor between controller polls;
+            // returning to the same id cannot erase the action generation.
+            NativeRequestSample foreign{};foreign.valid=true;foreign.state=103;foreign.crouch_mode=1;
+            foreign.words[1]=f->contacts;
+            (void)f->producer.observe(pressure_at+8,f->owner,foreign,{true,2,f->selection_object});
+        }
+        if(fault==6)++f->selection_object;
+        if(fault==7)f->bailing=true;
+        if(fault==8)f->admission.gameplay=false;
+        if(fault==9)f->admission.external_owner=true;
+        f->poll(pressure_at+16,fault==1?200u:103u,fault==4?2:nollie?1:16,fault==0?0:classic_a,255);
+        f->contacts=0xc000;f->selection_object=16;f->bailing=false;
+        f->admission.gameplay=true;f->admission.external_owner=false;
+        // A state and contact-mask change in one native callback increments
+        // contact generation only once. The actual mask must distinguish it
+        // from a genuine same-contact crouch retirement.
+        if(fault==10)f->contacts=0x4000;
+        f->omit_contact_proof=fault==11;
+        if(fault==13)f->forged_idle_generations=f->admission.native_context.generations;
+        f->poll(pressure_at+32,100,fault==14?2:-1,fault==0?0:classic_a,255);
+        const auto resumed=f->poll(pressure_at+48,100,fault==14?2:-1,fault==0?0:classic_a);
+        check(!resumed.authored_playback&&!resumed.requested_id&&!resumed.jump.released,
+              "released A, AIR, foreign actor/action, owner/contact/object loss, bail, OFF, external owner or missing contact proof cancels crouch");
+    }
+}
+}
+int main(){pressure_retains_observed_native_crouch();launch_selection();pressure_refuses_substitution();boundaries_and_grab();held_retarget_and_second_tap();pressure_release_resumes_same_a();interrupted_pressure_and_missing_recipe();aborted_ground_pop();pressure_survives_rejected_releases();std::printf("setup session: %u checks passed\n",checks);}

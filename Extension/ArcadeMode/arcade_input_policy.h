@@ -38,6 +38,10 @@ struct InputNativeContext {
     // Original physics departure time, never refreshed by client polling.
     std::uint64_t airborne_started_at{};
     bool airborne_started_known{};
+    // Original wheel bits distinguish a native phase change from a simultaneous
+    // support change. A generation increment alone cannot make that distinction.
+    std::uint32_t contacts{};
+    bool contacts_known{};
     InputAirEpisode air_episode() const noexcept { return {airborne_episode,air_departure}; }
     bool operator==(const InputNativeContext&) const = default;
     bool fresh(std::uint64_t now) const noexcept {
@@ -156,6 +160,10 @@ struct InputNativeContext {
             context.air_departure = frame.air_departure;
         }
         if constexpr (requires { frame.orientation; }) context.orientation=frame.orientation;
+        if constexpr (requires { frame.contacts; }) {
+            context.contacts=static_cast<std::uint32_t>(frame.contacts)&0xc000u;
+            context.contacts_known=true;
+        }
         if constexpr (requires { frame.airborne_started_at; frame.airborne_started_known; }) {
             context.airborne_started_at=frame.airborne_started_at;
             context.airborne_started_known=frame.airborne_started_known;
