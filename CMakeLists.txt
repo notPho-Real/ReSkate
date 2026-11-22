@@ -908,7 +908,7 @@ if(DINGOSDK_BUILD_ARCADE_MODE_TESTS)
     # Native SDK query/HUD targets borrow Windows-only runtime headers/ImGui.
     # Portable model tests remain available without the Windows UI target.
     if(WIN32)
-        add_executable(dingosdk_arcade_surface_geometry_tests Extension/ArcadeMode/arcade_surface_geometry.cpp Extension/ArcadeMode/Test/arcade_surface_geometry_tests.cpp)
+        add_executable(dingosdk_arcade_surface_geometry_tests Extension/ArcadeMode/arcade_surface_geometry.cpp Extension/ArcadeMode/arcade_vert_runtime.cpp Extension/ArcadeMode/Test/arcade_surface_geometry_tests.cpp)
         target_include_directories(dingosdk_arcade_surface_geometry_tests PRIVATE "${PROJECT_SOURCE_DIR}")
         add_test(NAME arcade_surface_geometry COMMAND dingosdk_arcade_surface_geometry_tests)
         add_executable(dingosdk_arcade_native_hud_integration_tests Extension/ArcadeMode/Test/arcade_native_hud_integration_tests.cpp)

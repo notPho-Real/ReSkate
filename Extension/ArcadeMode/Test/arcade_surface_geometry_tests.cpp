@@ -83,6 +83,10 @@ struct Fixture {
     std::uint64_t time{1000};
     unsigned calls{}, pops{}, frees{}, entities{}, first{3}, delay{}, clock_step{};
     float sx{}, sz{};
+    bool spine_scene{};
+    float scene_hip{},scene_drop{},scene_yaw{},scene_gap{.3f};
+    SurfaceGeometryVector scene_origin{};
+    bool scene_blocked{};
     float curve_radius{},curve_yaw{};
     SurfaceGeometryVector curve_origin{},curve_normal{};
     bool roof{}, unknown{}, seam{}, fold{}, edge{}, miss{}, bad_fraction{}, bad_data{}, wrong_world{}, overflow{},
@@ -207,7 +211,44 @@ struct Fixture {
                       "local exclusion carries the independently validated owner incarnation");
             } else check(b->world==f.live.world && b->generation==f.generation && b->index>=100,"native exclusions retain full body token");
         }
-        if(f.curve_radius>0) {
+        if(f.spine_scene) {
+            const auto local=[&](const std::array<float,4>& value) {
+                const auto x=value[0]-f.scene_origin[0],z=value[2]-f.scene_origin[2];
+                return std::array<float,4>{x*std::cos(f.scene_yaw)+z*std::sin(f.scene_yaw),
+                    value[1]-f.scene_origin[1],-x*std::sin(f.scene_yaw)+z*std::cos(f.scene_yaw),0};
+            };
+            const auto a=local(ray_value->start),b=local(ray_value->end);
+            const SurfaceGeometryVector delta{b[0]-a[0],b[1]-a[1],b[2]-a[2]};
+            float nearest=2;SurfaceGeometryVector normal{};
+            const auto admit=[&](float t,SurfaceGeometryVector n) {
+                if(t>=0 && t<=1 && t<nearest){nearest=t;normal=n;}
+            };
+            for(bool landing:{false,true}) {
+                const float dx=landing?std::cos(f.scene_hip):1.f,dz=landing?std::sin(f.scene_hip):0.f;
+                const float cx=landing?4+(4+f.scene_gap)*dx:0,cz=landing?(4+f.scene_gap)*dz:0,cy=4-(landing?f.scene_drop:0);
+                const float x=(a[0]-cx)*dx+(a[2]-cz)*dz,y=a[1]-cy;
+                const float vx=delta[0]*dx+delta[2]*dz,vy=delta[1];
+                const float aa=vx*vx+vy*vy,bb=2*(x*vx+y*vy),cc=x*x+y*y-16;
+                const float disc=bb*bb-4*aa*cc;
+                if(aa>0 && disc>=0)for(float sign:{-1.f,1.f}) {
+                    const float t=(-bb+sign*std::sqrt(disc))/(2*aa);
+                    const float hx=x+t*vx,hy=y+t*vy;
+                    if(hy<=0 && ((!landing && hx>=0 && hx<=4) || (landing && hx<=0 && hx>=-4)))
+                        admit(t,{-hx/4*dx,-hy/4,-hx/4*dz});
+                }
+            }
+            if(delta[1]!=0) {
+                const float t=(4-a[1])/delta[1],x=a[0]+t*delta[0];
+                if(f.scene_gap<1 && x>=4 && x<=4+f.scene_gap)admit(t,{0,1,0});
+            }
+            if(f.scene_blocked && delta[0]!=0) {
+                const float t=(4.5f-a[0])/delta[0],y=a[1]+t*delta[1];
+                if(y>=4 && y<=15)admit(t,{-1,0,0});
+            }
+            result->count=nearest<=1?1u:0u;f.fractions[f.first]=std::min(nearest,1.f);
+            f.curve_normal={normal[0]*std::cos(f.scene_yaw)-normal[2]*std::sin(f.scene_yaw),normal[1],
+                normal[0]*std::sin(f.scene_yaw)+normal[2]*std::cos(f.scene_yaw)};
+        } else if(f.curve_radius>0) {
             const auto local=[&](const std::array<float,4>& v) {
                 const float dx=v[0]-f.curve_origin[0],dz=v[2]-f.curve_origin[2];
                 return SurfaceGeometryVector{std::cos(f.curve_yaw)*dx+std::sin(f.curve_yaw)*dz,
@@ -258,7 +299,7 @@ struct Fixture {
             }
             f.fractions[f.first]=f.self_hit ? .1f : (ray_value->start[1]-height)/(ray_value->start[1]-ray_value->end[1]);
         }
-        f.fractions[f.first+1]=(f.wall || f.curve_radius>0) ? 1.f : .9f;
+        f.fractions[f.first+1]=(f.wall || f.curve_radius>0 || f.spine_scene) ? 1.f : .9f;
         if (f.bad_fraction) f.fractions[f.first]=std::numeric_limits<float>::quiet_NaN();
         f.data[1]=f.bad_data ? 0 : reinterpret_cast<std::uintptr_t>(f.fractions.data());
         if (f.edge && x>0) result->count=0;
@@ -275,11 +316,11 @@ struct Fixture {
             f.fractions[0]=f.bad_fraction?std::numeric_limits<float>::quiet_NaN():.5f;
             if(!result->count)f.data[1]=0; // Native empty-vector storage may be null.
         }
-        if((f.wall || f.curve_radius>0) && result->count) {
+        if((f.wall || f.curve_radius>0 || f.spine_scene) && result->count) {
             for(unsigned axis=0;axis<3;++axis) {
                 f.hit_positions[f.first][axis]=ray_value->start[axis]+
                     (ray_value->end[axis]-ray_value->start[axis])*f.fractions[f.first];
-                f.hit_normals[f.first][axis]=(f.curve_radius>0?f.curve_normal[axis]:f.wall_normal[axis])*(f.reversed_normal?-1.f:1.f);
+                f.hit_normals[f.first][axis]=((f.curve_radius>0 || f.spine_scene)?f.curve_normal[axis]:f.wall_normal[axis])*(f.reversed_normal?-1.f:1.f);
             }
             if(f.bad_position)f.hit_positions[f.first][0]+=.1f;
             if(f.bad_normal)f.hit_normals[f.first][0]=std::numeric_limits<float>::quiet_NaN();
@@ -364,7 +405,10 @@ bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) no
         copy(f->table.data(),sizeof f->table) || copy(&f->allocator,sizeof f->allocator);
 }
 }
+
+#include "arcade_vert_runtime_scenarios.h"
 int main() {
+    vert_runtime_scene_checks();
     { Fixture f;f.wall=f.allow_world_owner=f.unknown=true;f.wall_normal={-1,0,0};
       check(query_vert_patch(f.api(),f.live,f.wall_point,f.wall_normal,.5f).valid,
           "vertical lip patch is geometric evidence; curvature and native riding must separately admit takeoff"); }

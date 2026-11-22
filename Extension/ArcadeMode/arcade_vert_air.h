@@ -37,7 +37,7 @@ struct VertPlan {
     VertAction action{};
     SurfaceGeometryVector velocity{},landing{},normal{},direction{};
     VertPatch destination{};
-    SurfaceGeometrySample crest{};
+    std::array<SurfaceGeometrySample,3> crest{};
     float seconds{},cost{};
     bool clear{};
     explicit operator bool() const noexcept {return action!=VertAction::none && clear;}

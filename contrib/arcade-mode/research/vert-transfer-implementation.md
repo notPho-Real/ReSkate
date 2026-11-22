@@ -82,3 +82,19 @@ A vertical upper transition is allowed as support geometry; it still requires
 observed concave climbing to classify as a launch. A partial footprint at the lip
 may retain the preceding qualified support during the same bounded departure.
 A standalone vertical plane never supplies that missing transition history.
+
+## Complete-scene search regression
+
+A procedural back-to-back transition exposed a runtime search miss: seven
+independently cleared, reachable spine trajectories existed, but the search
+selected Level Out. Distance had been tied to flight time, excluding a close
+landing after a long vert flight; one midpoint probe also missed a narrow crest.
+The search now tests flight times independently at each distance/direction sample.
+Three supported connection samples retain every shape owner and must rise toward
+the origin lip. Missing support or an obstructed trajectory rejects the transfer.
+
+The existing geometry test now links the actual vert runtime. Its compound scenes
+cover spines, angled hips, lower transitions, missing crest connections and
+obstructions under translation and rotation. These join the procedural curved,
+split-shape, category and ownership tests. Native collision, posture and landing
+remain acceptance requirements; a selected simulated trajectory is not a landing.

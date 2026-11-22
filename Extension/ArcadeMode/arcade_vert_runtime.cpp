@@ -134,9 +134,9 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
         // A fixed travel-relative fan and fixed flight times provide stable
         // selection without depending on allocation order or a map's axes.
         constexpr std::array<float,5> angles{0,-.4f,.4f,-.8f,.8f};
-        for(float time:{.5f,.8f,1.1f,1.4f,1.8f})for(float angle:angles) {
+        for(float reach:{.12f,.25f,.45f,.7f,1.f})for(float angle:angles) {
             const auto heading=add(scale(direction,std::cos(angle)),scale(right,std::sin(angle)));
-            auto center=add(observation.position,scale(heading,std::max(2.f,length(observation.velocity)*.45f)*time));
+            auto center=add(observation.position,scale(heading,std::max(.8f,length(observation.velocity)*reach)));
             center[1]+=.5f;
             // A downward cast finds the transition. A second footprint aligns
             // to its measured normal; curved and split meshes retain all owners.
@@ -147,19 +147,40 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
             const auto hit=query_surface_geometry(api,context,probe);
             if(!hit.valid)continue;
             const auto patch=query_vert_patch(api,context,hit.point,hit.query_normal,.5f);
-            auto candidate=vert_destination(observation,snapshot.origin(),patch,direction,gravity,time);
-            if(candidate.action==VertAction::none || (selected && candidate.cost>=selected.cost))continue;
-            if(candidate.action==VertAction::spine || candidate.action==VertAction::hip) {
-                auto middle=scale(add(snapshot.origin().center().point,candidate.landing),.5f);
-                middle[1]=std::max(observation.position[1],candidate.landing[1])+3;
-                for(std::size_t i=0;i<5;++i)probe.segments[i]={{middle[0]+offsets[i][0],middle[1],middle[2]+offsets[i][1]},
-                    {middle[0]+offsets[i][0],middle[1]-12,middle[2]+offsets[i][1]}};
-                candidate.crest=query_surface_geometry(api,context,probe);
-                if(!candidate.crest.valid || candidate.crest.query_normal[1]<.5f ||
-                   candidate.crest.point[1]<std::min(snapshot.origin().center().point[1],candidate.landing[1])-.25f)continue;
+            // Search distance and flight time independently: a nearly vertical
+            // launch can clear a close spine after a long flight. Tying the
+            // two misses those trajectories even when the solver admits them.
+            std::array<SurfaceGeometrySample,3> crest{};
+            bool crest_queried{},crest_valid{};
+            for(float time:{.5f,.8f,1.1f,1.4f,1.8f}) {
+                auto candidate=vert_destination(observation,snapshot.origin(),patch,direction,gravity,time);
+                if(candidate.action==VertAction::none || (selected && candidate.cost>=selected.cost))continue;
+                if(candidate.action==VertAction::spine || candidate.action==VertAction::hip) {
+                    if(!crest_queried) {
+                        crest_queried=true;crest_valid=true;
+                        float highest=-100000;
+                        for(std::size_t k=0;k<crest.size();++k) {
+                            const float fraction=static_cast<float>(k+1)*.25f;
+                            auto middle=add(snapshot.origin().center().point,
+                                scale(sub(candidate.landing,snapshot.origin().center().point),fraction));
+                            middle[1]=std::max(observation.position[1],candidate.landing[1])+3;
+                            for(std::size_t i=0;i<5;++i)probe.segments[i]={{middle[0]+offsets[i][0],middle[1],middle[2]+offsets[i][1]},
+                                {middle[0]+offsets[i][0],middle[1]-12,middle[2]+offsets[i][1]}};
+                            crest[k]=query_surface_geometry(api,context,probe);
+                            if(!crest[k].valid || crest[k].query_normal[1]<.05f){crest_valid=false;break;}
+                            highest=std::max(highest,crest[k].point[1]);
+                        }
+                        // The connection must rise back toward the originating
+                        // lip. Missing support anywhere across it rejects a gap;
+                        // a sloped crest need not have a flat midpoint.
+                        crest_valid=crest_valid && highest>=std::max(snapshot.origin().center().point[1],candidate.landing[1])-.25f;
+                    }
+                    if(!crest_valid)continue;
+                    candidate.crest=crest;
+                }
+                candidate.clear=query_vert_clearance(api,context,observation.position,candidate.velocity,gravity,time);
+                if(candidate)selected=candidate;
             }
-            candidate.clear=query_vert_clearance(api,context,observation.position,candidate.velocity,gravity,time);
-            if(candidate)selected=candidate;
         }
     }
     if(!selected) {
@@ -169,7 +190,8 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
         selected.clear=query_vert_clearance(api,context,observation.position,selected.velocity,gravity,.2f);
     }
     if(!selected || !api.current(api.user,context))return;
-    if(selected.crest.valid && !revalidate_surface_geometry(api,context,selected.crest))return;
+    for(const auto& sample:selected.crest)
+        if(sample.valid && !revalidate_surface_geometry(api,context,sample))return;
     for(const auto& sample:selected.destination.samples)
         if(selected.destination.valid && !revalidate_surface_geometry(api,context,sample))return;
     std::lock_guard lock(mutex);
