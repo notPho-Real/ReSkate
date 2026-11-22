@@ -176,7 +176,7 @@ std::uint32_t transport(unsigned user,std::uint64_t now,std::uint32_t physical_p
     struct Correction {bool owns_y{};} manual_correction;
     RailAdapterPad rail_pad{};
     GrindChange::Pad grind_pad{};
-    const StanceControl stance_pad{};const bool owns_controls=false;
+    const StanceControl stance_pad{};bool owns_controls=false;
     const dingosdk::NoBailSkater native_flip_owner{};const InputNativeContext stance_native{};
     const NativeGesture::Output result{};const auto tick=now/17;
 @controller_route_packet_sample@
