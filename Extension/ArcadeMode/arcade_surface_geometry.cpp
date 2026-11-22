@@ -204,7 +204,8 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
                 // Its original hit position must still match the ray fraction.
                 if(local_component && measure_contact) {
                     const auto read_position=[&]<class T>(std::uintptr_t at,T& value) {return read(api,at,value);};
-                    if(!body_contact_read::position(result.data,selected,point,found.point,read_position))
+                    if(!api.surface.contact_ready ||
+                       !body_contact_read::position(result.data,selected,point,found.point,read_position))
                         return fail("self_hit_position");
                 }
                 // Requested nonlocal measurements retain their validation.

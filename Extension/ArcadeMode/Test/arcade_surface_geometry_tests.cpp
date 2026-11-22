@@ -102,7 +102,7 @@ struct Fixture {
     float last_x{};
     bool self_hit{};
     bool native_self{}, foreign_component{}, changing_component{};
-    unsigned self_vector_fault{};
+    unsigned self_vector_fault{},vector_reads{};
     unsigned component_calls{}, reject_component_at{};
     bool wall{}, upper_gap{}, lower_gap{};
     bool partitioned_wall{}, partitioned_ground{};
@@ -422,10 +422,16 @@ struct Fixture {
 }
 namespace dingosdk {
 bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) noexcept {
-    const auto* f=Fixture::running;
+    auto* f=Fixture::running;
     const auto fractions=reinterpret_cast<std::uintptr_t>(f->fractions.data());
     if(f->unreadable_fraction_lane && at==reinterpret_cast<std::uintptr_t>(f->data.data())+8)return false;
     if (f->read_fail && at>=fractions && at-fractions<sizeof f->fractions) return false;
+    const auto data=reinterpret_cast<std::uintptr_t>(f->data.data());
+    const auto positions=reinterpret_cast<std::uintptr_t>(f->hit_positions.data());
+    const auto normals=reinterpret_cast<std::uintptr_t>(f->hit_normals.data());
+    if((at>=data+3*sizeof(std::uintptr_t) && at<data+sizeof f->data) ||
+       (at>=positions && at-positions<sizeof f->hit_positions) ||
+       (at>=normals && at-normals<sizeof f->hit_normals))++f->vector_reads;
     const auto copy=[&](const void* begin,std::size_t length) {
         const auto base=reinterpret_cast<std::uintptr_t>(begin);
         if (at<base || size>length || at-base>length-size) return false;
@@ -440,6 +446,9 @@ bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) no
 #include "arcade_vert_runtime_scenarios.h"
 int main() {
     vert_runtime_scene_checks();
+    { Fixture f;f.allow_world_owner=f.unknown=f.self=f.native_self=true;f.contact_ready=false;
+      check(!f.query_motion().valid && f.calls==1 && f.vector_reads==0,
+          "unavailable contact API never reads even authenticated self position or normal arrays"); }
     for(unsigned vector_fault=1;vector_fault<=5;++vector_fault)for(unsigned fault=0;fault<8;++fault) {
         Fixture f;f.wall=f.allow_world_owner=f.unknown=f.self=f.native_self=true;f.wall_normal={-1,0,0};
         f.self_vector_fault=vector_fault;
