@@ -450,7 +450,7 @@ alone can establish landing/Revert, and consumed trigger edges remain consumed.
 Other transfer types and unacknowledged releases retain their prediction guards.
 
 The regression uses the two recorded physical packets with explicit synthetic
-owner/curvature setup and later interpolation.6953 controller and90466 runtime/
+owner/curvature setup and later interpolation.6956 controller and90466 runtime/
 geometry checks pass under ASan/UBSan, plus33 native query contract checks.
 Reinstating the old ballistic assumption fails at the captured handoff. These
 checks do not prove native acceptance of the follow-up: the next bounded run

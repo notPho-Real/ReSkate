@@ -993,6 +993,9 @@ void native_level_out_handoff() {
         if(handed) {
             check(!c.submitted_native_level_out(receipt,now,plan),"native handoff receipt cannot replay");
             check(length(c.alignment(receipt,now))==0,"handoff immediately withdraws our alignment writer");
+            c.unavailable(now+1,receipt.owner,true,false);
+            check(c.preserves_native() && !c.consume(receipt,now+1,o.velocity),
+                "busy publication retains native-owned history without replaying a write");
         }
         ++o.native.physics_step;o.native.sampled_at=2367;
         o.position={146.2627f,6.63415f,-99.49571f};o.velocity={.24536134f,2.7779105f,-.751648f};c.observe(o);
@@ -1027,6 +1030,13 @@ void native_level_out_handoff() {
         press.owner=TriggerOwner::transfer;
         check(qualify_vert_trigger(c,press,press.native,press.press.at).owner==TriggerOwner::none,
             "transfer-consumed edge cannot become landing Revert after handoff");
+        auto contact_gap=c;
+        NativeInputCorrelation diagnostic{o.native,NativeInputCorrelation::mode_changed|
+            NativeInputCorrelation::contacts_changed|NativeInputCorrelation::state_changed};
+        NativeRequestSample live{};live.valid=true;live.state=100;live.crouch_mode=1;live.words[1]=0xc000;
+        check(contact_gap.publication_gap(diagnostic,live,o.native.owner,o.native.sampled_at+1),
+            "native-owned flight retains the measured direct touchdown publication boundary");
+        contact_gap.unavailable(o.native.sampled_at+1,o.native.owner,true,false);
         ++o.native.physics_step;o.native.sampled_at+=17;o.native.state=100;o.native.mode=1;o.native.airborne=false;
         ++o.native.air_departure;o.native.contacts=0xc000;o.supported=true;o.contact_normal={0,1,0};
         o.contacted_shape={7,8,9};o.up={.00053092f,.99999976f,.00036382f};
@@ -1034,6 +1044,9 @@ void native_level_out_handoff() {
         auto unsupported=o;unsupported.supported=false;auto copy=c;copy.observe(unsupported);
         check(copy.phase()!=VertPhase::landed && !copy.landing().ready(unsupported.native,unsupported.native.sampled_at),
             "submission and expected position cannot synthesize native landing");
+        contact_gap.observe(o);
+        check(contact_gap.landing().ready(o.native,o.native.sampled_at) && length(contact_gap.alignment(o.native,o.native.sampled_at))==0,
+            "original contact after publication gap proves Revert without reviving alignment");
         c.observe(o);check(c.phase()==VertPhase::landed && c.landing().ready(o.native,o.native.sampled_at),
             "fresh supported native contact establishes landing and independent Revert window");
     }
