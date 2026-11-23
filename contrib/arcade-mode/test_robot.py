@@ -19,6 +19,16 @@ from lab import robot, controller
 
 
 class RobotTests(unittest.TestCase):
+    def test_stale_readiness_stops_input_without_claiming_process_exit(self):
+        status = {'ready': True, 'gamescope_pids': [17]}
+        watch = robot.ReadinessMonitor(status, 17, 10.0, clock=lambda: 10.101)
+        pad = Mock()
+        with self.assertRaisesRegex(RuntimeError, '^Input readiness unavailable; test stopped$'):
+            robot.replay(pad, [(0, [(1, 304, 1)])], 0, watch.ready, clock=lambda: 0)
+        pad.frame.assert_not_called()
+        self.assertEqual(watch.last_check, dict(age_ms=101, failed=False,
+                         context_ready=True, owner_matches=True))
+
     def test_interrupted_replay_retains_completed_writes_and_uncertain_attempt(self):
         for failure in ('before', 'partial-write', 'after'):
             pad = Mock()
@@ -448,6 +458,62 @@ class RobotTests(unittest.TestCase):
                 self.assertLessEqual(now[0], .359001)
                 if failure in ('failed', 'context', 'owner'):
                     monitor.stop.wait.assert_not_called()
+
+    def test_neutral_refresh_cannot_extend_the_phase_deadline(self):
+        now = [.101]
+        monitor = robot.ReadinessMonitor({'ready': True, 'gamescope_pids': [12]},
+                                        12, 0, clock=lambda: now[0])
+        monitor.stop.wait = Mock(side_effect=lambda delay: now.__setitem__(0, now[0] + delay))
+        self.assertFalse(monitor.wait_initial_ready(lambda: None, phase_deadline=.121))
+        self.assertLessEqual(now[0], .121001)
+        self.assertFalse(monitor.ready())
+
+    def test_condition_refreshes_stale_readiness_before_sending_input(self):
+        ready = {'ready': True, 'gamescope_pids': [12]}
+        now = [0.0]
+        pad = self.pad()
+        pad.frame = Mock(wraps=pad.frame)
+        pad.neutral = Mock(wraps=pad.neutral)
+        def active_writes():
+            return [call.args[0] for call in pad.frame.call_args_list
+                    if any(change[2] for change in call.args[0])]
+        monitor = robot.ReadinessMonitor(ready, 12, 0, clock=lambda: now[0])
+        monitor.start = Mock()
+        monitor.close = Mock()
+        def publish_fresh(delay):
+            self.assertEqual(active_writes(), [])
+            began = now[0]
+            now[0] += delay
+            monitor.snapshot = (began, ready)
+        monitor.stop.wait = Mock(side_effect=publish_fresh)
+        original_replay = robot.replay
+        def replay(device, events, duration, alive, **kwargs):
+            now[0] = .101
+            pad.neutral.reset_mock()
+            # The active writer still refuses the exact captured stale sample.
+            with self.assertRaisesRegex(RuntimeError, 'Input readiness unavailable'):
+                alive()
+            return original_replay(device, events, 0, alive, clock=lambda: now[0], **kwargs)
+        def condition(spec, alive):
+            pad.neutral.assert_called_once()
+            self.assertEqual(active_writes(), [])
+            self.assertTrue(alive())
+            self.assertEqual(monitor.snapshot[0], .101)
+            self.assertLessEqual(monitor.last_check['age_ms'], 5)
+            return {'status': 'READY'}
+        with patch.object(robot, 'capabilities', return_value=ready), \
+             patch.object(robot, 'Gamepad', return_value=pad), patch.object(robot.time, 'sleep'), \
+             patch.object(robot.time, 'monotonic', side_effect=lambda: now[0]), \
+             patch.object(robot, 'ReadinessMonitor', return_value=monitor), \
+             patch.object(robot, 'screenshot'), patch.object(robot, 'periodic', return_value=[]), \
+             patch.object(robot, 'replay', side_effect=replay), \
+             patch.object(robot.signal, 'alarm'), patch.object(robot.signal, 'signal'):
+            with robot.ExperimentSession() as session:
+                result = session.run('neutral-refresh', [(0, [(1, 304, 1)])], 3, capture_frames=0,
+                    phase_conditions={0: {'condition': 'native-riding', 'timeout_ms': 500}},
+                    condition_waiter=condition)
+                self.assertEqual(result['delivery_timing']['conditions'][0]['status'], 'READY')
+                self.assertEqual(active_writes(), [[(1, 304, 1)]])
 
     def test_slow_worker_check_keeps_start_timestamp(self):
         ready = {'ready': True, 'gamescope_pids': [12]}

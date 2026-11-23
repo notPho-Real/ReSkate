@@ -348,7 +348,7 @@ def replay(pad, events, duration, alive, sleep=time.sleep, clock=time.monotonic,
         for index, (offset, changes) in enumerate(events + [(duration, [])]):
             while clock() - start < offset + shift:
                 if not alive():
-                    raise RuntimeError("Skate exited; test stopped")
+                    raise RuntimeError("Input readiness unavailable; test stopped")
                 sleep(max(0, min(0.05, offset + shift - (clock() - start))))
             if phase_conditions and index in phase_conditions:
                 began = clock()
@@ -369,7 +369,7 @@ def replay(pad, events, duration, alive, sleep=time.sleep, clock=time.monotonic,
                     return timing
             check_at = clock()
             if not alive():
-                raise RuntimeError("Skate exited; test stopped")
+                raise RuntimeError("Input readiness unavailable; test stopped")
             if changes:
                 write_at = clock()
                 input_attempted = True
@@ -577,10 +577,12 @@ class ReadinessMonitor:
         return (not self.failed.is_set() and 0 <= now - sampled_at <= 0.100
                 and current.get("ready", False) and current.get("gamescope_pids") == [self.pid])
 
-    def wait_initial_ready(self, alive):
-        """Neutral startup only: allow a fresh check, never relabel stale evidence."""
+    def wait_initial_ready(self, alive, phase_deadline=None):
+        """While neutral, wait for new evidence within the existing wait budget."""
         began = previous = self.clock()
         deadline = began + 0.250
+        if phase_deadline is not None:
+            deadline = min(deadline, phase_deadline)
         while True:
             alive()  # Session deadline and capture errors still stop the wait.
             now = self.clock()
@@ -717,7 +719,9 @@ class ExperimentSession:
                         future.result()  # Stop input if capture failed.
 
                 def readiness_failure():
-                    error = RuntimeError('Skate exited; test stopped')
+                    # A stale observer can withdraw readiness while the same
+                    # game process is still running. Preserve its exact cause.
+                    error = RuntimeError('Input readiness unavailable; test stopped')
                     error.readiness = dict(watch.last_check, capture_pending=not future.done())
                     return error
 
@@ -726,6 +730,18 @@ class ExperimentSession:
                     if not watch.ready():
                         raise readiness_failure()
                     return True
+
+                def wait_neutral_condition(condition, _alive):
+                    # replay has already neutralized the pad. A late observer
+                    # may refresh during this existing prerequisite wait, but
+                    # cannot extend its deadline or authorize stale input.
+                    deadline = time.monotonic() + condition['timeout_ms'] / 1000
+                    def neutral_alive():
+                        context_alive()
+                        if not watch.ready() and not watch.wait_initial_ready(context_alive, deadline):
+                            raise readiness_failure()
+                        return True
+                    return condition_waiter(condition, neutral_alive)
                 failure = None
                 try:
                     # A slow preflight remains timestamped at its start. Obtain
@@ -738,7 +754,7 @@ class ExperimentSession:
                         raise RuntimeError('Insufficient session time for trial')
                     if phase_conditions:
                         delivery_timing = replay(pad, events, duration, alive,
-                            phase_conditions=phase_conditions, condition_waiter=condition_waiter)
+                            phase_conditions=phase_conditions, condition_waiter=wait_neutral_condition)
                     else:
                         delivery_timing = replay(pad, events, duration, alive)
                     pad.neutral()  # Never hold the final phase while capture drains.

@@ -607,6 +607,7 @@ class BatchTests(unittest.TestCase):
     def test_hard_stop_reports_only_allowlisted_cause_and_trial(self):
         value = plan()
         for message, reason in [("Skate exited; test stopped", "input_readiness_lost"),
+                                ("Input readiness unavailable; test stopped", "input_readiness_lost"),
                                 ("No fresh Gamescope PNG/AVIF; capture interface unverified", "capture_timeout"),
                                 ("private path and arbitrary output", "integrity_or_transport_failure")]:
             with patch.object(batch, "perform_case", side_effect=RuntimeError(message)):
@@ -614,12 +615,12 @@ class BatchTests(unittest.TestCase):
             self.assertEqual(result, [dict(hard_stop=True, reason=reason, name="kickflip", repetition=1)])
 
     def test_readiness_failure_diagnostic_is_numeric_and_bounded(self):
-        diagnostic = dict(age_ms=121, failed=False, context_ready=True,
+        diagnostic = dict(age_ms=101, failed=False, context_ready=True,
                           owner_matches=True, capture_pending=True)
         for supplied, accepted in [(diagnostic, True), (dict(diagnostic, age_ms=100001), False),
                                    (dict(diagnostic, path='private'), False),
                                    (dict(diagnostic, failed='private'), False)]:
-            error = RuntimeError('Skate exited; test stopped')
+            error = RuntimeError('Input readiness unavailable; test stopped')
             error.readiness = supplied
             with patch.object(batch, 'perform_case', side_effect=error):
                 stopped = batch.perform_batch(plan(), object())['trials'][0]

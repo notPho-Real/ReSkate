@@ -546,6 +546,7 @@ def stop_reason(error):
         "log_path_integrity": "log_path_integrity",
         "game_or_hil_unavailable_after_recovery_wait": "game_or_hil_unavailable",
         "Skate exited; test stopped": "input_readiness_lost",
+        "Input readiness unavailable; test stopped": "input_readiness_lost",
         "Readiness inspection did not stop": "readiness_worker_timeout",
         "Session input/capture context changed": "input_capture_context_changed",
         "Gamescope changed; screenshot refused": "capture_owner_changed",

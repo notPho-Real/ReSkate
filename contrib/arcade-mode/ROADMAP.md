@@ -3,13 +3,34 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current compiled checkpoint **418aa996** passed all nine required gates in
-[CI 45121122238](https://github.com/notPho-Real/ReSkate/actions/runs/45121122238):
+Current compiled checkpoint **922f303d** passed all nine required gates in
+[CI 45130208910](https://github.com/notPho-Real/ReSkate/actions/runs/45130208910):
 148 Windows preflight tests, 137 full integration tests and experimental Deck
 packaging. Runtime SHA256:
-`622b0285a33f83ca684a86e75c4bbe5b8e571add848a9ee3f15ae29757b1cb27`.
+`81dff98584ffec0167364faf369e6372362af4c46e369bda20181efc5fb620e0`.
 The earlier test-only C4244 failure was corrected and separately validated before
 this build; its failed-run evidence remains historical.
+
+Resource-constrained RC5.1 scope: preserve the integrated catalog, wallplant,
+Casper and vert work; no expansion. The 922 native trial sustained a sampled
+physical Manual for 3.315s, performed native `bsmanualrevert`, continued supported
+fakie `tailmanual`, then executed `ollie` and landed. All 67 consecutive original
+Pivot motion rows are retained: board/hips meet the unchanged 180±30-degree and
+30-degree coherence criteria at 697ms, within the existing 1100ms window. The
+diagnostic rejects prematurely at 608ms; that does not cancel physical balance.
+The original scoring producer advances 103→118 and then moves 118 from current
+to previous line. The displayed ×5/590 is not proof of a multiplied native bank.
+
+The separate ascending-Flip trial withheld A/X when a readiness observation aged
+101ms; the same game process remained alive. The test harness now reports
+readiness loss accurately and may await a fresh observation only while already
+neutral inside the original prerequisite deadline. Active input still requires
+the unchanged 100ms freshness. 158 focused runner tests pass; no runtime rebuild
+is needed for this test-only fix. No Flip retry occurred. Exact prior 5ae files
+were restored with 156 rollback sets and the score pack preserved. Switch remains
+blocked at the unverified native ChangeStance consumer owner/value-slot/phase;
+another identical B-gesture trial is not justified. Nose Manual, ascending Flip,
+multiplied native banking/bail and full OFF control/camera acceptance remain open.
 
 The 7feb native no-input trial recognized real AIR and retained direct-touchdown
 history through original supported riding. Natural return still lands behind the
@@ -57,8 +78,8 @@ The `418aa996` no-trigger trial captures the previously missing original/live
 pair: a valid two-step takeoff confirmation bypassed code that ran only for
 longer gaps. No transfer plan or LT/RT trial followed. The integrated correction
 uses the same exact proof across that boundary and retains only confirmed200/201
-successors; 7,195 controller and90,466 runtime/geometry checks pass. Windows and
-native acceptance of this follow-up remain pending. Exact prior files are
+successors; 7,195 controller and90,466 runtime/geometry checks pass. Windows
+compilation passes in922; native vert acceptance remains pending. Exact prior files are
 restored, all155 rollback sets preserved, and hardware authority revoked.
 
 The earlier `6f132763` Mega Park trial observed a **3.301-second sampled physical Manual hold**:
@@ -137,13 +158,13 @@ conditions. No current feature has blanket owner acceptance from this checkpoint
 | Priority / milestone | Expected play and current implementation | Verification / remaining issue | Complexity; next action |
 | --- | --- | --- | --- |
 | 0 / RC5 integration | Existing controller ownership, animations, Casper, wallplants, scoring, Trickpedia, camera and OFF restoration retained with upstream pose/mount facilities. | Base compiled and CI passed. Exact integrated native walkthrough remains incomplete. | M; consolidated native regression after source corrections, with exclusive runner and rollback. |
-| 1 / RC5.1 immediate/repeated flips | Immediate A→X recognizes the physical edge through the admitted pop. Ordinary flips share the owner-validated transient-zero reread. Neutral third X now extends the owned double into Triple Kickflip; directional triples remain. | 2,635 held-flip sanitizer checks pass with physical parent/deadline, catch and fourth-input negatives; old source fails neutral-third regression. Current ascent and triple rotations remain native-unverified. | S; native ascent/rapid repeat at a later checkpoint; continue independent offline work first. |
+| 1 / RC5.1 immediate/repeated flips | Immediate A→X recognizes the physical edge through the admitted pop. Ordinary flips share the owner-validated transient-zero reread. Neutral third X now extends the owned double into Triple Kickflip; directional triples remain. | 2,635 held-flip sanitizer checks pass with physical parent/deadline, catch and fourth-input negatives; old source fails neutral-third regression. Current ascent and triple rotations remain native-unverified;922 withheld A/X after a stale readiness sample. | S; native ascent/rapid repeat at a later checkpoint; continue independent offline work first. |
 | 1 / RC5.1 fixed ground controls | LT setup and native Switch adapter use the shared journal. Original held-A intent survives native crouch retirement; setup now survives native pushing. Switch authenticates exported instances and retains neutral ownership through bounded publication. No ground Revert fallback or heading/velocity writes. | fdf native LT→A executes Nollie16; A-only executes Ollie1, both with physical flight/support and complete captures. RT still produces no leading-foot change after a complete B gesture without pushing. Pressure actor unsupported. | M; establish native double-tap consumer/ChangeStance acknowledgment or a supported native stance route; preserve verified launch behavior and continue independent gameplay work. |
-| 1 / RC5.1 Manuals/Pivots | Established Manual RT retains its original150ms publication lease and requests physical Pivot; unconfirmed balance cannot borrow later authority. Physical board-reference/hips rotation plus native successor support independently determine evidence. | Composed lifecycle checks pass in release and DEV. Exact6f native hold meets sampled3s minimum; physical Pivot turns but fails board/body coherence. Six-second hold simulation passes; full chain pending. | M; use the compiled bounded hips/board trace when a native Pivot check is justified; distinguish delayed body settling from incorrect physical rotation. |
+| 1 / RC5.1 Manuals/Pivots | Established Manual RT retains its original150ms publication lease and requests physical Pivot; unconfirmed balance cannot borrow later authority. Physical board-reference/hips rotation plus native successor support independently determine evidence. | Composed lifecycle checks pass in release and DEV. 922 native sampled3.315s hold, physical Pivot, supported fakie Manual, native Ollie and landing observed. Contiguous motion meets coherence at697ms; the diagnostic rejects prematurely at608ms. Nose/Flip extensions remain pending. | M; retain measured physical acceptance; correct premature diagnostic rejection in the next runtime batch without changing physics or tolerances. |
 | 1 / RC5.1 general wallplants | All-category wall/floor patches span independently authenticated static bodies. Every floor center and child owner is revalidated before admission, including single-shape floors; existing holds depend on the wall. | 55,816 geometry and1,523 runtime checks pass across transformed partitions, categories, mixed owner forms, corners, obstructions and invalidation. Old source fails deleted-floor admission. Same-incarnation editor relocation has no transform stamp, including center; no universal map claim. | M; preserve static snapshot scope; native query/hold smoke at a later checkpoint, after independent offline work. |
 | 2 / RC5.1 movement/rotation/camera | Auto-push, native steering, Ollie, prewind, aerial rotation and camera orbit/recenter already implemented. New camera leases reset follow heading immediately after OFF/ON or controller/native-owner changes. | 691,135 composed lifecycle checks and 2,915 camera checks pass; the new reset regression fails before correction. Native switch/revert follow and visual restoration pending. | S–M; retain continuous smoothing; native visual confirmation at a later checkpoint. |
-| 2 / RC5.1 balance HUD/scoring | Native Manual episode controls HUD lifetime; native/custom trick rows and model combo calculation remain distinct. | Model/row/bank-boundary tests exist. Authoritative native banking is not established by model totals or lingering labels. | M; fix visible problems from retained evidence; native bank/bail confirmation at the combined checkpoint. |
-| 3 / RC5.2 native flip catalog | Existing R3 shoves/Impossible remain. R3+diagonal+singleX directly selects360 Hardflip,360 Inward Heelflip,360 Flip or Laserflip, including exact Nollie variants, before a base flip starts. Ordinary and double-X mappings remain. | 16,238 composed flip checks and141-entry Trickpedia suite pass; old registry fails direct-route regressions. Exact gestures refuse substitution. New direct bindings await compilation/native execution; ordinary Hardflip execution remains unresolved. | S per proven mapping; compile this batch and verify representative native actors, rotations and landing. |
+| 2 / RC5.1 balance HUD/scoring | Native Manual episode controls HUD lifetime; native/custom trick rows and model combo calculation remain distinct. | Model/row/bank-boundary tests exist. 922 original native current-line118 moves to previous-line118. Multiplied×5/590 banking and bail remain unverified; displayed totals are separate. | M; fix visible problems from retained evidence; native bank/bail confirmation at the combined checkpoint. |
+| 3 / RC5.2 native flip catalog | Existing R3 shoves/Impossible remain. R3+diagonal+singleX directly selects360 Hardflip,360 Inward Heelflip,360 Flip or Laserflip, including exact Nollie variants, before a base flip starts. Ordinary and double-X mappings remain. | 16,238 composed flip checks and141-entry Trickpedia suite pass; old registry fails direct-route regressions. Exact gestures refuse substitution. New direct bindings compile in922; native execution and ordinary Hardflip remain unresolved. | S per proven mapping; preserve this compiled catalog while RC5.1 acceptance is completed; no expansion. |
 | 3 / RC5.2 grabs/ground tricks | Directional B/B,B, extended grabs, one-footers, No Comply and Boneless reuse existing native systems. Extended grabs reserve R3 only for the captured B-edge modifier; a later unrelated R3 remains native. | All 57 supported grab profiles have reachable selectors. Focused modifier ownership regressions pass; historical actor evidence does not establish exact current hold/release/stance behavior. | S–M; native hold/release smoke for representative variants; unsupported names need exact native contracts. |
 | 3 / RC5.2 grinds | Bluntslide X→Y/X→X continues into Tailslide/Smith. Y→B/B→B continues into Nosegrind/Crooked. Established5-0 can now reach Noseslide/Nosebluntslide through independently completed50-50 and Nosegrind legs; one original request, fixed total deadline, exact segment and retired leases. | 48,100 composed sanitizer checks pass at30/60/120Hz; old source fails the new5-0 routes. Qualified horizontal segment≥12m does not guarantee enough remaining travel. Full native chains remain unverified. | M; preserve each completion and final actor evidence; extend only proven native routes. |
 | 4 / RC5.3 Casper | Manual→Casper→Casper Flip uses one owned body/board clip; integrated drawn seed experiment defaults off. | Authoring/runtime cancellation tests; physical support, visible placement and score continuity still need exact candidate acceptance. | M; finish current entry/exit/friction before additional flatland poses. |
