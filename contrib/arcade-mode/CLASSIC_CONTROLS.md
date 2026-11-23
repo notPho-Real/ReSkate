@@ -194,6 +194,20 @@ With Nollie setup selected, the same chord selects **Nollie Back Foot Impossible
 These use their exact native gestures; a missing gesture never substitutes
 another trick. Native execution and landing acceptance remain pending.
 
+Hold R3 with a diagonal when pressing X to select an existing 360 variant on
+the first X edge:
+
+| Direction | R3 + X | Native / Nollie identity |
+| --- | --- | --- |
+| Up-Left | 360 Hardflip | 15 / 26 |
+| Up-Right | 360 Inward Heelflip | 12 / 30 |
+| Down-Left | 360 Flip | 11 / 29 |
+| Down-Right | Laserflip | 14 / 27 |
+
+These direct requests do not depend on replacing a base flip already in
+progress. Ordinary diagonal X mappings remain unchanged. Native actor execution,
+physical rotations and landing acceptance for these direct bindings are pending.
+
 Neutral or directional Triple Kickflip and directional Triple Heelflip extend the existing held double
 only when a fresh third X reaches that same owned flight before its catch. The
 third edge keeps its own200ms deadline; it cannot borrow the double's successor

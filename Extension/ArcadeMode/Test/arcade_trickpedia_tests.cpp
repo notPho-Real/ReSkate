@@ -11,6 +11,25 @@ std::string label(std::uint32_t button){return button==0x1000?"A":button==0x4000
 }
 #include "arcade_evidence_tests.inl"
 int main() {
+    struct DirectFlip {ArcadeTrick trick;TrickDirection direction;const char* name;unsigned ordinary,nollie;};
+    for(const auto choice:{DirectFlip{ArcadeTrick::hardflip_360,TrickDirection::up_left,"360 Hardflip",15,26},
+                           DirectFlip{ArcadeTrick::inward_heelflip_360,TrickDirection::up_right,"360 Inward Heelflip",12,30},
+                           DirectFlip{ArcadeTrick::flip_360,TrickDirection::down_left,"360 Flip",11,29},
+                           DirectFlip{ArcadeTrick::heelflip_360,TrickDirection::down_right,"Laserflip",14,27}}) {
+        const auto* trick=trick_definition(choice.trick);
+        const auto* repeated=binding_for(choice.trick,BindingPattern::named);
+        const auto* direct=binding_for(choice.trick,BindingPattern::extended_flip);
+        require(trick && trick->name==choice.name && trick->native_flip==choice.ordinary && trick->nollie_flip==choice.nollie &&
+            repeated && repeated->direction==choice.direction && repeated->presses==2 &&
+            direct && direct->direction==choice.direction && direct->presses==1,
+            "direct 360 flip keeps exact native identities, name and existing repeated binding");
+        const auto guide=trickpedia::native_card_guidance(*trick,
+            [](std::uint32_t button){return button==0x80?std::string("R3"):label(button);});
+        require(guide.inputs.size()==2 && guide.inputs[1].find(trickpedia::direction_name(choice.direction))!=std::string::npos &&
+            guide.inputs[1].find("R3")!=std::string::npos &&
+            guide.inputs[1].find("when pressing X; single flip only")!=std::string::npos,
+            "native 360 flip guidance derives the direct modifier-at-press alternative from the registry");
+    }
     const auto shifty=trickpedia::native_card_guidance(*trick_definition(ArcadeTrick::tail_bs_shifty),label);
     require(shifty.inputs.front().find("Choose Tail BS Shifty")!=std::string::npos &&
         shifty.inputs.front().find("currently Double Grab")!=std::string::npos &&

@@ -16,11 +16,11 @@ struct Route {
     unsigned starts{},recognized{}; bool exact_clock{},switched{};NativeFlipRequest normal_flip{};
     NativeGesture::Output output{};
     Route() {
-        for(const unsigned id:{1u,2u,3u,4u,5u,6u,7u,8u,9u,13u,36u,37u})
+        for(const unsigned id:{1u,2u,3u,4u,5u,6u,7u,8u,9u,11u,12u,13u,14u,15u,36u,37u})
             recipes.emplace_back(static_cast<std::uint8_t>(id),false,GestureContext::ground,
                 std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
         input.enable(true);input.set_recognition_capture(0,true);
-        for(const unsigned id:{16u,22u,25u,39u})recipes.emplace_back(static_cast<std::uint8_t>(id),true,GestureContext::ground,
+        for(const unsigned id:{16u,20u,21u,22u,23u,24u,25u,26u,27u,29u,30u,39u})recipes.emplace_back(static_cast<std::uint8_t>(id),true,GestureContext::ground,
             std::vector<AuthoredStickStep>{{0,0,32767},{18,28000,-28000},{21,0,0},{24,0,0}});
     }
     NativeGesture::Output poll(std::uint64_t now,PhysicalInputSample pad={},std::uint32_t state=201,
@@ -339,6 +339,72 @@ void native_transition_requests() {
             "A-to-X at release,100ms,500ms queues exactly one normal native selection");
     }
 }
+void direct_360_flip_inputs() {
+    struct Choice {ArcadeTrick trick;std::uint16_t dpad;std::int16_t x,y;int ordinary,nollie,base,nollie_base;};
+    for(const auto choice:{Choice{ArcadeTrick::hardflip_360,5,-25000,25000,15,26,9,20},
+                          Choice{ArcadeTrick::inward_heelflip_360,9,25000,25000,12,30,6,24},
+                          Choice{ArcadeTrick::flip_360,6,-25000,-25000,11,29,5,23},
+                          Choice{ArcadeTrick::heelflip_360,10,25000,-25000,14,27,8,21}}) {
+    check(native_flip::ordinary_flip(choice.ordinary) && native_flip::ordinary_flip(choice.nollie),
+        "direct 360 flip uses its existing exact ordinary native identities");
+    for(unsigned hz:{30u,60u,120u})for(bool analog:{false,true})for(bool nollie:{false,true})for(bool switched:{false,true}) {
+        const auto dt=1000u/hz;
+        auto h=std::make_unique<Route>();h->switched=switched;h->prepare_air(nollie);
+        const PhysicalInputSample chord{static_cast<std::uint16_t>(0x4080u|(analog?0u:choice.dpad)),
+            static_cast<std::int16_t>(analog?choice.x:0),static_cast<std::int16_t>(analog?choice.y:0)};
+        const auto out=h->poll(1000+dt,chord);
+        check(out.requested_id==(nollie?choice.nollie:choice.ordinary) && out.authored_playback && (out.action.consume_buttons&0x80u),
+            "R3 diagonal single X selects its exact 360 regular or Nollie native identity");
+        const auto* diagnostic=h->input.input_diagnostic(0);
+        check(diagnostic->recognition_count==1 && diagnostic->recognition[0].request.modifier==1 &&
+            diagnostic->recognition[0].request.presses==1 &&
+            diagnostic->recognition[0].request.air.trick==choice.trick &&
+            diagnostic->recognition[0].request.physical_pressed_at==1000+dt &&
+            diagnostic->recognition[0].request.deadline==1000+dt+InputTiming::readiness_ms,
+            "direct 360 flip preserves its single physical edge and existing readiness deadline");
+        h->poll(1000+2*dt,chord);h->poll(1000+3*dt);
+        check(h->starts==1,"held or released direct 360 flip cannot repeat");
+    }
+    for(bool nollie:{false,true}) {
+        auto h=std::make_unique<Route>();h->prepare_air(nollie);
+        const auto chord=static_cast<std::uint16_t>(0x4080u|choice.dpad);
+        check(h->poll(1010,{static_cast<std::uint16_t>(0x4000u|choice.dpad)}).requested_id==(nollie?choice.nollie_base:choice.base),
+            "ordinary diagonal X retains its original base flip identity");
+        check(!(h->poll(1020,{chord}).action.consume_buttons&0x80u) && h->starts==1,
+            "late R3 cannot replace an already started ordinary flip");
+
+        auto missing=std::make_unique<Route>();const auto id=nollie?choice.nollie:choice.ordinary;
+        missing->recipes.erase(std::remove_if(missing->recipes.begin(),missing->recipes.end(),
+            [id](const auto& recipe){return recipe.native_id==id;}),missing->recipes.end());
+        missing->prepare_air(nollie);const auto unavailable=missing->poll(1010,{chord});
+        check(unavailable.unsupported && !unavailable.requested_id && !unavailable.authored_playback,
+            "missing exact 360 flip recipe cannot substitute its ordinary base flip");
+
+        auto jump=std::make_unique<Route>();std::vector<std::int32_t> requests;
+        jump->normal_flip={&requests,[](void* context,std::int32_t selected) noexcept {
+            static_cast<std::vector<std::int32_t>*>(context)->push_back(selected);return true;
+        }};
+        jump->poll(600,{},100,-1,1);
+        if(nollie){jump->poll(610,{0,0,0,255},100,-1,1);jump->poll(620,{},100,-1,1);}
+        const auto launch=nollie?16:1;
+        check(jump->poll(630,{classic_a},100,-1,1).requested_id==launch,"direct flip owns its exact launch setup");
+        jump->poll(650,{classic_a},103,launch,0);jump->poll(670,{},103,launch,0);
+        for(unsigned at=690;at<1000;at+=20)jump->poll(at,{},at==690?200u:201u,launch,2);
+        const auto submitted=jump->poll(1010,{chord},201,launch,2);
+        check(submitted.native_flip_request==id && !submitted.authored_playback && requests==std::vector<std::int32_t>{id},
+            "released Ollie submits only the exact 360 flip to the existing native bridge");
+    }
+    auto ground=std::make_unique<Route>();ground->poll(1000,{},100,-1,1);
+    const auto out=ground->poll(1010,{static_cast<std::uint16_t>(0x4080u|choice.dpad)},100,-1,1);
+    check(!out.requested_id && !(out.action.consume_buttons&0x80u),"ground direct-flip chord owns no native actor or modifier");
+    auto wrong=std::make_unique<Route>();wrong->poll(1000);
+    const auto unrelated=wrong->poll(1010,{0x4088});
+    check(unrelated.requested_id==3 && !(unrelated.action.consume_buttons&0x80u),
+        "unassigned R3 Right preserves ordinary Heelflip without borrowing the modifier");
+    check(!wrong->poll(1020,{static_cast<std::uint16_t>(0x4080u|choice.dpad)}).requested_id && wrong->starts==1,
+        "changing direction after held X cannot synthesize the direct variant");
+    }
+}
 void frontfoot_impossible_inputs() {
     for(unsigned hz:{30u,60u,120u})for(bool analog:{false,true})for(bool nollie:{false,true})for(bool switched:{false,true}) {
         const auto dt=1000u/hz;
@@ -485,4 +551,4 @@ void frontside_shove_inputs() {
             "a new flight cannot inherit the old held chord without a fresh X edge");
     }
 }
-int main() {native_entry_tests::run();frontfoot_impossible_inputs();frontside_shove_inputs();native_transition_requests();delivered_pop_handoff();early_press_cadences();neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}
+int main() {native_entry_tests::run();direct_360_flip_inputs();frontfoot_impossible_inputs();frontside_shove_inputs();native_transition_requests();delivered_pop_handoff();early_press_cadences();neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}
