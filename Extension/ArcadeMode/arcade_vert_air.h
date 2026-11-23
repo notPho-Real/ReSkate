@@ -274,7 +274,7 @@ inline bool vert_align_target(std::array<float,16>& target,SurfaceGeometryVector
 }
 class VertAirController {
 public:
-    void cancel() noexcept {landing_gap_frame_={};push_gap_selection_=0;mode_gap_selection_=0;suspended_=false;landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
+    void cancel() noexcept {publication_frame_={};landing_gap_frame_={};push_gap_selection_=0;mode_gap_selection_=0;suspended_=false;landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
     void reset() noexcept {*this={};}
     // A busy input publisher is absence of evidence, not a new contact. Keep
     // recent curvature for this physical owner, but withdraw transfer queries
@@ -305,7 +305,33 @@ public:
         if(!owner.valid() || f.owner!=owner || owner!=previous_.native.owner)return reject("owner");
         if(f.owner_generation!=previous_.native.owner_generation)return reject("generation");
         if(f.physics_step<previous_.native.physics_step)return reject("step_reversed");
-        if(f.physics_step-previous_.native.physics_step>2)return reject("original_step_gap");
+        if(f.physics_step-previous_.native.physics_step>2) {
+            // Several consecutive original/live contact edges can withhold a
+            // correlated body observation. Each newer original must confirm the
+            // preceding live edge before it can continue this history. The
+            // physical sample and last curved support keep their original100ms
+            // deadlines; this never admits input, motion or a takeoff itself.
+            const auto& prior=publication_frame_;
+            if(phase_!=VertPhase::rising_support || !prior.valid)return reject("original_step_gap");
+            if(f.owner!=prior.owner || f.owner_generation!=prior.owner_generation)return reject("publication_owner");
+            if(f.physics_step<=prior.physics_step || f.physics_step-prior.physics_step>2 ||
+               f.sampled_at<=prior.sampled_at)return reject("publication_order");
+            if(f.sampled_at<previous_.native.sampled_at || f.sampled_at-previous_.native.sampled_at>100 ||
+               static_cast<double>(f.physics_step-previous_.native.physics_step)*f.physics_seconds>.100001)
+                return reject("publication_deadline");
+            if(!std::isfinite(f.physics_seconds) ||
+               std::abs(f.physics_seconds-previous_.native.physics_seconds)>=.00001f)return reject("publication_cadence");
+            if(f.airborne || f.rail_family || (f.state!=100 && f.state!=103) ||
+               f.airborne_episode!=previous_.native.airborne_episode ||
+               f.air_departure!=previous_.native.air_departure ||
+               f.airborne_episode!=prior.airborne_episode || f.air_departure!=prior.air_departure)
+                return reject("publication_lineage");
+            if(f.state!=publication_live_.state || f.mode!=publication_live_.crouch_mode ||
+               f.contacts!=(publication_live_.words[1]&0xc000u) ||
+               f.stance_and_push!=(publication_live_.words[0]&0x60u))return reject("publication_confirmation");
+            if(!f.flip_known || f.flip_id!=-1 || f.selection_object!=prior.selection_object ||
+               f.selection_object!=previous_.native.selection_object)return reject("publication_actor");
+        }
         if(now<f.sampled_at || now-f.sampled_at>100)return reject("original_age");
         if(f.mode>2)return reject("original_mode");
         const auto stance=live.words[0]&0x60u;
@@ -369,6 +395,12 @@ public:
         if(ground) {
             const bool legal=live.state==f.state || (live.state==200 && !contacts);
             if(legal && push_changed) {push_gap_selection_=f.selection_object;push_gap_stance_=stance;}
+            if(legal && phase_==VertPhase::rising_support && !f.rail_family && !f.airborne &&
+               f.flip_known && f.flip_id==-1 && f.selection_object &&
+               previous_.native.flip_known && previous_.native.flip_id==-1 &&
+               previous_.native.selection_object==f.selection_object) {
+                publication_frame_=f;publication_live_=live;
+            } else publication_frame_={};
             return legal;
         }
         return air && ((live.state==f.state && !contacts) ||
@@ -402,6 +434,7 @@ public:
             reset();
         }
         if(f.physics_step<=previous_.native.physics_step)return;
+        publication_frame_={};
         if(previous_.native.valid && unavailable_at_>previous_.native.sampled_at &&
            f.sampled_at-previous_.native.sampled_at>100) {cancel();previous_={};}
         if(landing_gap_frame_.valid) {
@@ -600,7 +633,8 @@ private:
     SurfaceGeometryVector direction_{};
     VertPlan plan_{},released_plan_{};
     std::uint64_t released_at_{},unavailable_at_{};
-    NativeInputFrame planned_{},landing_gap_frame_{};
+    NativeInputFrame planned_{},landing_gap_frame_{},publication_frame_{};
+    NativeRequestSample publication_live_{};
     static bool finite_motion(const VertObservation& o) noexcept {
         return vert_math::finite(o.position) && vert_math::finite(o.velocity);
     }

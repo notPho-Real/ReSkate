@@ -113,12 +113,13 @@ void vert_runtime_mode_gap_checks() {
 }
 void vert_runtime_scene_checks() {
     vert_runtime_mode_gap_checks();
-    for(unsigned scenario=0;scenario<9;++scenario) {
+    for(unsigned scenario=0;scenario<10;++scenario) {
         const unsigned fault=scenario<5?scenario:0;
         vert_runtime::cancel();Fixture f;f.allow_world_owner=f.unknown=true;f.curve_radius=4;
         VertObservation o;o.enabled=o.supported=true;o.native.valid=true;o.native.owner={1,2,3,4,5};
         o.native.owner_generation=o.native.contact_generation=o.native.action_generation=o.native.mode_generation=1;
-        o.native.flip_known=true;o.native.flip_id=-1;o.native.physics_seconds=1.f/60;o.native.state=100;o.native.mode=1;
+        o.native.flip_known=true;o.native.flip_id=-1;o.native.selection_object=99;
+        o.native.physics_seconds=1.f/60;o.native.state=100;o.native.mode=1;
         o.native.sampled_at=1000;o.contacted_shape={7,1,9};
         const auto context=[&] {f.time=o.native.sampled_at;f.live.native=InputNativeContext::from_frame(o.native);};
         for(float angle:{.8f,1.1f,1.3f}) {
@@ -130,15 +131,24 @@ void vert_runtime_scene_checks() {
         }
         auto missing=o;missing.native={};
         check(!vert_runtime::step(missing,f.time+5,o.native.owner,"frame_lock_busy").native_flight,"missing publication has no runtime motion authority");
+        if(scenario==9){++o.native.physics_step;o.native.sampled_at+=17;context();}
         NativeInputCorrelation diagnostic{o.native,NativeInputCorrelation::contacts_changed};
         NativeRequestSample live{};live.valid=true;live.state=100;live.crouch_mode=1;live.words[1]=0x4000;
         o.native.contacts=0xc000;diagnostic.observed=o.native;
         const auto withheld=vert_runtime::step(missing,f.time+6,o.native.owner,"frame_correlation",&diagnostic,&live);
         check(withheld.preserve_native && !withheld.native_flight && !withheld.plan && !withheld.aligning,
             "actual runtime retains contact-only history while withholding input and physical authority");
+        if(scenario==9)for(auto next: {0u,0x4000u}) {
+            ++o.native.physics_step;o.native.sampled_at+=17;
+            o.native.contacts=live.words[1];diagnostic.observed=o.native;live.words[1]=next;context();
+            const auto retained=vert_runtime::step(missing,f.time+1,o.native.owner,"frame_correlation",&diagnostic,&live);
+            check(retained.preserve_native && !retained.native_flight && !retained.plan && !retained.aligning &&
+                !vert_runtime::surface(f.time+1,o.native,{}).can_transfer,
+                "confirmed original contact chain preserves runtime history without granting physical or input authority");
+        }
         o.native.contacts=0x4000;
         o.supported=false;
-        for(unsigned i=0;i<2;++i) {
+        for(unsigned i=0;i<(scenario==9?1u:2u);++i) {
             ++o.native.physics_step;o.native.sampled_at+=17;context();o.position[1]+=.13f;
             (void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
         }
@@ -206,7 +216,7 @@ void vert_runtime_scene_checks() {
             check(decision.deadline==press.press.at+(touchdown?430:150),
                 "waiting for controller proof never renews the original trigger deadline");
         }
-        if(scenario>=5) {
+        if(scenario>=5 && scenario<9) {
             constexpr std::array<float,4> speeds{-5.f,-1.f,0.f,1.f};
             o.position[1]+=1;
             for(unsigned sample=0;sample<3;++sample) {
@@ -233,7 +243,7 @@ void vert_runtime_scene_checks() {
         check(bool(motion.plan)==(fault==0),"runtime clearance, query context, missing publication and owner gates control the one-shot plan");
         if(!fault)check(motion.plan.action==VertAction::level_out &&
             vert_math::length(motion.plan.velocity)<=vert_math::length(o.velocity)+.001f,"runtime fallback preserves energy");
-        if(scenario>=5)check(o.velocity[1]==0 ? vert_math::length(motion.plan.velocity)==0 :
+        if(scenario>=5 && scenario<9)check(o.velocity[1]==0 ? vert_math::length(motion.plan.velocity)==0 :
             motion.plan.velocity[0]>0,"real runtime fallback redirects falling motion and invents no apex energy");
         check(!vert_runtime::step(o,f.time,o.native.owner,"frame_valid").plan,"runtime cannot emit a second plan for held input");
         check(f.calls==f.pops && f.calls==f.frees,"runtime query allocations are released on success and rejection");

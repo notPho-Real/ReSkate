@@ -217,6 +217,57 @@ struct LandingFixture {
     NativeInputCorrelation gap() const {return {o.native,NativeInputCorrelation::mode_changed|NativeInputCorrelation::contacts_changed};}
     NativeRequestSample live() const {NativeRequestSample s{};s.valid=true;s.state=201;s.crouch_mode=1;s.words[1]=0x8000;return s;}
 };
+void recorded_contact_publications() {
+    // fdf original capture15640..15644: c000/0x40 ->4000/0 ->0/0
+    // ->4000/0 ->AIR. Geometry/actor tokens and callback ordering below
+    // deliberately model consecutive mismatches; the trace lacks the last
+    // admitted body frame, so this is not a claim about its exact scheduling.
+    VertAirController c;auto o=ground();o.native.selection_object=99;o.native.stance_and_push=0x40;
+    o.native.owner_generation=4343;o.native.physics_step=15639;o.native.sampled_at=1809762458;
+    warm(c,o);c.observe(o);check(c.phase()==VertPhase::rising_support,"contact-chain fixture has proven curvature");
+    struct Edge {unsigned step;std::uint64_t ms,now;std::uint32_t original_contacts,original_stance,live_contacts;};
+    const Edge edges[]{{15640,1809762473,1809762480,0xc000,0x40,0x4000},
+        {15641,1809762489,1809762495,0x4000,0,0},{15642,1809762507,1809762520,0,0,0x4000}};
+    for(const auto& edge:edges) {
+        auto f=o.native;f.physics_step=edge.step;f.sampled_at=edge.ms;
+        f.contacts=edge.original_contacts;f.stance_and_push=edge.original_stance;
+        NativeRequestSample live{};live.valid=true;live.state=100;live.crouch_mode=1;live.words[1]=edge.live_contacts;
+        NativeInputCorrelation gap{f,NativeInputCorrelation::contacts_changed|
+            (edge.original_stance?NativeInputCorrelation::stance_changed:0u)};
+        if(edge.step==15642) {
+            for(unsigned fault=0;fault<14;++fault) {
+                auto rejected=c;auto bad=gap;auto owner=f.owner;auto at=edge.now;
+                if(fault==0)++owner.core;
+                if(fault==1)++bad.observed.owner_generation;
+                if(fault==2)bad.observed.contacts=0x4000;
+                if(fault==3)bad.observed.stance_and_push=0x40;
+                if(fault==4)bad.observed.flip_id=3;
+                if(fault==5)++bad.observed.selection_object;
+                if(fault==6)bad.observed.rail_family=true;
+                if(fault==7)bad.observed.physics_seconds=1.f/30;
+                if(fault==8)bad.observed.sampled_at=o.native.sampled_at+101;
+                if(fault==9)bad.observed.physics_step+=6;
+                if(fault==10)bad.observed.mode=2;
+                if(fault==11)bad.observed.sampled_at=1809762489;
+                if(fault==12)++bad.observed.airborne_episode;
+                if(fault==13)++bad.observed.air_departure;
+                check(!rejected.publication_gap(bad,live,owner,at),
+                    "contact chain requires confirming original contact, idle actor, owner, cadence and original deadline");
+            }
+            auto expired=c;expired.unavailable(o.native.sampled_at+101,o.native.owner,true,false);
+            check(!expired.preserves_native(),"retained original publications never renew the physical history deadline");
+        }
+        check(c.publication_gap(gap,live,f.owner,edge.now),"confirmed original contact publications retain bounded ramp history");
+        c.unavailable(edge.now,f.owner,true,false);
+        check(!c.eligible(f,edge.now) && !c.consume(f,edge.now,o.velocity),"contact-publication chain grants no motion or transfer input");
+        check(c.observation().native.physics_step==15639,"contact-only history never replaces physical observation or lip deadline");
+    }
+    o.native.physics_step=15643;o.native.sampled_at=1809762525;o.native.stance_and_push=0;o.native.contacts=0x4000;
+    o.supported=false;o.support={};c.observe(o);
+    o=fly(o);o.native.physics_step=15644;o.native.sampled_at=1809762539;o.native.airborne_started_at=o.native.sampled_at;c.observe(o);
+    check(c.eligible(o.native,o.native.sampled_at),"only correlated original AIR establishes flight after the publication chain");
+    check(!c.consume(o.native,o.native.sampled_at,o.velocity),"no input after contact chain preserves native trajectory");
+}
 void publication_rejection_evidence() {
     LandingFixture x(60,false);auto gap=x.gap();auto live=x.live();const char* reason{};
     // Diagnostics must identify the missing boundary without widening it.
@@ -1093,4 +1144,4 @@ void input_edges() {
     }
 }
 }
-int main(){publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

@@ -357,3 +357,27 @@ rejection. Strict ASan/UBSan:6841 vert checks and90233 geometry/runtime checks;
 development diagnostic format compilation passes. Native Revert, physical
 Level Out and all transfers remain unaccepted. Captures and hash provenance
 are in the external vert-transfers-20261122/push-boundary-hil workspace.
+
+## Consecutive original contact publications
+
+The captured15640..15644 contact sequence also reproduces a bounded-history
+defect when callback scheduling produces consecutive mismatches: c000 ->4000
+->0 ->4000 exhausts the two-step limit before a correlated body frame arrives.
+The replay explicitly models that scheduling; the original capture still does
+not reveal its last admitted body step, so native causation remains unverified.
+
+The controller now retains each original/live contact pair only for proven
+curved-ramp history. Beyond two steps from the physical sample, continuation
+requires a newer original confirming the preceding live contact, state, mode
+and stance, with the same idle actor, owner, native flight lineage and cadence.
+Each original handoff remains bounded to two steps. Total elapsed native time
+and physical-history age remain at most100ms; neither physical observation nor
+last curved support is refreshed. Changed or missing proof still rejects. Only
+a subsequent correlated original AIR observation can establish vert eligibility.
+The existing runtime fixture verifies that this chain itself emits no motion or
+tilt and that a later valid fresh edge can select one Level Out plan.
+
+Strict ASan/UBSan:6868 vert checks and90448 geometry/runtime checks; DEV syntax
+compilation passes. The pre-fix replay fails at the third retained contact edge.
+This change and the direct-touchdown fix require one combined native candidate;
+no repeated trial of the unchanged fdf binary is warranted.
