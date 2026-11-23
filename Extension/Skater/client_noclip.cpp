@@ -1341,7 +1341,7 @@ struct WallplantReleaseTrajectory {
 };
 WallplantReleaseTrajectory wallplant_release_trajectory(std::uintptr_t base,
         const NoBailSkater& owner, const std::array<float,3>& velocity, SourceReader& reader,
-        std::uintptr_t native_departure=0) {
+        std::uintptr_t native_departure=0, bool air_update=false) {
     namespace native = addr::trajectory;
     WallplantReleaseTrajectory result;
     result.object=reader.pointer(owner.core,native::core_object);
@@ -1357,7 +1357,9 @@ WallplantReleaseTrajectory wallplant_release_trajectory(std::uintptr_t base,
     // this callback. Let its own selector consume that result once, without
     // clearing pending work or extending the hold when the result is not ready.
     reader.verify();
-    source_require(trainer::consume_ready_native_trajectory(base,result.object),
+    // AIR updates leave pending work and its change notification to the native
+    // tick. submit_native_air_trajectory checks availability without selecting.
+    if(!air_update)source_require(trainer::consume_ready_native_trajectory(base,result.object),
         "release_trajectory_busy");
     reader.verify();
     source_require(trainer::prepare_native_trajectory(base,owner.rig,result.parameters),
@@ -1370,7 +1372,7 @@ WallplantReleaseTrajectory wallplant_release_trajectory(std::uintptr_t base,
         std::all_of(velocity.begin(),velocity.end(),[](float value){return std::isfinite(value);}),
         "release_trajectory_parameters");
     std::copy(velocity.begin(),velocity.end(),result.parameters.values.begin()+native::parameter_velocity/sizeof(float));
-    reinterpret_cast<unsigned char*>(result.parameters.values.data())[native::parameter_launch]=1;
+    reinterpret_cast<unsigned char*>(result.parameters.values.data())[native::parameter_launch]=air_update?0:1;
     reader.verify();
     return result;
 }
@@ -1987,13 +1989,16 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
             }
         } else if (ground_step.status == arcade_mode::GroundStepStatus::unavailable) a.ground_resistance.reset();
         if(vert_plan) {
-            // Reuse the existing owner-checked native packet and setter used by
-            // contact exits. Both planner velocities must describe this same
-            // one-shot impulse; an old vert landing fan must not remain active.
-            auto trajectory=wallplant_release_trajectory(owner.base,owner,vert_plan.velocity,reader);
+            // AIR201 must notify its curve consumer of a replacement, so the
+            // native frame clock and alignment follow the new query. A pop
+            // setter skips this handoff on its first result (7feb native trial).
+            const bool air_update=physics==201;
+            auto trajectory=wallplant_release_trajectory(owner.base,owner,vert_plan.velocity,reader,0,air_update);
             reader.verify();
             source_require(no_bail_skater(after) && after==owner,"Vert trajectory owner changed.");
-            const bool submitted=trainer::submit_native_trajectory(owner.base,trajectory.object,trajectory.parameters,true);
+            const bool submitted=air_update ?
+                trainer::submit_native_air_trajectory(owner.base,trajectory.object,trajectory.parameters) :
+                trainer::submit_native_trajectory(owner.base,trajectory.object,trajectory.parameters,true);
 #if defined(DINGOSDK_DEV_TOOLS)
             logging::log(logging::Level::info,logging::Channel::skater,
                 "ARCADE VERT PLANNER: episode={} step={} action={} submitted={} landing={},{},{}.",

@@ -419,6 +419,9 @@ if(DINGOSDK_BUILD_TRAINER_TESTS)
     add_executable(dingosdk_trainer_flip_curve_tests Extension/Trainer/Test/flip_curve_tests.cpp)
     target_include_directories(dingosdk_trainer_flip_curve_tests PRIVATE "${PROJECT_SOURCE_DIR}")
     add_test(NAME trainer_flip_curve COMMAND dingosdk_trainer_flip_curve_tests)
+    add_executable(dingosdk_trainer_trajectory_update_tests Extension/Trainer/Test/trajectory_update_tests.cpp)
+    target_include_directories(dingosdk_trainer_trajectory_update_tests PRIVATE "${PROJECT_SOURCE_DIR}")
+    add_test(NAME trainer_trajectory_update COMMAND dingosdk_trainer_trajectory_update_tests)
     # Built-in presets: Hardcore goes at least as far as Realistic, class names are spelt right, and
     # the player's own presets never keep a built-in's name.
     add_executable(dingosdk_trainer_presets_tests Extension/Trainer/Test/presets_tests.cpp Extension/Trainer/trainer_presets.cpp)

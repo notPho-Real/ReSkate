@@ -1,4 +1,5 @@
 #include "trainer_jump.h"
+#include "trainer_trajectory_update.h"
 #include "Engine/Core/Hooks/hooks.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/addresses.h"
@@ -353,6 +354,25 @@ bool submit_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
         reinterpret_cast<bool (*)(std::uintptr_t, bool)>(base + native::select_result.rva)(trajectory, true);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) { world_trajectory_request={};return false; }
+}
+
+bool submit_native_air_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
+                                 const NativeTrajectoryParameters& parameters) noexcept {
+    namespace native = game::build::v20260929::trajectory;
+    auto& h=hooked();
+    if(!base || base!=h.base || !h.ready || !trajectory || world_trajectory_request.object ||
+       !known_bytes(base+native::update_air.rva,native::update_air.bytes.data(),native::update_air.bytes.size()) ||
+       !known_bytes(base+native::update_air_call.rva,native::update_air_call.bytes.data(),native::update_air_call.bytes.size()) ||
+       !known_bytes(base+native::update_notification.rva,native::update_notification.bytes.data(),native::update_notification.bytes.size()))return false;
+    const auto ready=[&]() noexcept {
+        __try { return *reinterpret_cast<const std::uint8_t*>(trajectory+native::query_pending)==0; }
+        __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
+    };
+    return trajectory_detail::update_air(parameters,ready,[&](std::uintptr_t rva,float* packet) noexcept {
+        // The native updater owns collision selection and the changed-curve
+        // notification. Calling select_result here would consume that handoff.
+        return call_guarded(reinterpret_cast<SetTrajectory>(base+rva),trajectory,packet);
+    });
 }
 
 bool start_trick_heights(std::uintptr_t base) noexcept {

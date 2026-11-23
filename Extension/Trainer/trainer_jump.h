@@ -68,6 +68,11 @@ bool consume_ready_native_trajectory(std::uintptr_t base, std::uintptr_t traject
 // alter the result. True is submission evidence, never physical acceptance.
 bool submit_native_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
                               NativeTrajectoryParameters& parameters, bool preserve_world_velocity = false) noexcept;
+// Update a current AIR201 flight using its native query/clock handoff. The
+// caller validates the local owner and state. No pending query is consumed,
+// no pop shaping runs and native selection remains at its ordinary tick.
+bool submit_native_air_trajectory(std::uintptr_t base, std::uintptr_t trajectory,
+                                 const NativeTrajectoryParameters& parameters) noexcept;
 // Supply an owned world-space exit to a launch the game is already submitting.
 // The bridge grants one receipt on entry and receives its submission outcome
 // synchronously. It must validate ownership and deadline; this API does not

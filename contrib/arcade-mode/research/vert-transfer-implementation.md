@@ -381,3 +381,31 @@ Strict ASan/UBSan:6868 vert checks and90448 geometry/runtime checks; DEV syntax
 compilation passes. The pre-fix replay fails at the third retained contact edge.
 This change and the direct-touchdown fix require one combined native candidate;
 no repeated trial of the unchanged fdf binary is warranted.
+
+
+Native AIR curve handoff (after 7febbc63): the contact-chain candidate established
+curved takeoff and real AIR with no trigger or submitted plan. Its unmodified
+flight landed on flat behind the ramp; normal ramp return remains unaccepted.
+Fresh LT then reached Level Out at step48615: requested velocity
+(-0.000916,0.880064,-2.773806). Step48616 reported
+(-0.021973,-32.511208,-76.706550); the controller correctly cancelled. Actual
+native contact followed, but this is a failed Level Out, not transfer acceptance.
+The capture is retained in the external contact-chain-hil workspace; the
+packet comparison and test receipts are in air-update-regression/checkpoint.json.
+
+Pinned executable inspection identifies a missing native curve handoff. The
+launch setter clears the update flag; first-result selection therefore omits
+the change notification. AIR201 uses that notification to realign the curve
+and reset its sampling clock. The native in-air updater sets the update flag.
+The bridge now uses that entry for AIR201 and leaves selection to the normal
+native tick. An eager selector call can clear the notification before AIR sees
+it. Native collision queries, alignment, clocks and landing remain native;
+no selected curve, state, timer or contact is overwritten by the adapter.
+State200 and existing contact-exit launches keep their existing entry.
+
+The focused contract regression uses the recorded velocity packet and pinned
+notification semantics. It fails when the old launch route is substituted;
+28 checks pass under ASan/UBSan, alongside6868 vert and90448 geometry/runtime
+checks. This verifies routing and refusal behavior, not native motion. A new
+compiled candidate and one consolidated physical Level Out test are required.
+Spine, hip, acid drop, landing Revert and normal ramp return remain unaccepted.
