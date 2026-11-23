@@ -3,11 +3,11 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current compiled checkpoint **5f9eea19** passed all nine required gates in
-[CI 45106801955](https://github.com/notPho-Real/ReSkate/actions/runs/45106801955):
+Current compiled checkpoint **096bbf03** passed all nine required gates in
+[CI 45113675821](https://github.com/notPho-Real/ReSkate/actions/runs/45113675821):
 148 Windows preflight tests, 137 full integration tests and experimental Deck
 packaging. Runtime SHA256:
-`ae19f8a675f0dfa52bb61bdf4650fa63a25d986fa4a8550c6884b53e4bba0b3e`.
+`d72d007a3a2bb2f20fa40b114c2f77d43d17fa52fa537f01f098e92af376f860`.
 The earlier test-only C4244 failure was corrected and separately validated before
 this build; its failed-run evidence remains historical.
 
@@ -32,7 +32,7 @@ follow-up hands future Level Out motion back to native AIR only after successful
 submission and transactional body writing. It cannot emit another transfer or
 alignment; actual support and a fresh trigger still govern landing/Revert.
 Checks pass: 6,956 controller, 90,466 geometry/runtime and 33 trajectory contracts.
-The Deck is restored to the prior installation with 153 rollback sets preserved.
+That session restored the prior installation with 153 rollback sets preserved.
 
 Candidate `10954ec7` failed Windows preflight because the ground-writer source
 fixture included the new vert handoff block. The fixture now extracts its angular
@@ -41,7 +41,18 @@ ASan/UBSan. A further captured-packet correction measures landing speed along th
 actual support plane: the steep ramp had 9.05m/s tangential speed but only
 0.99m/s horizontal speed. The 1m/s minimum and all contact/ownership requirements
 remain; 6,983 controller checks pass, including pure-impact and flat-ground
-negatives. Compilation and native Revert acceptance of this follow-up are pending.
+negatives. The green `096bbf03` build includes both corrections.
+
+Native `096bbf03` passes representative no-trigger curved takeoff, supported
+return and continued riding. The separate LT trial rejects a state-publication
+chain before any plan or motion write; RT was skipped. All original callbacks
+are present, but the retained original/live pair and actor/episode fields were
+not captured. Conditional ground-to-state200 and idle-AIR successor corrections
+pass 7,059 controller and 90,466 runtime/geometry checks with unchanged
+freshness/step limits. Each original must confirm the preceding live state before
+a correlated physical AIR frame can establish eligibility. This is
+not an exact replay of the failed native scheduler and has no new Windows/native
+acceptance. The Deck is restored with 154 rollback sets and no active worker.
 
 The earlier `6f132763` Mega Park trial observed a **3.301-second sampled physical Manual hold**:
 97 of 100 observations qualified, with a maximum 107ms qualified gap, stable
@@ -130,7 +141,7 @@ conditions. No current feature has blanket owner acceptance from this checkpoint
 | 3 / RC5.2 grinds | Bluntslide X→Y/X→X continues into Tailslide/Smith. Y→B/B→B continues into Nosegrind/Crooked. Established5-0 can now reach Noseslide/Nosebluntslide through independently completed50-50 and Nosegrind legs; one original request, fixed total deadline, exact segment and retired leases. | 48,100 composed sanitizer checks pass at30/60/120Hz; old source fails the new5-0 routes. Qualified horizontal segment≥12m does not guarantee enough remaining travel. Full native chains remain unverified. | M; preserve each completion and final actor evidence; extend only proven native routes. |
 | 4 / RC5.3 Casper | Manual→Casper→Casper Flip uses one owned body/board clip; integrated drawn seed experiment defaults off. | Authoring/runtime cancellation tests; physical support, visible placement and score continuity still need exact candidate acceptance. | M; finish current entry/exit/friction before additional flatland poses. |
 | 5 / RC5.3 flatland depth | Further grind depth, Railstand, Truckstand, Anti-Casper, Primo and Pogo follow Casper. Core Manual Pivot is now RC5.1. | Upstream pose/mount facilities supply visuals, not physical support or contact. | M–L; reuse owned playback and permission-gated plugin APIs; establish physical admission first. |
-| 6 / RC6 environment | Experimental vert recognition, Level Out and shared acid-drop/spine/hip solver reuse native ownership and generalized geometry. Completed AIR201 Level Out now relinquishes further Arcade motion to native AIR. | 5f9 has representative neutral-input curved return and physical Level Out/platform contact without the old spike, but false airborne cancellation blocks full acceptance. Handoff regression passes; no new native acceptance yet. | M–L; compile the handoff and verify native-owned flight, actual support and independently fresh landing Revert without further vert writes. |
+| 6 / RC6 environment | Experimental vert recognition, Level Out and shared acid-drop/spine/hip solver reuse native ownership and generalized geometry. Native Level Out handoff and support-plane landing speed compile in096; confirmed takeoff publication chains are implemented locally. | 096 passes native no-trigger curved return; LT rejects before a plan and RT is skipped. Conditional chain regressions pass7,059 controller checks, but missing live-pair capture prevents an exact scheduler replay. Physical transfers remain unaccepted. | M–L; compile the combined publication correction, then establish native admission, handoff and actual support before independent landing Revert. |
 | 7 / RC7+ | Specials, advanced flatland, skitching, larger combos and challenges. | Deferred behind responsive core and environment. | L; no current implementation action. |
 
 Representative acceptance uses only the scenarios affected by a change; all eight
