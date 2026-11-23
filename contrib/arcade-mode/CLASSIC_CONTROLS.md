@@ -49,7 +49,13 @@ that original A intent and resumes a supported crouch only after native idle.
 An airborne transition, changed actor or lost ownership cancels that intent.
 Native riding pushes preserve the remembered setup. The native pushing flag
 is not a bail; removing that mistaken reset does not relax launch admission.
-Ground RT uses the verified native ChangeStance input processor: one B double-tap
+On `fdf00b79`, the representative physical LT tap → A charge/release executed
+native Nollie16, rose and returned to full wheel support (714/714 capture rows,
+zero drops). A separate A-only control executed Ollie1 with no LT/RT input
+(693/693 rows, zero drops). Neither substitutes a displayed name for actor proof;
+Pressure, other stances and full combo chains remain unverified.
+
+Ground RT targets the identified native ChangeStance input processor with one B double-tap
 within its native 300ms window. The final controller packet owns only B; each
 gesture phase needs a delivered packet and a newer native step. After final B
 release, neutral ownership withholds automatic pushes until native acknowledgment
@@ -71,8 +77,14 @@ File GUIDs identify the containing asset and cannot authenticate that object;
 using them prevented Switch admission in the `ec28f738` native trial.
 The `6f132763` trial delivered both double taps and retained neutral ownership,
 but observed no stance change. A native push flag still ended observation; in
-one attempt it appeared before automatic X resumed. Its cause is unresolved,
-and physical Switch acceptance remains pending.
+one attempt it appeared before automatic X resumed. The later `fdf00b79` trial
+delivered a complete B double-tap while coasting, with no pushing throughout
+the gesture and observation window, but still observed no leading-foot change.
+Its capture is complete (615/615 rows, zero drops); heading and momentum continued
+without a ground Revert. Final XInput delivery does not prove native
+`Processor_Pad_B_DoubleTap` acceptance or `Input_ChangeStance` graph entry.
+That consumer acknowledgment is the remaining boundary; no supported alternate
+stance setter is established. Physical Switch acceptance remains pending.
 The input adapter and physical Pivot evidence are separate from native acceptance.
 LT during Manual/grind cannot replace the active physical support or its native
 launch family. See [the shared trigger contract](TRIGGER_CONTRACT.md) for vert

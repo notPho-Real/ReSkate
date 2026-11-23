@@ -3,17 +3,13 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current compiled checkpoint `fbb09e16` passed all nine required gates in
-[CI 45076961332](https://github.com/notPho-Real/ReSkate/actions/runs/45076961332),
-including Windows preflight, full runtime integration and experimental Deck
-packaging. The newer published `93c51389` failed Windows preflight/targeted tests
-in [CI 45087107999](https://github.com/notPho-Real/ReSkate/actions/runs/45087107999)
-on a test-fixture C4244 narrowing warning; its runtime build is still running.
-Published `8b64ae98` fixes that test cast only: production is unchanged from
-`93c51389`, 96 strict narrowing/sanitizer checks pass, and
-[tests-only CI 45087690268](https://github.com/notPho-Real/ReSkate/actions/runs/45087690268)
-passed, including all 148 Windows preflight tests. This repairs the test failure;
-neither newer source is a green combined package checkpoint yet.
+Current compiled checkpoint **fdf00b79** passed all nine required gates in
+[CI 45089747524](https://github.com/notPho-Real/ReSkate/actions/runs/45089747524):
+148 Windows preflight tests, 136 full integration tests and experimental Deck
+packaging. Runtime SHA256:
+`c33adb44c5a4649d564910f4fbe64fb6ba42325a39d5379eddfdbecc54dca274`.
+The earlier test-only C4244 failure was corrected and separately validated before
+this build; its failed-run evidence remains historical.
 
 The earlier `6f132763` Mega Park trial observed a **3.301-second sampled physical Manual hold**:
 97 of 100 observations qualified, with a maximum 107ms qualified gap, stable
@@ -53,11 +49,21 @@ after neutral while returned buttons stayed zero. Late log arrival and physical
 push prevented the coast prerequisite. No RT/B or Switch result was obtained;
 this does not establish the cause of native pushing.
 
-Disabled recipe corrections now pass offline replay: LT keeps coasting and uses
-the gate itself to release the held trigger before A; the Switch prerequisite
-allows the measured push-clear and log-delivery interval. Physical trigger holds,
-speed/owner checks and capture limits remain intact. Neither recipe has run on
-the device; complete actual capture coverage remains required.
+The corrected coasting recipes ran once each on **fdf00b79**. Physical LT tap
+followed by A charge/release executed **native Nollie16**, with measured rise and
+full wheel support on return, stable owner and complete714/714 capture. A separate
+A-only control executed **Ollie1**, with no LT/RT input, physical rise and supported
+return, and complete693/693 capture. Both had zero drops. This establishes those
+representative native launch identities, not Pressure or every stance/combo.
+
+Ground RT delivered a complete native B double-tap but **did not change leading
+foot**. All615/615 capture rows were retained without drops; no pushing occurred
+during the gesture or observation window. Heading and continued travel were
+preserved, without a ground Revert. Native double-tap processor acceptance or
+ChangeStance graph entry is still unobserved. Final XInput packets prove delivery,
+not that consumer boundary; no justified retiming or alternate setter is known.
+Exact receipts and independent analyses are retained externally under
+`rc51-ps2-controls-native-fdf00b79-package-bound`.
 
 Published follow-up fixes preserve passive Nollie/Pressure setup across native
 pushes (the pushing flag was incorrectly treated as a bail), and preserve final
@@ -65,8 +71,8 @@ neutral Switch ownership while a live leading-foot change awaits publication.
 The setup correction passes 862 selection and 96 composed dispatch checks;
 the stance correction passes 759 production-adapter checks plus its focused
 ownership suites. Both include old-source failures and sanitizer coverage.
-These fixes follow the published `fbb09e16` candidate and are not in its build;
-neither establishes native Nollie or Switch acceptance.
+These fixes are included in the green `fdf00b79` build. Its separate native
+launch comparisons establish Nollie16 versus Ollie1; Switch remains blocked.
 
 The newer source also preserves bounded ramp history across native push onset
 and clearing, and excludes authenticated zero-fraction local self hits without
@@ -82,7 +88,7 @@ conditions. No current feature has blanket owner acceptance from this checkpoint
 | --- | --- | --- | --- |
 | 0 / RC5 integration | Existing controller ownership, animations, Casper, wallplants, scoring, Trickpedia, camera and OFF restoration retained with upstream pose/mount facilities. | Base compiled and CI passed. Exact integrated native walkthrough remains incomplete. | M; consolidated native regression after source corrections, with exclusive runner and rollback. |
 | 1 / RC5.1 immediate/repeated flips | Immediate A→X recognizes the physical edge through the admitted pop. Ordinary flips share the owner-validated transient-zero reread. Neutral third X now extends the owned double into Triple Kickflip; directional triples remain. | 2,635 held-flip sanitizer checks pass with physical parent/deadline, catch and fourth-input negatives; old source fails neutral-third regression. Current ascent and triple rotations remain native-unverified. | S; native ascent/rapid repeat at a later checkpoint; continue independent offline work first. |
-| 1 / RC5.1 fixed ground controls | LT setup and native Switch adapter use the shared journal. Original held-A intent survives native crouch retirement; setup now survives native pushing. Switch authenticates exported instances and retains neutral ownership through bounded publication. No ground Revert fallback or heading/velocity writes. | 6f delivered both double taps but no native stance change. fbb delivered LT80ms to raw game input; speed gate withheld A. Its coast trial sent no RT. Exact LT/A replay passes788 checks; ordinary Ollie1 observed once. Pressure actor unsupported; no stance/Nollie/Pressure acceptance. | M; finish current CI correction and preserve delivered-LT evidence. Resolve native push provenance offline; any later native launch check needs the setup fix and measured prerequisite/actual capture coverage. |
+| 1 / RC5.1 fixed ground controls | LT setup and native Switch adapter use the shared journal. Original held-A intent survives native crouch retirement; setup now survives native pushing. Switch authenticates exported instances and retains neutral ownership through bounded publication. No ground Revert fallback or heading/velocity writes. | fdf native LT→A executes Nollie16; A-only executes Ollie1, both with physical flight/support and complete captures. RT still produces no leading-foot change after a complete B gesture without pushing. Pressure actor unsupported. | M; establish native double-tap consumer/ChangeStance acknowledgment or a supported native stance route; preserve verified launch behavior and continue independent gameplay work. |
 | 1 / RC5.1 Manuals/Pivots | Established Manual RT retains its original150ms publication lease and requests physical Pivot; unconfirmed balance cannot borrow later authority. Physical board-reference/hips rotation plus native successor support independently determine evidence. | Composed lifecycle checks pass in release and DEV. Exact6f native hold meets sampled3s minimum; physical Pivot turns but fails board/body coherence. Six-second hold simulation passes; full chain pending. | M; use the compiled bounded hips/board trace when a native Pivot check is justified; distinguish delayed body settling from incorrect physical rotation. |
 | 1 / RC5.1 general wallplants | All-category wall/floor patches span independently authenticated static bodies. Every floor center and child owner is revalidated before admission, including single-shape floors; existing holds depend on the wall. | 55,816 geometry and1,523 runtime checks pass across transformed partitions, categories, mixed owner forms, corners, obstructions and invalidation. Old source fails deleted-floor admission. Same-incarnation editor relocation has no transform stamp, including center; no universal map claim. | M; preserve static snapshot scope; native query/hold smoke at a later checkpoint, after independent offline work. |
 | 2 / RC5.1 movement/rotation/camera | Auto-push, native steering, Ollie, prewind, aerial rotation and camera orbit/recenter already implemented. New camera leases reset follow heading immediately after OFF/ON or controller/native-owner changes. | 691,135 composed lifecycle checks and 2,915 camera checks pass; the new reset regression fails before correction. Native switch/revert follow and visual restoration pending. | S–M; retain continuous smoothing; native visual confirmation at a later checkpoint. |
@@ -92,7 +98,7 @@ conditions. No current feature has blanket owner acceptance from this checkpoint
 | 3 / RC5.2 grinds | Bluntslide X→Y/X→X continues into Tailslide/Smith. Y→B/B→B continues into Nosegrind/Crooked. Established5-0 can now reach Noseslide/Nosebluntslide through independently completed50-50 and Nosegrind legs; one original request, fixed total deadline, exact segment and retired leases. | 48,100 composed sanitizer checks pass at30/60/120Hz; old source fails the new5-0 routes. Qualified horizontal segment≥12m does not guarantee enough remaining travel. Full native chains remain unverified. | M; preserve each completion and final actor evidence; extend only proven native routes. |
 | 4 / RC5.3 Casper | Manual→Casper→Casper Flip uses one owned body/board clip; integrated drawn seed experiment defaults off. | Authoring/runtime cancellation tests; physical support, visible placement and score continuity still need exact candidate acceptance. | M; finish current entry/exit/friction before additional flatland poses. |
 | 5 / RC5.3 flatland depth | Further grind depth, Railstand, Truckstand, Anti-Casper, Primo and Pogo follow Casper. Core Manual Pivot is now RC5.1. | Upstream pose/mount facilities supply visuals, not physical support or contact. | M–L; reuse owned playback and permission-gated plugin APIs; establish physical admission first. |
-| 6 / RC6 environment | Experimental vert recognition, Level Out and shared acid-drop/spine/hip solver reuse native ownership and generalized geometry. Other wall/ledge mechanics and gaps follow core acceptance. | Bounded push-handoff and zero-fraction self-exclusion fixes pass focused tests; native vert qualification/transfer unverified. | M–L; finish combined compilation, then establish native qualification before transfer acceptance. |
+| 6 / RC6 environment | Experimental vert recognition, Level Out and shared acid-drop/spine/hip solver reuse native ownership and generalized geometry. Other wall/ledge mechanics and gaps follow core acceptance. | fdf no-input trial proves native takeoff recognition, but returns behind the ramp; physical transfers remain unverified. Direct-touchdown and confirmed contact-chain fixes pass focused tests. | M–L; compile the reviewed contact/landing fixes together; verify physical Level Out and natural return separately. |
 | 7 / RC7+ | Specials, advanced flatland, skitching, larger combos and challenges. | Deferred behind responsive core and environment. | L; no current implementation action. |
 
 Representative acceptance uses only the scenarios affected by a change; all eight
@@ -142,7 +148,13 @@ points may differ from ray origin; only an independently authenticated local
 owner may supply an exclusion. Nonzero and nonlocal surface measurements retain
 strict ray-position/normal validation. Focused sanitizer checks pass:6,812 vert,
 90,117 geometry/runtime and106 contact-reader, with failing old-source regressions.
-Native flight qualification, transfer and landing acceptance remain pending.
+The fdf no-input trial subsequently established native flight qualification;
+natural ramp return, transfer and landing Revert remain unaccepted. The integrated
+follow-up retains direct AIR→riding touchdown and consecutive original/live
+contact handoffs only with confirmed owner, actor and unchanged100ms history
+deadlines. It grants no input or motion until correlated original observations.
+Focused ASan/UBSan checks pass:6,868 vert and90,448 geometry/runtime. New native
+causation and transfer behavior still require exact-candidate evidence.
 
 Portable tests cover transformed curved ramps, independent shape owners, holes,
 clearance failures, bounded momentum, trigger timing, ownership cancellation and
