@@ -3,13 +3,23 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current compiled checkpoint **fdf00b79** passed all nine required gates in
-[CI 45089747524](https://github.com/notPho-Real/ReSkate/actions/runs/45089747524):
+Current compiled checkpoint **7febbc63** passed all nine required gates in
+[CI 45096437488](https://github.com/notPho-Real/ReSkate/actions/runs/45096437488):
 148 Windows preflight tests, 136 full integration tests and experimental Deck
 packaging. Runtime SHA256:
-`c33adb44c5a4649d564910f4fbe64fb6ba42325a39d5379eddfdbecc54dca274`.
+`b7e814bb5de19ad3ffcccfd6525afaadf3f3ed6b2f8c4260c707364748f74a45`.
 The earlier test-only C4244 failure was corrected and separately validated before
 this build; its failed-run evidence remains historical.
+
+The 7feb native no-input trial recognized real AIR and retained direct-touchdown
+history through original supported riding. Natural return still lands behind the
+ramp. Its fresh-LT Level Out trial submitted a bounded plan but produced a large
+next-step velocity spike and cancelled; physical Level Out is **not accepted**.
+Pinned executable inspection identified the missing AIR201 curve-change
+notification when using the pop setter. The integrated follow-up uses the native
+AIR updater and leaves selection/rebasing to its ordinary tick; state200 and
+contact launches remain unchanged. Its 28 contract checks pass with an old-route
+failure; Windows compilation and exact-candidate native motion remain pending.
 
 The earlier `6f132763` Mega Park trial observed a **3.301-second sampled physical Manual hold**:
 97 of 100 observations qualified, with a maximum 107ms qualified gap, stable
@@ -98,7 +108,7 @@ conditions. No current feature has blanket owner acceptance from this checkpoint
 | 3 / RC5.2 grinds | Bluntslide X→Y/X→X continues into Tailslide/Smith. Y→B/B→B continues into Nosegrind/Crooked. Established5-0 can now reach Noseslide/Nosebluntslide through independently completed50-50 and Nosegrind legs; one original request, fixed total deadline, exact segment and retired leases. | 48,100 composed sanitizer checks pass at30/60/120Hz; old source fails the new5-0 routes. Qualified horizontal segment≥12m does not guarantee enough remaining travel. Full native chains remain unverified. | M; preserve each completion and final actor evidence; extend only proven native routes. |
 | 4 / RC5.3 Casper | Manual→Casper→Casper Flip uses one owned body/board clip; integrated drawn seed experiment defaults off. | Authoring/runtime cancellation tests; physical support, visible placement and score continuity still need exact candidate acceptance. | M; finish current entry/exit/friction before additional flatland poses. |
 | 5 / RC5.3 flatland depth | Further grind depth, Railstand, Truckstand, Anti-Casper, Primo and Pogo follow Casper. Core Manual Pivot is now RC5.1. | Upstream pose/mount facilities supply visuals, not physical support or contact. | M–L; reuse owned playback and permission-gated plugin APIs; establish physical admission first. |
-| 6 / RC6 environment | Experimental vert recognition, Level Out and shared acid-drop/spine/hip solver reuse native ownership and generalized geometry. Other wall/ledge mechanics and gaps follow core acceptance. | fdf no-input trial proves native takeoff recognition, but returns behind the ramp; physical transfers remain unverified. Direct-touchdown and confirmed contact-chain fixes pass focused tests. | M–L; compile the reviewed contact/landing fixes together; verify physical Level Out and natural return separately. |
+| 6 / RC6 environment | Experimental vert recognition, Level Out and shared acid-drop/spine/hip solver reuse native ownership and generalized geometry. AIR201 replacements now use the native curve updater rather than a new pop. | 7feb recognizes AIR and retains direct touchdown; natural ramp return fails. Its Level Out produced a velocity spike. The updater correction passes 28 contract checks plus unchanged vert/runtime suites; physical transfers remain unaccepted. | M–L; compile the AIR update correction once, then verify replacement timing and physical motion; natural return remains separate. |
 | 7 / RC7+ | Specials, advanced flatland, skitching, larger combos and challenges. | Deferred behind responsive core and environment. | L; no current implementation action. |
 
 Representative acceptance uses only the scenarios affected by a change; all eight
