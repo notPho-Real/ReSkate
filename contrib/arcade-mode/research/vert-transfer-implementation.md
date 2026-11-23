@@ -475,3 +475,32 @@ impacts;6983 controller and90466 runtime/geometry checks pass with ASan/UBSan.
 The external air-update-regression/curved-landing-checkpoint.json binds raw capture
 and test binaries. Neither tangent admission nor CI establishes a native Revert:
 its physical sweep, stance and eventual Manual/combo continuation remain to test.
+
+
+Native checkpoint096bbf03 (run45113675821, DLL d72d007a) passes representative
+no-trigger vert return at actual/cached60Hz: original curved takeoff, no plan,
+original supported return6978 and continued riding. The separate LT trial fails
+before input eligibility: last admitted30082 is followed by original30085/state200
+versus live201, push64->0, mismatch288, same generation5727, elapsed60ms.
+The retained-publication check rejects `publication_lineage`; no plan or native
+handoff occurs. RT was skipped, the game normally closed, and exact5ae57786
+installation/settings/receipt restored with154 backups and score pack unchanged.
+
+The physical journal contains every original30080..30088, but does not record
+the retained original/live pair, actor and episode used by the controller.
+Consequently the new regression is explicitly conditional, not an exact scheduler
+replay. A confirmed original200 may close a preceding ground->200 publication
+only with the same owner/actor, exactly one new flight and unchanged departure.
+Existing100ms and two-step confirmation limits remain. The subsequent correlated
+physical AIR must confirm that flight before any transfer eligibility; contact,
+changed actor/episode, stale history and unrelated input still reject. A DEV-only
+loss diagnostic records the missing retained-publication boundary.
+
+The previous source fails this conditional regression.7032 controller and90466
+geometry/runtime checks pass under ASan/UBSan; the actual DEV logging format also
+passes syntax checking. The native-memory boundary in the portable runtime test
+uses its existing test shim. Evidence and raw capture hashes are in external
+`air-update-regression/takeoff-chain-evidence.json`; rollback is recorded in
+`native-owned-hil/hardware-returned.json`. This follow-up has no Windows build or
+native acceptance yet. Level Out completion, Spine/Hip/Acid Drop and landing
+Revert/Manual continuation remain unaccepted; no unchanged hardware retry ran.

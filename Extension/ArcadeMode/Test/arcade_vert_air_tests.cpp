@@ -269,6 +269,75 @@ void recorded_contact_publications() {
     check(c.eligible(o.native,o.native.sampled_at),"only correlated original AIR establishes flight after the publication chain");
     check(!c.consume(o.native,o.native.sampled_at,o.velocity),"no input after contact chain preserves native trajectory");
 }
+void confirmed_takeoff_publication() {
+    // 096 capture: admitted30082, original30085/state200 versus live201,
+    // push64->0, mismatch288, same generation5727, elapsed60ms. The journal
+    // contains every original callback. The retained live edge/actor/episode
+    // were not logged, so their confirmation below is a conditional fixture,
+    // not a claim that this completely replays the native scheduler.
+    for(unsigned fault=0;fault<18;++fault) {
+        VertAirController c;auto o=ground();o.native.selection_object=99;
+        o.native.physics_seconds=1.f/60;o.native.stance_and_push=0x40;
+        o.native.owner_generation=5727;o.native.physics_step=30082;o.native.sampled_at=1825241225;
+        o.native.airborne_episode=1;o.native.air_departure=1;
+        warm(c,o);c.observe(o);
+        auto prior=o.native;prior.physics_step=30083;prior.sampled_at=1825241237;prior.contacts=0x4000;
+        NativeRequestSample live{};live.valid=true;live.state=200;live.crouch_mode=1;live.words[0]=0x40;
+        if(fault==13)live.state=100;
+        NativeInputCorrelation gap{prior,NativeInputCorrelation::state_changed|NativeInputCorrelation::contacts_changed};
+        if(fault==13)gap.mismatches=NativeInputCorrelation::contacts_changed;
+        check(c.publication_gap(gap,live,prior.owner,1825241249),"takeoff fixture retains a real prior publication without admitting AIR");
+        c.unavailable(1825241249,prior.owner,true,false);
+        auto f=prior;f.physics_step=30085;f.sampled_at=1825241270;f.state=200;f.contacts=0;
+        f.airborne=true;f.airborne_episode=2;f.airborne_started_known=true;f.airborne_started_at=1825241253;
+        live.state=201;live.words[0]=0;
+        auto owner=f.owner;auto now=std::uint64_t{1825241285};
+        if(fault==1)++owner.core;
+        if(fault==2)++f.owner_generation;
+        if(fault==3)f.flip_id=3;
+        if(fault==4)++f.selection_object;
+        if(fault==5)f.rail_family=true;
+        if(fault==6)++f.airborne_episode;
+        if(fault==7)++f.air_departure;
+        if(fault==8)f.airborne_started_known=false;
+        if(fault==9)f.airborne_started_at=prior.sampled_at-1;
+        if(fault==10)f.airborne_started_at=f.sampled_at+1;
+        if(fault==11)f.physics_seconds=1.f/30;
+        if(fault==12)f.physics_step++;
+        if(fault==14)f.contacts=0x4000;
+        if(fault==15)live.words[0]=0x20;
+        if(fault==16)now=f.sampled_at+101;
+        if(fault==17)f.sampled_at=o.native.sampled_at+101;
+        gap={f,NativeInputCorrelation::state_changed|NativeInputCorrelation::stance_changed};
+        const bool retained=c.publication_gap(gap,live,owner,now);
+        check(retained==(fault==0),"confirmed ground-to200 publication must preserve ramp history only with exact lineage and cleared push");
+        if(fault)continue;
+        c.unavailable(now,owner,true,false);
+        check(c.phase()==VertPhase::rising_support && !c.eligible(f,now) && !c.consume(f,now,o.velocity),
+            "confirmed publication cannot manufacture flight or grant trigger or motion authority");
+        check(c.observation().native.physics_step==30082,"publication does not replace last physical ramp observation");
+        o.native=f;o.native.state=201;o.native.stance_and_push=0;o.native.physics_step=30086;
+        o.native.sampled_at=1825241287;o.supported=false;o.support={};
+        for(unsigned resumed_fault=0;resumed_fault<9;++resumed_fault) {
+            auto rejected=c;auto changed=o;
+            if(resumed_fault==0)++changed.native.airborne_episode;
+            if(resumed_fault==1)++changed.native.air_departure;
+            if(resumed_fault==2)++changed.native.airborne_started_at;
+            if(resumed_fault==3)changed.native.flip_id=3;
+            if(resumed_fault==4)++changed.native.selection_object;
+            if(resumed_fault==5)changed.native.contacts=0x4000;
+            if(resumed_fault==6)changed.native.physics_step+=2;
+            if(resumed_fault==7)changed.native.rail_family=true;
+            if(resumed_fault==8)changed.native.sampled_at=1825241326;
+            rejected.observe(changed);
+            check(!rejected.eligible(changed.native,changed.native.sampled_at),
+                "fresh physical continuation cannot substitute another flight, actor, contact or stale history");
+        }
+        c.observe(o);
+        check(c.eligible(o.native,o.native.sampled_at),"only fresh correlated AIR establishes flight after confirmed takeoff publication");
+        check(!c.consume(o.native,o.native.sampled_at,o.velocity),"no input after takeoff chain preserves native motion");
+    }
+}
 void publication_rejection_evidence() {
     LandingFixture x(60,false);auto gap=x.gap();auto live=x.live();const char* reason{};
     // Diagnostics must identify the missing boundary without widening it.
@@ -1260,4 +1329,4 @@ void input_edges() {
     }
 }
 }
-int main(){recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

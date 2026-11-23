@@ -277,7 +277,7 @@ inline bool vert_align_target(std::array<float,16>& target,SurfaceGeometryVector
 }
 class VertAirController {
 public:
-    void cancel() noexcept {publication_frame_={};landing_gap_frame_={};push_gap_selection_=0;mode_gap_selection_=0;suspended_=false;landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
+    void cancel() noexcept {takeoff_gap_frame_={};publication_frame_={};landing_gap_frame_={};push_gap_selection_=0;mode_gap_selection_=0;suspended_=false;landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
     void reset() noexcept {*this={};}
     // A busy input publisher is absence of evidence, not a new contact. Keep
     // recent curvature for this physical owner, but withdraw transfer queries
@@ -308,6 +308,7 @@ public:
         if(!owner.valid() || f.owner!=owner || owner!=previous_.native.owner)return reject("owner");
         if(f.owner_generation!=previous_.native.owner_generation)return reject("generation");
         if(f.physics_step<previous_.native.physics_step)return reject("step_reversed");
+        bool confirmed_takeoff=false;
         if(f.physics_step-previous_.native.physics_step>2) {
             // Several consecutive original/live contact edges can withhold a
             // correlated body observation. Each newer original must confirm the
@@ -324,10 +325,20 @@ public:
                 return reject("publication_deadline");
             if(!std::isfinite(f.physics_seconds) ||
                std::abs(f.physics_seconds-previous_.native.physics_seconds)>=.00001f)return reject("publication_cadence");
-            if(f.airborne || f.rail_family || (f.state!=100 && f.state!=103) ||
-               f.airborne_episode!=previous_.native.airborne_episode ||
-               f.air_departure!=previous_.native.air_departure ||
-               f.airborne_episode!=prior.airborne_episode || f.air_departure!=prior.air_departure)
+            // A confirmed original200 can close the last grounded publication
+            // while live201 clears the push. Retain only the existing curvature;
+            // a later correlated physical AIR observation must admit takeoff.
+            const bool grounded=!f.airborne && (f.state==100 || f.state==103) &&
+                f.airborne_episode==previous_.native.airborne_episode &&
+                f.airborne_episode==prior.airborne_episode;
+            confirmed_takeoff=f.airborne && f.state==200 && !f.contacts && f.mode==1 &&
+                !prior.airborne && (prior.state==100 || prior.state==103) && !previous_.native.airborne &&
+                f.airborne_episode>prior.airborne_episode && f.airborne_episode-prior.airborne_episode==1 &&
+                prior.airborne_episode==previous_.native.airborne_episode &&
+                f.airborne_started_known && f.airborne_started_at>prior.sampled_at &&
+                f.airborne_started_at<=f.sampled_at;
+            if((!grounded && !confirmed_takeoff) || f.rail_family ||
+               f.air_departure!=previous_.native.air_departure || f.air_departure!=prior.air_departure)
                 return reject("publication_lineage");
             if(f.state!=publication_live_.state || f.mode!=publication_live_.crouch_mode ||
                f.contacts!=(publication_live_.words[1]&0xc000u) ||
@@ -361,7 +372,8 @@ public:
             // The next original frame must confirm this push state and actor.
             if(!(correlation.mismatches&D::stance_changed) ||
                (correlation.mismatches&D::mode_changed) || phase_!=VertPhase::rising_support ||
-               (f.state!=100 && f.state!=103) || f.rail_family ||
+               ((f.state!=100 && f.state!=103) &&
+                !(confirmed_takeoff && live.state==201 && !contacts && !(stance&0x40u))) || f.rail_family ||
                (f.stance_and_push^stance)!=0x40u ||
                !f.flip_known || f.flip_id!=-1 || !f.selection_object ||
                !previous_.native.flip_known || previous_.native.flip_id!=-1 ||
@@ -407,8 +419,13 @@ public:
             } else publication_frame_={};
             return legal;
         }
-        return air && ((live.state==f.state && !contacts) ||
+        const bool legal=air && ((live.state==f.state && !contacts) ||
             (f.state==200 && live.state==201 && !contacts) || vert_riding_contact_mask(live.state,contacts));
+        if(legal && confirmed_takeoff) {
+            takeoff_gap_frame_=f;
+            if(push_changed) {push_gap_selection_=f.selection_object;push_gap_stance_=stance;}
+        }
+        return legal;
     }
     bool preserves_native() const noexcept {
         return previous_.native.valid && (phase_==VertPhase::rising_support || phase_==VertPhase::native_air ||
@@ -441,6 +458,18 @@ public:
         publication_frame_={};
         if(previous_.native.valid && unavailable_at_>previous_.native.sampled_at &&
            f.sampled_at-previous_.native.sampled_at>100) {cancel();previous_={};}
+        if(takeoff_gap_frame_.valid) {
+            const auto gap=takeoff_gap_frame_;takeoff_gap_frame_={};
+            if(f.owner!=gap.owner || f.owner_generation!=gap.owner_generation ||
+               f.physics_step<=gap.physics_step || f.physics_step-gap.physics_step>2 ||
+               !f.airborne || (f.state!=200 && f.state!=201) || f.contacts || f.rail_family ||
+               f.airborne_episode!=gap.airborne_episode || f.air_departure!=gap.air_departure ||
+               !f.airborne_started_known || f.airborne_started_at!=gap.airborne_started_at ||
+               !f.flip_known || f.flip_id!=-1 || f.selection_object!=gap.selection_object ||
+               f.mode>2 || std::abs(f.physics_seconds-gap.physics_seconds)>=.00001f) {
+                cancel();previous_={};return;
+            }
+        }
         if(landing_gap_frame_.valid) {
             const auto& gap=landing_gap_frame_;
             const bool contact=f.contacts==0x4000u || f.contacts==0x8000u || f.contacts==0xc000u;
@@ -639,6 +668,8 @@ public:
     VertLandingWindow& landing() noexcept {return landing_;}
     const VertLandingWindow& landing() const noexcept {return landing_;}
     const VertObservation& observation() const noexcept {return previous_;}
+    const NativeInputFrame& publication_frame() const noexcept {return publication_frame_;}
+    const NativeRequestSample& publication_sample() const noexcept {return publication_live_;}
     const VertRampSupport& origin() const noexcept {return origin_;}
     const VertPlan& released_plan() const noexcept {return released_plan_;}
     SurfaceGeometryVector direction() const noexcept {return direction_;}
@@ -655,7 +686,7 @@ private:
     SurfaceGeometryVector direction_{};
     VertPlan plan_{},released_plan_{};
     std::uint64_t released_at_{},unavailable_at_{};
-    NativeInputFrame planned_{},landing_gap_frame_{},publication_frame_{};
+    NativeInputFrame planned_{},landing_gap_frame_{},publication_frame_{},takeoff_gap_frame_{};
     NativeRequestSample publication_live_{};
     static bool finite_motion(const VertObservation& o) noexcept {
         return vert_math::finite(o.position) && vert_math::finite(o.velocity);

@@ -64,6 +64,10 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
     if(!frame.valid) {
         [[maybe_unused]] const auto before=controller.phase();
         [[maybe_unused]] const auto previous=controller.observation().native;
+#if defined(DINGOSDK_DEV_TOOLS)
+        const auto retained=controller.publication_frame();
+        const auto retained_live=controller.publication_sample();
+#endif
         const char* gap_rejection="not_correlation";
         const bool transition=frame_reason && std::strcmp(frame_reason,"frame_correlation")==0 &&
             correlation && live && controller.publication_gap(*correlation,*live,physical_owner,now,&gap_rejection);
@@ -86,6 +90,17 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
                 correlation?correlation->observed.stance_and_push:0,live?(live->words[0]&0x60u):0,
                 previous.physics_step,previous.owner_generation,correlation?correlation->observed.owner_generation:0,
                 transition?"retained":gap_rejection);
+            if(lost_history && correlation && retained.valid) {
+                const auto& original=correlation->observed;
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE VERT PUBLICATION: original_step={} previous_episode={} previous_departure={} retained_step={} retained_ms={} retained_state={} retained_episode={} retained_departure={} retained_actor={} expected_state={} expected_mode={} expected_contacts={} expected_stance={} original_episode={} original_departure={} original_start={} start_known={} original_actor={} original_flip={} flip_known={}.",
+                    original.physics_step,previous.airborne_episode,previous.air_departure,
+                    retained.physics_step,retained.sampled_at,retained.state,retained.airborne_episode,retained.air_departure,
+                    retained.selection_object,retained_live.state,retained_live.crouch_mode,
+                    retained_live.words[1]&0xc000u,retained_live.words[0]&0x60u,
+                    original.airborne_episode,original.air_departure,original.airborne_started_at,original.airborne_started_known,
+                    original.selection_object,original.flip_id,original.flip_known);
+            }
         }
 #endif
         // Withholding the ordinary Arcade air shaper is not motion authority.
