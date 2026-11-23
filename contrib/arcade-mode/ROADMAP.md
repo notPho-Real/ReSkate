@@ -3,7 +3,28 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current compiled checkpoint **922f303d** passed all nine required gates in
+Current owner-test candidate **a235c2782027b63539ea63e506e4cb735831ab92** passes
+all nine required gates in [CI 45241154647](https://github.com/notPho-Real/ReSkate/actions/runs/45241154647),
+including 148 Windows preflight and 137 integration tests. Runtime SHA256:
+`de9dde688560c167f2e80999616ef57ff4d09b6e63fd996808a1c8c3ca807241`.
+The exact loaded DLL was verified in Mega Park at native/cached 60Hz. A sampled
+3.303-second physical Manual continued through native Pivot into supported fakie
+Manual. The corrected observer accepts supported hips convergence at 693ms with
+the original motion/coherence thresholds. The subsequent exit prerequisite timed
+out and withheld A/X; the full exact-candidate chain is **not** verified.
+A separate immediate A-release/X trial executes native Kickflip during ascent
+(first observed upward velocity 4.574m/s), lands on both trucks, and moves its
+13-point native sequence into the completed line before OFF. This verifies one
+native bank, not multiplied scoring or a compound chain. OFF capture retained
+2799/2799 events with no drops; native A passed through without an Arcade jump.
+Camera restoration remains unverified: the initial capture lacked a controller
+lease, and the corrected camera-only trial stopped before input on lost focus.
+Switch remains blocked at the native ChangeStance consumer boundary. Preserve
+historical Nollie and vert evidence; no new native acceptance is inferred for
+unchanged mechanics. Next: owner playtest, then the bounded exit/camera acceptance
+gaps; no catalog expansion. Experimental candidate only, not an accepted release.
+
+Historical compiled checkpoint **922f303d** passed all nine required gates in
 [CI 45130208910](https://github.com/notPho-Real/ReSkate/actions/runs/45130208910):
 148 Windows preflight tests, 137 full integration tests and experimental Deck
 packaging. Runtime SHA256:
@@ -49,7 +70,7 @@ the score pack preserved. Switch remains
 blocked at the unverified native ChangeStance consumer owner/value-slot/phase;
 another identical B-gesture trial is not justified. Separate Nose Manual,
 Grind-chain, multiplied native banking/bail and full OFF control/camera acceptance
-remain open. The Pivot observation fix still needs its exact compiled candidate.
+remain open. Exact-candidate Pivot observation evidence is recorded above.
 
 The 922 vert follow-up recognizes genuine takeoff and natural curved-ramp
 return. Fresh LT submits Level Out, reaches native-owned AIR, and returns to
