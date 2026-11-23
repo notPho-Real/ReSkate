@@ -83,8 +83,13 @@ the gesture and observation window, but still observed no leading-foot change.
 Its capture is complete (615/615 rows, zero drops); heading and momentum continued
 without a ground Revert. Final XInput delivery does not prove native
 `Processor_Pad_B_DoubleTap` acceptance or `Input_ChangeStance` graph entry.
-That consumer acknowledgment is the remaining boundary; no supported alternate
-stance setter is established. Physical Switch acceptance remains pending.
+The subsequent offline caller audit resolves both exported transition targets
+to the native ChangeStance branch. Its Regular caller's inspected predicate has
+no Input_ChangeStance reference; the Fakie caller explicitly consumes that input.
+The B route therefore cannot be assumed to be a general ground stance toggle.
+The native command's owner/type/phase and actual actor acknowledgment remain
+unverified; a generic field writer is not a supported stance setter. Physical
+Switch acceptance remains pending. Do not retry the same gesture timing as proof.
 The input adapter and physical Pivot evidence are separate from native acceptance.
 LT during Manual/grind cannot replace the active physical support or its native
 launch family. See [the shared trigger contract](TRIGGER_CONTRACT.md) for vert
