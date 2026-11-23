@@ -68,7 +68,7 @@ void setup_survives_riding_push() {
         check(f.input.selected_setup()==expected && f.requests.empty(),
             "unified setup survives native push without LT or push creating a jump");
         f.environment.native_context.flip.stance=foot;++f.environment.native_context.generations.action;f.sample(600);
-        f.pad.buttons=TrickControls::mask(TrickControls::ollie);f.sample(700);
+        f.pad.buttons=static_cast<std::uint16_t>(TrickControls::mask(TrickControls::ollie));f.sample(700);
         f.pad.buttons=0;f.sample(900);
         check(f.requests.size()==2 && f.requests[0].action==InputAction::crouch &&
             f.requests[1].action==InputAction::ollie_release && f.requests[0].setup==expected &&
