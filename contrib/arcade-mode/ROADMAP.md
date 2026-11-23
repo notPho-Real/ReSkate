@@ -51,6 +51,19 @@ another identical B-gesture trial is not justified. Separate Nose Manual,
 Grind-chain, multiplied native banking/bail and full OFF control/camera acceptance
 remain open. The Pivot observation fix still needs its exact compiled candidate.
 
+The 922 vert follow-up recognizes genuine takeoff and natural curved-ramp
+return. Fresh LT submits Level Out, reaches native-owned AIR, and returns to
+two-truck support at 3.800s with continued riding through 8.549s. The retained
+landing publication gap preserves lineage until original support; landing
+Revert was not tested. This session restored exact prior 5ae files, preserving
+157 rollback sets and the score pack, and revoked hardware authority.
+
+Candidate 12644089 compiled the Windows preflight, but 13 tests shared an outdated
+DEV fixture assertion expecting immediate rejection of incomplete Pivot motion.
+The test-only correction expects bounded tracking, exercises delayed supported
+hips convergence through production callbacks, and preserves rejection after a
+real motion gap. It does not change gameplay source or require another DLL build.
+
 The 7feb native no-input trial recognized real AIR and retained direct-touchdown
 history through original supported riding. Natural return still lands behind the
 ramp. Its fresh-LT Level Out trial submitted a bounded plan but produced a large

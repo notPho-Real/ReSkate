@@ -1040,7 +1040,7 @@ void manual_handoff_native_boundaries(){
  }
 }
 void manual_pivot_physical_production(){
- for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(unsigned fault:{0u,1u,2u}){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(unsigned fault:{0u,1u,2u,3u}){
   const unsigned dt=1000/hz;qualified(nose,dt,300);
 #if defined(DINGOSDK_DEV_TOOLS)
   input_telemetry.pivots.clear();
@@ -1048,12 +1048,12 @@ void manual_pivot_physical_production(){
   trial_hz=hz;trial_start=clock_ms;trial_frame=0;
   const auto episode=manual_episode.serial();const auto multiplier=combo_session.model().state().multiplier;
   const unsigned support=nose?0x8000u:0x4000u;
-  const auto motion=[](float angle,unsigned state){
+  const auto motion=[](float angle,unsigned state,float hips_lag=0.f){
    skater_physics::Step step{};step.state=state;
    const auto pose=[](float yaw){skater_physics::Step::Pose p{};
     const float c=std::cos(yaw),s=std::sin(yaw);
     p.transform={c,0,-s,0,0,1,0,0,s,0,c,0,0,0,0,1};return p;};
-   step.board_reference=pose(angle);step.poses[23]=pose(angle+.4f);return step;
+   step.board_reference=pose(angle);step.poses[23]=pose(angle+.4f-hips_lag);return step;
   };
   advance_trial(dt);observe(dt/1000.f,support,100,true,true,-1,motion(0,100));client(dt/1000.f,history());remap();
   check(remap(0,0,0,255).action.owned&&manual_episode.pivot_evidence().status==ManualEpisode::PivotStatus::tracking,
@@ -1061,21 +1061,24 @@ void manual_pivot_physical_production(){
   const auto began=clock_ms;
   while(clock_ms-began<500){
    advance_trial(dt);const float angle=fault==2?0.f:3.141592654f*std::min(1.f,(clock_ms-began)/500.f);
-   observe(dt/1000.f,fault==1?0xc000u:support,101,true,true,-1,motion(angle,101));
+   observe(dt/1000.f,fault==1?0xc000u:support,101,true,true,-1,motion(angle,101,fault==3?angle*.25f:0.f));
    client(dt/1000.f,history());remap(0,0,0,255);
   }
   orientation.fakie=!orientation.fakie;
   for(unsigned settle=0;settle<5;++settle){
-   advance_trial(dt);observe(dt/1000.f,support,100,true,true,-1,motion(fault==2?0.f:3.141592654f,100));
+   advance_trial(dt);observe(dt/1000.f,support,100,true,true,-1,
+       motion(fault==2?0.f:3.141592654f,100,fault==3?.785398164f*(1.f-static_cast<float>(settle)/4.f):0.f));
    client(dt/1000.f,history());remap(0,0,0,255);
+   if(fault==3&&!settle)check(manual_episode.pivot_evidence().status==ManualEpisode::PivotStatus::tracking,
+       "supported successor waits for original hips convergence without claiming physical Pivot early");
   }
   const auto& evidence=manual_episode.pivot_evidence();
-  check((evidence.status==ManualEpisode::PivotStatus::observed)==(fault==0),
+  check((evidence.status==ManualEpisode::PivotStatus::observed)==(fault==0||fault==3),
       "production physical Pivot needs both board and body half-turn plus uninterrupted single-truck support");
 #if defined(DINGOSDK_DEV_TOOLS)
   check(input_telemetry.pivots.size()>2&&input_telemetry.pivots.front().status==1&&
-      input_telemetry.pivots.back().status==(fault==0?3u:2u),
-      "production Pivot retains bounded original-step motion and unchanged final proof status");
+      input_telemetry.pivots.back().status==(fault==1?2u:fault==2?1u:3u),
+      "production Pivot preserves tracking until convergence or a physical rejection");
   for(std::size_t i=1;i<input_telemetry.pivots.size();++i){
    const auto& current=input_telemetry.pivots[i];const auto& prior=input_telemetry.pivots[i-1];
    check(current.physics_step>prior.physics_step&&current.ms-current.transition<=1100,
@@ -1132,7 +1135,6 @@ void manual_pivot_physical_production(){
        "later native frames cannot reopen a physically retired or replaced Pivot trace");
   }
   if(!nose&&hz==60&&fault==2){
-   const auto rejected=manual_episode.pivot_evidence();
    auto count=input_telemetry.pivots.size();
    emit_manual_pivot_evidence(clock_ms,capture_native_frame);remap();
    check(input_telemetry.pivots.size()==count,"duplicate physics/client polls never replay Pivot vectors");
@@ -1141,11 +1143,14 @@ void manual_pivot_physical_production(){
        input_telemetry.pivots.back().board_forward==std::array<float,3>{}&&
        input_telemetry.pivots.back().hips_forward==std::array<float,3>{},
        "missing current hips and board motion emits an explicit empty diagnostic gap");
+   const auto rejected=manual_episode.pivot_evidence();
+   check(rejected.status==ManualEpisode::PivotStatus::rejected&&rejected.rejection==ManualEpisode::PivotRejection::motion,
+       "missing physical motion ends pending convergence with its actual rejection reason");
    advance_trial(dt);observe(dt/1000.f,support,100,true,true,-1,motion(3.141592654f,100));
    check(input_telemetry.pivots.size()==++count&&input_telemetry.pivots.back().motion_correlated&&
        input_telemetry.pivots.back().board_forward[2]<-.99f&&
        input_telemetry.pivots.back().hips_forward[2]<-.9f&&
-       input_telemetry.pivots.back().status==2&&input_telemetry.pivots.back().rejection==5&&
+       input_telemetry.pivots.back().status==2&&input_telemetry.pivots.back().rejection==static_cast<unsigned>(rejected.rejection)&&
        manual_episode.pivot_evidence().board_radians==rejected.board_radians&&
        manual_episode.pivot_evidence().body_radians==rejected.body_radians,
        "later exact board and hips bases do not rewrite rejected physical Pivot proof");
