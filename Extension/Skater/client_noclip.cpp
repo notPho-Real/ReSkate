@@ -2032,6 +2032,11 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
             // The native AIR curve now owns future height and board alignment.
             // Preserve independent spin input; no second impulse or pose writer.
             a.output.vertical=a.output.horizontal=false;a.vert_aligning=false;
+#if defined(DINGOSDK_DEV_TOOLS)
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE VERT NATIVE HANDOFF: step={} episode={} action={} physical_write_complete=true further_alignment=false adoption_verified=false landing_verified=false.",
+                native_frame.physics_step,native_frame.airborne_episode,static_cast<unsigned>(vert_plan.action));
+#endif
         }
         // Ordinary steering needs the same conditional withdrawal handoff as
         // a half-turn; neither may leave a still-owned rate after cancellation.
