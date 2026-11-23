@@ -18,7 +18,7 @@ inline Vec position(Vec p,Vec v,float gravity,float t) noexcept {
 }
 }
 enum class VertAction : std::uint8_t { none, level_out, spine, hip, acid_drop };
-enum class VertPhase : std::uint8_t { idle, rising_support, native_air, requested, released, landed, cancelled };
+enum class VertPhase : std::uint8_t { idle, rising_support, native_air, requested, released, landed, cancelled, native_owned };
 // Nine independent static-owner samples cover the board footprint. Shapes and
 // materials may differ, but missing support or a discontinuous normal rejects.
 // This is geometry evidence only; native contacts still establish support.
@@ -371,7 +371,8 @@ public:
             const bool riding=live.state==100 || live.state==103;
             const auto touchdown_changes=D::mode_changed|D::contacts_changed|(riding?D::state_changed:0u);
             const bool touchdown=correlation.mismatches==touchdown_changes &&
-                (phase_==VertPhase::native_air || phase_==VertPhase::requested || phase_==VertPhase::released) &&
+                (phase_==VertPhase::native_air || phase_==VertPhase::requested || phase_==VertPhase::released ||
+                 phase_==VertPhase::native_owned) &&
                 same_flight(f) && landing_.flight(f) && f.state==201 && (live.state==201 || riding) &&
                 f.mode==2 && live.crouch_mode==1 && !f.contacts &&
                 (contacts==0x4000u || contacts==0x8000u || contacts==0xc000u) &&
@@ -408,7 +409,7 @@ public:
     }
     bool preserves_native() const noexcept {
         return previous_.native.valid && (phase_==VertPhase::rising_support || phase_==VertPhase::native_air ||
-            phase_==VertPhase::requested || phase_==VertPhase::released || landing_gap_frame_.valid);
+            phase_==VertPhase::requested || phase_==VertPhase::released || phase_==VertPhase::native_owned || landing_gap_frame_.valid);
     }
     bool same_flight(const NativeInputFrame& f) const noexcept {
         return f.valid && f.owner==takeoff_.native.owner && f.owner_generation==takeoff_.native.owner_generation &&
@@ -484,7 +485,7 @@ public:
             // Only a real supported riding observation records landing. A query
             // destination or a state departure on its own cannot do so.
             const bool landed=same_flight(previous_.native) && value.supported &&
-                (f.state==100 || f.state==103) && phase_==VertPhase::released &&
+                (f.state==100 || f.state==103) && (phase_==VertPhase::released || phase_==VertPhase::native_owned) &&
                 (released_plan_.action==VertAction::level_out ||
                  (length(sub(value.position,released_plan_.landing))<=1.5f &&
                   dot(value.up,released_plan_.normal)>.7f &&
@@ -540,7 +541,8 @@ public:
                 takeoff_=value;phase_=VertPhase::native_air;landing_.begin(value);
                 direction_=scale(horizontal(origin_.normal),-1);
             } else cancel();
-        } else if((phase_==VertPhase::native_air || phase_==VertPhase::requested || phase_==VertPhase::released) &&
+        } else if((phase_==VertPhase::native_air || phase_==VertPhase::requested || phase_==VertPhase::released ||
+                 phase_==VertPhase::native_owned) &&
                   !matches(f,f.sampled_at))cancel();
         if(phase_==VertPhase::released && previous_.native.airborne && f.physics_step==previous_.native.physics_step+1) {
             const auto delta=sub(value.velocity,previous_.velocity);
@@ -607,6 +609,23 @@ public:
         result.velocity=vert_math::add(velocity,vert_math::sub(result.velocity,planned_velocity_));
         released_plan_=result;released_at_=now;
         plan_={};request_=0;phase_=VertPhase::released;previous_.velocity=result.velocity;return result;
+    }
+    // Called only after the native AIR updater accepted this exact Level Out
+    // packet and the transactional body writer completed. Submission transfers
+    // future motion/alignment ownership, not evidence of curve adoption or a
+    // landing. Native articulation is not a point-mass ballistic prediction.
+    bool submitted_native_level_out(const NativeInputFrame& f,std::uint64_t now,const VertPlan& plan) noexcept {
+        const auto& previous=previous_.native;
+        if(phase_!=VertPhase::released || suspended_ || !matches(f,now) ||
+           f.physics_step!=previous.physics_step || f.sampled_at!=previous.sampled_at ||
+           f.action_generation!=previous.action_generation || f.contact_generation!=previous.contact_generation ||
+           f.mode_generation!=previous.mode_generation || f.selection_object!=previous.selection_object ||
+           f.stance_and_push!=previous.stance_and_push || f.state!=201 || f.contacts || f.mode>2 ||
+           f.rail_family || !f.flip_known || f.flip_id!=-1 || now<released_at_ || now-released_at_>50 ||
+           plan.action!=VertAction::level_out || released_plan_.action!=VertAction::level_out ||
+           !plan || plan.destination.valid || plan.velocity!=released_plan_.velocity ||
+           plan.normal!=released_plan_.normal)return false;
+        phase_=VertPhase::native_owned;return true;
     }
     SurfaceGeometryVector alignment(const NativeInputFrame& f,std::uint64_t now) const noexcept {
         if(phase_!=VertPhase::released || suspended_ || !matches(f,now) || now<released_at_ || now-released_at_>2500 ||

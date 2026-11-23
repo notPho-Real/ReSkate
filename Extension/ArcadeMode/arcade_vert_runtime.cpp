@@ -49,6 +49,10 @@ InputDisposition request(const InputRequest& input,std::uint64_t now,const Nativ
     return controller.request(frame,now,input.physical_pressed_at,input.input_sequence,direction) ?
         InputDisposition::started:InputDisposition::cancelled;
 }
+bool submitted_native_level_out(const NativeInputFrame& frame,std::uint64_t now,const VertPlan& plan) noexcept {
+    std::lock_guard lock(mutex);
+    return controller.submitted_native_level_out(frame,now,plan);
+}
 SurfaceGeometryVector alignment(const NativeInputFrame& frame,std::uint64_t now) noexcept {
     std::lock_guard lock(mutex);
     return controller.alignment(frame,now);
@@ -131,7 +135,8 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
         observation.ramp().normal[0],observation.ramp().normal[1],observation.ramp().normal[2],frame.mode);
 #endif
     return {plan,controller.phase()==VertPhase::native_air || controller.phase()==VertPhase::requested ||
-        controller.phase()==VertPhase::released,controller.phase()==VertPhase::released,controller.landing_contact_pending()};
+        controller.phase()==VertPhase::released || controller.phase()==VertPhase::native_owned,
+        controller.phase()==VertPhase::released,controller.landing_contact_pending()};
 }
 void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryContext& context,
         const NativeInputFrame& frame,SurfaceGeometryVector board,SurfaceGeometryVector up) noexcept {

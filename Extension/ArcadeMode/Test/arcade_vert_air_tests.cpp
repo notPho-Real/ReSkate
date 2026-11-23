@@ -962,6 +962,82 @@ void destination_contact_landing() {
             "only actual destination support near the prediction establishes a transfer landing");
     }
 }
+void native_level_out_handoff() {
+    // 5f9 original callback17020 ->17021, measured on the same native owner.
+    // Curvature/owner tokens and the later interpolation are fixture inputs;
+    // the two physical packets are recorded, not a simulated native success.
+    for(unsigned fault=0;fault<12;++fault) {
+        VertAirController c;auto o=ground();o.native.sampled_at=2320;o.native.physics_step=17018;
+        o.native.physics_seconds=1.f/60;o.native.selection_object=99;
+        warm(c,o);c.observe(o);o=fly(o);o.native.state=201;o.native.mode=2;c.observe(o);
+        ++o.native.physics_step;o.native.sampled_at=2350;
+        o.position={146.26212f,6.6123023f,-99.4684f};o.velocity={.08514405f,2.5308897f,-.19912721f};c.observe(o);
+        check(c.request(o.native,2350,2350,1),"recorded Level Out edge owns one request");
+        auto plan=vert_level_out(o,{0,0,-1});plan.clear=true;plan.velocity={.046924613f,1.4732242f,-1.6020749f};
+        check(c.stage(plan,o,2350),"recorded cleared packet stages");
+        plan=c.consume(o.native,2350,o.velocity);check(bool(plan),"recorded packet releases once");
+        auto receipt=o.native;auto acknowledged=plan;auto now=2350ull;
+        if(fault==1)receipt.owner.core++;
+        if(fault==2)receipt.owner_generation++;
+        if(fault==3)receipt.airborne_episode++;
+        if(fault==4)receipt.physics_step++;
+        if(fault==5)receipt.selection_object++;
+        if(fault==6)receipt.flip_id=3;
+        if(fault==7)receipt.state=200;
+        if(fault==8)acknowledged.velocity[0]+=.1f;
+        if(fault==9)acknowledged.action=VertAction::spine;
+        if(fault==10)now+=51;
+        // A missing/failed native submit never calls this boundary.
+        const bool handed=fault!=11 && c.submitted_native_level_out(receipt,now,acknowledged);
+        check(handed==(fault==0),"only the exact completed AIR Level Out can relinquish motion ownership");
+        if(handed) {
+            check(!c.submitted_native_level_out(receipt,now,plan),"native handoff receipt cannot replay");
+            check(length(c.alignment(receipt,now))==0,"handoff immediately withdraws our alignment writer");
+        }
+        ++o.native.physics_step;o.native.sampled_at=2367;
+        o.position={146.2627f,6.63415f,-99.49571f};o.velocity={.24536134f,2.7779105f,-.751648f};c.observe(o);
+        check((c.phase()==VertPhase::native_owned)==handed,"recorded native articulation does not erase qualified landing lineage after handoff");
+        if(!handed) {check(c.phase()==VertPhase::cancelled,"unacknowledged release retains its strict unexpected-motion rejection");continue;}
+        check(c.landing().flight(o.native) && c.preserves_native(),"handoff tracks genuine flight without adding motion");
+        check(!c.request(o.native,2367,2367,2) && !c.consume(o.native,2367,o.velocity) &&
+            length(c.alignment(o.native,2367))==0,"native-owned flight cannot request, repeat or align another transfer");
+        const auto continuing=c;const auto flight=o;
+        for(unsigned cancellation=0;cancellation<5;++cancellation) {
+            auto copy=continuing;auto changed=flight;++changed.native.physics_step;changed.native.sampled_at+=17;
+            if(cancellation==0)changed.enabled=false;
+            if(cancellation==1)changed.contested=true;
+            if(cancellation==2)changed.native.owner_generation++;
+            if(cancellation==3)changed.native.airborne_episode++;
+            if(cancellation==4){changed.native.state=500;changed.native.airborne=false;}
+            copy.observe(changed);check(!copy.landing().flight(changed.native) && !copy.preserves_native(),
+                "native handoff retains owner, episode, bail, contest and OFF cancellation");
+        }
+        // Synthetic intervening steps test the observer, not landing physics.
+        while(o.native.sampled_at<3335) {
+            o.position=position(o.position,o.velocity,9.81f,o.native.physics_seconds);o.velocity[1]-=9.81f*o.native.physics_seconds;
+            ++o.native.physics_step;o.native.sampled_at+=17;c.observe(o);
+        }
+        auto press=TriggerPress{};press.press.token={InputSource::triggers,0,InputEdge::press};
+        press.press.at=o.native.sampled_at;press.press.sequence=19;press.context=InputContext::air;
+        press.native=InputNativeContext::from_frame(o.native);
+        auto approach=o.position;approach[1]-=.05f;
+        check(c.landing().approach(o.native,patch(approach,{0,1,0})),"handoff retains independent near-touchdown reservation");
+        check(qualify_vert_trigger(c,press,press.native,press.press.at).owner==TriggerOwner::landing_revert,
+            "new physical edge near native-owned landing belongs to Revert");
+        press.owner=TriggerOwner::transfer;
+        check(qualify_vert_trigger(c,press,press.native,press.press.at).owner==TriggerOwner::none,
+            "transfer-consumed edge cannot become landing Revert after handoff");
+        ++o.native.physics_step;o.native.sampled_at+=17;o.native.state=100;o.native.mode=1;o.native.airborne=false;
+        ++o.native.air_departure;o.native.contacts=0xc000;o.supported=true;o.contact_normal={0,1,0};
+        o.contacted_shape={7,8,9};o.up={.00053092f,.99999976f,.00036382f};
+        o.position={146.5140076f,3.2789941f,-100.792885f};o.velocity={.26463276f,-.00005719f,-1.8089862f};
+        auto unsupported=o;unsupported.supported=false;auto copy=c;copy.observe(unsupported);
+        check(copy.phase()!=VertPhase::landed && !copy.landing().ready(unsupported.native,unsupported.native.sampled_at),
+            "submission and expected position cannot synthesize native landing");
+        c.observe(o);check(c.phase()==VertPhase::landed && c.landing().ready(o.native,o.native.sampled_at),
+            "fresh supported native contact establishes landing and independent Revert window");
+    }
+}
 void unchanged_motion() {
     AirMotion c;AirMotionIntent intent;intent.enabled=true;intent.sampled_at=1000;intent.generation=1;
     AirMotionFrame f;f.now=1000;f.owner=1;f.state=100;f.dt=.01f;f.ordinary_ground=true;
@@ -1144,4 +1220,4 @@ void input_edges() {
     }
 }
 }
-int main(){recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

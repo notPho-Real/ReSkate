@@ -2026,6 +2026,13 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
         if (applied.vertical || applied.angular || applied.horizontal)
             source_require(arcade_mode::AirMotion::apply_bodies(applied, velocities, spins, bodies.up), "Arcade motion result is invalid.");
         commit_motion(resistance_change<0 || applied.vertical || applied.horizontal,applied.angular || angular_release);
+        if(vert_plan.action==arcade_mode::VertAction::level_out && physics==201) {
+            source_require(arcade_mode::vert_runtime::submitted_native_level_out(native_frame,now,vert_plan),
+                "Vert native Level Out handoff changed.");
+            // The native AIR curve now owns future height and board alignment.
+            // Preserve independent spin input; no second impulse or pose writer.
+            a.output.vertical=a.output.horizontal=false;a.vert_aligning=false;
+        }
         // Ordinary steering needs the same conditional withdrawal handoff as
         // a half-turn; neither may leave a still-owned rate after cancellation.
         if (a.ground_output.ready && applied.angular)

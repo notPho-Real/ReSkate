@@ -5,6 +5,8 @@
 #include "arcade_surface_geometry_native.h"
 namespace dingosdk::arcade_mode::vert_runtime {
 void cancel() noexcept;
+// Successful native AIR submission and completed physical write only.
+bool submitted_native_level_out(const NativeInputFrame&,std::uint64_t now,const VertPlan&) noexcept;
 TriggerDecision qualify(void*,const TriggerPress&,const InputNativeContext&,std::uint64_t now) noexcept;
 InputSurfaceState surface(std::uint64_t now,const NativeInputFrame&,InputSurfaceState other) noexcept;
 InputDisposition request(const InputRequest&,std::uint64_t now,const NativeInputFrame&) noexcept;

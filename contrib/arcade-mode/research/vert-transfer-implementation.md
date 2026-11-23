@@ -421,3 +421,38 @@ are retained, unavailable/invalid settings refusal, and caller-packet preservati
 The distinct settings in that test are synthetic sentinels, not captured values.
 All three additional fingerprints match the pinned executable. The correction
 requires a changed runtime build; it adds no native gameplay acceptance.
+
+
+Native checkpoint 5f9eea19 (run45106801955, DLL ae19f8a6): releasing the
+approach stick before takeoff establishes representative normal vert return.
+With no trigger or plan, original curved support becomes AIR, reaches the apex,
+returns to original curved wheel support, and continues riding. Actual and
+cached cadence are60Hz. This is one quarterpipe, not a complete map acceptance.
+
+Fresh LT physically changes velocity, levels the board, contacts the platform
+behind the lip and continues riding. The previous velocity spike is absent.
+However, original callbacks17020->17021 expose a controller defect: requested
+(0.046925,1.473224,-1.602075) becomes (0.245361,2.777911,-0.751648) as native AIR
+adopts its curve. The point-ballistic residual test cancels and clears landing
+provenance. Native board alignment and contact nevertheless succeed afterward.
+Full Level Out and landing Revert acceptance remain pending. Raw capture hashes,
+metrics, package identity and exact rollback are in the external air-update-hil
+native-checkpoint.json and hardware-returned.json. Spine/hip/acid-drop native
+acceptance remains absent.
+
+Follow-up relinquishes future Level Out motion only after successful AIR201
+submission and completion of the existing transactional body write. The new
+native-owned phase is not adoption, target arrival, landing or score evidence.
+It cannot request another transfer or apply alignment. Normal native flight
+and the independently qualified vert landing observer continue; owner/episode
+loss, bail, OFF and invalid publication still cancel. Fresh original support
+alone can establish landing/Revert, and consumed trigger edges remain consumed.
+Other transfer types and unacknowledged releases retain their prediction guards.
+
+The regression uses the two recorded physical packets with explicit synthetic
+owner/curvature setup and later interpolation.6953 controller and90466 runtime/
+geometry checks pass under ASan/UBSan, plus33 native query contract checks.
+Reinstating the old ballistic assumption fails at the captured handoff. These
+checks do not prove native acceptance of the follow-up: the next bounded run
+must show native-owned tracking through real support, no further vert writes,
+and an independently fresh landing Revert edge.

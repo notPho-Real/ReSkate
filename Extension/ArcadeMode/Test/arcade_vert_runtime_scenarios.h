@@ -246,6 +246,16 @@ void vert_runtime_scene_checks() {
         if(scenario>=5 && scenario<9)check(o.velocity[1]==0 ? vert_math::length(motion.plan.velocity)==0 :
             motion.plan.velocity[0]>0,"real runtime fallback redirects falling motion and invents no apex energy");
         check(!vert_runtime::step(o,f.time,o.native.owner,"frame_valid").plan,"runtime cannot emit a second plan for held input");
+        if(!fault && o.native.state==201) {
+            // Fixture acknowledgement models the successful submit/write seam;
+            // only native acceptance can prove adoption and physical landing.
+            check(vert_runtime::submitted_native_level_out(o.native,f.time,motion.plan),"runtime accepts the completed Level Out handoff");
+            check(vert_math::length(vert_runtime::alignment(o.native,f.time))==0,"runtime withdraws alignment at handoff");
+            ++o.native.physics_step;o.native.sampled_at+=17;o.velocity[1]+=1.3f;o.velocity[2]-=.6f;context();
+            const auto native_owned=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+            check(native_owned.native_flight && !native_owned.plan && !native_owned.aligning,
+                "native AIR adoption remains unshaped by ordinary or vert motion writers");
+        }
         check(f.calls==f.pops && f.calls==f.frees,"runtime query allocations are released on success and rejection");
     }
     for(unsigned scene=0;scene<5;++scene)for(float yaw:{0.f,.8f,2.1f})for(float shift:{0.f,1000.f}) {
