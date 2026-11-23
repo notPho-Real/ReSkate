@@ -59,8 +59,10 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
     const auto& frame=observation.native;
     if(!frame.valid) {
         [[maybe_unused]] const auto before=controller.phase();
+        [[maybe_unused]] const auto previous=controller.observation().native;
+        const char* gap_rejection="not_correlation";
         const bool transition=frame_reason && std::strcmp(frame_reason,"frame_correlation")==0 &&
-            correlation && live && controller.publication_gap(*correlation,*live,physical_owner,now);
+            correlation && live && controller.publication_gap(*correlation,*live,physical_owner,now,&gap_rejection);
         if(transition || (frame_reason && std::strcmp(frame_reason,"frame_lock_busy")==0))
             controller.unavailable(now,physical_owner,observation.enabled,observation.contested);
         else controller.observe(observation);
@@ -70,14 +72,16 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
         if(lost_history || now<last_unavailable || now-last_unavailable>=250) {
             last_unavailable=now;
             logging::log(logging::Level::info,logging::Channel::skater,
-                "ARCADE VERT UNAVAILABLE: reason={} before={} phase={} landing_pending={} previous_ms={} now={} supported={} up_y={} mismatch={} original_step={} original_ms={} original_state={} live_state={} original_mode={} live_mode={} original_contacts={} live_contacts={} original_stance={} live_stance={}.",
+                "ARCADE VERT UNAVAILABLE: reason={} before={} phase={} landing_pending={} previous_ms={} now={} supported={} up_y={} mismatch={} original_step={} original_ms={} original_state={} live_state={} original_mode={} live_mode={} original_contacts={} live_contacts={} original_stance={} live_stance={} previous_step={} previous_generation={} original_generation={} gap_rejection={}.",
                 frame_reason?frame_reason:"unknown",static_cast<unsigned>(before),static_cast<unsigned>(controller.phase()),controller.landing_contact_pending(),
-                controller.observation().native.sampled_at,now,observation.supported,observation.up[1],
+                previous.sampled_at,now,observation.supported,observation.up[1],
                 correlation?correlation->mismatches:0,correlation?correlation->observed.physics_step:0,
                 correlation?correlation->observed.sampled_at:0,correlation?correlation->observed.state:0,live?live->state:0,
                 correlation?correlation->observed.mode:0,live?live->crouch_mode:0,
                 correlation?correlation->observed.contacts:0,live?(live->words[1]&0xc000u):0,
-                correlation?correlation->observed.stance_and_push:0,live?(live->words[0]&0x60u):0);
+                correlation?correlation->observed.stance_and_push:0,live?(live->words[0]&0x60u):0,
+                previous.physics_step,previous.owner_generation,correlation?correlation->observed.owner_generation:0,
+                transition?"retained":gap_rejection);
         }
 #endif
         // Withholding the ordinary Arcade air shaper is not motion authority.

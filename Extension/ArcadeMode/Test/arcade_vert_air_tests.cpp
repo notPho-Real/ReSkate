@@ -6,6 +6,7 @@
 #include "Engine/Game/Abi/orientation_target.h"
 #include <cstdlib>
 #include <iostream>
+#include <string_view>
 using namespace dingosdk::arcade_mode;
 using namespace vert_math;
 namespace {
@@ -216,6 +217,62 @@ struct LandingFixture {
     NativeInputCorrelation gap() const {return {o.native,NativeInputCorrelation::mode_changed|NativeInputCorrelation::contacts_changed};}
     NativeRequestSample live() const {NativeRequestSample s{};s.valid=true;s.state=201;s.crouch_mode=1;s.words[1]=0x8000;return s;}
 };
+void publication_rejection_evidence() {
+    LandingFixture x(60,false);auto gap=x.gap();auto live=x.live();const char* reason{};
+    // Diagnostics must identify the missing boundary without widening it.
+    gap.observed.physics_step+=3;
+    check(!x.c.publication_gap(gap,live,x.o.native.owner,x.o.native.sampled_at+18,&reason) &&
+        std::string_view(reason)=="original_step_gap","more than two unobserved native steps still refuse history");
+    gap=x.gap();++gap.observed.owner_generation;
+    check(!x.c.publication_gap(gap,live,x.o.native.owner,x.o.native.sampled_at+18,&reason) &&
+        std::string_view(reason)=="generation","generation rejection is independently observable");
+    gap=x.gap();
+    check(!x.c.publication_gap(gap,live,x.o.native.owner,x.o.native.sampled_at+101,&reason) &&
+        std::string_view(reason)=="original_age","stale original publication is independently observable");
+}
+void direct_landing_contact_boundary() {
+    // Native fdf trace: step5929 idle201/mode2/0 contacts was followed by
+    // live100/mode1/c00018ms later (mismatch224), with unchanged stance.
+    // Identity and flight setup below are fixture tokens, not captured pointers.
+    for(unsigned fault=0;fault<9;++fault) {
+        LandingFixture x(60,false);auto d=x.gap();auto live=x.live();const auto original=x.o.native;
+        d.mismatches|=NativeInputCorrelation::state_changed;live.state=100;live.words[1]=0xc000;
+        auto owner=original.owner;auto now=original.sampled_at+18;
+        if(fault==1)++owner.core;
+        if(fault==2)++d.observed.owner_generation;
+        if(fault==3)live.state=500;
+        if(fault==4)d.mismatches&=~NativeInputCorrelation::state_changed;
+        if(fault==5)live.words[1]=0;
+        if(fault==6)live.words[0]=0x20;
+        if(fault==7)now=original.sampled_at+101;
+        if(fault==8)d.observed.flip_id=3;
+        check(x.c.publication_gap(d,live,owner,now)==(fault==0),
+            "captured direct idle AIR to riding contact retains only qualified landing lineage");
+        if(fault)continue;
+        x.c.unavailable(now,owner,true,false);
+        check(!x.c.eligible(original,now) && !x.c.consume(original,now,x.o.velocity) &&
+            length(x.c.alignment(original,now))==0 && !x.c.landing().ready(original,now),
+            "live touchdown mismatch cannot execute motion or Revert");
+        ++x.o.native.physics_step;x.o.native.sampled_at=now+1;
+        x.o.native.airborne=false;x.o.native.state=100;x.o.native.mode=1;x.o.native.contacts=0xc000;
+        ++x.o.native.air_departure;x.o.supported=false;x.o.velocity={0,0,-2.2928247f};
+        x.o.up=x.o.contact_normal={0,1,0};x.o.contacted_shape={7,8,9};x.c.observe(x.o);
+        check(!x.c.landing().ready(x.o.native,x.o.native.sampled_at),"original riding without support cannot establish Revert");
+        ++x.o.native.physics_step;x.o.native.sampled_at+=x.dt;x.o.supported=true;x.c.observe(x.o);
+        check(x.c.landing().ready(x.o.native,x.o.native.sampled_at),"original wheel support confirms direct touchdown");
+        for(unsigned channel=0;channel<2;++channel) {
+            TriggerPress press;press.press.sequence=channel+1;press.press.at=original.sampled_at;
+            press.press.token={InputSource::triggers,static_cast<std::int16_t>(channel),InputEdge::press};
+            press.context=InputContext::air;press.native=InputNativeContext::from_frame(original);
+            const auto current=InputNativeContext::from_frame(x.o.native);
+            const auto decision=qualify_vert_trigger(x.c,press,current,x.o.native.sampled_at);
+            check(decision.owner==TriggerOwner::landing_revert && decision.ready,"LT and RT retain bounded direct-touchdown Revert ownership");
+            press.owner=TriggerOwner::transfer;
+            check(qualify_vert_trigger(x.c,press,current,x.o.native.sampled_at).owner==TriggerOwner::none,
+                "transfer edge cannot replay as direct-touchdown Revert");
+        }
+    }
+}
 void landing_contact_boundary() {
     for(unsigned rate:{30u,60u,120u})for(bool released:{false,true})for(unsigned fault=0;fault<13;++fault) {
         LandingFixture x(rate,released);auto d=x.gap();auto live=x.live();auto owner=x.o.native.owner;auto now=x.o.native.sampled_at+1;
@@ -1036,4 +1093,4 @@ void input_edges() {
     }
 }
 }
-int main(){recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

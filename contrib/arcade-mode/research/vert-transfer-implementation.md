@@ -326,3 +326,34 @@ source still needs Windows CI and a new representative native no-trigger run
 before Level Out input or transfer acceptance. Original trial and package proof
 are retained in the external vert-transfers-20261122/contact-hil and
 contact-package artifact directories. Core ground control dispatch is unchanged.
+
+## First qualified native AIR and direct touchdown
+
+Full CI45089747524 validated fdf00b79 (148 preflight and136 upstream tests),
+DLL c33adb44c5a4649d564910f4fbe64fb6ba42325a39d5379eddfdbecc54dca274.
+The no-trigger Mega Park run recorded469 physical observations at actual and
+cached60Hz with one owner. Curved support survived push onset at5810 and
+original5815 entered native_air. No transfer plan was submitted. This proves
+that recognition path, not natural vert return: native motion still carried
+the skater behind the ramp onto flat support. Natural return remains open.
+
+A separate bounded fresh-LT trial delivered kernel255 and SDL32767 but lost
+recognition before AIR at15642, original100/mode1/contact0 versus live rear
+contact4000. No transfer plan ran. Original publications4343/15640..15644
+show c000 ->4000 ->0 ->4000 ->AIR, but the old loss diagnostic erased the
+controller previous frame before printing it. It cannot establish which
+admission precondition failed. The new loss record preserves previous step,
+time and generation and names the rejected prerequisite. Step, age, actor and
+owner limits are unchanged; no widened admission is justified by this capture.
+
+The qualified no-input run independently exposed touchdown mismatch224:
+original5929 idle201/mode2/no contact -> live100/mode1/c00018ms later.
+A focused regression fails under the old mode/contact-only bridge. The same
+bridge now accepts simultaneous riding publication, immediately withdrawing
+transfer motion and tilt. Original native support must still establish landing;
+the mismatch alone cannot execute Revert. Unit and runtime tests cover LT/RT
+reservation, missing support, stale or changed owners, and consumed-transfer
+rejection. Strict ASan/UBSan:6841 vert checks and90233 geometry/runtime checks;
+development diagnostic format compilation passes. Native Revert, physical
+Level Out and all transfers remain unaccepted. Captures and hash provenance
+are in the external vert-transfers-20261122/push-boundary-hil workspace.

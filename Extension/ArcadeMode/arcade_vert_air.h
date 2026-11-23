@@ -294,15 +294,20 @@ public:
     // This retains history only. It cannot manufacture an admitted input frame,
     // refresh a launch deadline, execute a plan, or establish a landing.
     bool publication_gap(const NativeInputCorrelation& correlation,const NativeRequestSample& live,
-            const NativeInputOwner& owner,std::uint64_t now) noexcept {
+            const NativeInputOwner& owner,std::uint64_t now,const char** rejection=nullptr) noexcept {
+        const auto reject=[&](const char* reason) {if(rejection)*rejection=reason;return false;};
+        if(rejection)*rejection="transition_kind";
         using D=NativeInputCorrelation;
         const auto& f=correlation.observed;
         constexpr auto allowed=D::state_changed|D::contacts_changed|D::mode_changed|D::stance_changed;
-        if(!correlation.mismatches || (correlation.mismatches&~allowed) || !f.valid || !live.valid ||
-           !owner.valid() || f.owner!=owner || !previous_.native.valid || owner!=previous_.native.owner ||
-           f.owner_generation!=previous_.native.owner_generation || f.physics_step<previous_.native.physics_step ||
-           f.physics_step-previous_.native.physics_step>2 || now<f.sampled_at || now-f.sampled_at>100 ||
-           f.mode>2)return false;
+        if(!correlation.mismatches || (correlation.mismatches&~allowed))return reject("mismatch_kind");
+        if(!f.valid || !live.valid || !previous_.native.valid)return reject("missing_observation");
+        if(!owner.valid() || f.owner!=owner || owner!=previous_.native.owner)return reject("owner");
+        if(f.owner_generation!=previous_.native.owner_generation)return reject("generation");
+        if(f.physics_step<previous_.native.physics_step)return reject("step_reversed");
+        if(f.physics_step-previous_.native.physics_step>2)return reject("original_step_gap");
+        if(now<f.sampled_at || now-f.sampled_at>100)return reject("original_age");
+        if(f.mode>2)return reject("original_mode");
         const auto stance=live.words[0]&0x60u;
         const bool push_changed=stance!=f.stance_and_push;
         const auto contacts=live.words[1]&0xc000u;
@@ -334,9 +339,14 @@ public:
                previous_.native.selection_object!=f.selection_object)return false;
         } else if(correlation.mismatches&D::stance_changed)return false;
         if(correlation.mismatches&D::mode_changed) {
-            const bool touchdown=correlation.mismatches==(D::mode_changed|D::contacts_changed) &&
+            // Riding can publish in the same live observation as wheel contact
+            // and mode1. It withdraws flight authority just like partial AIR
+            // contact; only a subsequent original supported frame proves landing.
+            const bool riding=live.state==100 || live.state==103;
+            const auto touchdown_changes=D::mode_changed|D::contacts_changed|(riding?D::state_changed:0u);
+            const bool touchdown=correlation.mismatches==touchdown_changes &&
                 (phase_==VertPhase::native_air || phase_==VertPhase::requested || phase_==VertPhase::released) &&
-                same_flight(f) && landing_.flight(f) && f.state==201 && live.state==201 &&
+                same_flight(f) && landing_.flight(f) && f.state==201 && (live.state==201 || riding) &&
                 f.mode==2 && live.crouch_mode==1 && !f.contacts &&
                 (contacts==0x4000u || contacts==0x8000u || contacts==0xc000u) &&
                 f.sampled_at>=takeoff_.native.sampled_at && f.sampled_at-takeoff_.native.sampled_at>=150 &&

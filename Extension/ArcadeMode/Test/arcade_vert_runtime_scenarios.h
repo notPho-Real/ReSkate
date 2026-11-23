@@ -37,7 +37,7 @@ bool local_component_owner(const SurfaceGeometryBody& shape,std::uintptr_t entit
 }
 }
 void vert_runtime_mode_gap_checks() {
-    for(unsigned fault=0;fault<2;++fault) {
+    for(bool direct:{false,true})for(unsigned fault=0;fault<2;++fault) {
         vert_runtime::cancel();Fixture f;f.allow_world_owner=f.unknown=true;f.curve_radius=4;
         VertObservation o;o.enabled=o.supported=true;o.native.valid=true;o.native.owner={1,2,3,4,5};
         o.native.owner_generation=o.native.contact_generation=o.native.action_generation=o.native.mode_generation=1;
@@ -76,16 +76,19 @@ void vert_runtime_mode_gap_checks() {
             (void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
         }
         diagnostic={o.native,NativeInputCorrelation::mode_changed|NativeInputCorrelation::contacts_changed};
-        live.crouch_mode=1;live.words[1]=0x8000;missing=o;missing.native={};
+        live.crouch_mode=1;live.words[1]=direct?0xc000u:0x8000u;missing=o;missing.native={};
+        if(direct){live.state=100;diagnostic.mismatches|=NativeInputCorrelation::state_changed;}
         const auto contact_gap=vert_runtime::step(missing,f.time+1,o.native.owner,"frame_correlation",&diagnostic,&live);
         check(contact_gap.preserve_native && !contact_gap.native_flight && !contact_gap.plan && !contact_gap.aligning,
             "real runtime withdraws transfer motion while preserving bounded landing history");
-        ++o.native.physics_step;o.native.sampled_at+=17;o.native.mode=1;o.native.contacts=0x8000;
-        o.velocity[1]=0;context();
-        const auto partial=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
-        check(partial.preserve_native && !partial.native_flight && !partial.plan && !partial.aligning &&
-            !vert_runtime::surface(f.time,o.native,{}).can_transfer,
-            "original AIR contact preserves native response without transfer or tilt authority");
+        o.native.mode=1;o.velocity[1]=0;
+        if(!direct) {
+            ++o.native.physics_step;o.native.sampled_at+=17;o.native.contacts=0x8000;context();
+            const auto partial=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+            check(partial.preserve_native && !partial.native_flight && !partial.plan && !partial.aligning &&
+                !vert_runtime::surface(f.time,o.native,{}).can_transfer,
+                "original AIR contact preserves native response without transfer or tilt authority");
+        }
         ++o.native.physics_step;o.native.sampled_at+=17;o.native.state=100;o.native.airborne=false;
         ++o.native.air_departure;o.native.contacts=0xc000;o.up=o.contact_normal={0,1,0};context();
         (void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
