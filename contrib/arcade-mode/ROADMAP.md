@@ -17,9 +17,11 @@ ramp. Its fresh-LT Level Out trial submitted a bounded plan but produced a large
 next-step velocity spike and cancelled; physical Level Out is **not accepted**.
 Pinned executable inspection identified the missing AIR201 curve-change
 notification when using the pop setter. The integrated follow-up uses the native
-AIR updater and leaves selection/rebasing to its ordinary tick; state200 and
-contact launches remain unchanged. Its 28 contract checks pass with an old-route
-failure; Windows compilation and exact-candidate native motion remain pending.
+AIR updater and leaves selection/rebasing to its ordinary tick. Its packet uses
+the current AIR-specific tuning pair through the verified native accessor;
+state200 and contact launches remain unchanged. Its 33 contract checks pass with
+old-route and generic-settings failures; Windows compilation and exact-candidate
+native motion remain pending.
 
 The earlier `6f132763` Mega Park trial observed a **3.301-second sampled physical Manual hold**:
 97 of 100 observations qualified, with a maximum 107ms qualified gap, stable
@@ -108,7 +110,7 @@ conditions. No current feature has blanket owner acceptance from this checkpoint
 | 3 / RC5.2 grinds | Bluntslide X→Y/X→X continues into Tailslide/Smith. Y→B/B→B continues into Nosegrind/Crooked. Established5-0 can now reach Noseslide/Nosebluntslide through independently completed50-50 and Nosegrind legs; one original request, fixed total deadline, exact segment and retired leases. | 48,100 composed sanitizer checks pass at30/60/120Hz; old source fails the new5-0 routes. Qualified horizontal segment≥12m does not guarantee enough remaining travel. Full native chains remain unverified. | M; preserve each completion and final actor evidence; extend only proven native routes. |
 | 4 / RC5.3 Casper | Manual→Casper→Casper Flip uses one owned body/board clip; integrated drawn seed experiment defaults off. | Authoring/runtime cancellation tests; physical support, visible placement and score continuity still need exact candidate acceptance. | M; finish current entry/exit/friction before additional flatland poses. |
 | 5 / RC5.3 flatland depth | Further grind depth, Railstand, Truckstand, Anti-Casper, Primo and Pogo follow Casper. Core Manual Pivot is now RC5.1. | Upstream pose/mount facilities supply visuals, not physical support or contact. | M–L; reuse owned playback and permission-gated plugin APIs; establish physical admission first. |
-| 6 / RC6 environment | Experimental vert recognition, Level Out and shared acid-drop/spine/hip solver reuse native ownership and generalized geometry. AIR201 replacements now use the native curve updater rather than a new pop. | 7feb recognizes AIR and retains direct touchdown; natural ramp return fails. Its Level Out produced a velocity spike. The updater correction passes 28 contract checks plus unchanged vert/runtime suites; physical transfers remain unaccepted. | M–L; compile the AIR update correction once, then verify replacement timing and physical motion; natural return remains separate. |
+| 6 / RC6 environment | Experimental vert recognition, Level Out and shared acid-drop/spine/hip solver reuse native ownership and generalized geometry. AIR201 replacements use the native curve updater and current AIR tuning. | 7feb recognizes AIR and retains direct touchdown; natural ramp return fails. Its Level Out produced a velocity spike. The updater/settings correction passes 33 contract checks plus unchanged vert/runtime suites; physical transfers remain unaccepted. | M–L; compile the combined AIR correction, then verify replacement timing and physical motion; natural return remains separate. |
 | 7 / RC7+ | Specials, advanced flatland, skitching, larger combos and challenges. | Deferred behind responsive core and environment. | L; no current implementation action. |
 
 Representative acceptance uses only the scenarios affected by a change; all eight

@@ -14,6 +14,8 @@ void check(bool ok,const char* why){++checks;if(!ok){std::fprintf(stderr,"FAIL: 
 struct Query {
     bool pending{},completed{},air_update{},changed{},selected{},owner{true};
     unsigned submissions{},selections{},rebases{},frame{27};
+    bool settings_valid{true};
+    float first{.125f},second{2.5f};
     NativeTrajectoryParameters packet{};
     bool submit(std::uintptr_t entry,float* values) {
         if(pending)return false;
@@ -30,7 +32,7 @@ struct Query {
         select();if(changed){frame=0;++rebases;}++frame;
     }
     bool update(const NativeTrajectoryParameters& values) {
-        return trajectory_detail::update_air(values,[&]{return owner && !pending;},
+        return trajectory_detail::update_air(values,[&](float& a,float& b){a=first;b=second;return settings_valid;},[&]{return owner && !pending;},
             [&](std::uintptr_t entry,float* packet_values){return submit(entry,packet_values);});
     }
 };
@@ -39,6 +41,9 @@ NativeTrajectoryParameters recorded() {
     // contact-chain-hil/vert_level_out_7feb.json, physical step48615.
     const float velocity[]{-.00091552734375f,.8800638914108276f,-2.773805618286133f};
     std::copy_n(velocity,3,p.values.begin()+native::parameter_velocity/sizeof(float));
+    // Synthetic distinct settings expose accidental reuse; only velocity above is captured.
+    p.values[native::parameter_setting_first/sizeof(float)]=19.f;
+    p.values[native::parameter_setting_second/sizeof(float)]=37.f;
     p.values[native::parameter_reference_velocity/sizeof(float)+1]=-2.96978235f;
     reinterpret_cast<unsigned char*>(p.values.data())[native::parameter_launch]=1;
     return p;
@@ -69,6 +74,17 @@ void handoff() {
 void packets_and_refusal() {
     const auto p=recorded();Query q;check(q.update(p),"recorded finite packet accepted");
     const auto* bytes=reinterpret_cast<const unsigned char*>(q.packet.values.data());
+    check(q.packet.values[native::parameter_setting_first/sizeof(float)]==q.first &&
+        q.packet.values[native::parameter_setting_second/sizeof(float)]==q.second,
+        "AIR uses its native tuning pair instead of the generic launch pair");
+    check(p.values[native::parameter_setting_first/sizeof(float)]==19.f &&
+        p.values[native::parameter_setting_second/sizeof(float)]==37.f,"caller settings unchanged");
+    Query missing;missing.settings_valid=false;
+    check(!missing.update(p) && !missing.submissions,"unavailable tuning asset refuses native update");
+    Query invalid_settings;invalid_settings.first=std::numeric_limits<float>::quiet_NaN();
+    check(!invalid_settings.update(p) && !invalid_settings.submissions,"nonfinite first setting refused");
+    invalid_settings.first=1.f;invalid_settings.second=std::numeric_limits<float>::infinity();
+    check(!invalid_settings.update(p) && !invalid_settings.submissions,"nonfinite second setting refused");
     check(bytes[native::parameter_launch]==0,"AIR does not request slope/pop shaping");
     for(unsigned i=0;i<3;++i)check(q.packet.values[native::parameter_velocity/sizeof(float)+i]==
         q.packet.values[native::parameter_reference_velocity/sizeof(float)+i],"world velocity pair is coherent");

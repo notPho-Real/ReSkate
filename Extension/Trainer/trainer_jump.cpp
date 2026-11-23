@@ -1,5 +1,6 @@
 #include "trainer_jump.h"
 #include "trainer_trajectory_update.h"
+#include "Engine/Game/Build/20260929/physics_tuning.h"
 #include "Engine/Core/Hooks/hooks.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/addresses.h"
@@ -364,11 +365,26 @@ bool submit_native_air_trajectory(std::uintptr_t base, std::uintptr_t trajectory
        !known_bytes(base+native::update_air.rva,native::update_air.bytes.data(),native::update_air.bytes.size()) ||
        !known_bytes(base+native::update_air_call.rva,native::update_air_call.bytes.data(),native::update_air_call.bytes.size()) ||
        !known_bytes(base+native::update_notification.rva,native::update_notification.bytes.data(),native::update_notification.bytes.size()))return false;
+    for(const auto& contract:{native::settings_group,native::air_settings_first,native::air_settings_second})
+        if(!known_bytes(base+contract.rva,contract.bytes.data(),contract.bytes.size()))return false;
+    const auto settings=[&](float& first,float& second) noexcept {
+        namespace tuning=game::build::v20260929::physics_tuning;
+        __try {
+            const auto asset=*reinterpret_cast<const std::uintptr_t*>(base+tuning::asset_global);
+            if(!asset || *reinterpret_cast<const std::uintptr_t*>(asset+tuning::asset_type_offset)!=
+                base+tuning::asset_type_info)return false;
+            const auto group=reinterpret_cast<std::uintptr_t (*)()>(base+native::settings_group.rva)();
+            if(group!=asset+native::settings_group_offset)return false;
+            first=*reinterpret_cast<const float*>(group+native::air_setting_first);
+            second=*reinterpret_cast<const float*>(group+native::air_setting_second);
+            return asset==*reinterpret_cast<const std::uintptr_t*>(base+tuning::asset_global);
+        } __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
+    };
     const auto ready=[&]() noexcept {
         __try { return *reinterpret_cast<const std::uint8_t*>(trajectory+native::query_pending)==0; }
         __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
     };
-    return trajectory_detail::update_air(parameters,ready,[&](std::uintptr_t rva,float* packet) noexcept {
+    return trajectory_detail::update_air(parameters,settings,ready,[&](std::uintptr_t rva,float* packet) noexcept {
         // The native updater owns collision selection and the changed-curve
         // notification. Calling select_result here would consume that handoff.
         return call_guarded(reinterpret_cast<SetTrajectory>(base+rva),trajectory,packet);

@@ -409,3 +409,15 @@ notification semantics. It fails when the old launch route is substituted;
 checks. This verifies routing and refusal behavior, not native motion. A new
 compiled candidate and one consolidated physical Level Out test are required.
 Spine, hip, acid drop, landing Revert and normal ramp return remain unaccepted.
+
+AIR packet preparation follow-up: the native AIR caller replaces two generic
+rig query settings before submission. The verified shared tuning accessor
+returns the existing physics tuning asset's group; the wrapper checks that
+asset's type and identity, accessor/caller bytes, and finite values. It copies
+the same two AIR fields into the request without changing the generic launch
+path or tuning asset. Field units and names are not inferred. The contract test
+now has33 checks, including a negative control that fails when generic settings
+are retained, unavailable/invalid settings refusal, and caller-packet preservation.
+The distinct settings in that test are synthetic sentinels, not captured values.
+All three additional fingerprints match the pinned executable. The correction
+requires a changed runtime build; it adds no native gameplay acceptance.
