@@ -17,7 +17,11 @@ physical Manual for 3.315s, performed native `bsmanualrevert`, continued support
 fakie `tailmanual`, then executed `ollie` and landed. All 67 consecutive original
 Pivot motion rows are retained: board/hips meet the unchanged 180±30-degree and
 30-degree coherence criteria at 697ms, within the existing 1100ms window. The
-diagnostic rejects prematurely at 608ms; that does not cancel physical balance.
+old diagnostic rejects prematurely at 608ms; that does not cancel physical balance.
+The source correction now continues observing supported hips convergence within
+the original 1100ms window. It changes no motion or tolerance: 218,271 lifecycle
+checks pass under ASan/UBSan, and replay of all 67 retained native rows completes
+at 697ms. The previous implementation fails the new delayed-convergence case.
 The original scoring producer advances 103→118 and then moves 118 from current
 to previous line. The displayed ×5/590 is not proof of a multiplied native bank.
 
@@ -26,11 +30,26 @@ The separate ascending-Flip trial withheld A/X when a readiness observation aged
 readiness loss accurately and may await a fresh observation only while already
 neutral inside the original prerequisite deadline. Active input still requires
 the unchanged 100ms freshness. 158 focused runner tests pass; no runtime rebuild
-is needed for this test-only fix. No Flip retry occurred. Exact prior 5ae files
-were restored with 156 rollback sets and the score pack preserved. Switch remains
+is needed for this test-only fix. The subsequent 922 trial delivered A release
+and fresh X together: native Kickflip appeared at 1.638s with upward velocity
+4.834m/s, before the sampled 1.821s apex. Independent board-basis samples unwrap
+361.65 degrees of physical flip, followed by same-owner supported riding.
+The native action record is `kickflip` and awards 75 points. Its settlement was
+first sampled after OFF, so normal pre-OFF banking is not inferred.
+The subsequent compound trial sustains a sampled 3.290s physical Manual,
+executes `bsmanualrevert`, continues supported `tailmanual`, then launches and
+executes native `kickflip` before supported landing. Its 67 consecutive original
+Pivot rows meet the unchanged rotation/coherence criteria at 705ms; final board
+and hips rotation are 194.25 and 202.44 degrees. The native producer settles
+333 points from current to previous line at 19.347s, before OFF at 31.661s.
+This verifies representative native chain banking, not the displayed multiplier.
+The retained video shows balance HUD, physical Pivot, flight and continued riding.
+The earlier session restored exact prior 5ae files with 156 rollback sets and
+the score pack preserved. Switch remains
 blocked at the unverified native ChangeStance consumer owner/value-slot/phase;
-another identical B-gesture trial is not justified. Nose Manual, ascending Flip,
-multiplied native banking/bail and full OFF control/camera acceptance remain open.
+another identical B-gesture trial is not justified. Separate Nose Manual,
+Grind-chain, multiplied native banking/bail and full OFF control/camera acceptance
+remain open. The Pivot observation fix still needs its exact compiled candidate.
 
 The 7feb native no-input trial recognized real AIR and retained direct-touchdown
 history through original supported riding. Natural return still lands behind the
