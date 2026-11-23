@@ -47,3 +47,7 @@ and capture gates, source/owner failure, every partial-copy/read-back boundary,
 bounded loss/closure, and queue recovery. Existing scalar Manual fixtures retain
 the exact updated consumer with an inactive observation scope. These are offline
 software checks, not native motion acceptance.
+
+The angular fixture composes the body write and subsequent angular-lease
+completion separately. The intervening native Level Out handoff belongs to the
+vert runtime tests; this fixture neither stubs nor claims to exercise that call.

@@ -34,6 +34,15 @@ alignment; actual support and a fresh trigger still govern landing/Revert.
 Checks pass: 6,956 controller, 90,466 geometry/runtime and 33 trajectory contracts.
 The Deck is restored to the prior installation with 153 rollback sets preserved.
 
+Candidate `10954ec7` failed Windows preflight because the ground-writer source
+fixture included the new vert handoff block. The fixture now extracts its angular
+write and completion separately; 2,741 checks pass in both release and DEV with
+ASan/UBSan. A further captured-packet correction measures landing speed along the
+actual support plane: the steep ramp had 9.05m/s tangential speed but only
+0.99m/s horizontal speed. The 1m/s minimum and all contact/ownership requirements
+remain; 6,983 controller checks pass, including pure-impact and flat-ground
+negatives. Compilation and native Revert acceptance of this follow-up are pending.
+
 The earlier `6f132763` Mega Park trial observed a **3.301-second sampled physical Manual hold**:
 97 of 100 observations qualified, with a maximum 107ms qualified gap, stable
 rear-truck support and owner, and visible balance HUD. RT caused physical board

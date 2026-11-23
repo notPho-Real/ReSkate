@@ -136,6 +136,7 @@ bool consume(Adapter& a,const AirMotionOutput& output,const NativeInputFrame& na
 @ANGULAR_RELEASE@
     if(off){release_turn(permitted,true);commit_motion(false,angular_release);return wrote;}
 @ANGULAR_BODY@
+@ANGULAR_COMPLETION@
     return wrote;
 }
 struct Fixture{
