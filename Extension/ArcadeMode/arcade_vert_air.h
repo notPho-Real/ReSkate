@@ -308,6 +308,45 @@ public:
         if(!owner.valid() || f.owner!=owner || owner!=previous_.native.owner)return reject("owner");
         if(f.owner_generation!=previous_.native.owner_generation)return reject("generation");
         if(f.physics_step<previous_.native.physics_step)return reject("step_reversed");
+        if(takeoff_gap_frame_.valid) {
+            const auto& pending=takeoff_gap_frame_;
+            const auto& expected=takeoff_live_;
+            // The first original AIR may confirm the pending takeoff while
+            // live AIR has already entered idle mode. Confirm that exact pair;
+            // neither publication replaces the last physical ramp observation.
+            if(phase_!=VertPhase::rising_support || f.owner!=pending.owner ||
+               f.owner_generation!=pending.owner_generation)return reject("takeoff_owner");
+            if(now<f.sampled_at || now<previous_.native.sampled_at || now-previous_.native.sampled_at>100 ||
+               f.sampled_at<pending.sampled_at || f.physics_step<pending.physics_step ||
+               f.physics_step-pending.physics_step>2 ||
+               static_cast<double>(f.physics_step-previous_.native.physics_step)*f.physics_seconds>.100001)
+                return reject("takeoff_deadline");
+            if(!std::isfinite(f.physics_seconds) || std::abs(f.physics_seconds-pending.physics_seconds)>=.00001f ||
+               !f.airborne || f.rail_family || f.contacts || !f.flip_known || f.flip_id!=-1 ||
+               f.selection_object!=pending.selection_object || f.airborne_episode!=pending.airborne_episode ||
+               f.air_departure!=pending.air_departure || !f.airborne_started_known ||
+               f.airborne_started_at!=pending.airborne_started_at)return reject("takeoff_lineage");
+            const bool live_matches=live.state==expected.state && live.crouch_mode==expected.crouch_mode &&
+                (live.words[1]&0xc000u)==(expected.words[1]&0xc000u) &&
+                (live.words[0]&0x60u)==(expected.words[0]&0x60u);
+            if(f.physics_step==pending.physics_step) {
+                const auto mismatches=(live.state!=f.state?D::state_changed:0u)|
+                    (live.crouch_mode!=f.mode?D::mode_changed:0u)|
+                    ((live.words[1]&0xc000u)!=f.contacts?D::contacts_changed:0u)|
+                    ((live.words[0]&0x60u)!=f.stance_and_push?D::stance_changed:0u);
+                return live_matches && mismatches==correlation.mismatches && f.sampled_at==pending.sampled_at &&
+                    f.state==pending.state && f.mode==pending.mode && f.stance_and_push==pending.stance_and_push &&
+                    f.contact_generation==pending.contact_generation && f.action_generation==pending.action_generation &&
+                    f.mode_generation==pending.mode_generation && f.flip_wait_generation==pending.flip_wait_generation;
+            }
+            if(f.sampled_at<=pending.sampled_at || f.state!=expected.state || f.mode!=expected.crouch_mode ||
+               f.contacts!=(expected.words[1]&0xc000u) || f.stance_and_push!=(expected.words[0]&0x60u))
+                return reject("takeoff_confirmation");
+            if(correlation.mismatches!=D::mode_changed || f.state!=201 || live.state!=201 ||
+               f.mode!=1 || live.crouch_mode!=2 || (live.words[1]&0xc000u) ||
+               (live.words[0]&0x60u)!=f.stance_and_push)return reject("takeoff_successor");
+            takeoff_gap_frame_=f;takeoff_live_=live;return true;
+        }
         bool confirmed_takeoff=false;
         if(f.physics_step-previous_.native.physics_step>2) {
             // Several consecutive original/live contact edges can withhold a
@@ -422,7 +461,7 @@ public:
         const bool legal=air && ((live.state==f.state && !contacts) ||
             (f.state==200 && live.state==201 && !contacts) || vert_riding_contact_mask(live.state,contacts));
         if(legal && confirmed_takeoff) {
-            takeoff_gap_frame_=f;
+            takeoff_gap_frame_=f;takeoff_live_=live;
             if(push_changed) {push_gap_selection_=f.selection_object;push_gap_stance_=stance;}
         }
         return legal;
@@ -466,7 +505,9 @@ public:
                f.airborne_episode!=gap.airborne_episode || f.air_departure!=gap.air_departure ||
                !f.airborne_started_known || f.airborne_started_at!=gap.airborne_started_at ||
                !f.flip_known || f.flip_id!=-1 || f.selection_object!=gap.selection_object ||
-               f.mode>2 || std::abs(f.physics_seconds-gap.physics_seconds)>=.00001f) {
+               f.state!=takeoff_live_.state || f.mode!=takeoff_live_.crouch_mode ||
+               f.stance_and_push!=(takeoff_live_.words[0]&0x60u) ||
+               std::abs(f.physics_seconds-gap.physics_seconds)>=.00001f) {
                 cancel();previous_={};return;
             }
         }
@@ -668,8 +709,8 @@ public:
     VertLandingWindow& landing() noexcept {return landing_;}
     const VertLandingWindow& landing() const noexcept {return landing_;}
     const VertObservation& observation() const noexcept {return previous_;}
-    const NativeInputFrame& publication_frame() const noexcept {return publication_frame_;}
-    const NativeRequestSample& publication_sample() const noexcept {return publication_live_;}
+    const NativeInputFrame& publication_frame() const noexcept {return takeoff_gap_frame_.valid?takeoff_gap_frame_:publication_frame_;}
+    const NativeRequestSample& publication_sample() const noexcept {return takeoff_gap_frame_.valid?takeoff_live_:publication_live_;}
     const VertRampSupport& origin() const noexcept {return origin_;}
     const VertPlan& released_plan() const noexcept {return released_plan_;}
     SurfaceGeometryVector direction() const noexcept {return direction_;}
@@ -687,7 +728,7 @@ private:
     VertPlan plan_{},released_plan_{};
     std::uint64_t released_at_{},unavailable_at_{};
     NativeInputFrame planned_{},landing_gap_frame_{},publication_frame_{},takeoff_gap_frame_{};
-    NativeRequestSample publication_live_{};
+    NativeRequestSample publication_live_{},takeoff_live_{};
     static bool finite_motion(const VertObservation& o) noexcept {
         return vert_math::finite(o.position) && vert_math::finite(o.velocity);
     }

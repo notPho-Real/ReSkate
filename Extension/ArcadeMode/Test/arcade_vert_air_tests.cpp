@@ -333,6 +333,54 @@ void confirmed_takeoff_publication() {
             check(!rejected.eligible(changed.native,changed.native.sampled_at),
                 "fresh physical continuation cannot substitute another flight, actor, contact or stale history");
         }
+        check(c.publication_gap(gap,live,owner,1825241286),
+            "repeated takeoff publication neither duplicates admission nor advances its deadline");
+        auto waiting=c;
+        NativeInputCorrelation mode_gap{o.native,NativeInputCorrelation::mode_changed};
+        auto mode_live=live;mode_live.crouch_mode=2;
+        for(unsigned successor_fault=0;successor_fault<19;++successor_fault) {
+            auto candidate=waiting;auto changed=mode_gap;auto expected=mode_live;auto who=owner;
+            auto at=std::uint64_t{1825241300};
+            if(successor_fault==1)++who.core;
+            if(successor_fault==2)++changed.observed.owner_generation;
+            if(successor_fault==3)++changed.observed.selection_object;
+            if(successor_fault==4)++changed.observed.airborne_episode;
+            if(successor_fault==5)++changed.observed.air_departure;
+            if(successor_fault==6)++changed.observed.airborne_started_at;
+            if(successor_fault==7)changed.observed.stance_and_push=0x40;
+            if(successor_fault==8)changed.observed.contacts=0x4000;
+            if(successor_fault==9)changed.observed.mode=2;
+            if(successor_fault==10)changed.observed.physics_seconds=1.f/30;
+            if(successor_fault==11)expected.state=300;
+            if(successor_fault==12)at=1825241326;
+            if(successor_fault==13)changed.observed.physics_step+=2;
+            if(successor_fault==14)changed.observed.sampled_at=f.sampled_at;
+            if(successor_fault==15)changed.observed.flip_id=3;
+            if(successor_fault==16)changed.observed.rail_family=true;
+            if(successor_fault==17)expected.words[1]=0x4000;
+            if(successor_fault==18)expected.words[0]=0x40;
+            check(candidate.publication_gap(changed,expected,who,at)==(successor_fault==0),
+                "pending takeoff accepts only exact idle201 mode successor within original physical deadline");
+        }
+        check(waiting.publication_gap(mode_gap,mode_live,owner,1825241300),
+            "source-legal201 mode1-to2 confirms the pending takeoff live frame without physical admission");
+        waiting.unavailable(1825241300,owner,true,false);
+        check(waiting.phase()==VertPhase::rising_support && !waiting.eligible(o.native,1825241300) &&
+            !waiting.consume(o.native,1825241300,o.velocity),"pending mode successor has no flight or transfer authority");
+        check(waiting.publication_gap(mode_gap,mode_live,owner,1825241301),
+            "repeated identical successor observation preserves history without advancing it");
+        auto changed_repeat=mode_gap;++changed_repeat.observed.action_generation;
+        check(!waiting.publication_gap(changed_repeat,mode_live,owner,1825241301),
+            "same-step publication cannot replace action lineage");
+        auto expired=waiting;expired.unavailable(1825241326,owner,true,false);
+        check(!expired.preserves_native(),"mode successor never renews the original physical deadline");
+        auto continued=o;continued.native.physics_step=30087;continued.native.sampled_at=1825241306;continued.native.mode=2;
+        auto unconfirmed=waiting;unconfirmed.observe(o);
+        check(!unconfirmed.eligible(o.native,o.native.sampled_at),"older original cannot confirm the pending mode successor");
+        waiting.observe(continued);
+        check(waiting.eligible(continued.native,continued.native.sampled_at) &&
+            !waiting.consume(continued.native,continued.native.sampled_at,continued.velocity),
+            "fresh correlated original confirms successor and preserves unmodified flight");
         c.observe(o);
         check(c.eligible(o.native,o.native.sampled_at),"only fresh correlated AIR establishes flight after confirmed takeoff publication");
         check(!c.consume(o.native,o.native.sampled_at,o.velocity),"no input after takeoff chain preserves native motion");

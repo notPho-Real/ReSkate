@@ -504,3 +504,19 @@ uses its existing test shim. Evidence and raw capture hashes are in external
 `native-owned-hil/hardware-returned.json`. This follow-up has no Windows build or
 native acceptance yet. Level Out completion, Spine/Hip/Acid Drop and landing
 Revert/Manual continuation remain unaccepted; no unchanged hardware retry ran.
+
+
+Adjacent publication review found another source-legal ordering: original201/mode1
+can confirm the pending takeoff while live201 has entered mode2, before any
+correlated physical AIR observation. The096 journal contains original30086/mode1
+and30087/mode2; it does not prove that actual live pairing. A conditional regression
+fails on the preceding source. Pending history now records its exact expected live
+state/mode/contact/stance and permits only this idle-mode successor after original
+confirmation with unchanged flight/actor/cadence. Repeated identical observations
+do not advance history; a correlated original must confirm the successor before
+flight admission. The original physical/lip100ms and two-step confirmation limits
+remain unchanged. Wrong owner/actor/episode/start, contact, stale/reordered steps,
+changed repeated action generations and unsupported transitions reject.
+7059 controller and90466 existing runtime/geometry checks pass with ASan/UBSan;
+DEV logging format syntax also passes. External takeoff-successor-evidence.json
+binds the before/after binaries. This is not additional native gameplay acceptance.
