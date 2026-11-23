@@ -456,3 +456,22 @@ Reinstating the old ballistic assumption fails at the captured handoff. These
 checks do not prove native acceptance of the follow-up: the next bounded run
 must show native-owned tracking through real support, no further vert writes,
 and an independently fresh landing Revert edge.
+
+
+Before the next native run, the retained5f9 normal return exposes a second
+landing provenance rejection: original support6672 has velocity
+(-0.059909,-9.087554,0.983728) and normal(0,0.242980,0.970031).
+Its world-horizontal speed is0.98555m/s, but support-plane speed is9.05444m/s.
+The old1m/s horizontal admission resets the legitimate curved-ramp landing.
+Use speed tangent to the normalized original support plane at the same1m/s
+threshold. Pure normal impacts, slow flat contacts, invalid normals and vertical
+walls still reject; flat-ground behavior is unchanged. No ground input dispatcher
+or native Revert actuator changes. The existing real support, prior descent,
+owner/episode and timing requirements remain authoritative.
+
+The captured packet fails before the fix.27 targeted cases cover that packet,
+yaw equivalents, scaled/zero/nonfinite normals, flat-ground speed and pure-normal
+impacts;6983 controller and90466 runtime/geometry checks pass with ASan/UBSan.
+The external air-update-regression/curved-landing-checkpoint.json binds raw capture
+and test binaries. Neither tangent admission nor CI establishes a native Revert:
+its physical sweep, stance and eventual Manual/combo continuation remain to test.

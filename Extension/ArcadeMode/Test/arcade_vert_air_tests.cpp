@@ -6,6 +6,7 @@
 #include "Engine/Game/Abi/orientation_target.h"
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <string_view>
 using namespace dingosdk::arcade_mode;
 using namespace vert_math;
@@ -962,6 +963,32 @@ void destination_contact_landing() {
             "only actual destination support near the prediction establishes a transfer landing");
     }
 }
+void recorded_curved_landing_speed() {
+    // 5f9 original supported callback6672. Owner/up/timing below are fixtures;
+    // velocity and curved support normal are the captured physical values.
+    for(float yaw:{0.f,.8f,2.4f})for(unsigned scenario=0;scenario<9;++scenario) {
+        const auto turn=[&](Vec v){return Vec{v[0]*std::cos(yaw)-v[2]*std::sin(yaw),v[1],v[0]*std::sin(yaw)+v[2]*std::cos(yaw)};};
+        VertLandingWindow landing;auto o=fly(ground());landing.begin(o);
+        for(unsigned i=0;i<3;++i) {
+            ++o.native.physics_step;o.native.sampled_at+=60;o.velocity={0,-9,0};landing.observe(o);
+        }
+        ++o.native.physics_step;o.native.sampled_at+=17;o.native.airborne=false;o.native.state=100;
+        ++o.native.air_departure;o.native.contacts=0xc000;o.supported=true;o.contacted_shape={7,8,9};
+        o.contact_normal={0,.24298f,.9700313f};o.velocity={-.059908796f,-9.087554f,.9837277f};
+        if(scenario==1)o.velocity=scale(o.contact_normal,-9);
+        if(scenario==2){o.contact_normal={0,1,0};o.velocity={0,-9,0};}
+        if(scenario==3){o.contact_normal={0,1,0};o.velocity={1.1f,0,0};}
+        if(scenario==4){o.contact_normal={0,1,0};o.velocity={.9f,-9,0};}
+        if(scenario==5)o.contact_normal={0,0,1};
+        o.up=turn(o.contact_normal);
+        if(scenario==6)o.contact_normal=scale(o.contact_normal,2);
+        if(scenario==7)o.contact_normal={};
+        if(scenario==8)o.contact_normal[1]=std::numeric_limits<float>::quiet_NaN();
+        o.velocity=turn(o.velocity);o.contact_normal=turn(o.contact_normal);landing.observe(o);
+        check(landing.ready(o.native,o.native.sampled_at)==(scenario==0 || scenario==3 || scenario==6),
+            "real curved landing uses ramp-tangential speed; normal impact, slow flat contact and walls do not qualify");
+    }
+}
 void native_level_out_handoff() {
     // 5f9 original callback17020 ->17021, measured on the same native owner.
     // Curvature/owner tokens and the later interpolation are fixture inputs;
@@ -1233,4 +1260,4 @@ void input_edges() {
     }
 }
 }
-int main(){native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

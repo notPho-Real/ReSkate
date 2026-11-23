@@ -123,8 +123,11 @@ public:
         // extend the last AIR timestamp or establish landing by itself.
         if(!value.supported)return;
         auto normal=value.contact_normal;
+        // A curved transition can carry speed mostly vertically at touchdown.
+        // Require motion along its actual support plane, not world-horizontal
+        // speed or impact velocity into that plane (5f9 original callback6672).
         if((f.state!=100 && f.state!=103) || !unit(normal) || normal[1]<.1f ||
-           dot(value.up,normal)<.5f || std::hypot(value.velocity[0],value.velocity[2])<1 ||
+           dot(value.up,normal)<.5f || length(sub(value.velocity,scale(normal,dot(value.velocity,normal))))<1 ||
            !value.contacted_shape.world) {reset();return;}
         contact_=f;
     }
