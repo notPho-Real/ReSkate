@@ -520,3 +520,32 @@ changed repeated action generations and unsupported transitions reject.
 7059 controller and90466 existing runtime/geometry checks pass with ASan/UBSan;
 DEV logging format syntax also passes. External takeoff-successor-evidence.json
 binds the before/after binaries. This is not additional native gameplay acceptance.
+
+
+Native418aa996 (CI45121122238, DLL622b0285) passed all nine build gates,
+148 preflight and137 integration tests. Its no-trigger native capture again
+shows real curved takeoff and return, but controller admission fails before any
+transfer plan: previous7258, retained7259/state100 expecting live200/mode1 with
+zero contacts/push64, then original7260/state200 against live200 with push0.
+The new diagnostic confirms the same actor, episode3->4, unchanged departure,
+and native start at1830246096ms. The gap is two steps, so the confirmation code
+inside only the longer-gap branch was bypassed. This is a demonstrated routing
+error, not absent original callbacks or grounds to relax freshness checks.
+
+The correction applies the same retained-pair confirmation for short gaps and
+allows push completion while still in200 or progressing to201. Captured original
+7261 confirms200/push0,7262 is201/mode1,7263 is201/mode2. Pending history can
+retain only those source-legal successors after exact expected-live confirmation;
+no input or motion is eligible before correlated physical AIR. The failure
+predicate is trace-bound; physical setup and the later live pairing remain
+explicitly synthetic/conditional. Both sides of the two-step branch, missing or
+mismatched prior proof, stale/reversed/repeated observations, contact and actor/
+owner changes are covered. The old source fails;7195 controller and90466 runtime/
+geometry checks pass under ASan/UBSan, with DEV syntax checks. Evidence is in
+external air-update-regression/short-confirmation-evidence.json.
+
+No LT/RT trial followed this admission failure. The game closed normally and
+exact5ae57786 files were restored with155 rollback sets and score pack unchanged.
+The hardware authority is revoked. The corrected source still needs a compiled
+candidate and native acceptance; physical transfers and landing Revert remain
+unaccepted. No unchanged native retry occurred.

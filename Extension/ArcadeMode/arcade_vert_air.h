@@ -342,13 +342,19 @@ public:
             if(f.sampled_at<=pending.sampled_at || f.state!=expected.state || f.mode!=expected.crouch_mode ||
                f.contacts!=(expected.words[1]&0xc000u) || f.stance_and_push!=(expected.words[0]&0x60u))
                 return reject("takeoff_confirmation");
-            if(correlation.mismatches!=D::mode_changed || f.state!=201 || live.state!=201 ||
-               f.mode!=1 || live.crouch_mode!=2 || (live.words[1]&0xc000u) ||
+            const bool forward=correlation.mismatches==D::state_changed && f.state==200 && live.state==201 &&
+                f.mode==1 && live.crouch_mode==1;
+            const bool idle=correlation.mismatches==D::mode_changed && f.state==201 && live.state==201 &&
+                f.mode==1 && live.crouch_mode==2;
+            if((!forward && !idle) || (live.words[1]&0xc000u) ||
                (live.words[0]&0x60u)!=f.stance_and_push)return reject("takeoff_successor");
             takeoff_gap_frame_=f;takeoff_live_=live;return true;
         }
         bool confirmed_takeoff=false;
-        if(f.physics_step-previous_.native.physics_step>2) {
+        // Exact takeoff confirmation is required even when only one or two
+        // physical steps elapsed. The longer-gap branch is not its eligibility.
+        if(f.physics_step-previous_.native.physics_step>2 ||
+           (f.airborne && f.state==200 && publication_frame_.valid)) {
             // Several consecutive original/live contact edges can withhold a
             // correlated body observation. Each newer original must confirm the
             // preceding live edge before it can continue this history. The
@@ -412,7 +418,7 @@ public:
             if(!(correlation.mismatches&D::stance_changed) ||
                (correlation.mismatches&D::mode_changed) || phase_!=VertPhase::rising_support ||
                ((f.state!=100 && f.state!=103) &&
-                !(confirmed_takeoff && live.state==201 && !contacts && !(stance&0x40u))) || f.rail_family ||
+                !(confirmed_takeoff && (live.state==200 || live.state==201) && !contacts && !(stance&0x40u))) || f.rail_family ||
                (f.stance_and_push^stance)!=0x40u ||
                !f.flip_known || f.flip_id!=-1 || !f.selection_object ||
                !previous_.native.flip_known || previous_.native.flip_id!=-1 ||

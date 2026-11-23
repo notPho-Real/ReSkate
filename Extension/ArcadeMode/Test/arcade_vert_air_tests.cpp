@@ -386,6 +386,65 @@ void confirmed_takeoff_publication() {
         check(!c.consume(o.native,o.native.sampled_at,o.velocity),"no input after takeoff chain preserves native motion");
     }
 }
+void recorded_short_takeoff_confirmation() {
+    // 418 loss diagnostic captures the original/live pair, actor, episode and
+    // start below. Native owner tokens and curved physical setup are synthetic;
+    // the later original states are recorded, their live pairing is conditional.
+    for(unsigned distance:{2u,3u})for(unsigned live_state:{200u,201u})for(unsigned fault=0;fault<15;++fault) {
+        VertAirController c;auto o=ground();o.native.selection_object=4986691520ull;
+        o.native.owner_generation=1723;o.native.physics_seconds=1.f/60;
+        o.native.physics_step=7260-distance;o.native.sampled_at=distance==2?1830246070:1830246055;
+        o.native.stance_and_push=0x40;o.native.airborne_episode=3;o.native.air_departure=0;
+        warm(c,o);c.observe(o);
+        auto prior=o.native;prior.physics_step=7259;prior.sampled_at=1830246081;prior.contacts=0x4000;
+        NativeRequestSample live{};live.valid=true;live.state=fault==2?100:200;live.crouch_mode=1;live.words[0]=0x40;
+        NativeInputCorrelation gap{prior,NativeInputCorrelation::contacts_changed|
+            (fault==2?0u:NativeInputCorrelation::state_changed)};
+        if(fault!=1) {
+            check(c.publication_gap(gap,live,prior.owner,1830246090),"recorded prior ground publication retained");
+            c.unavailable(1830246090,prior.owner,true,false);
+        }
+        auto f=prior;f.physics_step=7260;f.sampled_at=1830246096;f.state=200;f.contacts=0;
+        f.airborne=true;f.airborne_episode=4;f.airborne_started_known=true;f.airborne_started_at=1830246096;
+        live.state=live_state;live.words[0]=0;auto now=std::uint64_t{1830246109};
+        if(fault==3)++f.owner_generation;
+        if(fault==4)++f.selection_object;
+        if(fault==5)++f.airborne_episode;
+        if(fault==6)++f.air_departure;
+        if(fault==7)f.airborne_started_at=prior.sampled_at;
+        if(fault==8)f.flip_id=3;
+        if(fault==9)f.contacts=0x4000;
+        if(fault==10)f.physics_step=prior.physics_step;
+        if(fault==11)f.sampled_at=prior.sampled_at;
+        if(fault==12)now=f.sampled_at+101;
+        if(fault==13)f.stance_and_push=0;
+        if(fault==14)f.physics_seconds=1.f/30;
+        gap={f,NativeInputCorrelation::stance_changed|(live_state==201?NativeInputCorrelation::state_changed:0u)};
+        check(c.publication_gap(gap,live,f.owner,now)==(fault==0),
+            "recorded confirmed200 push clear works on both sides of two-step branch only with exact prior proof");
+        if(fault)continue;
+        c.unavailable(now,f.owner,true,false);
+        check(!c.eligible(f,now) && !c.consume(f,now,o.velocity),"short confirmation grants no input or physical motion");
+        check(c.publication_gap(gap,live,f.owner,now+1),"same short publication can repeat without another action");
+        f.stance_and_push=0;
+        if(live_state==200) {
+            f.physics_step=7261;f.sampled_at=1830246117;live.state=201;
+            gap={f,NativeInputCorrelation::state_changed};
+            auto invalid=c;auto contact=live;contact.words[1]=0x4000;
+            check(!invalid.publication_gap(gap,contact,f.owner,1830246125),"forward successor cannot invent contact");
+            check(c.publication_gap(gap,live,f.owner,1830246125),"exact cleared200 original can precede live201");
+            c.unavailable(1830246125,f.owner,true,false);
+        }
+        f.state=201;f.physics_step=7262;f.sampled_at=1830246132;live.crouch_mode=2;
+        gap={f,NativeInputCorrelation::mode_changed};
+        check(c.publication_gap(gap,live,f.owner,1830246140),"confirmed201 original can precede idle mode publication");
+        c.unavailable(1830246140,f.owner,true,false);
+        o.native=f;o.native.physics_step=7263;o.native.sampled_at=1830246153;o.native.mode=2;o.supported=false;o.support={};
+        c.observe(o);
+        check(c.eligible(o.native,o.native.sampled_at) && !c.consume(o.native,o.native.sampled_at,o.velocity),
+            "only correlated physical AIR completes recorded publication chain without changing no-input flight");
+    }
+}
 void publication_rejection_evidence() {
     LandingFixture x(60,false);auto gap=x.gap();auto live=x.live();const char* reason{};
     // Diagnostics must identify the missing boundary without widening it.
@@ -1377,4 +1436,4 @@ void input_edges() {
     }
 }
 }
-int main(){confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){recorded_short_takeoff_confirmation();confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
