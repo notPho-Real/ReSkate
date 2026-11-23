@@ -52,6 +52,9 @@ public:
     // board/body rotation, independently of labels and requested LS movement.
     void observe_pivot(const NativeInputFrame& frame,const PivotMotion& motion,std::uint64_t transition) noexcept {
         if(pivot_.status!=PivotStatus::tracking)return;
+        if(frame.sampled_at>=pivot_.transition && frame.sampled_at-pivot_.transition>1100) {
+            reject_pivot(PivotRejection::rotation);return;
+        }
         if(!frame.valid || !established() || !owned_ || uncertain_ || release_step_ ||
             serial_!=pivot_.episode || transition!=pivot_.transition ||
             frame.owner!=pivot_frame_.owner || frame.owner_generation!=pivot_frame_.owner_generation ||
@@ -97,7 +100,10 @@ public:
             std::abs(std::abs(pivot_.body_radians)-pi)>tolerance ||
             pivot_.board_radians*pivot_.body_radians<=0 ||
             std::abs(pivot_.board_radians-pivot_.body_radians)>tolerance) {
-            reject_pivot(PivotRejection::rotation);return;
+            // Native support can settle before the hips finish turning. Keep
+            // observing the same owner and supported episode within its original
+            // window; do not change motion, tolerances or claim completion early.
+            return;
         }
         pivot_.status=PivotStatus::observed;pivot_.successor=pose_;
         pivot_.completed_at=frame.sampled_at;pivot_.completed_step=frame.physics_step;

@@ -66,7 +66,7 @@ void physical_pivot_evidence() {
     using Status=ManualEpisode::PivotStatus;
     constexpr float pi=3.14159265358979323846f;
     for(bool nose:{false,true})for(bool fakie:{false,true})for(unsigned hz:{30u,60u,120u})
-    for(float origin:{-3.0f,-.2f,1.6f})for(int sign:{-1,1})for(unsigned fault=0;fault<31;++fault) {
+    for(float origin:{-3.0f,-.2f,1.6f})for(int sign:{-1,1})for(unsigned fault=0;fault<33;++fault) {
         ManualEpisode episode;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
         NativeRequestSample raw{};raw.valid=true;raw.state=100;raw.crouch_mode=1;
         const auto contacts=nose?0x8000u:0x4000u;raw.words[1]=contacts;
@@ -97,7 +97,8 @@ void physical_pivot_evidence() {
         check(!episode.begin_pivot(1000,frame,initial,1000),"one admitted transition cannot restart its physical evidence");
         NativeInputFrame turning{};
         const unsigned turn_steps=hz/2;
-        for(unsigned step=1;step<=turn_steps+3;++step) {
+        const auto steps=fault>=31?hz*12/10:turn_steps+3;
+        for(unsigned step=1;step<=steps;++step) {
             const bool mid=step==turn_steps/2;
             const bool returned=step>turn_steps;
             const auto at=1000+std::uint64_t{step}*1000/hz;
@@ -129,10 +130,19 @@ void physical_pivot_evidence() {
             }
             const float progress=static_cast<float>(std::min(step,turn_steps))/turn_steps;
             const float angle=sign*pi*progress;
-            const float board=fault==9 || fault==11?0:fault==12?angle*.5f:fault==13?angle*3:
+            float board=fault==9 || fault==11?0:fault==12?angle*.5f:fault==13?angle*3:
                 fault==14?(step<turn_steps/2?0:sign*pi):angle;
-            const float body=fault==9 || fault==10?0:fault==12?angle*.5f:fault==13?angle*3:
+            float body=fault==9 || fault==10?0:fault==12?angle*.5f:fault==13?angle*3:
                 fault==15?-angle:fault==14?(step<turn_steps/2?0:sign*pi):angle;
+            if(fault>=31) {
+                // The922 capture first returned supported at188.19/143.91
+                // degrees; hips then converged within the original1100ms lease.
+                const auto settle_start=fault==31?turn_steps+3:hz*11/10;
+                const float settle=step>settle_start?
+                    std::min(1.f,static_cast<float>(step-settle_start)/(hz*.2f)):0.f;
+                board=sign*pi/180*(188.19f*progress+9.13f*settle);
+                body=sign*pi/180*(143.91f*progress+61.76f*settle);
+            }
             auto physical=motion(board,body);
             if(mid && fault==16)physical.valid=false;
             if(mid && fault==17)++physical.owner.core;
@@ -141,6 +151,8 @@ void physical_pivot_evidence() {
             if(mid && fault==20)physical.board_forward={0,1,0};
             if(mid && fault==21)physical.body_forward[0]=std::numeric_limits<float>::quiet_NaN();
             episode.observe_pivot(frame,physical,transition);
+            if(fault==31 && step==turn_steps+3)check(episode.pivot_evidence().status==Status::tracking,
+                "first supported successor waits for hips convergence without claiming completed Pivot");
             const auto before=episode.pivot_evidence();
             episode.observe_pivot(frame,physical,transition);
             check(episode.pivot_evidence().board_radians==before.board_radians &&
@@ -154,11 +166,16 @@ void physical_pivot_evidence() {
                 "angle or fakie change cannot replace independently settled successor balance");
         }
         const auto& result=episode.pivot_evidence();
-        if((result.status==Status::observed)!=(fault==0))
+        const bool expected=fault==0 || fault==31;
+        if((result.status==Status::observed)!=expected)
             std::cerr<<"pivot fault="<<fault<<" hz="<<hz<<" nose="<<nose<<" fakie="<<fakie
                 <<" origin="<<origin<<" sign="<<sign<<" status="<<static_cast<unsigned>(result.status)<<'\n';
-        check((result.status==Status::observed)==(fault==0),
+        check((result.status==Status::observed)==expected,
             "only a continuous supported same-owner board and body half turn proves physical Pivot evidence");
+        if(fault==31)check(result.completed_at<=2100 && result.completed_at>1000+(turn_steps+3)*1000/hz,
+            "coherent supported successor completes within the unchanged1100ms window");
+        if(fault==32)check(result.status==Status::rejected,
+            "hips convergence after the original window cannot revive Pivot evidence");
         if(!fault) {
             check(result.episode==serial && result.transition==1000 && result.completed_step==frame.physics_step &&
                 result.completed_at==frame.sampled_at && result.successor==(nose?SkatePose::nose_manual:SkatePose::manual) &&
