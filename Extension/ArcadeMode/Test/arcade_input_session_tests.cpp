@@ -81,7 +81,10 @@ void native_adapters() {
     out = landing_poll(1017, {0, 0, 0, 0, 255});
     check(out.action.owned && out.action.pad.right_y == 0 && out.action.request_kind == 3,
         "explicitly qualified touchdown RT reaches the LS revert path without a crouch or grab");
-    check(landing_poll(1047, {0, 0, 0, 0, 255}).action.pad.left_x > 32000, "revert rotation follows existing absolute-time recipe");
+    check(landing_poll(1047, {0, 0, 0, 0, 255}).action.pad.left_x == 24575,
+        "qualified landing retains the stock40ms ramp instead of snapping immediately to full side");
+    check(landing_poll(1057, {0, 0, 0, 0, 255}).action.pad.left_x == 32767,
+        "landing reaches full side at the original stock boundary");
     for(unsigned t=1064;t<2017;t+=17)landing_poll(t, {0,0,0,0,255});
     check(!landing_poll(2017, {0,0,0,0,255}).action.owned, "revert releases within its fixed bound without repeated held-trigger commands");
     landing.session.reset(); landing_poll(2300,{},2);

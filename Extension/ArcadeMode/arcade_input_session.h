@@ -1252,7 +1252,8 @@ private:
             out.result = !native_start || !revert_context(admission,now_) ? DispatchResult::unsafe_context :
                 auxiliary_.request_revert(backside ? RevertSide::backside : RevertSide::frontside,
                     {context.verified_manual && admission.pose==SkatePose::nose_manual,
-                     admission.mirror_x, false, static_cast<std::int16_t>(context.verified_manual ? (admission.pose==SkatePose::manual?-20000:20000) : 0)}, now_, context);
+                     admission.mirror_x, false, static_cast<std::int16_t>(context.verified_manual ? (admission.pose==SkatePose::manual?-20000:20000) : 0),
+                     request.trigger.owner==TriggerOwner::landing_revert}, now_, context);
             if(out.result==DispatchResult::started) revert_trigger_owned_=physical_.rt>30;
             if(out.result==DispatchResult::started && context.verified_manual) {
                 revert_link_={admission.pose==SkatePose::manual?-1:1,now_,0,

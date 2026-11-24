@@ -3,7 +3,14 @@
 #include <cstdlib>
 #include <iostream>
 using namespace dingosdk::arcade_mode;
-InputAdmission base(){InputAdmission a{};a.gameplay=a.may_start=a.authored=a.action_fresh=a.inspected_stance=a.manual_safe=a.manual_prepare=true;a.pose=SkatePose::riding;a.action_mode=ActionExperiment::classic;return a;}
+InputAdmission base(){InputAdmission a{};a.gameplay=a.may_start=a.authored=a.action_fresh=a.inspected_stance=a.manual_safe=a.manual_prepare=true;a.pose=SkatePose::riding;a.action_mode=ActionExperiment::classic;
+ // This fixture exercises admitted landing Revert ownership. Ordinary ground
+ // RT is Switch and cannot supply the old test's implicit Revert prerequisite.
+ a.triggers={nullptr,[](void*,const TriggerPress& press,const InputNativeContext&,std::uint64_t) noexcept {
+  return press.context==InputContext::ground ?
+   TriggerDecision{TriggerOwner::landing_revert,press.press.at+1,true}:TriggerDecision{};
+ }};
+ return a;}
 NativeGesture::Output poll(InputSession& s,InputAdmission& a,std::uint64_t now,PhysicalInputSample p={}){a.tick=now;a.native_context={true,true,{1,1,1},now+1,now,false,a.pose==SkatePose::air,1,1};a.native_context.flip={true,-1,1,a.pose==SkatePose::air?201u:100u,a.pose==SkatePose::air?2u:1u};return s.poll(now,p,0,0,a);}
 int main(){
  const std::array catalog{PreparedGesture{1,false,GestureContext::ground,{{0,0,-32767},{18,0,32767},{21,0,0},{24,0,0}}},PreparedGesture{2,false,GestureContext::ground,{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}}}};
@@ -29,5 +36,16 @@ int main(){
   const auto air=poll(s,a,110,{0x4000,-25000});a.pose=SkatePose::riding;const auto landed=poll(s,a,120);
   failures+=!air.authored_playback || landed.authored_playback;std::cout<<"flip-one-air-sample,100,0,"<<air.authored_playback<<",1"<<"\n";
  }
+ for(unsigned cadence:{8u,17u,34u}) {
+  InputSession left,right;auto l=base(),r=base();poll(left,l,0);poll(right,r,0);
+  for(unsigned age=0;age<750;age+=cadence) {
+   const auto lt=poll(left,l,10+age,{0,0,0,255,0});
+   const auto rt=poll(right,r,10+age,{0,0,0,0,255});
+   failures+=lt.action.owned!=rt.action.owned || lt.action.pad.left_x!=rt.action.pad.left_x ||
+    lt.action.pad.left_y!=rt.action.pad.left_y || lt.action.pad.right_y!=rt.action.pad.right_y ||
+    lt.action.requested!=rt.action.requested || lt.authored_playback || rt.authored_playback;
+  }
+ }
+ std::cout<<"qualified LT/RT landing parity, failures="<<failures<<"\n";
  return failures?1:0;
 }

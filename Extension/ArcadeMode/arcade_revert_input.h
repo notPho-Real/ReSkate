@@ -16,6 +16,7 @@ struct RevertContext {
     bool mirror_stance{};
     bool mirror_nollie{}; // The reference default is false.
     std::int16_t manual_hold{}; // Existing independently confirmed partial RS hold.
+    bool landing{}; // Qualified vert landing; never the established Manual/Pivot path.
 };
 struct RevertInputStep {
     std::uint16_t duration_ms{};
@@ -62,6 +63,7 @@ public:
     bool start(std::uint64_t now_ms, RevertSide side, RevertContext context, bool may_start) noexcept {
         if (!may_start || active_) return false;
         recipe_ = make_revert_recipe(side, context);
+        landing_=context.landing && !context.manual_hold;
         started_ = last_ = step_at_ = now_ms; index_=0; deadline_=recipe_[0].duration_ms;
         active_ = true;
         return true;
@@ -74,6 +76,30 @@ public:
         const bool new_poll=now_ms!=last_;
         last_ = now_ms;
         const auto elapsed = now_ms - started_;
+        if(landing_) {
+            // Retained stock shape5 (GoalTrains 78c91bbb, translate.h) ramps
+            // from neutral for40ms, reaches bottom at200ms, crosses by310ms,
+            // then holds until580ms. The discrete Manual recipe reaches
+            // bottom at160ms and pauses there; a landing capture delivered
+            // it completely but produced only a short native powerslide.
+            // Sample the original continuous landing path, preserving its
+            // deadlines and native actor ownership. No physical turn or score
+            // is inferred from this output. Manual/Pivot keeps its proven path.
+            if(elapsed>=revert_recipe_duration_ms || now_ms-step_at_>150u) {cancel();return {};}
+            step_at_=now_ms;
+            const auto time=static_cast<unsigned>(elapsed);
+            const auto sign=recipe_[0].left_x>0?1.0:-1.0;
+            if(time<40) return {true,static_cast<std::int16_t>(std::lround(sign*32767*time/40.0)),
+                0,0,0,0,0,RevertPhase::setup};
+            if(time>=580)return {true,0,0,0,0,0,0,RevertPhase::settle};
+            constexpr double pi=3.14159265358979323846;
+            const double degrees=time<200 ? 90.0+90.0*(time-40)/160.0 :
+                time<310 ? 180.0+105.0*(time-200)/110.0 : 285.0;
+            const auto angle=degrees*pi/180.0;
+            return {true,static_cast<std::int16_t>(std::lround(sign*32767*std::sin(angle))),
+                static_cast<std::int16_t>(std::lround(32767*std::cos(angle))),0,0,0,0,
+                time<310?RevertPhase::rotation:RevertPhase::settle};
+        }
         // At 30/60/120 Hz every geometric waypoint is presented. Repeated
         // reads at one timestamp cannot advance; a long missed poll cancels
         // instead of replaying a stale path or jumping over the bottom corner.
@@ -91,6 +117,6 @@ private:
     std::uint64_t started_{}, last_{}, step_at_{};
     std::size_t index_{};
     unsigned deadline_{};
-    bool active_{};
+    bool active_{},landing_{};
 };
 }

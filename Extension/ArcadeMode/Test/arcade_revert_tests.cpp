@@ -9,10 +9,70 @@ void check(bool passed, const char* description) {
     ++checks;
     if (!passed) { std::cerr << "FAIL: " << description << '\n'; std::exit(1); }
 }
+void landing_path() {
+    using namespace dingosdk::arcade_mode;
+    // Independent checkpoints from the retained stock shape5 timing. In the
+    // failed landing trace the old path was already at bottom by160ms, then
+    // paused there until200ms. Native101 alone did not complete a180.
+    struct Point {unsigned at;short x,y;};
+    constexpr Point reference[]{{0,0,0},{20,16384,0},{40,32767,0},
+        {120,23170,-23170},{160,12539,-30273},{200,0,-32767},
+        {255,-25996,-19947},{310,-31650,8481},{450,-31650,8481},
+        {579,-31650,8481},{580,0,0},{679,0,0}};
+    for(bool mirror:{false,true})for(auto side:{RevertSide::frontside,RevertSide::backside}) {
+        const int sign=((side==RevertSide::frontside)!=mirror)?1:-1;
+        RevertPlayback playback;
+        check(playback.start(100,side,{false,mirror,false,0,true},true),"qualified landing starts existing actuator");
+        for(const auto& point:reference) {
+            const auto out=playback.sample(100+point.at,true);
+            check(out.owns_sticks && std::abs(out.left_x-sign*point.x)<=1 && std::abs(out.left_y-point.y)<=1,
+                "landing follows stock neutral ramp, continuous quarter/sweep, hold and neutral boundaries");
+            check(!out.right_x && !out.right_y && !out.left_trigger && !out.right_trigger,
+                "landing does not manufacture Manual support or leak trigger commands");
+        }
+        check(!playback.sample(780,true).owns_sticks,"landing releases at original680ms deadline");
+        for(unsigned cadence:{8u,17u,34u}) {
+            check(playback.start(1000,side,{false,mirror,false,0,true},true),"fresh landing cadence run");
+            double previous=90;bool crossed{},held{},neutral{};
+            for(unsigned at=0;at<680;at+=cadence) {
+                const auto out=playback.sample(1000+at,true),repeat=playback.sample(1000+at,true);
+                check(out.owns_sticks && out.left_x==repeat.left_x && out.left_y==repeat.left_y,
+                    "30/60/120Hz and repeated polls preserve original landing clock");
+                if(at>=40 && at<580) {
+                    auto angle=std::atan2(double(sign*out.left_x),double(out.left_y));
+                    if(angle<0)angle+=2*3.14159265358979323846;
+                    const auto degrees=angle*180/3.14159265358979323846;
+                    check(degrees+.01>=previous && degrees<285.01,"native landing sweep is monotonic without reverse corners");
+                    previous=degrees;crossed|=degrees>=180;held|=at>=310;
+                }
+                neutral|=at>=580 && !out.left_x && !out.left_y;
+            }
+            check(crossed && held && neutral && !playback.sample(1680,true).owns_sticks,
+                "all cadences cross bottom, hold the endpoint and release on time");
+        }
+    }
+    for(short hold:{short(-20000),short(20000)}) {
+        RevertPlayback manual,landing_flag;
+        manual.start(100,RevertSide::frontside,{false,false,false,hold},true);
+        landing_flag.start(100,RevertSide::frontside,{false,false,false,hold,true},true);
+        for(unsigned at=100;at<800;at+=17) {
+            const auto a=manual.sample(at,true),b=landing_flag.sample(at,true);
+            check(a.owns_sticks==b.owns_sticks && a.left_x==b.left_x && a.left_y==b.left_y && a.right_y==b.right_y,
+                "established Manual/Pivot keeps byte-identical proven playback even with a landing flag");
+        }
+    }
+    for(bool allowed:{false,true}) {
+        RevertPlayback playback;playback.start(100,RevertSide::frontside,{false,false,false,0,true},true);
+        playback.sample(110,true);
+        check(!playback.sample(allowed?261:120,allowed).owns_sticks && !playback.busy(),
+            "landing cancels on ownership loss or stale poll instead of replaying its path");
+    }
+}
 }
 
 int run_arcade_revert_tests() {
     using namespace dingosdk::arcade_mode;
+    landing_path();
     for (bool mirror : {false,true}) for (auto side : {RevertSide::frontside,RevertSide::backside})
     for (short hold : {short(0),short(-20000),short(20000)}) {
         const auto recipe=make_revert_recipe(side,{false,mirror,false,hold});
