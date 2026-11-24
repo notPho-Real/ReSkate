@@ -148,6 +148,10 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
             observation.enabled,observation.contested,frame.state,frame.mode,frame.selection_object,previous.native.selection_object,
             observation.position[0],observation.position[1],observation.position[2],previous.position[0],previous.position[1],previous.position[2],
             observation.velocity[0],observation.velocity[1],observation.velocity[2],previous.velocity[0],previous.velocity[1],previous.velocity[2]);
+    else if(motion_rejection && std::strcmp(motion_rejection,"none")!=0)
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE VERT PLAN REJECT: reason={} step={} sampled={} phase={} native_flight_retained=true input_deadline_renewed=false.",
+            motion_rejection,frame.physics_step,frame.sampled_at,static_cast<unsigned>(controller.phase()));
 #else
     controller.observe(observation);
     auto plan=controller.consume(frame,frame.sampled_at,observation.velocity);
@@ -303,6 +307,6 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
     for(const auto& sample:selected.destination.samples)
         if(selected.destination.valid && !revalidate_surface_geometry(api,context,sample))return;
     std::lock_guard lock(mutex);
-    (void)controller.stage(selected,observation,api.now(api.user));
+    (void)controller.stage(selected,observation,api.now(api.user),gravity);
 }
 }

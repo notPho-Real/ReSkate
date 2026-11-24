@@ -24,14 +24,16 @@ using dingosdk::NoBailSkater;
 namespace game=dingosdk::game;
 namespace contract=game::build::v20260929::arcade_stance;
 std::mutex mutex;
-StanceInput input;
+StanceInputLease input;
+InputNativeContext latest_native;
+std::atomic<bool> awaiting_consumer{};
 NoBailSkater owner{},live_owner{};
 std::uintptr_t image=1;
-std::uint64_t last_poll{};
+std::uint64_t last_poll{},serial{};
 bool permitted=true,ready=true,assets_valid=true,readable=true,owner_valid=true,replace_after_read=false;
 unsigned owner_reads{},checks{};
 std::uint32_t live_state=100,live_stance{};
-struct Evidence {std::uint64_t sequence{};bool double_tap{},changed{};};
+struct Evidence {std::uint64_t sequence{};bool submitted{},changed{};};
 [[maybe_unused]] Evidence pending;
 bool assets_current()noexcept{return assets_valid;}
 bool resolve_owner(NoBailSkater& value)noexcept{
@@ -56,7 +58,7 @@ InputNativeContext frame(std::uint64_t at,std::uint64_t step,unsigned stance=0){
     InputNativeContext native{true,true,{1,1,1},step,at};
     native.flip={true,-1,0x10000,100,1,stance,step,1,1};return native;
 }
-InputNativeContext begin(unsigned dt,unsigned stance=0,unsigned stop=5){
+InputNativeContext begin(unsigned dt,unsigned stance=0,bool issued=true){
     input={};owner=live_owner={1,2,3,0x20000,5};image=1;last_poll=0;
     permitted=ready=assets_valid=readable=owner_valid=true;replace_after_read=false;owner_reads=0;
     live_state=100;live_stance=stance;
@@ -64,13 +66,13 @@ InputNativeContext begin(unsigned dt,unsigned stance=0,unsigned stop=5){
     const TriggerPress trigger{{{InputSource::triggers,1,InputEdge::press},100,1},{},InputContext::ground,
         native,TriggerOwner::switch_stance,250};
     check(input.start(trigger,native,100),"adapter fixture admits original RT");
-    for(unsigned phase=0;phase<=stop;++phase){
-        native=frame(100u+phase*dt,phase+1u,stance);
-        const auto pad=controls(live_owner,native,native.sampled_at,phase+1u);
-        check(pad.owned&&pad.phase==phase,"actual adapter reaches each published finite B phase");
-        delivered(live_owner,native,pad,pad.buttons,native.sampled_at,phase+1u);
-        check(input.active(),"actual adapter retains original delivered phase");
-    }
+    ++serial;awaiting_consumer.store(true);
+    native=frame(100u+dt,2,stance);
+    const auto pad=controls(live_owner,native,native.sampled_at,2);
+    check(pad.owned&&pad.phase==5&&!pad.buttons,"actual adapter reserves neutral face output");
+    delivered(live_owner,native,pad,0,native.sampled_at,2);
+    check(input.active()&&!input.was_issued(),"packet delivery alone cannot issue native stance");
+    if(issued)check(input.issued(native,native.sampled_at),"authenticated consumer fixture issues once");
     return native;
 }
 void run(){
@@ -97,14 +99,14 @@ void run(){
         delivered(live_owner,native,pad,0,native.sampled_at,7);
         check(input.active()&&!input.observed_change(),"neutral delivery tolerates only the bounded publication race");
     }
-    for(unsigned phase=0;phase<5;++phase){
-        auto native=begin(17,0,phase);live_stance=0x20;
-        const StanceControl pad{true,static_cast<std::uint16_t>((phase==1||phase==3)?0x2000:0),1,static_cast<std::uint8_t>(phase)};
-        delivered(live_owner,native,pad,pad.buttons,native.sampled_at,phase+1u);
-        check(!input.active(),"live stance race cannot relax any finite gesture delivery phase");
-        native=begin(17,0,phase);live_stance=0x20;
-        check(!controls(live_owner,native,native.sampled_at,phase+1u).owned&&!input.active(),
-            "live stance race cannot relax any finite gesture control phase");
+    {
+        auto native=begin(17,0,false);live_stance=0x20;
+        const StanceControl pad{true,0,serial,5};
+        delivered(live_owner,native,pad,0,native.sampled_at,2);
+        check(!input.active(),"unissued request cannot tolerate a live stance race");
+        native=begin(17,0,false);live_stance=0x20;
+        check(!controls(live_owner,native,native.sampled_at,2).owned&&!input.active(),
+            "unissued request cannot claim a pre-existing stance change");
     }
     for(unsigned fault=0;fault<15;++fault){
         auto native=begin(17);auto at=native.sampled_at+17;native=frame(at,7);live_stance=0x20;
@@ -136,12 +138,12 @@ void run(){
         for(auto at=native.sampled_at+dt;at<=deadline;at+=dt){
             native=frame(at,at);live_stance=0x20;
             const auto pad=controls(owner,native,at,at);
-            check(pad.owned&&pad.phase==5&&!pad.buttons,"live mismatch cannot advance or replay either B press");
+            check(pad.owned&&pad.phase==5&&!pad.buttons,"live mismatch cannot create another native request");
             delivered(owner,native,pad,0,at,at);
         }
         native=frame(deadline+1,deadline+1);live_stance=0x20;
         check(!controls(owner,native,deadline+1,deadline+1).owned&&!input.active(),
-            "repeated live mismatch cannot renew the original first-down completion ceiling");
+            "repeated live mismatch cannot renew the original native-issuance completion ceiling");
     }
     std::cout<<checks<<" exact production stance adapter checks passed\n";
 }

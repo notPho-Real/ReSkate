@@ -9,6 +9,7 @@
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Abi/native_data.h"
 #include "Engine/Game/Build/20260929/arcade_stance.h"
+#include <atomic>
 #include <mutex>
 #include <Windows.h>
 
@@ -23,6 +24,7 @@ std::uint64_t retry_at{},last_poll{};
 bool permitted{},ready{},hook_attempted{},hook_ready{};
 using TransitionConsumer=void(*)(std::uintptr_t,const bool*,const bool*);
 TransitionConsumer original_transition{};
+std::atomic<bool> awaiting_consumer{};
 StanceInputLease input;
 InputNativeContext latest_native;
 std::uint64_t serial{};
@@ -55,12 +57,16 @@ bool current(const NoBailSkater& skater,const InputNativeContext& native,std::ui
         no_bail_skater(after) && after==before;
 }
 void retire() noexcept {
+    awaiting_consumer.store(false,std::memory_order_release);
 #if defined(DINGOSDK_DEV_TOOLS)
     if(owner.context && input.sequence())pending={input.sequence(),input.was_issued(),input.observed_change()};
 #endif
     input.cancel();owner={};latest_native={};last_poll=0;
 }
 void transition(std::uintptr_t context,const bool* predicate,const bool* flags) {
+    if(!awaiting_consumer.load(std::memory_order_acquire)) {
+        original_transition(context,predicate,flags);return;
+    }
     bool requested=false;
     std::uint64_t sequence{};
     {
@@ -73,6 +79,7 @@ void transition(std::uintptr_t context,const bool* predicate,const bool* flags) 
                profile_runtime::executing_expression,context,reinterpret_cast<std::uintptr_t>(predicate),
                reinterpret_cast<std::uintptr_t>(flags),owner.entity,assets[0].object) && input.issued(latest_native,now)) {
             requested=true;sequence=input.sequence();
+            awaiting_consumer.store(false,std::memory_order_release);
         }
     }
     // Only replace this invocation's input predicate. The original callback
@@ -153,7 +160,8 @@ bool request(const NoBailSkater& skater,const InputRequest& request,const InputN
        !input.observe(native,now,true)))retire();
     if(!hook_ready || request.action!=InputAction::switch_stance || request.input_sequence!=request.trigger.press.sequence ||
        !current(skater,native,now) || !input.start(request.trigger,native,now))return false;
-    owner=skater;latest_native=native;last_poll=now;++serial;return true;
+    owner=skater;latest_native=native;last_poll=now;++serial;
+    awaiting_consumer.store(true,std::memory_order_release);return true;
 }
 StanceControl controls(const NoBailSkater& skater,const InputNativeContext& native,std::uint64_t now,std::uint64_t tick) noexcept {
     std::lock_guard lock(mutex);

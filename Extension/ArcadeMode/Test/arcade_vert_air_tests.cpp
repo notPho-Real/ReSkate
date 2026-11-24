@@ -1124,6 +1124,56 @@ void staged_races_and_orientation() {
         check(target[12]==3 && target[13]==4 && target[14]==5,"orientation never moves native position");
     }
 }
+void recorded_stale_plan_recovery() {
+    // eaa93467 native trace: the AIR actor changed velocity between the
+    // geometry query and step22586, with unchanged owner, actor and episode.
+    // The old impulse must fail. That failure must not erase native flight.
+    for(bool replace:{false,true}) {
+        VertAirController c;auto o=ground();warm(c,o);c.observe(o);o=fly(o);
+        o.native.state=201;o.native.physics_seconds=1.f/60;
+        o.position={146.26433f,6.2883787f,-99.45641f};
+        o.velocity={-.60882574f,3.596907f,.36392215f};c.observe(o);
+        check(c.request(o.native,1010,1010,1),"recorded native flight owns original trigger");
+        auto plan=vert_level_out(o,c.direction());plan.clear=true;
+        check(c.stage(plan,o,1010,9.81f),"recorded pre-change clearance stages");
+        ++o.native.physics_step;o.native.sampled_at=1027;
+        o.position={146.25436f,6.3454456f,-99.45098f};
+        o.velocity={.026550295f,3.1784537f,-.1867676f};c.observe(o);
+        const char* reason{};
+        check(!c.consume(o.native,1027,o.velocity,&reason) && std::string_view(reason)=="plan_velocity",
+            "captured native velocity change still rejects the stale impulse");
+        check(c.pending(o.native,1027) && c.landing().flight(o.native),
+            "rejected geometry leaves original request and native landing lineage intact");
+        check(!c.consume(o.native,1027,o.velocity),"stale clearance cannot be reused");
+        auto fresh=vert_level_out(o,c.direction());
+        check(!c.stage(fresh,o,1027),"replacement needs its own clearance proof");
+        if(replace) {
+            fresh.clear=true;
+            check(c.stage(fresh,o,1027) && bool(c.consume(o.native,1027,o.velocity)),
+                "fresh geometry can admit one replacement within original input deadline");
+            check(!c.consume(o.native,1027,o.velocity),"replacement cannot deliver twice");
+        } else {
+            for(unsigned at=1044;at<=1163;at+=17) {
+                ++o.native.physics_step;o.native.sampled_at=at;c.observe(o);
+                check(!c.consume(o.native,at,o.velocity),"no fresh query produces no impulse");
+            }
+            fresh.clear=true;
+            check(!c.pending(o.native,1163) && !c.stage(fresh,o,1163),
+                "query rejection cannot renew original150ms physical input lifetime");
+            check(c.phase()==VertPhase::native_air && c.landing().flight(o.native),
+                "expired rejected command preserves natural vert return and independent Revert eligibility");
+        }
+    }
+    VertAirController c;auto o=ground();warm(c,o);c.observe(o);o=fly(o);c.observe(o);
+    check(c.request(o.native,1010,1010,1),"gravity fixture owns original trigger");
+    auto plan=vert_level_out(o,c.direction());plan.clear=true;
+    check(c.stage(plan,o,1010,0),"query explicitly records unknown gravity");
+    ++o.native.physics_step;o.native.sampled_at+=10;o.position=add(o.position,scale(o.velocity,.01f));
+    o.velocity[1]-=.5f;c.observe(o);
+    const char* reason{};
+    check(!c.consume(o.native,1020,o.velocity,&reason) && std::string_view(reason)=="plan_velocity",
+        "later measured gravity cannot reinterpret the immutable clearance prediction");
+}
 void destination_contact_landing() {
     for(unsigned fault=0;fault<4;++fault) {
         VertAirController c;auto o=ground();warm(c,o);c.observe(o);o=fly(o);c.observe(o);
@@ -1439,4 +1489,4 @@ void input_edges() {
     }
 }
 }
-int main(){recorded_short_takeoff_confirmation();confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){recorded_stale_plan_recovery();recorded_short_takeoff_confirmation();confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

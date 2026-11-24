@@ -659,9 +659,14 @@ public:
         return phase_==VertPhase::requested && request_ && now>=request_at_ && now-request_at_<=150 && matches(f,now);
     }
     bool stage(VertPlan plan,const VertObservation& source,std::uint64_t now) noexcept {
+        return stage(plan,source,now,gravity());
+    }
+    bool stage(VertPlan plan,const VertObservation& source,std::uint64_t now,float query_gravity) noexcept {
         if(!pending(source.native,now) || !plan || !finite_motion(source) ||
-           !source.native.flip_known || source.native.flip_id!=-1)return false;
-        plan_=plan;planned_=source.native;planned_velocity_=source.velocity;planned_position_=source.position;return true;
+           !source.native.flip_known || source.native.flip_id!=-1 ||
+           !std::isfinite(query_gravity) || query_gravity<0 || query_gravity>60)return false;
+        plan_=plan;planned_=source.native;planned_velocity_=source.velocity;planned_position_=source.position;
+        planned_gravity_=query_gravity;return true;
     }
     VertPlan consume(const NativeInputFrame& f,std::uint64_t now,SurfaceGeometryVector velocity,
             const char** rejection=nullptr) noexcept {
@@ -686,15 +691,20 @@ public:
         // against that immutable source, never against a newer observation that
         // would hide a collision. Carry only its velocity delta across gravity.
         const float elapsed=static_cast<float>(f.physics_step-planned_.physics_step)*planned_.physics_seconds;
-        auto expected=planned_velocity_;expected[1]-=gravity_*elapsed;
+        auto expected=planned_velocity_;expected[1]-=planned_gravity_*elapsed;
         if(elapsed>.05f || std::abs(f.physics_seconds-planned_.physics_seconds)>.00001f ||
            vert_math::length(vert_math::sub(velocity,expected))>.3f ||
            vert_math::length(vert_math::sub(previous_.position,
-               vert_math::position(planned_position_,planned_velocity_,gravity_,elapsed)))>.25f) {
+               vert_math::position(planned_position_,planned_velocity_,planned_gravity_,elapsed)))>.25f) {
             if(rejection)*rejection=elapsed>.05f?"plan_age":
                 std::abs(f.physics_seconds-planned_.physics_seconds)>.00001f?"plan_cadence":
                 vert_math::length(vert_math::sub(velocity,expected))>.3f?"plan_velocity":"plan_position";
-            cancel();return {};
+            // The native AIR actor can change motion between query and use.
+            // Reject that stale trajectory, not the independently proven vert
+            // episode or its later landing window. Any replacement must pass
+            // fresh geometry within the original physical edge's 150ms lease.
+            // No impulse is applied and no input deadline is renewed here.
+            plan_={};return {};
         }
         auto result=plan_;
         result.velocity=vert_math::add(velocity,vert_math::sub(result.velocity,planned_velocity_));
@@ -752,7 +762,7 @@ private:
     }
     SurfaceGeometryVector planned_velocity_{},planned_position_{};
     std::uint64_t request_{},request_at_{},transition_at_{};
-    float gravity_{};
+    float gravity_{},planned_gravity_{};
     unsigned gravity_samples_{};
 };
 }
