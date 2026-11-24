@@ -3,8 +3,22 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current completion work (November24): `6d77be83` is compiled and native-tested,
-but is **not owner-ready**. A corrected approach fixture releases forward input
+Current completion work (November24): `627f8b15` passes full CI45387795422
+(148 preflight and137 integration tests), but is **not owner-ready**. Its native
+Switch capture observes ChangeStance graph entry through SwitchFromFakie, then
+exit with inactive push selectors and no foot change. Repeating trigger timing
+is not the next action; resolve the native actor/selector boundary.
+The mandatory vert chain still fails before Revert/Manual. Its retained original
+frames show touchdown followed by rear/both/front wheel-contact publication changes.
+An offline replay reproduces loss of the landing reservation against the older
+AIR clock. Source now retains the first authenticated live-touchdown timestamp
+through a bounded100ms publication handoff. Only fresh physical curved support
+permits execution, and neither contact churn nor input polling renews the deadline.
+7,605 vert checks,6,710 session checks and LT/RT handoff tests pass; native physical
+Revert, sustained successor Manual and full combo banking remain unverified.
+All168 rollback snapshots are preserved; game closed and hardware authority revoked.
+
+Prior `6d77be83` evidence: a corrected approach fixture releases forward input
 on physical ramp contact before takeoff; all captured AIR packets are neutral.
 Its3,072-event capture loses no records. The return proves vertical lip contact
 62ms after the last admitted descending AIR observation, then qualifying curved

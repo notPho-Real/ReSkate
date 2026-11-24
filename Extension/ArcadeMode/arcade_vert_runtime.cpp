@@ -140,6 +140,7 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
     [[maybe_unused]] const auto before=controller.phase();
 #if defined(DINGOSDK_DEV_TOOLS)
     const auto previous=controller.observation();
+    const bool had_landing=controller.landing().takeoff().valid;
     const char* observation_rejection{};
     const char* motion_rejection{};
     controller.observe(observation,&observation_rejection);
@@ -148,7 +149,10 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
     // the clock lets an old query pass its 50ms deadline and backdates the
     // release receipt that the native handoff checks against this callback.
     auto plan=controller.consume(frame,now,observation.velocity,&motion_rejection);
-    if(before!=VertPhase::idle && before!=VertPhase::cancelled && controller.phase()==VertPhase::cancelled)
+    // Touchdown already withdrew flight into cancelled. Report loss of its
+    // retained landing lineage too, instead of hiding that failure as idle.
+    if((before!=VertPhase::idle && before!=VertPhase::cancelled && controller.phase()==VertPhase::cancelled) ||
+       (had_landing && !controller.landing().takeoff().valid))
         logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE VERT CANCEL: before={} observed={} observation={} motion={} now={} step={} sampled={} previous_step={} previous_ms={} episode={} previous_episode={} departure={} previous_departure={} enabled={} contested={} state={} mode={} actor={} previous_actor={} position={},{},{} previous_position={},{},{} velocity={},{},{} previous_velocity={},{},{}.",
             static_cast<unsigned>(before),static_cast<unsigned>(after_observation),observation_rejection,motion_rejection,

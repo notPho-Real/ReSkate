@@ -96,6 +96,15 @@ public:
             f.owner_generation==takeoff_.native.owner_generation && f.airborne &&
             f.airborne_episode==takeoff_.native.airborne_episode && f.air_departure==takeoff_.native.air_departure;
     }
+    // The controller authenticates the original/live touchdown pair. This
+    // timestamp retains its lineage only: contact geometry must still arrive.
+    bool publication(const NativeInputFrame& air,std::uint64_t now) noexcept {
+        if(!flight(air) || now<air.sampled_at || now<last_air_.native.sampled_at ||
+           now-last_air_.native.sampled_at>100 || air.physics_step<last_air_.native.physics_step ||
+           air.sampled_at-takeoff_.native.sampled_at<150 || last_air_.velocity[1]>=-.1f)return false;
+        if(!publication_at_)publication_at_=now;
+        return now>=publication_at_ && now-publication_at_<=100;
+    }
     void observe(const VertObservation& value) noexcept {
         using namespace vert_math;
         if(!takeoff_.native.valid)return;
@@ -117,7 +126,7 @@ public:
             if(f.sampled_at-contact_started_at()>after_ms)reset();
             return;
         }
-        const auto witness=lip_contact_.valid?lip_contact_.sampled_at:previous.sampled_at;
+        const auto witness=lip_contact_.valid?lip_contact_.sampled_at:publication_at_?publication_at_:previous.sampled_at;
         if(f.sampled_at<witness || f.sampled_at-witness>100 || f.sampled_at-takeoff_.native.sampled_at<150 ||
            last_air_.velocity[1]>=-.1f) {reset();return;}
         // State publication may lead contact by an original step. It cannot
@@ -191,7 +200,7 @@ public:
     bool contact_publication_pending(const InputNativeContext& current,std::uint64_t now) const noexcept {
         const auto& air=last_air_.native;
         const auto& witness=lip_contact_.valid?lip_contact_:air;
-        const bool pending=lip_contact_.valid ?
+        const bool pending=publication_at_ ? now>=publication_at_ && now-publication_at_<=100 : lip_contact_.valid ?
             current.physics_step>=witness.physics_step && now>=witness.sampled_at && now-witness.sampled_at<=100 :
             current.physics_step>air.physics_step && current.physics_step-air.physics_step<=2 &&
             current.sampled_at>=air.sampled_at && current.sampled_at-air.sampled_at<=100;
@@ -211,10 +220,11 @@ public:
     const NativeInputFrame& approach_frame() const noexcept {return approach_;}
 private:
     std::uint64_t contact_started_at() const noexcept {
-        return lip_contact_.valid?lip_contact_.sampled_at:contact_.sampled_at;
+        return publication_at_?publication_at_:lip_contact_.valid?lip_contact_.sampled_at:contact_.sampled_at;
     }
     VertObservation takeoff_{},last_air_{};
     NativeInputFrame approach_{},contact_{},lip_contact_{};
+    std::uint64_t publication_at_{};
 };
 struct VertPlan {
     VertAction action{};
@@ -307,10 +317,9 @@ public:
     void unavailable(std::uint64_t now,const NativeInputOwner& owner,bool enabled,bool contested) noexcept {
         plan_={};
         unavailable_at_=std::max(unavailable_at_,now);
+        const auto witness=landing_gap_frame_.valid?landing_gap_at_:previous_.native.sampled_at;
         if(!enabled || contested || !owner.valid() || !previous_.native.valid ||
-           (landing_gap_frame_.valid && (now<landing_gap_frame_.sampled_at || now-landing_gap_frame_.sampled_at>100)) ||
-           owner!=previous_.native.owner || now<previous_.native.sampled_at ||
-           now-previous_.native.sampled_at>100) {
+           owner!=previous_.native.owner || now<witness || now-witness>100) {
             cancel();previous_={};
         } else if(phase_==VertPhase::released)suspended_=true;
     }
@@ -383,6 +392,25 @@ public:
                 (!push_changed || ((f.stance_and_push^stance)==0x40u && !(stance&0x40u)));
             if((!forward && !idle) || (live.words[1]&0xc000u))return reject("takeoff_successor");
             takeoff_gap_frame_=f;takeoff_live_=live;return true;
+        }
+        if(landing_gap_frame_.valid) {
+            const auto& gap=landing_gap_frame_;
+            // p8: original ground changes rear/both/front wheel masks before
+            // the bridge gets a correlated body. Confirm the original ground
+            // lineage without restarting the first live-contact clock or
+            // treating that publication as physical support.
+            return correlation.mismatches==D::contacts_changed &&
+                now>=landing_gap_at_ && now-landing_gap_at_<=100 && now>=f.sampled_at && now-f.sampled_at<=100 &&
+                f.physics_step>gap.physics_step && std::isfinite(f.physics_seconds) &&
+                std::abs(f.physics_seconds-gap.physics_seconds)<.00001f &&
+                static_cast<double>(f.physics_step-gap.physics_step)*f.physics_seconds<=.100001 &&
+                f.sampled_at>gap.sampled_at && !f.airborne && !f.rail_family &&
+                f.airborne_episode==gap.airborne_episode && f.air_departure==gap.air_departure+1 &&
+                (f.state==100 || f.state==103) && live.state==f.state && f.mode==1 && live.crouch_mode==1 &&
+                (f.contacts==0x4000u || f.contacts==0x8000u || f.contacts==0xc000u) &&
+                vert_riding_contact_mask(live.state,live.words[1]&0xc000u) &&
+                f.stance_and_push==gap.stance_and_push && (live.words[0]&0x60u)==f.stance_and_push &&
+                f.flip_known && f.flip_id==-1 && f.selection_object==gap.selection_object;
         }
         bool confirmed_takeoff=false;
         // Exact takeoff confirmation is required even when only one or two
@@ -477,7 +505,8 @@ public:
             if(touchdown) {
                 // Contact publication withdraws transfer motion immediately. It
                 // preserves only the prior landing lineage until original support.
-                landing_gap_frame_=f;mode_gap_selection_=0;phase_=VertPhase::cancelled;
+                if(!landing_.publication(f,now))return false;
+                landing_gap_frame_=f;landing_gap_at_=now;mode_gap_selection_=0;phase_=VertPhase::cancelled;
                 plan_={};released_plan_={};request_=0;suspended_=false;
             }
             return touchdown;
@@ -533,13 +562,15 @@ public:
         }
         if(f.sampled_at<=unavailable_at_)return;
         if(previous_.native.valid && (f.owner!=previous_.native.owner || f.owner_generation!=previous_.native.owner_generation ||
-           f.sampled_at<previous_.native.sampled_at || f.sampled_at-previous_.native.sampled_at>150)) {
+           f.sampled_at<previous_.native.sampled_at ||
+           (!landing_gap_frame_.valid && f.sampled_at-previous_.native.sampled_at>150))) {
             reset();
         }
         if(f.physics_step<=previous_.native.physics_step)return;
         publication_frame_={};
+        const auto witness=landing_gap_frame_.valid?landing_gap_at_:previous_.native.sampled_at;
         if(previous_.native.valid && unavailable_at_>previous_.native.sampled_at &&
-           f.sampled_at-previous_.native.sampled_at>100) {reject("publication_timeout");cancel();previous_={};}
+           (f.sampled_at<witness || f.sampled_at-witness>100)) {reject("publication_timeout");cancel();previous_={};}
         if(takeoff_gap_frame_.valid) {
             const auto gap=takeoff_gap_frame_;takeoff_gap_frame_={};
             if(f.owner!=gap.owner || f.owner_generation!=gap.owner_generation ||
@@ -558,7 +589,9 @@ public:
             const auto& gap=landing_gap_frame_;
             const bool contact=f.contacts==0x4000u || f.contacts==0x8000u || f.contacts==0xc000u;
             const bool resumed=f.owner==gap.owner && f.owner_generation==gap.owner_generation &&
-                f.sampled_at>=gap.sampled_at && f.sampled_at-gap.sampled_at<=100 &&
+                f.sampled_at>=landing_gap_at_ && f.sampled_at-landing_gap_at_<=100 &&
+                f.physics_step>gap.physics_step && std::abs(f.physics_seconds-gap.physics_seconds)<.00001f &&
+                static_cast<double>(f.physics_step-gap.physics_step)*f.physics_seconds<=.100001 &&
                 f.airborne_episode==gap.airborne_episode && !f.rail_family && f.mode==1 &&
                 f.stance_and_push==gap.stance_and_push && f.flip_known && f.flip_id==-1 &&
                 f.selection_object==gap.selection_object && contact &&
@@ -788,7 +821,7 @@ private:
     VertRampSupport origin_{};
     SurfaceGeometryVector direction_{};
     VertPlan plan_{},released_plan_{};
-    std::uint64_t released_at_{},unavailable_at_{};
+    std::uint64_t released_at_{},unavailable_at_{},landing_gap_at_{};
     NativeInputFrame planned_{},landing_gap_frame_{},publication_frame_{},takeoff_gap_frame_{};
     NativeRequestSample publication_live_{},takeoff_live_{};
     static bool finite_motion(const VertObservation& o) noexcept {

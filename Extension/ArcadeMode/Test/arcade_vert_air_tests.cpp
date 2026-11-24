@@ -36,6 +36,79 @@ void warm(VertAirController& c,VertObservation o) {
     o.up={-.8660254f,.5f,0};o.velocity={4,6.928203f,0};o.support=patch(o.position,o.up);
     c.observe(o);
 }
+void recorded_landing_contact_churn() {
+    // p8: the last admitted AIR precedes a newer original AIR by25ms.
+    // Live touchdown appears66ms after that admission. Original wheel masks
+    // change before a fully correlated supported observation arrives at148ms.
+    for(unsigned channel:{0u,1u}) {
+        VertAirController c;auto o=ground();o.native.selection_object=99;
+        warm(c,o);c.observe(o);o=fly(o);c.observe(o);
+        for(unsigned i=0;i<4;++i) {
+            ++o.native.physics_step;o.native.sampled_at+=60;o.native.state=201;
+            o.native.mode=2;o.velocity={0,-9,0};c.observe(o);
+        }
+        const auto last=o.native;
+        auto original=last;++original.physics_step;original.sampled_at+=25;
+        NativeInputCorrelation d{original,NativeInputCorrelation::state_changed|
+            NativeInputCorrelation::mode_changed|NativeInputCorrelation::contacts_changed};
+        NativeRequestSample live{};live.valid=true;live.state=100;live.crouch_mode=1;live.words[1]=0x8000;
+        check(c.publication_gap(d,live,last.owner,last.sampled_at+66),"recorded live touchdown retains descent lineage");
+        c.unavailable(last.sampled_at+66,last.owner,true,false);
+        original.physics_step=last.physics_step+2;original.sampled_at=last.sampled_at+76;
+        original.airborne=false;original.state=100;original.mode=1;original.contacts=0x8000;++original.air_departure;
+        d={original,NativeInputCorrelation::contacts_changed};live.words[1]=0xc000;
+        for(unsigned fault=1;fault<=12;++fault) {
+            auto rejected=c;auto bad=d;auto body=live;auto now=last.sampled_at+106;
+            if(fault==1)++bad.observed.owner_generation;
+            if(fault==2)++bad.observed.airborne_episode;
+            if(fault==3)++bad.observed.air_departure;
+            if(fault==4)++bad.observed.selection_object;
+            if(fault==5)bad.observed.flip_id=3;
+            if(fault==6)bad.observed.stance_and_push=0x20;
+            if(fault==7)bad.observed.contacts=0;
+            if(fault==8)body.words[1]=0;
+            if(fault==9)body.state=500;
+            if(fault==10)bad.observed.physics_seconds*=2;
+            if(fault==11)bad.observed.physics_step+=10;
+            if(fault==12)now=last.sampled_at+167;
+            check(!rejected.publication_gap(bad,body,last.owner,now),
+                "contact churn rejects changed owner, episode, actor, stance, support, cadence and original deadline");
+        }
+        check(c.publication_gap(d,live,last.owner,last.sampled_at+106),"fresh original contact confirms touchdown during wheel-mask churn");
+        c.unavailable(last.sampled_at+106,last.owner,true,false);
+        const auto pending=c;
+        TriggerPress press;press.press.sequence=1;press.press.token={InputSource::triggers,static_cast<std::int16_t>(channel),InputEdge::press};
+        press.press.at=last.sampled_at+93;press.context=InputContext::ground;
+        press.native=InputNativeContext::from_frame(original);
+        const auto reserved=qualify_vert_trigger(c,press,press.native,last.sampled_at+106);
+        check(reserved.owner==TriggerOwner::landing_revert && !reserved.ready,
+            "contact publication reserves LT or RT without granting physical Revert");
+        o.native=original;o.native.physics_step=last.physics_step+5;o.native.sampled_at=last.sampled_at+148;
+        o.native.contacts=0xc000;o.supported=true;o.up={0,.29f,.9570266f};
+        o.contact_normal=o.up;o.contacted_shape={7,8,9};o.velocity={0,-9,2.7f};
+        c.observe(o);
+        press.owner=TriggerOwner::landing_revert;
+        const auto decision=qualify_vert_trigger(c,press,InputNativeContext::from_frame(o.native),o.native.sampled_at);
+        check(decision.owner==TriggerOwner::landing_revert && decision.ready,
+            "fresh physical curved support completes the recorded landing publication handoff");
+        check(decision.deadline==last.sampled_at+66+VertLandingWindow::after_ms,
+            "contact churn does not renew the first touchdown deadline");
+        for(unsigned fault=1;fault<=8;++fault) {
+            auto rejected=pending;auto bad=o;
+            if(fault==1)bad.native.sampled_at=last.sampled_at+167;
+            if(fault==2)bad.supported=false;
+            if(fault==3)bad.contacted_shape={};
+            if(fault==4)bad.up={0,-1,0};
+            if(fault==5)++bad.native.selection_object;
+            if(fault==6)++bad.native.air_departure;
+            if(fault==7)bad.native.state=500;
+            if(fault==8)bad.native.contacts=0;
+            rejected.observe(bad);
+            check(!rejected.landing().ready(bad.native,bad.native.sampled_at),
+                "publication cannot replace independent fresh physical landing proof");
+        }
+    }
+}
 void original_contact_support() {
     for(float yaw:{0.f,.8f,2.4f})for(float shift:{0.f,1000.f}) {
         const auto turn=[&](Vec v){return Vec{v[0]*std::cos(yaw)-v[2]*std::sin(yaw),v[1],v[0]*std::sin(yaw)+v[2]*std::cos(yaw)};};
@@ -762,7 +835,7 @@ void landing_contact_boundary() {
             check(qualify_vert_trigger(x.c,consumed,p.native,edge).owner==TriggerOwner::none,"a consumed transfer edge cannot become landing Revert");
         }
         ++x.o.native.physics_step;x.o.native.sampled_at+=x.dt;x.o.native.mode=1;x.o.native.contacts=0x8000;
-        if(fault==1)x.o.native.sampled_at=original.sampled_at+101;
+        if(fault==1)x.o.native.sampled_at=original.sampled_at+102;
         if(fault==2)++x.o.native.owner.core;
         if(fault==3)++x.o.native.owner_generation;
         if(fault==4)x.o.native.selection_object=100;
@@ -795,9 +868,9 @@ void landing_contact_boundary() {
         x.c.unavailable(source.sampled_at+1,source.owner,true,false);
         ++x.o.native.physics_step;x.o.native.sampled_at+=x.dt;x.o.native.mode=1;x.o.native.contacts=0x8000;
         x.c.observe(x.o);
-        x.c.unavailable(source.sampled_at+101,source.owner,true,false);
+        x.c.unavailable(source.sampled_at+102,source.owner,true,false);
         check(!x.c.preserves_native() && !x.c.landing().takeoff().valid,
-            "new partial-contact observations cannot renew the original100ms landing bridge deadline");
+            "new partial-contact observations cannot renew100ms from the first live touchdown");
     }
 }
 
@@ -1715,4 +1788,4 @@ void input_edges() {
     }
 }
 }
-int main(){recorded_lip_contact_handoff();recorded_takeoff_skipped_air_publication();recorded_takeoff_idle_push_clear();vertical_lip_return();recorded_stale_plan_recovery();recorded_short_takeoff_confirmation();confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){recorded_landing_contact_churn();recorded_lip_contact_handoff();recorded_takeoff_skipped_air_publication();recorded_takeoff_idle_push_clear();vertical_lip_return();recorded_stale_plan_recovery();recorded_short_takeoff_confirmation();confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
