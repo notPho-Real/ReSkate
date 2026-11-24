@@ -265,15 +265,19 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
         // selection without depending on allocation order or a map's axes.
         constexpr std::array<float,5> angles{0,-.4f,.4f,-.8f,.8f};
         constexpr std::array<float,5> reaches{.12f,.25f,.45f,.7f,1.f};
-        // A full miss scan must not consume the plan's 50ms freshness window
-        // before Level Out can check clearance. Yield after one native step's
-        // worth of discovery work, then resume with a fresh original frame.
+        // Discovery runs on client callbacks, whose cadence can differ from
+        // physics. A physics-step budget fragmented the captured miss scan
+        // into five callbacks and expired its original150ms input deadline.
+        // Spend half the source frame's50ms lease on discovery, reserving the
+        // other half for clearance. Resume only the cursor on a fresh frame;
+        // neither query results nor the input deadline gain another lease.
         // Neutral triggers still visit the complete fan; an eligible transfer
         // still runs the existing cost selection and all clearance checks.
-        const auto budget=static_cast<std::uint64_t>(std::ceil(snapshot.observation().native.physics_seconds*1000));
+        constexpr auto budget=VertAirController::plan_max_age_ms/2;
         for(unsigned index=first_destination;index<angles.size()*reaches.size();++index) {
             const auto queried_at=api.now(api.user);
-            if(!selected && index>first_destination && queried_at>=now && queried_at-now>=budget) {
+            if(!selected && index>first_destination && queried_at>=observation.native.sampled_at &&
+               queried_at-observation.native.sampled_at>=budget) {
                 const bool retained=save_cursor(index);
 #if defined(DINGOSDK_DEV_TOOLS)
                 logging::log(logging::Level::info,logging::Channel::skater,

@@ -282,6 +282,7 @@ inline bool vert_align_target(std::array<float,16>& target,SurfaceGeometryVector
 }
 class VertAirController {
 public:
+    static constexpr std::uint64_t plan_max_age_ms=50;
     void cancel() noexcept {takeoff_gap_frame_={};publication_frame_={};landing_gap_frame_={};push_gap_selection_=0;mode_gap_selection_=0;suspended_=false;landing_.reset();phase_=VertPhase::cancelled;request_=0;transition_at_=0;plan_={};released_plan_={};}
     void reset() noexcept {*this={};}
     // A busy input publisher is absence of evidence, not a new contact. Keep
@@ -690,7 +691,7 @@ public:
             const char** rejection=nullptr) noexcept {
         if(rejection)*rejection="none";
         if(!pending(f,now) || !plan_ || planned_.owner!=f.owner || f.physics_step<planned_.physics_step ||
-           now<planned_.sampled_at || now-planned_.sampled_at>50) {
+           now<planned_.sampled_at || now-planned_.sampled_at>plan_max_age_ms) {
             if(request_ && now>=request_at_ && now-request_at_>150) {
                 // An unavailable transfer expires its own command, not genuine
                 // vert flight or the later independently proven landing window.

@@ -3,7 +3,7 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current completion work (November23): `dbc0ca44` verifies genuine vert takeoff,
+Current completion work (November24): `dbc0ca44` verifies genuine vert takeoff,
 natural four-wheel return and LT Level Out in native gameplay. Its complete
 581-event capture loses no records;39 independent AIR observations match the
 submitted native trajectory, followed by supported four-wheel landing.
@@ -15,7 +15,16 @@ while live201 entered idle mode. The source now retains this forward publication
 under the unchanged owner, actor, episode, contact and original100ms limits.
 A later correlated physical AIR observation is still required for authority.
 The retained-trace regression fails before the correction;7,487 controller
-checks pass afterward. This latest correction still needs compiled/native checks.
+checks pass afterward. Compiled `46f15083` verifies genuine takeoff and natural
+four-wheel return. Its complete577-event LT trial exposed a separate scheduling
+failure: five client callbacks finished the destination fan after the original
+150ms input deadline, so no handoff occurred. Discovery now spends half the
+unchanged50ms source-frame lease instead of one native physics tick. All25
+destinations and72 clearance rays remain required. The cost regression fails
+before this fix;93,632 geometry/runtime checks pass afterward, including
+30/60/120Hz, obstruction, cancellation and expiry. This fix needs compiled/native
+verification. A dev-only before/after arbitration observation is batched with it
+to distinguish resolved Switch branches from actual native queue admission.
 Switch remains unresolved: `cb368987` resolves a ChangeStance branch, but native
 arbitration/actor entry is not established and443 physical pose samples retain
 the original leading foot. Longer trigger pulses are not justified.
@@ -25,17 +34,17 @@ landing and authoritative native bank of the entire line. This sequence has not
 yet passed native acceptance. Preserve the verified Manual/Pivot chain below.
 Native Switch and exact integrated acceptance also remain open.
 
-Last fully green compiled checkpoint **dbc0ca44e65117890b2d75f610c306ae9eb47cf7** passes
-all required gates in [CI 45335329919](https://github.com/notPho-Real/ReSkate/actions/runs/45335329919),
+Last fully green compiled checkpoint **46f15083b52ef93f10262e6f4ec6a4cc6c7cfa1d** passes
+all required gates in [CI 45344152171](https://github.com/notPho-Real/ReSkate/actions/runs/45344152171),
 including148 Windows preflight and137 integration tests.
-Runtime SHA256: `f6b1e90967e47c173eb46476e16f930791f3427eb3760c1c610d5e47bee12a04`.
+Runtime SHA256: `8760c50d12c915c1f7f2b594261c28259d84a56bab83375cd3965aebd91efcbe`.
 Switch and the full Revert/Manual line remain unaccepted.
 Preserved `cb368987` camera evidence now establishes actual orbit both directions
 and neutral recentering to4.96degrees:175 complete ON ticks,161 returned Arcade
 camera writes,180 complete OFF ticks with zero Arcade writes, and native camera
 restoration on console focus withdrawal. Neither capture lost records. Console
 focus released the camera before OFF, so direct OFF of an active lease and
-Switch-follow remain unverified. The game is closed; all163 rollback snapshots
+Switch-follow remain unverified. The game is closed; all164 rollback snapshots
 and the score pack are verified, and hardware is released.
 
 Preserved native Manual/Pivot evidence: **a235c2782027b63539ea63e506e4cb735831ab92** passes

@@ -32,6 +32,23 @@ NoBailSkater owner;
 #if defined(DINGOSDK_DEV_TOOLS)
 struct Evidence {std::uint64_t sequence{};bool submitted{},changed{};};
 Evidence pending;
+struct ArbitrationObservation {
+    bool valid{};
+    std::uintptr_t scheduler{},state{},action{};
+    std::int32_t state_priority{},action_priority{},requested_priority{};
+};
+ArbitrationObservation arbitration(std::uintptr_t action) noexcept {
+    ArbitrationObservation result;std::uintptr_t data{};
+    if(!action || !memory::peek(action+contract::action_data,data))return result;
+    data&=~std::uintptr_t{4};
+    result.valid=data && memory::peek(action+contract::action_scheduler,result.scheduler) && result.scheduler &&
+        memory::peek(data+contract::data_priority,result.requested_priority) &&
+        memory::peek(result.scheduler+contract::scheduler_pending_state,result.state) &&
+        memory::peek(result.scheduler+contract::scheduler_state_priority,result.state_priority) &&
+        memory::peek(result.scheduler+contract::scheduler_pending_action,result.action) &&
+        memory::peek(result.scheduler+contract::scheduler_action_priority,result.action_priority);
+    return result;
+}
 #endif
 std::uintptr_t pointer(std::uintptr_t at) noexcept {
     std::uintptr_t value{};return memory::peek(at,value)?value:0;
@@ -89,13 +106,14 @@ void transition(std::uintptr_t context,const bool* predicate,const bool* flags) 
 #if defined(DINGOSDK_DEV_TOOLS)
     const auto action=sequence?pointer(context+contract::consumer_action):0;
     const auto prior_branch=action?pointer(action+contract::action_branch):0;
+    const auto prior_arbitration=sequence?arbitration(action):ArbitrationObservation{};
 #endif
     original_transition(context,requested?&selected:predicate,flags);
 #if defined(DINGOSDK_DEV_TOOLS)
     if(sequence) {
         // Observe the original consumer's result once. Zero authored dwell
         // rules out arbitrary longer input pulses; these fields distinguish
-        // branch admission from a later actor/leading-foot failure.
+        // branch resolution from arbitration and later actor/foot execution.
         std::uintptr_t branch{};
         std::uint8_t pending_action{},native_flags{};
         float elapsed{},truth_elapsed{},truth_duration{},transition_time{};
@@ -111,6 +129,13 @@ void transition(std::uintptr_t context,const bool* predicate,const bool* flags) 
         logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE NATIVE STANCE REQUEST: sequence={} native_transition_consumer=true observed={} branch_before={} branch_after={} pending={} flags={} elapsed={} truth_elapsed={} truth_duration={} transition_time={} physical_completion=unverified.",
             sequence,observed,prior_branch,branch,pending_action,native_flags,elapsed,truth_elapsed,truth_duration,transition_time);
+        const auto after=observed?arbitration(action):ArbitrationObservation{};
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE STANCE ARBITRATION: sequence={} observed={} same_scheduler={} requested_priority={} scheduler={} state_before={} state_priority_before={} state_after={} state_priority_after={} action_before={} action_priority_before={} action_after={} action_priority_after={} physical_completion=unverified.",
+            sequence,prior_arbitration.valid && after.valid,
+            prior_arbitration.valid && after.valid && prior_arbitration.scheduler==after.scheduler,
+            after.requested_priority,after.scheduler,prior_arbitration.state,prior_arbitration.state_priority,
+            after.state,after.state_priority,prior_arbitration.action,prior_arbitration.action_priority,after.action,after.action_priority);
     }
 #else
     (void)sequence;

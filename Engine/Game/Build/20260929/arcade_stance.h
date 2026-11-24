@@ -20,10 +20,17 @@ inline constexpr std::size_t transition_context_page=24, transition_predicate_pa
     transition_predicate_offset=307, transition_flags_page=0, transition_flags_offset=192;
 // Read-only execution evidence from the pinned consumer: context[0] owns the
 // action, action+8 tags its data pointer, +60 stores the resolved branch and
-// +11 remains set when native transition admission has not completed.
+// +11 clears after an arbitration attempt; that alone does not prove admission.
 inline constexpr std::size_t consumer_action=0, action_data=8, action_pending=0x11,
     action_branch=0x60, action_elapsed=0x68, action_truth_elapsed=0x6c,
     data_truth_duration=0x60, data_transition_time=0x64;
+// The consumer passes action+50 and data+68 to native branch arbitration.
+// Its substate/action lanes retain a pending branch and signed priority; an
+// equal or higher pending priority can reject a resolved branch. These are
+// read-only diagnostics, never an API for forcing native arbitration.
+inline constexpr std::size_t action_scheduler=0x50, data_priority=0x68,
+    scheduler_pending_state=0x308, scheduler_state_priority=0x320,
+    scheduler_pending_action=0x2e8, scheduler_action_priority=0x300;
 inline constexpr auto domain_owners=arcade_flip_transition::domain_owners;
 inline constexpr auto physics_state=arcade_held_flip::physics_state;
 inline constexpr auto stance_flags=launches::stance_flags_offset;
