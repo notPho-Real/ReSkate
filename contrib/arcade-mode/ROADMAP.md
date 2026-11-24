@@ -18,12 +18,17 @@ The retained-trace regression fails before the correction;7,487 controller
 checks pass afterward. Compiled `46f15083` verifies genuine takeoff and natural
 four-wheel return. Its complete577-event LT trial exposed a separate scheduling
 failure: five client callbacks finished the destination fan after the original
-150ms input deadline, so no handoff occurred. Discovery now spends half the
-unchanged50ms source-frame lease instead of one native physics tick. All25
-destinations and72 clearance rays remain required. The cost regression fails
-before this fix;93,632 geometry/runtime checks pass afterward, including
-30/60/120Hz, obstruction, cancellation and expiry. This fix needs compiled/native
-verification. A dev-only before/after arbitration observation is batched with it
+150ms input deadline, so no handoff occurred. Discovery now uses a bounded25ms
+query-work budget instead of one native physics tick. Client geometry can run
+before the current motion observation; final clearance yields to another
+callback when discovery spent the old source's freshness allowance. Only the
+miss cursor survives, with unchanged150ms input and50ms motion-age limits.
+All25 destinations and72 clearance rays remain required. Both cost and callback
+ordering regressions fail before their corrections. Offline coverage includes
+30/60/120Hz, both callback orders, obstruction, cancellation, owner replacement,
+competing native tricks and expiry. The initial `521b3713` build was cancelled
+after the offline callback-order reproduction; no native trial used it.
+This fix needs compiled/native verification. A dev-only before/after arbitration observation is batched with it
 to distinguish resolved Switch branches from actual native queue admission.
 Switch remains unresolved: `cb368987` resolves a ChangeStance branch, but native
 arbitration/actor entry is not established and443 physical pose samples retain

@@ -117,14 +117,14 @@ void vert_runtime_mode_gap_checks() {
 }
 void vert_runtime_scene_checks() {
     vert_runtime_mode_gap_checks();
-    for(unsigned scenario=0;scenario<22;++scenario) {
+    for(unsigned scenario=0;scenario<29;++scenario) {
         const unsigned fault=scenario<5?scenario:scenario==11?5:0;
         vert_runtime::cancel();Fixture f;f.allow_world_owner=f.unknown=true;f.curve_radius=4;
         VertObservation o;o.enabled=o.supported=true;o.native.valid=true;o.native.owner={1,2,3,4,5};
         o.native.owner_generation=o.native.contact_generation=o.native.action_generation=o.native.mode_generation=1;
         o.native.flip_known=true;o.native.flip_id=-1;o.native.selection_object=99;
-        o.native.physics_seconds=(scenario==12 || scenario==18)?1.f/30:
-            (scenario==14 || scenario==19)?1.f/120:1.f/60;o.native.state=100;o.native.mode=1;
+        o.native.physics_seconds=(scenario==12 || scenario==18 || scenario==23)?1.f/30:
+            (scenario==14 || scenario==19 || scenario==24)?1.f/120:1.f/60;o.native.state=100;o.native.mode=1;
         o.native.sampled_at=1000;o.contacted_shape={7,1,9};
         const auto context=[&] {f.time=o.native.sampled_at;f.live.native=InputNativeContext::from_frame(o.native);};
         for(float angle:{.8f,1.1f,1.3f}) {
@@ -247,7 +247,7 @@ void vert_runtime_scene_checks() {
         // query owner is the client callback, not the native physics clock.
         // Model both costs; omitting clearance hid the original deadline miss.
         if(scenario>=17){f.clearance_delay_us=200;f.time+=9;}
-        if(scenario==20)f.anchor_block_at=26;
+        if(scenario==20 || scenario==27)f.anchor_block_at=26;
         if(scenario==21)f.vertical_delay=12;
         auto callback_started=f.time;
         if(scenario==15)f.anchor_block_at=26;
@@ -256,30 +256,41 @@ void vert_runtime_scene_checks() {
             const auto first_query_calls=f.calls;
             if(scenario==16)vert_runtime::cancel();
             motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
-            for(unsigned callback=0;callback<12 && !motion.plan && !((scenario==15 || scenario==20) && f.calls>=26);++callback) {
+            for(unsigned callback=0;callback<12 && !motion.plan && !((scenario==15 || scenario==20 || scenario==27) && f.calls>=26);++callback) {
                 const auto step_ms=static_cast<std::uint64_t>(std::ceil(o.native.physics_seconds*1000));
                 const auto next=scenario>=17?std::max(f.time,callback_started+33):f.time+step_ms;
-                const auto steps=std::max<std::uint64_t>(1,(next-o.native.sampled_at)/step_ms);
+                const auto steps=std::max<std::uint64_t>(1,static_cast<std::uint64_t>(std::llround(
+                    static_cast<double>(next-o.native.sampled_at)/(1000.0*o.native.physics_seconds))));
                 const auto seconds=static_cast<float>(steps)*o.native.physics_seconds;
                 o.native.physics_step+=steps;o.native.sampled_at=next;
                 o.position=vert_math::position(o.position,o.velocity,9.81f,seconds);
                 o.velocity[1]-=9.81f*seconds;context();callback_started=f.time;
-                (void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+                // Native client geometry can precede the motion observer for
+                // this original frame. Query admission has the new frame;
+                // the controller still owns the previous physical observation.
+                if(scenario<22)(void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
                 vert_runtime::geometry(f.api(),f.live,o.native,o.position,o.up);
+                if(f.calls==25) {
+                    if(scenario==25)vert_runtime::cancel();
+                    if(scenario==26){++o.native.owner_generation;f.live.native=InputNativeContext::from_frame(o.native);}
+                    if(scenario==28){o.native.flip_id=2;f.live.native=InputNativeContext::from_frame(o.native);}
+                }
                 motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
             }
-            const bool admitted=scenario<15 || (scenario>=17 && scenario<20);
+            const bool admitted=scenario<15 || (scenario>=17 && scenario<20) || (scenario>=22 && scenario<25);
             check((motion.plan.action==VertAction::level_out)==admitted,
                 "resumed search still rejects obstructed clearance and cancelled ownership");
             if(admitted)check(f.time-input.physical_pressed_at<=150,
                 "bounded destination discovery leaves time for fresh Level Out within the original trigger deadline");
             if(admitted)check(f.calls==25+72 && f.vertical_calls==25,
                 "neutral trigger checks the entire destination fan and every clearance ray at 30/60/120Hz");
-            if(scenario==15 || scenario==20)check(f.vertical_calls==25 && f.calls==26,"obstruction blocks the completed fan's Level Out");
+            if(scenario==15 || scenario==20 || scenario==27)check(f.vertical_calls==25 && f.calls==26,"obstruction blocks the completed fan's Level Out");
             if(scenario==16)check(f.calls==first_query_calls && f.calls>0 && f.vertical_calls==f.calls && f.calls<25,
                 "cancelled search cannot resume its retained cursor");
             if(scenario==21)check(f.time-input.physical_pressed_at>150 && !motion.plan,
                 "work that cannot fit still expires the original input instead of extending its deadline");
+            if(scenario==25 || scenario==26)check(f.calls==25 && f.vertical_calls==25,
+                "completed miss cursor grants no clearance authority after cancellation or owner replacement");
             check(f.calls==f.pops && f.calls==f.frees,"resumed destination discovery releases every native result");
             continue;
         }

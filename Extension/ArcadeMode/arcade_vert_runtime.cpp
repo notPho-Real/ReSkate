@@ -268,21 +268,21 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
         // Discovery runs on client callbacks, whose cadence can differ from
         // physics. A physics-step budget fragmented the captured miss scan
         // into five callbacks and expired its original150ms input deadline.
-        // Spend half the source frame's50ms lease on discovery, reserving the
-        // other half for clearance. Resume only the cursor on a fresh frame;
-        // neither query results nor the input deadline gain another lease.
+        // Budget discovery against query elapsed time. Client geometry can
+        // precede this frame's motion observer, so the controller's previous
+        // observation must not shorten every miss batch to a single query.
+        // Resume only the cursor; no geometry or input lease is renewed.
         // Neutral triggers still visit the complete fan; an eligible transfer
         // still runs the existing cost selection and all clearance checks.
         constexpr auto budget=VertAirController::plan_max_age_ms/2;
         for(unsigned index=first_destination;index<angles.size()*reaches.size();++index) {
             const auto queried_at=api.now(api.user);
-            if(!selected && index>first_destination && queried_at>=observation.native.sampled_at &&
-               queried_at-observation.native.sampled_at>=budget) {
+            if(!selected && index>first_destination && queried_at>=now && queried_at-now>=budget) {
                 const bool retained=save_cursor(index);
 #if defined(DINGOSDK_DEV_TOOLS)
                 logging::log(logging::Level::info,logging::Channel::skater,
-                    "ARCADE VERT SEARCH: serial={} first={} next={} elapsed={} retained={} complete=false.",
-                    serial,first_destination,index,queried_at-now,retained);
+                    "ARCADE VERT SEARCH: serial={} first={} next={} elapsed={} retained={} complete=false query_ms={} source_ms={}.",
+                    serial,first_destination,index,queried_at-now,retained,now,observation.native.sampled_at);
 #else
                 (void)retained;
 #endif
@@ -339,6 +339,23 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
         // A selected transfer that loses freshness must be queried again, not
         // remembered as an exhausted fan and replaced by Level Out next tick.
         if(!selected && !save_cursor(static_cast<unsigned>(angles.size()*reaches.size())))return;
+        // The miss cursor is not motion evidence. If discovery spent more than
+        // half the immutable physical source's50ms lease, leave clearance for
+        // the next callback. There it uses a newer original observation; we
+        // never retimestamp the old source or retain a selected trajectory.
+        // A completed fan skips this yield so clearance can actually run.
+        const auto completed=api.now(api.user);
+        if(!selected && first_destination<angles.size()*reaches.size() &&
+           completed>=observation.native.sampled_at &&
+           completed-observation.native.sampled_at>=budget) {
+#if defined(DINGOSDK_DEV_TOOLS)
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE VERT SEARCH: serial={} first={} next={} elapsed={} retained=true complete=false clearance_deferred=true query_ms={} source_ms={}.",
+                serial,first_destination,angles.size()*reaches.size(),completed>=now?completed-now:0,
+                now,observation.native.sampled_at);
+#endif
+            return;
+        }
     }
     if(!selected) {
         selected=vert_level_out(observation,direction);
@@ -365,9 +382,9 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
     const bool staged=query_serial==serial && controller.stage(selected,observation,completed,gravity);
 #if defined(DINGOSDK_DEV_TOOLS)
     logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE VERT SEARCH: serial={} first={} next={} elapsed={} staged={} action={} gravity={} complete=true.",
+        "ARCADE VERT SEARCH: serial={} first={} next={} elapsed={} staged={} action={} gravity={} complete=true query_ms={} source_ms={}.",
         serial,first_destination,destination_cursor,completed>=now?completed-now:0,staged,
-        static_cast<unsigned>(selected.action),gravity);
+        static_cast<unsigned>(selected.action),gravity,now,observation.native.sampled_at);
 #else
     (void)staged;
 #endif
