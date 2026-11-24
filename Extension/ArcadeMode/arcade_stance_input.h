@@ -38,15 +38,23 @@ public:
     }
     bool observe(const InputNativeContext& native,std::uint64_t now,bool allowed) noexcept {
         if(!active_)return false;
-        if(!allowed || !ground(native,now) || now<last_poll_ ||
+        // ChangeStance's native preparation can lift one truck and set the
+        // pushing bit before changing feet. Keep only the neutral reservation
+        // through that supported state100 continuation. This cannot admit a
+        // new action, renew its deadline or count preparation as completion.
+        const bool preparing=issued_ && before_.contacts_known && (before_.contacts&0xc000u) &&
+            native.contacts_known && (native.contacts&0xc000u);
+        if(!allowed || !ground(native,now,preparing) || now<last_poll_ ||
+           (issued_ && before_.contacts_known && !preparing) ||
            now-last_poll_>InputTiming::native_sample_lease_ms ||
            native.physics_step<last_.physics_step || native.sampled_at<last_.sampled_at ||
            native.generations.owner!=before_.generations.owner ||
-           native.generations.contact!=before_.generations.contact ||
+           (!preparing && native.generations.contact!=before_.generations.contact) ||
            native.flip.object!=before_.flip.object ||
            (issued_ && (now<issued_at_ || now-issued_at_>completion_limit_ms)) ||
            (!issued_ && (now>request_.deadline || native.generations.action!=before_.generations.action)) ||
-           (native.flip.stance&~stance_mask)!=(before_.flip.stance&~stance_mask)) {
+           (native.flip.stance&~(stance_mask|(preparing?0x40u:0u)))!=
+               (before_.flip.stance&~(stance_mask|(preparing?0x40u:0u)))) {
             cancel();return false;
         }
         const bool different=(native.flip.stance&stance_mask)!=(before_.flip.stance&stance_mask);
@@ -66,9 +74,9 @@ public:
     std::uint64_t sequence() const noexcept {return request_.press.sequence;}
 private:
     static constexpr std::uint32_t stance_mask=game::build::v20260929::launches::stance_switch_mask;
-    static bool ground(const InputNativeContext& native,std::uint64_t now) noexcept {
+    static bool ground(const InputNativeContext& native,std::uint64_t now,bool preparing=false) noexcept {
         return native.required && native.fresh(now) && native.flip.valid && native.flip.object &&
-            !native.airborne && !native.rail_family && !(native.flip.stance&0x40u) &&
+            !native.airborne && !native.rail_family && (preparing || !(native.flip.stance&0x40u)) &&
             native.flip.state==100 && native.flip.mode<=1;
     }
     TriggerPress request_{};

@@ -189,6 +189,46 @@ void interruptions() {
     check(!lease.observe(frame(1171,1171),1171,true)&&!lease.observed_change(),
         "unacknowledged native request expires without a false stance success or another press");
 }
+void native_stance_preparation() {
+    // The retained native queue-admission trace remains in riding state100
+    // while its push preparation bit and wheel support change. Reserving
+    // neutral input through those observations must not declare a foot swap.
+    for(unsigned stance:{0u,0x20u})for(unsigned cadence:{8u,17u,33u}) {
+        auto first=frame(10,1,stance);first.contacts_known=true;first.contacts=0xc000;
+        StanceInputLease lease;auto edge=press(first);
+        check(lease.start(edge,first,10)&&lease.issued(first,10),"native preparation follows an authenticated issued request");
+        for(unsigned step=2;step<20;++step) {
+            auto next=frame(10+(step-1)*cadence,step,stance|(step<12?0x40u:0u));
+            next.contacts_known=true;next.contacts=step<8?0x8000:0xc000;
+            next.generations.contact=step<8?2:3;++next.generations.action;
+            check(lease.observe(next,next.sampled_at,true)&&!lease.observed_change(),
+                "supported native preparation retains neutral reservation without false Switch completion");
+        }
+        auto changed=frame(10+19*cadence,20,stance^0x20u);
+        changed.contacts_known=true;changed.contacts=0xc000;changed.generations.contact=3;
+        check(!lease.observe(changed,changed.sampled_at,true)&&lease.observed_change(),
+            "only a later leading-foot change completes native preparation");
+    }
+    for(unsigned fault=0;fault<8;++fault) {
+        auto first=frame();first.contacts_known=true;first.contacts=0xc000;
+        StanceInputLease lease;check(lease.start(press(first),first,10),"negative preparation starts");
+        if(fault!=0)check(lease.issued(first,10),"negative preparation is issued");
+        auto next=frame(20,2,0x40);next.contacts_known=true;next.contacts=0x8000;
+        ++next.generations.contact;
+        if(fault==1)next.contacts_known=false;
+        if(fault==2)next.contacts=0;
+        if(fault==3)++next.generations.owner;
+        if(fault==4)next.airborne=true;
+        if(fault==5)next.flip.state=402;
+        if(fault>=6) {
+            next.flip.stance=0;next.generations.contact=first.generations.contact;
+            if(fault==6)next.contacts=0;
+            else next.contacts_known=false;
+        }
+        check(!lease.observe(next,20,true)&&!lease.observed_change(),
+            "unissued, unsupported, unknown, replaced, airborne and bailed preparation cancels");
+    }
+}
 void denied_sources() {
     for(unsigned fault=0;fault<10;++fault) {
         StanceInputLease lease;auto input=press();auto native=frame();
@@ -420,4 +460,4 @@ void awaiting_acknowledgement_reserves_neutral() {
 }
 
 }
-int main(){native_transition_scope();awaiting_acknowledgement_reserves_neutral();exported_asset_identity();original_edge_and_delivery();interruptions();denied_sources();finite_double_tap();packet_and_phase_guards();completion_requires_release();lifecycle_and_journal();transient_acknowledgement();std::printf("stance input: %u checks passed\n",checks);}
+int main(){native_transition_scope();awaiting_acknowledgement_reserves_neutral();exported_asset_identity();original_edge_and_delivery();interruptions();native_stance_preparation();denied_sources();finite_double_tap();packet_and_phase_guards();completion_requires_release();lifecycle_and_journal();transient_acknowledgement();std::printf("stance input: %u checks passed\n",checks);}

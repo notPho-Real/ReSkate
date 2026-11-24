@@ -59,7 +59,7 @@ bool guid_is(std::uintptr_t object,const contract::Guid& expected) noexcept {
 }
 bool assets_current() noexcept {return native_assets_current(std::span{assets},guid_is);}
 // Admission and tap delivery require exact live/publication agreement. Only a
-// final neutral reservation may await publication of a live leading-foot bit;
+// final neutral reservation may await publication of live stance preparation;
 // that observation still uses the original frame lease and completion clock.
 bool current(const NoBailSkater& skater,const InputNativeContext& native,std::uint64_t now,
              bool neutral_observation=false) noexcept {
@@ -70,7 +70,8 @@ bool current(const NoBailSkater& skater,const InputNativeContext& native,std::ui
         memory::peek(skater.context+contract::stance_flags,stance) &&
         ((stance&0x60u)==native.flip.stance ||
          (neutral_observation && input.active() && input.was_issued() &&
-          ((stance&0x60u)^native.flip.stance)==game::build::v20260929::launches::stance_switch_mask)) &&
+          ((native.contacts_known && (native.contacts&0xc000u) && !(native.flip.stance&~0x60u)) ||
+           ((stance&0x60u)^native.flip.stance)==game::build::v20260929::launches::stance_switch_mask))) &&
         no_bail_skater(after) && after==before;
 }
 void retire() noexcept {

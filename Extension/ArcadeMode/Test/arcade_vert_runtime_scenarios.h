@@ -117,7 +117,7 @@ void vert_runtime_mode_gap_checks() {
 }
 void vert_runtime_scene_checks() {
     vert_runtime_mode_gap_checks();
-    for(unsigned scenario=0;scenario<29;++scenario) {
+    for(unsigned scenario=0;scenario<30;++scenario) {
         const unsigned fault=scenario<5?scenario:scenario==11?5:0;
         vert_runtime::cancel();Fixture f;f.allow_world_owner=f.unknown=true;f.curve_radius=4;
         VertObservation o;o.enabled=o.supported=true;o.native.valid=true;o.native.owner={1,2,3,4,5};
@@ -258,7 +258,8 @@ void vert_runtime_scene_checks() {
             motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
             for(unsigned callback=0;callback<12 && !motion.plan && !((scenario==15 || scenario==20 || scenario==27) && f.calls>=26);++callback) {
                 const auto step_ms=static_cast<std::uint64_t>(std::ceil(o.native.physics_seconds*1000));
-                const auto next=scenario>=17?std::max(f.time,callback_started+33):f.time+step_ms;
+                const auto next=scenario==29?f.time+15:
+                    scenario>=17?std::max(f.time,callback_started+33):f.time+step_ms;
                 const auto steps=std::max<std::uint64_t>(1,static_cast<std::uint64_t>(std::llround(
                     static_cast<double>(next-o.native.sampled_at)/(1000.0*o.native.physics_seconds))));
                 const auto seconds=static_cast<float>(steps)*o.native.physics_seconds;
@@ -277,7 +278,7 @@ void vert_runtime_scene_checks() {
                 }
                 motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
             }
-            const bool admitted=scenario<15 || (scenario>=17 && scenario<20) || (scenario>=22 && scenario<25);
+            const bool admitted=scenario<15 || (scenario>=17 && scenario<20) || (scenario>=22 && scenario<25) || scenario==29;
             check((motion.plan.action==VertAction::level_out)==admitted,
                 "resumed search still rejects obstructed clearance and cancelled ownership");
             if(admitted)check(f.time-input.physical_pressed_at<=150,
