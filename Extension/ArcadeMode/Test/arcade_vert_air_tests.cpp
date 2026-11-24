@@ -1109,8 +1109,11 @@ void staged_races_and_orientation() {
         if(failure==3)o.native.owner_generation++;
         if(failure==4)o.native.flip_id=2;
         if(failure==5)o.native.flip_known=false;
-        c.observe(o);
-        check(bool(c.consume(o.native,1020,o.velocity))==(failure==0),"collision, displacement, owner or native actor replacement revokes staged impulse");
+        const char* observation_rejection{};const char* motion_rejection{};
+        c.observe(o,&observation_rejection);
+        check(bool(c.consume(o.native,1020,o.velocity,&motion_rejection))==(failure==0),"collision, displacement, owner or native actor replacement revokes staged impulse");
+        check(std::string_view(motion_rejection)==(failure==1?"plan_velocity":failure==2?"plan_position":"none"),
+            "native cancellation evidence distinguishes stale velocity and position without relaxing either guard");
     }
     for(float dt:{1.f/30,1.f/60,1.f/120})for(float yaw:{0.f,.8f,2.f}) {
         std::array<float,16> target{std::cos(yaw),0,-std::sin(yaw),0,0,1,0,0,std::sin(yaw),0,std::cos(yaw),0,3,4,5,1};

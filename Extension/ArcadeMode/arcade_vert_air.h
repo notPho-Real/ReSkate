@@ -487,11 +487,14 @@ public:
         return phase_==VertPhase::native_air && matches(f,now) && now>=takeoff_.native.sampled_at &&
             now-takeoff_.native.sampled_at<=4000;
     }
-    void observe(const VertObservation& value) noexcept {
+    void observe(const VertObservation& value,const char** rejection=nullptr) noexcept {
         using namespace vert_math;
         const auto& f=value.native;
+        const auto reject=[&](const char* reason) {if(rejection)*rejection=reason;};
+        reject("none");
         if(!value.enabled || !f.valid || !f.owner.valid() || value.contested || !finite(value.position) ||
            !finite(value.velocity) || !std::isfinite(f.physics_seconds) || f.physics_seconds<.001f || f.physics_seconds>.1f) {
+            reject(!value.enabled?"disabled":value.contested?"contested":"invalid_observation");
             cancel();previous_={};return;
         }
         if(f.sampled_at<=unavailable_at_)return;
@@ -502,7 +505,7 @@ public:
         if(f.physics_step<=previous_.native.physics_step)return;
         publication_frame_={};
         if(previous_.native.valid && unavailable_at_>previous_.native.sampled_at &&
-           f.sampled_at-previous_.native.sampled_at>100) {cancel();previous_={};}
+           f.sampled_at-previous_.native.sampled_at>100) {reject("publication_timeout");cancel();previous_={};}
         if(takeoff_gap_frame_.valid) {
             const auto gap=takeoff_gap_frame_;takeoff_gap_frame_={};
             if(f.owner!=gap.owner || f.owner_generation!=gap.owner_generation ||
@@ -514,7 +517,7 @@ public:
                f.state!=takeoff_live_.state || f.mode!=takeoff_live_.crouch_mode ||
                f.stance_and_push!=(takeoff_live_.words[0]&0x60u) ||
                std::abs(f.physics_seconds-gap.physics_seconds)>=.00001f) {
-                cancel();previous_={};return;
+                reject("takeoff_successor");cancel();previous_={};return;
             }
         }
         if(landing_gap_frame_.valid) {
@@ -527,7 +530,7 @@ public:
                 f.selection_object==gap.selection_object && contact &&
                 (f.airborne?(f.state==201 && f.air_departure==gap.air_departure):
                     ((f.state==100 || f.state==103) && f.air_departure==gap.air_departure+1));
-            if(!resumed) {cancel();previous_={};return;}
+            if(!resumed) {reject("landing_successor");cancel();previous_={};return;}
             // Keep the last pre-contact descent witness. Native contact may
             // already have arrested vertical velocity before riding publishes.
             if(f.airborne) {previous_=value;return;}
@@ -538,13 +541,13 @@ public:
                 f.stance_and_push==push_gap_stance_ && !f.rail_family && f.mode<=2 &&
                 (f.state==100 || f.state==103 || f.state==200 || f.state==201);
             push_gap_selection_=0;
-            if(!resumed) {cancel();previous_={};return;}
+            if(!resumed) {reject("push_successor");cancel();previous_={};return;}
         }
         if(mode_gap_selection_) {
             const bool resumed=same_flight(f) && f.state==201 && f.mode==2 && !f.contacts &&
                 f.flip_known && f.flip_id==-1 && f.selection_object==mode_gap_selection_;
             mode_gap_selection_=0;
-            if(!resumed) {cancel();previous_={};return;}
+            if(!resumed) {reject("mode_successor");cancel();previous_={};return;}
         }
         if(phase_==VertPhase::released && suspended_) {
             // A busy publisher withdraws authority, not the physical impulse
@@ -556,7 +559,9 @@ public:
             if(!same_flight(previous_.native) || f.sampled_at-previous_.native.sampled_at>100 || elapsed>.1f ||
                std::abs(f.physics_seconds-previous_.native.physics_seconds)>.00001f ||
                (f.airborne && (!same_flight(f) || std::hypot(delta[0],delta[2])>.3f || std::abs(delta[1])>.5f ||
-                length(sub(value.position,position(previous_.position,previous_.velocity,gravity_,elapsed)))>.25f)))cancel();
+                length(sub(value.position,position(previous_.position,previous_.velocity,gravity_,elapsed)))>.25f))) {
+                reject("released_resumption");cancel();
+            }
             suspended_=false;
         }
         landing_.observe(value);
@@ -619,13 +624,15 @@ public:
                f.sampled_at>=lip_.native.sampled_at && f.sampled_at-lip_.native.sampled_at<=100 && value.velocity[1]>2 && !f.rail_family && f.mode<=2) {
                 takeoff_=value;phase_=VertPhase::native_air;landing_.begin(value);
                 direction_=scale(horizontal(origin_.normal),-1);
-            } else cancel();
+            } else {reject("unqualified_takeoff");cancel();}
         } else if((phase_==VertPhase::native_air || phase_==VertPhase::requested || phase_==VertPhase::released ||
                  phase_==VertPhase::native_owned) &&
-                  !matches(f,f.sampled_at))cancel();
+                  !matches(f,f.sampled_at)) {reject("flight_lineage");cancel();}
         if(phase_==VertPhase::released && previous_.native.airborne && f.physics_step==previous_.native.physics_step+1) {
             const auto delta=sub(value.velocity,previous_.velocity);
-            if(std::hypot(delta[0],delta[2])>.3f || std::abs(delta[1]+gravity_*f.physics_seconds)>.5f)cancel();
+            if(std::hypot(delta[0],delta[2])>.3f || std::abs(delta[1]+gravity_*f.physics_seconds)>.5f) {
+                reject("released_motion");cancel();
+            }
         }
         if((phase_==VertPhase::native_air || phase_==VertPhase::requested) && previous_.native.airborne &&
            f.physics_step==previous_.native.physics_step+1) {
@@ -656,7 +663,9 @@ public:
            !source.native.flip_known || source.native.flip_id!=-1)return false;
         plan_=plan;planned_=source.native;planned_velocity_=source.velocity;planned_position_=source.position;return true;
     }
-    VertPlan consume(const NativeInputFrame& f,std::uint64_t now,SurfaceGeometryVector velocity) noexcept {
+    VertPlan consume(const NativeInputFrame& f,std::uint64_t now,SurfaceGeometryVector velocity,
+            const char** rejection=nullptr) noexcept {
+        if(rejection)*rejection="none";
         if(!pending(f,now) || !plan_ || planned_.owner!=f.owner || f.physics_step<planned_.physics_step ||
            now<planned_.sampled_at || now-planned_.sampled_at>50) {
             if(request_ && now>=request_at_ && now-request_at_>150) {
@@ -665,7 +674,7 @@ public:
                 // The shared journal still owns the original physical edge.
                 request_=0;plan_={};
                 if(phase_==VertPhase::requested && matches(f,now))phase_=VertPhase::native_air;
-                else cancel();
+                else {if(rejection)*rejection="expired_flight";cancel();}
             }
             return {};
         }
@@ -682,6 +691,9 @@ public:
            vert_math::length(vert_math::sub(velocity,expected))>.3f ||
            vert_math::length(vert_math::sub(previous_.position,
                vert_math::position(planned_position_,planned_velocity_,gravity_,elapsed)))>.25f) {
+            if(rejection)*rejection=elapsed>.05f?"plan_age":
+                std::abs(f.physics_seconds-planned_.physics_seconds)>.00001f?"plan_cadence":
+                vert_math::length(vert_math::sub(velocity,expected))>.3f?"plan_velocity":"plan_position";
             cancel();return {};
         }
         auto result=plan_;

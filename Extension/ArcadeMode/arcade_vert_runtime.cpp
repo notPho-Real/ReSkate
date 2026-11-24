@@ -132,8 +132,26 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
         }
     }
     [[maybe_unused]] const auto before=controller.phase();
+#if defined(DINGOSDK_DEV_TOOLS)
+    const auto previous=controller.observation();
+    const char* observation_rejection{};
+    const char* motion_rejection{};
+    controller.observe(observation,&observation_rejection);
+    const auto after_observation=controller.phase();
+    auto plan=controller.consume(frame,frame.sampled_at,observation.velocity,&motion_rejection);
+    if(before!=VertPhase::idle && before!=VertPhase::cancelled && controller.phase()==VertPhase::cancelled)
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE VERT CANCEL: before={} observed={} observation={} motion={} now={} step={} sampled={} previous_step={} previous_ms={} episode={} previous_episode={} departure={} previous_departure={} enabled={} contested={} state={} mode={} actor={} previous_actor={} position={},{},{} previous_position={},{},{} velocity={},{},{} previous_velocity={},{},{}.",
+            static_cast<unsigned>(before),static_cast<unsigned>(after_observation),observation_rejection,motion_rejection,
+            now,frame.physics_step,frame.sampled_at,previous.native.physics_step,previous.native.sampled_at,
+            frame.airborne_episode,previous.native.airborne_episode,frame.air_departure,previous.native.air_departure,
+            observation.enabled,observation.contested,frame.state,frame.mode,frame.selection_object,previous.native.selection_object,
+            observation.position[0],observation.position[1],observation.position[2],previous.position[0],previous.position[1],previous.position[2],
+            observation.velocity[0],observation.velocity[1],observation.velocity[2],previous.velocity[0],previous.velocity[1],previous.velocity[2]);
+#else
     controller.observe(observation);
     auto plan=controller.consume(frame,frame.sampled_at,observation.velocity);
+#endif
     if(plan.destination.valid)for(const auto& sample:plan.destination.samples) {
         SurfaceGeometryWorldOwner current{};
         if(!native_wall_contact::static_world_owner(sample.body,current) || current!=sample.world_owner) {
