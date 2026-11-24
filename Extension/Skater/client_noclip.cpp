@@ -1721,7 +1721,7 @@ bool arcade_wallplant_hold_target(std::uintptr_t rig,std::uintptr_t context,
 }
 void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) noexcept {
 #if defined(DINGOSDK_DEV_TOOLS)
-    std::uint64_t vert_step{},vert_sampled{};
+    std::uint64_t vert_step{},vert_sampled{},vert_executed{};
     const char* vert_stage="not_submitted";
 #endif
     const auto wall_probe=arcade_mode::wallplant_runtime::writer_probe();
@@ -1917,7 +1917,10 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
                 std::span<const arcade_mode::VertRampContact>{ramp_contacts.data(),ramp_count},
                 vert_observation.position,vert_observation.up);
         }
-        const auto vert_motion=arcade_mode::vert_runtime::step(vert_observation,now,
+        // Native observation and contact reads take time. Do not spend a query
+        // lease using the earlier callback-entry clock after those reads.
+        const auto vert_now=GetTickCount64();
+        const auto vert_motion=arcade_mode::vert_runtime::step(vert_observation,vert_now,
             {owner.base,owner.entity,owner.core,owner.context,owner.rig},wall_frame_reason,&vert_correlation,&sampled);
         const auto& vert_plan=vert_motion.plan;a.vert_aligning=vert_motion.aligning;
         const bool preserve_vert=vert_motion.native_flight || vert_motion.preserve_native;
@@ -1994,7 +1997,7 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
         } else if (ground_step.status == arcade_mode::GroundStepStatus::unavailable) a.ground_resistance.reset();
         if(vert_plan) {
 #if defined(DINGOSDK_DEV_TOOLS)
-            vert_step=native_frame.physics_step;vert_sampled=native_frame.sampled_at;
+            vert_step=native_frame.physics_step;vert_sampled=native_frame.sampled_at;vert_executed=vert_now;
             vert_stage="native_submission";
 #endif
             // AIR201 must notify its curve consumer of a replacement, so the
@@ -2041,7 +2044,7 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
 #if defined(DINGOSDK_DEV_TOOLS)
             vert_stage="native_handoff";
 #endif
-            source_require(arcade_mode::vert_runtime::submitted_native_level_out(native_frame,now,vert_plan),
+            source_require(arcade_mode::vert_runtime::submitted_native_level_out(native_frame,GetTickCount64(),vert_plan),
                 "Vert native Level Out handoff changed.");
             // The native AIR curve now owns future height and board alignment.
             // Preserve independent spin input; no second impulse or pose writer.
@@ -2066,7 +2069,7 @@ void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) n
 #if defined(DINGOSDK_DEV_TOOLS)
             if(vert_step)logging::log(logging::Level::info,logging::Channel::skater,
                 "ARCADE VERT EXECUTION REJECT: step={} sampled={} execution_ms={} stage={} reason={}.",
-                vert_step,vert_sampled,now,vert_stage,issue.message);
+                vert_step,vert_sampled,vert_executed,vert_stage,issue.message);
 #endif
         }
         catch(...) {wall_writer(7,"unknown_exception");}

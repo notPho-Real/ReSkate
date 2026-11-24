@@ -130,6 +130,10 @@ bool consume(Adapter& a,const AirMotionOutput& output,const NativeInputFrame& na
     std::array<std::array<float,3>,32>velocities{};
     const bool ordinary=AirMotion::ordinary_basis(bodies.up);
     bool angular_release{},wrote{};float resistance_change{};
+    // The extracted writer includes the optional vert diagnostic stage, whose
+    // outer callback owns these locals. This fixture admits no vert command.
+    [[maybe_unused]] std::uint64_t vert_step{};
+    [[maybe_unused]] const char* vert_stage="not_submitted";
     AngularWriterEvidence angular_row;
     AirMotionIntent intent{};intent.angular_allowed=permitted;struct{bool admitted{};}manual;
     const auto commit_motion=[&](bool linear,bool angular){wrote=linear||angular;};
