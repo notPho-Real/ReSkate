@@ -3,27 +3,33 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current completion work (November23): exact `3ffee28d` reaches the native Regular
-stance consumer, but the delivered RT still leaves leading foot unchanged.
-Authored transition dwell is zero; longer trigger pulses are not the next fix.
-Read-only consumer outcome evidence will separate branch admission from actor
-execution. Genuine vert takeoff and natural supported return passed on that
-candidate. LT Level Out submitted a native AIR trajectory but canceled before
-the completed handoff receipt; it is not accepted. The runtime now checks query
-age and records release using execution time instead of backdating to input
-publication. Its 50/51ms regression fails the prior runtime and passes the fix.
-Original input, geometry and support deadlines remain unchanged. Next native
-action is the corrected handoff, then the complete landing Revert chain below.
+Current completion work (November23): exact `cb368987` reaches the native Regular
+stance consumer and selects its branch, but leading foot remains unchanged in
+443 valid physical pose samples. The remaining Switch failure is after branch
+admission; authored dwell is zero and longer trigger pulses are not justified.
+Genuine vert takeoff and natural supported return passed on this candidate.
+Level Out remains unaccepted. Its compact trace identifies pending takeoff
+confirmation rejected when native AIR simultaneously enters idle mode and clears
+the push flag. The source now retains this exact successor, as already permitted
+for admitted flight, and still requires a fresh original confirmation before any
+input or motion authority. The captured-pair regression fails before the fix;
+7,373 vert and 90,899 production geometry/runtime checks pass afterward. Owner,
+actor, episode, leading-foot, contact and original100ms limits remain enforced.
+The next native action is the corrected handoff, then the full landing chain.
 **Mandatory owner-ready gate:** genuine Vert → physical landing Revert →
 continuous physical Manual/Nose Manual → Ollie → ascending Kickflip → supported
 landing and authoritative native bank of the entire line. This sequence has not
 yet passed native acceptance. Preserve the verified Manual/Pivot chain below.
 Native Switch, camera orbit/OFF and exact integrated acceptance also remain open.
 
-Last fully green compiled checkpoint **3ffee28d659b857fa6d1d610438c281ede5cec31** passes
-all required gates in [CI 45307236082](https://github.com/notPho-Real/ReSkate/actions/runs/45307236082).
-Runtime SHA256: `9e11076bb1d8a96f3001d6446dad1fa541020e9f4e3cf11186b1114c18d38268`.
+Last fully green compiled checkpoint **cb36898756c0c02cd3ff0e8ad48d63ba26ff1619** passes
+all required gates in [CI 45318590045](https://github.com/notPho-Real/ReSkate/actions/runs/45318590045).
+Runtime SHA256: `4965bce2d87d771084c0b217149536147efed7ef8759f625f6699fa202472a4e`.
 Its Level Out handoff, Switch and full Revert/Manual line remain unaccepted.
+Camera retries establish neither orbit nor new restoration acceptance: one
+controller binding expired during console setup; the faster retry produced no
+capture records. Preserve the earlier evidence below. The game is closed and
+all161 rollback snapshots and the score pack are verified; hardware is released.
 
 Preserved native Manual/Pivot evidence: **a235c2782027b63539ea63e506e4cb735831ab92** passes
 all nine required gates in [CI 45241154647](https://github.com/notPho-Real/ReSkate/actions/runs/45241154647),

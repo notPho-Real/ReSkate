@@ -347,12 +347,19 @@ public:
             if(f.sampled_at<=pending.sampled_at || f.state!=expected.state || f.mode!=expected.crouch_mode ||
                f.contacts!=(expected.words[1]&0xc000u) || f.stance_and_push!=(expected.words[0]&0x60u))
                 return reject("takeoff_confirmation");
+            const auto stance=live.words[0]&0x60u;
+            const bool push_changed=stance!=f.stance_and_push;
             const bool forward=correlation.mismatches==D::state_changed && f.state==200 && live.state==201 &&
-                f.mode==1 && live.crouch_mode==1;
-            const bool idle=correlation.mismatches==D::mode_changed && f.state==201 && live.state==201 &&
-                f.mode==1 && live.crouch_mode==2;
-            if((!forward && !idle) || (live.words[1]&0xc000u) ||
-               (live.words[0]&0x60u)!=f.stance_and_push)return reject("takeoff_successor");
+                f.mode==1 && live.crouch_mode==1 && !push_changed;
+            // Native AIR can enter idle and finish pushing in the same update,
+            // including before takeoff's first correlated body observation.
+            // As in admitted flight, retain only a cleared push, never a foot
+            // change or push onset. observe() still requires exact confirmation
+            // by a fresh original before admitting input or physical motion.
+            const bool idle=correlation.mismatches==(D::mode_changed|(push_changed?D::stance_changed:0u)) &&
+                f.state==201 && live.state==201 && f.mode==1 && live.crouch_mode==2 &&
+                (!push_changed || ((f.stance_and_push^stance)==0x40u && !(stance&0x40u)));
+            if((!forward && !idle) || (live.words[1]&0xc000u))return reject("takeoff_successor");
             takeoff_gap_frame_=f;takeoff_live_=live;return true;
         }
         bool confirmed_takeoff=false;
