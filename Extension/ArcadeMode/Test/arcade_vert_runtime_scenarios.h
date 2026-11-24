@@ -117,13 +117,13 @@ void vert_runtime_mode_gap_checks() {
 }
 void vert_runtime_scene_checks() {
     vert_runtime_mode_gap_checks();
-    for(unsigned scenario=0;scenario<12;++scenario) {
+    for(unsigned scenario=0;scenario<17;++scenario) {
         const unsigned fault=scenario<5?scenario:scenario==11?5:0;
         vert_runtime::cancel();Fixture f;f.allow_world_owner=f.unknown=true;f.curve_radius=4;
         VertObservation o;o.enabled=o.supported=true;o.native.valid=true;o.native.owner={1,2,3,4,5};
         o.native.owner_generation=o.native.contact_generation=o.native.action_generation=o.native.mode_generation=1;
         o.native.flip_known=true;o.native.flip_id=-1;o.native.selection_object=99;
-        o.native.physics_seconds=1.f/60;o.native.state=100;o.native.mode=1;
+        o.native.physics_seconds=scenario==12?1.f/30:scenario==14?1.f/120:1.f/60;o.native.state=100;o.native.mode=1;
         o.native.sampled_at=1000;o.contacted_shape={7,1,9};
         const auto context=[&] {f.time=o.native.sampled_at;f.live.native=InputNativeContext::from_frame(o.native);};
         for(float angle:{.8f,1.1f,1.3f}) {
@@ -220,12 +220,12 @@ void vert_runtime_scene_checks() {
             check(decision.deadline==press.press.at+(touchdown?430:150),
                 "waiting for controller proof never renews the original trigger deadline");
         }
-        if(scenario>=5 && scenario<9) {
+        if((scenario>=5 && scenario<9) || scenario>=12) {
             constexpr std::array<float,4> speeds{-5.f,-1.f,0.f,1.f};
             o.position[1]+=1;
             for(unsigned sample=0;sample<3;++sample) {
                 ++o.native.physics_step;o.native.sampled_at+=17;
-                o.velocity={0,speeds[scenario-5]+static_cast<float>(2-sample)*9.81f*o.native.physics_seconds,0};
+                o.velocity={0,(scenario>=12?8.f:speeds[scenario-5])+static_cast<float>(2-sample)*9.81f*o.native.physics_seconds,0};
                 context();(void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
                 if(sample<2)o.position=vert_math::position(o.position,o.velocity,9.81f,o.native.physics_seconds);
             }
@@ -237,7 +237,34 @@ void vert_runtime_scene_checks() {
         f.curve_radius=0;f.anchor=true;f.first=0;f.calls=f.pops=f.frees=0;
         if(fault==1)f.anchor_block_at=1;
         if(fault==2)f.no_context=true;
+        // Model bounded but nonzero discovery cost. The retained native trial
+        // paused publication for 50-62ms only while its transfer was pending.
+        // This is a scheduling fixture, not a measured per-ray engine cost.
+        if(scenario>=12){f.vertical_delay=3;f.vertical_calls=0;}
+        if(scenario==15)f.anchor_block_at=26;
         vert_runtime::geometry(f.api(),f.live,o.native,o.position,o.up);
+        if(scenario>=12) {
+            if(scenario==16)vert_runtime::cancel();
+            motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+            for(unsigned callback=0;callback<12 && !motion.plan && !(scenario==15 && f.calls>=26);++callback) {
+                ++o.native.physics_step;o.native.sampled_at=f.time+static_cast<std::uint64_t>(std::ceil(o.native.physics_seconds*1000));
+                o.position=vert_math::position(o.position,o.velocity,9.81f,o.native.physics_seconds);
+                o.velocity[1]-=9.81f*o.native.physics_seconds;context();
+                (void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+                vert_runtime::geometry(f.api(),f.live,o.native,o.position,o.up);
+                motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+            }
+            check((motion.plan.action==VertAction::level_out)==(scenario<15),
+                "resumed search still rejects obstructed clearance and cancelled ownership");
+            if(scenario<15)check(f.time-input.physical_pressed_at<=150,
+                "bounded destination discovery leaves time for fresh Level Out within the original trigger deadline");
+            if(scenario<15)check(f.calls==25+72 && f.vertical_calls==25,
+                "neutral trigger checks the entire destination fan and every clearance ray at 30/60/120Hz");
+            if(scenario==15)check(f.vertical_calls==25 && f.calls==26,"obstruction blocks the completed fan's Level Out");
+            if(scenario==16)check(f.calls==6,"cancelled search cannot resume its retained cursor");
+            check(f.calls==f.pops && f.calls==f.frees,"resumed destination discovery releases every native result");
+            continue;
+        }
         if(fault==3) {
             missing=o;missing.native={};(void)vert_runtime::step(missing,f.time+1,o.native.owner,"frame_lock_busy");
             ++o.native.physics_step;o.native.sampled_at+=17;context();
@@ -311,6 +338,17 @@ void vert_runtime_scene_checks() {
 
     if(!scene)check(reachable>0,"scene has an independently cleared reachable spine trajectory");
     vert_runtime::geometry(f.api(),f.live,o.native,o.position,o.up);
+    if(!scene && yaw==0 && shift==0) {
+        const auto expired=vert_runtime::step(o,f.time+51,o.native.owner,"frame_valid");
+        check(!expired.plan && expired.native_flight,"late transfer use preserves flight without a stale impulse");
+        o.native.physics_step+=4;o.native.sampled_at+=68;
+        o.position=vert_math::position(o.position,o.velocity,9.81f,4*o.native.physics_seconds);
+        o.velocity[1]-=9.81f*4*o.native.physics_seconds;context();
+        (void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        vert_runtime::geometry(f.api(),f.live,o.native,o.position,o.up);
+        // A previously selected transfer cannot become a skipped fan on retry.
+        // Its geometry and clearance must be queried again under the same edge.
+    }
     motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
 
     if(scene<3)check(motion.plan.action==(scene==0?VertAction::spine:scene==1?VertAction::hip:VertAction::acid_drop),

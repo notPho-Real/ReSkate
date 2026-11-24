@@ -14,8 +14,13 @@ std::mutex mutex;
 VertAirController controller;
 VertPatch support;
 NativeInputFrame support_frame;
+// Discovery can span client callbacks; motion and clearance never do. Keep only
+// the next fan position, scoped to the original consumed trigger. No geometry,
+// trajectory, native authority or extended input lifetime is cached here.
+std::uint64_t query_serial{};
+unsigned destination_cursor{};
 }
-void cancel() noexcept {std::lock_guard lock(mutex);controller.reset();support={};support_frame={};}
+void cancel() noexcept {std::lock_guard lock(mutex);controller.reset();support={};support_frame={};destination_cursor=0;++query_serial;}
 TriggerDecision qualify(void*,const TriggerPress& press,const InputNativeContext& current,std::uint64_t now) noexcept {
     // Contention is not evidence of ordinary ground. All query callbacks that
     // acquire input ownership run outside this mutex; locked owner validation
@@ -46,8 +51,9 @@ InputDisposition request(const InputRequest& input,std::uint64_t now,const Nativ
         direction=vert_math::add(vert_math::scale(direction,longitudinal<0?.5f:1.f),
             vert_math::scale(right,static_cast<float>(lateral)*.65f));
     }
-    return controller.request(frame,now,input.physical_pressed_at,input.input_sequence,direction) ?
-        InputDisposition::started:InputDisposition::cancelled;
+    if(!controller.request(frame,now,input.physical_pressed_at,input.input_sequence,direction))return InputDisposition::cancelled;
+    destination_cursor=0;++query_serial;
+    return InputDisposition::started;
 }
 bool submitted_native_level_out(const NativeInputFrame& frame,std::uint64_t now,const VertPlan& plan) noexcept {
     std::lock_guard lock(mutex);
@@ -220,10 +226,12 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
         std::lock_guard lock(mutex);support=patch;support_frame=frame;return;
     }
     VertAirController snapshot;
+    std::uint64_t serial{};
+    unsigned first_destination{};
     {
         std::unique_lock lock(mutex,std::try_to_lock);
         if(!lock.owns_lock() || (!controller.pending(frame,now) && !controller.landing().flight(frame)))return;
-        snapshot=controller;
+        snapshot=controller;serial=query_serial;first_destination=destination_cursor;
     }
     using namespace vert_math;
     const auto observation=snapshot.observation();const auto direction=snapshot.direction();
@@ -244,12 +252,39 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
     }
     if(!snapshot.pending(frame,now))return;
     const auto right=cross(direction,{0,1,0});const float gravity=snapshot.gravity();
+    const auto save_cursor=[&](unsigned next) {
+        const auto completed=api.now(api.user);
+        if(!context.fresh(completed) || !api.current(api.user,context))return false;
+        std::lock_guard lock(mutex);
+        if(query_serial!=serial || !controller.pending(frame,completed))return false;
+        destination_cursor=next;return true;
+    };
     VertPlan selected;
     if(gravity>0) {
         // A fixed travel-relative fan and fixed flight times provide stable
         // selection without depending on allocation order or a map's axes.
         constexpr std::array<float,5> angles{0,-.4f,.4f,-.8f,.8f};
-        for(float reach:{.12f,.25f,.45f,.7f,1.f})for(float angle:angles) {
+        constexpr std::array<float,5> reaches{.12f,.25f,.45f,.7f,1.f};
+        // A full miss scan must not consume the plan's 50ms freshness window
+        // before Level Out can check clearance. Yield after one native step's
+        // worth of discovery work, then resume with a fresh original frame.
+        // Neutral triggers still visit the complete fan; an eligible transfer
+        // still runs the existing cost selection and all clearance checks.
+        const auto budget=static_cast<std::uint64_t>(std::ceil(snapshot.observation().native.physics_seconds*1000));
+        for(unsigned index=first_destination;index<angles.size()*reaches.size();++index) {
+            const auto queried_at=api.now(api.user);
+            if(!selected && index>first_destination && queried_at>=now && queried_at-now>=budget) {
+                const bool retained=save_cursor(index);
+#if defined(DINGOSDK_DEV_TOOLS)
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE VERT SEARCH: serial={} first={} next={} elapsed={} retained={} complete=false.",
+                    serial,first_destination,index,queried_at-now,retained);
+#else
+                (void)retained;
+#endif
+                return;
+            }
+            const float reach=reaches[index/angles.size()],angle=angles[index%angles.size()];
             const auto heading=add(scale(direction,std::cos(angle)),scale(right,std::sin(angle)));
             auto center=add(observation.position,scale(heading,std::max(.8f,length(observation.velocity)*reach)));
             center[1]+=.5f;
@@ -297,6 +332,9 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
                 if(candidate)selected=candidate;
             }
         }
+        // A selected transfer that loses freshness must be queried again, not
+        // remembered as an exhausted fan and replaced by Level Out next tick.
+        if(!selected && !save_cursor(static_cast<unsigned>(angles.size()*reaches.size())))return;
     }
     if(!selected) {
         selected=vert_level_out(observation,direction);
@@ -304,12 +342,30 @@ void geometry(const SurfaceGeometryNativeApi& supplied,const SurfaceGeometryCont
         // short immediate clearance check is required for breaking vert.
         selected.clear=query_vert_clearance(api,context,observation.position,selected.velocity,gravity,.2f,direction);
     }
-    if(!selected || !api.current(api.user,context))return;
+    if(!selected || !api.current(api.user,context)) {
+#if defined(DINGOSDK_DEV_TOOLS)
+        const auto completed=api.now(api.user);
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE VERT SEARCH REJECT: serial={} first={} elapsed={} reason={} gravity={}.",
+            serial,first_destination,completed>=now?completed-now:0,
+            !selected?"clearance":"query_context",gravity);
+#endif
+        return;
+    }
     for(const auto& sample:selected.crest)
         if(sample.valid && !revalidate_surface_geometry(api,context,sample))return;
     for(const auto& sample:selected.destination.samples)
         if(selected.destination.valid && !revalidate_surface_geometry(api,context,sample))return;
     std::lock_guard lock(mutex);
-    (void)controller.stage(selected,observation,api.now(api.user),gravity);
+    const auto completed=api.now(api.user);
+    const bool staged=query_serial==serial && controller.stage(selected,observation,completed,gravity);
+#if defined(DINGOSDK_DEV_TOOLS)
+    logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE VERT SEARCH: serial={} first={} next={} elapsed={} staged={} action={} gravity={} complete=true.",
+        serial,first_destination,destination_cursor,completed>=now?completed-now:0,staged,
+        static_cast<unsigned>(selected.action),gravity);
+#else
+    (void)staged;
+#endif
 }
 }

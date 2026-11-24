@@ -81,7 +81,7 @@ struct Fixture {
     static inline Fixture* running{};
     SurfaceGeometryContext live{{1,2,3,4,5},{true,true,{1,2,3},1,1000,false,false,1,1},6,7,1,90,1,SurfaceGeometryPhase::park};
     std::uint64_t time{1000};
-    unsigned calls{}, pops{}, frees{}, entities{}, first{3}, delay{}, clock_step{};
+    unsigned calls{}, pops{}, frees{}, entities{}, first{3}, delay{}, clock_step{}, vertical_delay{}, vertical_calls{};
     float sx{}, sz{};
     bool spine_scene{};
     float scene_hip{},scene_drop{},scene_yaw{},scene_gap{.3f};
@@ -204,6 +204,9 @@ struct Fixture {
     }
     static void* ray(std::uintptr_t world_value,editor::NativeSurfaceResult* result,const editor::NativeSurfaceRay* ray_value,const char*) {
         auto& f=*running; ++f.calls; f.time+=f.delay;
+        if(ray_value->start[0]==ray_value->end[0] && ray_value->start[2]==ray_value->end[2]) {
+            f.time+=f.vertical_delay;++f.vertical_calls;
+        }
         result->world=f.wrong_world ? world_value+1 : world_value;
         result->scope[2]=1; result->allocator=1;
         result->data=reinterpret_cast<std::uintptr_t>(f.data.data());
