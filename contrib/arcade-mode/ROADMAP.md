@@ -3,21 +3,29 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current completion work (November23): native Switch uses the authenticated
-Regular transition consumer instead of the unsuccessful B gesture. Native
-Switch remains unverified. The eaa93467 diagnostic DLL recognizes real vert
-takeoff and natural supported return; fresh LT exposed a stale-plan velocity
-rejection. Source now discards that plan while retaining native flight and the
-original input deadline, and preserves the descending AIR witness through the
-brief vertical-lip contact before curved support. Collision, Revert-support and
-freshness limits are unchanged. Focused replay covers both trigger channels.
+Current completion work (November23): exact `3ffee28d` reaches the native Regular
+stance consumer, but the delivered RT still leaves leading foot unchanged.
+Authored transition dwell is zero; longer trigger pulses are not the next fix.
+Read-only consumer outcome evidence will separate branch admission from actor
+execution. Genuine vert takeoff and natural supported return passed on that
+candidate. LT Level Out submitted a native AIR trajectory but canceled before
+the completed handoff receipt; it is not accepted. The runtime now checks query
+age and records release using execution time instead of backdating to input
+publication. Its 50/51ms regression fails the prior runtime and passes the fix.
+Original input, geometry and support deadlines remain unchanged. Next native
+action is the corrected handoff, then the complete landing Revert chain below.
 **Mandatory owner-ready gate:** genuine Vert → physical landing Revert →
 continuous physical Manual/Nose Manual → Ollie → ascending Kickflip → supported
 landing and authoritative native bank of the entire line. This sequence has not
 yet passed native acceptance. Preserve the verified Manual/Pivot chain below.
 Native Switch, camera orbit/OFF and exact integrated acceptance also remain open.
 
-Last fully green compiled checkpoint **a235c2782027b63539ea63e506e4cb735831ab92** passes
+Last fully green compiled checkpoint **3ffee28d659b857fa6d1d610438c281ede5cec31** passes
+all required gates in [CI 45307236082](https://github.com/notPho-Real/ReSkate/actions/runs/45307236082).
+Runtime SHA256: `9e11076bb1d8a96f3001d6446dad1fa541020e9f4e3cf11186b1114c18d38268`.
+Its Level Out handoff, Switch and full Revert/Manual line remain unaccepted.
+
+Preserved native Manual/Pivot evidence: **a235c2782027b63539ea63e506e4cb735831ab92** passes
 all nine required gates in [CI 45241154647](https://github.com/notPho-Real/ReSkate/actions/runs/45241154647),
 including 148 Windows preflight and 137 integration tests. Runtime SHA256:
 `de9dde688560c167f2e80999616ef57ff4d09b6e63fd996808a1c8c3ca807241`.

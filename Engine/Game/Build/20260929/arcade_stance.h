@@ -18,6 +18,12 @@ inline constexpr std::array<std::uint32_t,10> regular_transition_layout{
     64,200,308,399,5,0,0,327718,2162688,0};
 inline constexpr std::size_t transition_context_page=24, transition_predicate_page=16,
     transition_predicate_offset=307, transition_flags_page=0, transition_flags_offset=192;
+// Read-only execution evidence from the pinned consumer: context[0] owns the
+// action, action+8 tags its data pointer, +60 stores the resolved branch and
+// +11 remains set when native transition admission has not completed.
+inline constexpr std::size_t consumer_action=0, action_data=8, action_pending=0x11,
+    action_branch=0x60, action_elapsed=0x68, action_truth_elapsed=0x6c,
+    data_truth_duration=0x60, data_transition_time=0x64;
 inline constexpr auto domain_owners=arcade_flip_transition::domain_owners;
 inline constexpr auto physics_state=arcade_held_flip::physics_state;
 inline constexpr auto stance_flags=launches::stance_flags_offset;

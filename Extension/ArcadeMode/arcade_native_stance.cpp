@@ -86,10 +86,32 @@ void transition(std::uintptr_t context,const bool* predicate,const bool* flags) 
     // retains its branch eligibility, timers and actor lifecycle. Never write a
     // stance bit, animation state, heading or velocity, or call it a second time.
     const bool selected=true;
+#if defined(DINGOSDK_DEV_TOOLS)
+    const auto action=sequence?pointer(context+contract::consumer_action):0;
+    const auto prior_branch=action?pointer(action+contract::action_branch):0;
+#endif
     original_transition(context,requested?&selected:predicate,flags);
 #if defined(DINGOSDK_DEV_TOOLS)
-    if(sequence)logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE NATIVE STANCE REQUEST: sequence={} native_transition_consumer=true physical_completion=unverified.",sequence);
+    if(sequence) {
+        // Observe the original consumer's result once. Zero authored dwell
+        // rules out arbitrary longer input pulses; these fields distinguish
+        // branch admission from a later actor/leading-foot failure.
+        std::uintptr_t branch{};
+        std::uint8_t pending_action{},native_flags{};
+        float elapsed{},truth_elapsed{},truth_duration{},transition_time{};
+        const auto data=action?pointer(action+contract::action_data)&~std::uintptr_t{4}:0;
+        const bool observed=action && data && pointer(context+contract::consumer_action)==action &&
+            memory::peek(action+contract::action_branch,branch) &&
+            memory::peek(action+contract::action_pending,pending_action) &&
+            memory::peek(action+contract::action_elapsed,elapsed) &&
+            memory::peek(action+contract::action_truth_elapsed,truth_elapsed) &&
+            memory::peek(data+contract::data_truth_duration,truth_duration) &&
+            memory::peek(data+contract::data_transition_time,transition_time) &&
+            memory::peek(reinterpret_cast<std::uintptr_t>(flags),native_flags);
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE STANCE REQUEST: sequence={} native_transition_consumer=true observed={} branch_before={} branch_after={} pending={} flags={} elapsed={} truth_elapsed={} truth_duration={} transition_time={} physical_completion=unverified.",
+            sequence,observed,prior_branch,branch,pending_action,native_flags,elapsed,truth_elapsed,truth_duration,transition_time);
+    }
 #else
     (void)sequence;
 #endif

@@ -21,6 +21,10 @@ struct VertOwnerReadPause {
 }
 #if defined(DINGOSDK_DEV_TOOLS)
 #include "Engine/Core/Log/logging.h"
+#if !defined(_WIN32)
+DWORD GetLastError(){return 0;}
+void SetLastError(DWORD){}
+#endif
 namespace dingosdk::logging {
 bool enabled(Level) noexcept{return true;}
 void write(Level,Context,Channel,std::string_view) noexcept{}
@@ -113,8 +117,8 @@ void vert_runtime_mode_gap_checks() {
 }
 void vert_runtime_scene_checks() {
     vert_runtime_mode_gap_checks();
-    for(unsigned scenario=0;scenario<10;++scenario) {
-        const unsigned fault=scenario<5?scenario:0;
+    for(unsigned scenario=0;scenario<12;++scenario) {
+        const unsigned fault=scenario<5?scenario:scenario==11?5:0;
         vert_runtime::cancel();Fixture f;f.allow_world_owner=f.unknown=true;f.curve_radius=4;
         VertObservation o;o.enabled=o.supported=true;o.native.valid=true;o.native.owner={1,2,3,4,5};
         o.native.owner_generation=o.native.contact_generation=o.native.action_generation=o.native.mode_generation=1;
@@ -239,19 +243,22 @@ void vert_runtime_scene_checks() {
             ++o.native.physics_step;o.native.sampled_at+=17;context();
         }
         if(fault==4)++o.native.owner_generation;
-        motion=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        // A delayed callback must honor query age using execution time. At the
+        // inclusive boundary, its handoff lease begins when it actually writes.
+        const auto execution_time=f.time+(scenario==10?50u:scenario==11?51u:0u);
+        motion=vert_runtime::step(o,execution_time,o.native.owner,"frame_valid");
         check(bool(motion.plan)==(fault==0),"runtime clearance, query context, missing publication and owner gates control the one-shot plan");
         if(!fault)check(motion.plan.action==VertAction::level_out &&
             vert_math::length(motion.plan.velocity)<=vert_math::length(o.velocity)+.001f,"runtime fallback preserves energy");
         if(scenario>=5 && scenario<9)check(o.velocity[1]==0 ? vert_math::length(motion.plan.velocity)==0 :
             motion.plan.velocity[0]>0,"real runtime fallback redirects falling motion and invents no apex energy");
-        check(!vert_runtime::step(o,f.time,o.native.owner,"frame_valid").plan,"runtime cannot emit a second plan for held input");
+        check(!vert_runtime::step(o,execution_time,o.native.owner,"frame_valid").plan,"runtime cannot emit a second plan for held input");
         if(!fault && o.native.state==201) {
             // Fixture acknowledgement models the successful submit/write seam;
             // only native acceptance can prove adoption and physical landing.
-            check(vert_runtime::submitted_native_level_out(o.native,f.time,motion.plan),"runtime accepts the completed Level Out handoff");
-            check(vert_math::length(vert_runtime::alignment(o.native,f.time))==0,"runtime withdraws alignment at handoff");
-            ++o.native.physics_step;o.native.sampled_at+=17;o.velocity[1]+=1.3f;o.velocity[2]-=.6f;context();
+            check(vert_runtime::submitted_native_level_out(o.native,execution_time+1,motion.plan),"runtime handoff uses actual release time without renewing query age");
+            check(vert_math::length(vert_runtime::alignment(o.native,execution_time+1))==0,"runtime withdraws alignment at handoff");
+            ++o.native.physics_step;o.native.sampled_at=execution_time+17;o.velocity[1]+=1.3f;o.velocity[2]-=.6f;context();
             const auto native_owned=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
             check(native_owned.native_flight && !native_owned.plan && !native_owned.aligning,
                 "native AIR adoption remains unshaped by ordinary or vert motion writers");

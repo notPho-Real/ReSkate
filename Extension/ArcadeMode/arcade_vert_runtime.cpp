@@ -138,7 +138,10 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
     const char* motion_rejection{};
     controller.observe(observation,&observation_rejection);
     const auto after_observation=controller.phase();
-    auto plan=controller.consume(frame,frame.sampled_at,observation.velocity,&motion_rejection);
+    // Publication time describes the observation, not execution. Using it as
+    // the clock lets an old query pass its 50ms deadline and backdates the
+    // release receipt that the native handoff checks against this callback.
+    auto plan=controller.consume(frame,now,observation.velocity,&motion_rejection);
     if(before!=VertPhase::idle && before!=VertPhase::cancelled && controller.phase()==VertPhase::cancelled)
         logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE VERT CANCEL: before={} observed={} observation={} motion={} now={} step={} sampled={} previous_step={} previous_ms={} episode={} previous_episode={} departure={} previous_departure={} enabled={} contested={} state={} mode={} actor={} previous_actor={} position={},{},{} previous_position={},{},{} velocity={},{},{} previous_velocity={},{},{}.",
@@ -154,7 +157,7 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
             motion_rejection,frame.physics_step,frame.sampled_at,static_cast<unsigned>(controller.phase()));
 #else
     controller.observe(observation);
-    auto plan=controller.consume(frame,frame.sampled_at,observation.velocity);
+    auto plan=controller.consume(frame,now,observation.velocity);
 #endif
     if(plan.destination.valid)for(const auto& sample:plan.destination.samples) {
         SurfaceGeometryWorldOwner current{};
