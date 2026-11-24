@@ -501,6 +501,64 @@ void recorded_short_takeoff_confirmation() {
             "only correlated physical AIR completes recorded publication chain without changing no-input flight");
     }
 }
+void recorded_takeoff_skipped_air_publication() {
+    // dbc0ca44: original49181/state200 confirmed takeoff while live remained200.
+    // The next observed original49183 was already201, with live idle mode2.
+    // Times, actor and episode are captured; physical ramp/owner are fixture tokens.
+    using D=NativeInputCorrelation;
+    for(unsigned stance:{0u,0x20u})for(unsigned fault=0;fault<18;++fault) {
+        VertAirController c;auto o=ground();o.native.selection_object=4170418448ull;
+        o.native.owner_generation=9325;o.native.physics_seconds=1.f/60;
+        o.native.physics_step=49179;o.native.sampled_at=1915275553;
+        o.native.stance_and_push=stance|0x40u;o.native.airborne_episode=3;o.native.air_departure=3;
+        warm(c,o);c.observe(o);
+        auto prior=o.native;prior.physics_step=49180;prior.sampled_at=1915275568;prior.contacts=0x4000;
+        NativeRequestSample live{};live.valid=true;live.state=200;live.crouch_mode=1;live.words[0]=stance|0x40u;
+        check(c.publication_gap({prior,D::state_changed|D::contacts_changed},live,prior.owner,1915275570),
+            "skipped AIR fixture retains supported departure");
+        c.unavailable(1915275570,prior.owner,true,false);
+        auto f=prior;f.physics_step=49181;f.sampled_at=1915275584;f.state=200;f.contacts=0;
+        f.airborne=true;f.airborne_episode=4;f.airborne_started_known=true;f.airborne_started_at=1915275584;
+        live.words[0]=stance;
+        check(c.publication_gap({f,D::stance_changed},live,f.owner,1915275590),
+            "original200 confirms takeoff before native push clears");
+        c.unavailable(1915275590,f.owner,true,false);
+        f.physics_step=49183;f.sampled_at=1915275619;f.state=201;f.stance_and_push=stance;
+        live.state=201;live.crouch_mode=2;
+        auto now=std::uint64_t{1915275635};
+        if(fault==1)++f.owner_generation;
+        if(fault==2)++f.selection_object;
+        if(fault==3)++f.airborne_episode;
+        if(fault==4)++f.air_departure;
+        if(fault==5)++f.airborne_started_at;
+        if(fault==6)f.contacts=0x4000;
+        if(fault==7)f.stance_and_push^=0x20;
+        if(fault==8)f.stance_and_push|=0x40;
+        if(fault==9)f.mode=2;
+        if(fault==10)f.state=300;
+        if(fault==11)++f.physics_step;
+        if(fault==12)now=1915275654;
+        if(fault==13)live.words[1]=0x4000;
+        if(fault==14)live.state=200;
+        if(fault==15)f.flip_id=3;
+        if(fault==16)f.rail_family=true;
+        if(fault==17)f.physics_seconds=1.f/30;
+        check(c.publication_gap({f,D::mode_changed},live,f.owner,now)==(fault==0),
+            "only same-flight forward200-to201 publication retains takeoff across skipped callback");
+        if(fault)continue;
+        c.unavailable(now,f.owner,true,false);
+        check(!c.eligible(f,now) && !c.consume(f,now,o.velocity),
+            "skipped publication grants no input or trajectory authority");
+        auto continued=o;continued.native=f;continued.native.physics_step=49184;
+        continued.native.sampled_at=1915275650;continued.native.mode=2;continued.supported=false;continued.support={};
+        auto expired=c;auto late=continued;late.native.sampled_at=1915275654;expired.observe(late);
+        check(!expired.eligible(late.native,late.native.sampled_at),"skipped publication cannot extend original100ms deadline");
+        c.observe(continued);
+        check(c.eligible(continued.native,continued.native.sampled_at) &&
+            !c.consume(continued.native,continued.native.sampled_at,continued.velocity),
+            "fresh correlated AIR confirms recorded successor without modifying native motion");
+    }
+}
 void publication_rejection_evidence() {
     LandingFixture x(60,false);auto gap=x.gap();auto live=x.live();const char* reason{};
     // Diagnostics must identify the missing boundary without widening it.
@@ -1592,4 +1650,4 @@ void input_edges() {
     }
 }
 }
-int main(){recorded_takeoff_idle_push_clear();vertical_lip_return();recorded_stale_plan_recovery();recorded_short_takeoff_confirmation();confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){recorded_takeoff_skipped_air_publication();recorded_takeoff_idle_push_clear();vertical_lip_return();recorded_stale_plan_recovery();recorded_short_takeoff_confirmation();confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

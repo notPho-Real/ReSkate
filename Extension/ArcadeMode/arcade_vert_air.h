@@ -344,7 +344,13 @@ public:
                     f.contact_generation==pending.contact_generation && f.action_generation==pending.action_generation &&
                     f.mode_generation==pending.mode_generation && f.flip_wait_generation==pending.flip_wait_generation;
             }
-            if(f.sampled_at<=pending.sampled_at || f.state!=expected.state || f.mode!=expected.crouch_mode ||
+            // Native200 can finish between callbacks: the captured next
+            // original was201 while live201 entered idle. A forward AIR state
+            // confirms the pending200 without requiring an extra observation
+            // of200. All owner, actor, episode, contact and original deadline
+            // checks still apply; only a later correlated body admits flight.
+            const bool advanced_air=pending.state==200 && expected.state==200 && f.state==201;
+            if(f.sampled_at<=pending.sampled_at || (f.state!=expected.state && !advanced_air) || f.mode!=expected.crouch_mode ||
                f.contacts!=(expected.words[1]&0xc000u) || f.stance_and_push!=(expected.words[0]&0x60u))
                 return reject("takeoff_confirmation");
             const auto stance=live.words[0]&0x60u;
