@@ -55,23 +55,19 @@ zero drops). A separate A-only control executed Ollie1 with no LT/RT input
 (693/693 rows, zero drops). Neither substitutes a displayed name for actor proof;
 Pressure, other stances and full combo chains remain unverified.
 
-Ground RT targets the identified native ChangeStance input processor with one B double-tap
-within its native 300ms window. The final controller packet owns only B; each
-gesture phase needs a delivered packet and a newer native step. After final B
-release, neutral ownership withholds automatic pushes until native acknowledgment
-or the original one-second observation limit. Repeated neutral packets cannot
-renew that limit; completion or cancellation releases ownership immediately.
-Scalar speed assistance obeys this same finalized reservation, including its
-neutral phase; normal eligibility resumes when ownership ends.
-If the live leading foot changes before the sampled frame publishes it, only
-the final neutral reservation may wait within the original observation limit.
-Tap delivery still requires exact agreement; push, owner and asset changes
-still cancel the reservation. This prevents a lost observation, not a native
-stance change by itself.
-The adapter never writes
-heading, momentum or a rendered stance. Native leading-foot observation is
-separate from input delivery; regular/switch/fakie movement still requires native
-acceptance of this candidate. Ground RT has no Revert fallback.
+Ground RT submits one fresh request to the original Regular → ChangeStance
+transition consumer. The adapter authenticates the loaded expression instance,
+resource layout, callback arguments and registered local entity. It supplies
+only that invocation's predicate; native EAT retains branch selection, timing,
+animation and cancellation. There is no synthetic B double-tap in this route.
+Neutral face output withholds automatic pushes until native acknowledgment or
+the original one-second observation limit. Repeated polls cannot renew it.
+The adapter never writes heading, momentum, animation state or a stance flag.
+Native callback delivery is separate from actual foot/animation completion;
+Regular → Switch → Regular, momentum and camera still need exact-build native
+acceptance. Ground RT has no Revert fallback.
+
+Historical B-gesture evidence remains below; it does not validate the new route.
 The adapter authenticates exported instance GUIDs at the live object prefix.
 File GUIDs identify the containing asset and cannot authenticate that object;
 using them prevented Switch admission in the `ec28f738` native trial.

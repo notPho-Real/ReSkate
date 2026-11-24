@@ -5,8 +5,8 @@
 
 namespace dingosdk::arcade_mode {
 // Ownership and read-only completion proof for a native stance request. This
-// does not select a controller gesture: the exact native processor must supply
-// that contract before a runtime adapter can issue any button output.
+// does not choose an actuator: the runtime must reach its authenticated native
+// consumer before marking the request issued.
 class StanceInputLease {
 public:
     // Observation ceiling only: expiring this lease never stops or rewrites a
@@ -29,7 +29,7 @@ public:
         request_=trigger;before_=native;last_=native;last_poll_=now;
         active_=true;issued_=changed_=false;return true;
     }
-    // The adapter calls this only after its exact native gesture was supplied.
+    // The adapter calls this only at its authenticated native delivery boundary.
     // A queued request or a pre-existing stance observation is not delivery.
     bool issued(const InputNativeContext& native,std::uint64_t now) noexcept {
         if(!active_ || issued_ || !observe(native,now,true) || now>request_.deadline ||

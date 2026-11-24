@@ -1,6 +1,10 @@
 #include "arcade_native_stance.h"
 #include "arcade_input_dispatch.h"
 #include "arcade_native_asset_cache.h"
+#include "arcade_stance_transition_scope.h"
+#include "Extension/Progression/local_entitlement_trigger_runtime.h"
+#include "Engine/Core/Hooks/hooks.h"
+#include "Engine/Game/Build/image_identity.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Abi/native_data.h"
@@ -12,15 +16,19 @@ namespace dingosdk::arcade_mode::native_stance {
 namespace {
 namespace contract=game::build::v20260929::arcade_stance;
 struct Asset {const char* name{};contract::Guid guid{};std::uintptr_t object{};};
-std::array<Asset,contract::assets.size()> assets{};
+std::array<Asset,1> assets{};
 std::mutex mutex;
 std::uintptr_t image{};
 std::uint64_t retry_at{},last_poll{};
-bool permitted{},ready{};
-StanceInput input;
+bool permitted{},ready{},hook_attempted{},hook_ready{};
+using TransitionConsumer=void(*)(std::uintptr_t,const bool*,const bool*);
+TransitionConsumer original_transition{};
+StanceInputLease input;
+InputNativeContext latest_native;
+std::uint64_t serial{};
 NoBailSkater owner;
 #if defined(DINGOSDK_DEV_TOOLS)
-struct Evidence {std::uint64_t sequence{};bool double_tap{},changed{};};
+struct Evidence {std::uint64_t sequence{};bool submitted{},changed{};};
 Evidence pending;
 #endif
 std::uintptr_t pointer(std::uintptr_t at) noexcept {
@@ -42,15 +50,53 @@ bool current(const NoBailSkater& skater,const InputNativeContext& native,std::ui
         memory::peek(skater.context+contract::physics_state,state) && state==native.flip.state &&
         memory::peek(skater.context+contract::stance_flags,stance) &&
         ((stance&0x60u)==native.flip.stance ||
-         (neutral_observation && input.awaiting_observation(native,now) &&
+         (neutral_observation && input.active() && input.was_issued() &&
           ((stance&0x60u)^native.flip.stance)==game::build::v20260929::launches::stance_switch_mask)) &&
         no_bail_skater(after) && after==before;
 }
 void retire() noexcept {
 #if defined(DINGOSDK_DEV_TOOLS)
-    if(owner.context && input.sequence())pending={input.sequence(),input.double_tap_delivered(),input.observed_change()};
+    if(owner.context && input.sequence())pending={input.sequence(),input.was_issued(),input.observed_change()};
 #endif
-    input.cancel();owner={};last_poll=0;
+    input.cancel();owner={};latest_native={};last_poll=0;
+}
+void transition(std::uintptr_t context,const bool* predicate,const bool* flags) {
+    bool requested=false;
+    std::uint64_t sequence{};
+    {
+        std::unique_lock lock(mutex,std::try_to_lock);
+        const auto now=GetTickCount64();
+        if(lock.owns_lock() && input.active() && !input.was_issued() &&
+           current(owner,latest_native,now) && now>=last_poll &&
+           now-last_poll<=InputTiming::native_sample_lease_ms &&
+           transition_scope([](auto at,auto& value){return memory::peek(at,value);},image,
+               profile_runtime::executing_expression,context,reinterpret_cast<std::uintptr_t>(predicate),
+               reinterpret_cast<std::uintptr_t>(flags),owner.entity,assets[0].object) && input.issued(latest_native,now)) {
+            requested=true;sequence=input.sequence();
+        }
+    }
+    // Only replace this invocation's input predicate. The original callback
+    // retains its branch eligibility, timers and actor lifecycle. Never write a
+    // stance bit, animation state, heading or velocity, or call it a second time.
+    const bool selected=true;
+    original_transition(context,requested?&selected:predicate,flags);
+#if defined(DINGOSDK_DEV_TOOLS)
+    if(sequence)logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE NATIVE STANCE REQUEST: sequence={} native_transition_consumer=true physical_completion=unverified.",sequence);
+#else
+    (void)sequence;
+#endif
+}
+bool install_transition(std::uintptr_t base) noexcept {
+    if(!supported_build::running_image_matches(base))return false;
+    std::array<unsigned char,32> bytes{};
+    if(!memory::peek(base+contract::transition_consumer,bytes) || bytes!=contract::transition_consumer_prefix)return false;
+    auto* target=reinterpret_cast<void*>(base+contract::transition_consumer);
+    void* original{};
+    if(hook_prepare(target,reinterpret_cast<void*>(&transition),&original)!=HookOk)return false;
+    original_transition=reinterpret_cast<TransitionConsumer>(original);
+    HookBatch batch;
+    return hook_enable(target)==HookOk;
 }
 }
 void tick(std::uintptr_t base,bool gameplay) noexcept {
@@ -62,9 +108,10 @@ void tick(std::uintptr_t base,bool gameplay) noexcept {
         permitted=gameplay && base && (!image || image==base);
         if(!permitted || (input.active() && (now<last_poll || now-last_poll>InputTiming::native_sample_lease_ms)))retire();
         if(permitted) {
+            if(!hook_attempted){hook_attempted=true;hook_ready=install_transition(base);}
             if(!image) {
                 image=base;
-                for(std::size_t i=0;i<assets.size();++i)assets[i]={contract::assets[i].name,contract::assets[i].guid,0};
+                assets[0]={contract::transition_asset.name,contract::transition_asset.guid,0};
             }
             if(ready && !assets_current()){ready=false;retire();}
             if(!ready && now>=retry_at) {
@@ -90,38 +137,42 @@ void tick(std::uintptr_t base,bool gameplay) noexcept {
     }
 #if defined(DINGOSDK_DEV_TOOLS)
     if(evidence.sequence)logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE NATIVE STANCE END: sequence={} double_tap_delivered={} leading_foot_changed={} physical_heading_momentum_acceptance=unverified.",
-        evidence.sequence,evidence.double_tap,evidence.changed);
+        "ARCADE NATIVE STANCE END: sequence={} transition_submitted={} leading_foot_changed={} physical_heading_momentum_acceptance=unverified.",
+        evidence.sequence,evidence.submitted,evidence.changed);
 #endif
 }
 bool available() noexcept {
-    std::lock_guard lock(mutex);return permitted && ready && assets_current();
+    std::lock_guard lock(mutex);return permitted && hook_ready && ready && assets_current();
 }
 bool request(const NoBailSkater& skater,const InputRequest& request,const InputNativeContext& native,std::uint64_t now) noexcept {
     std::lock_guard lock(mutex);
     // A replacement local skater can dispatch its first physical RT before
     // final_controls retires the old owner. Retire only that stale lease here.
-    if(input.active() && (skater!=owner || !input.same_owner(native) || !current(skater,native,now) ||
-       now<last_poll || now-last_poll>InputTiming::native_sample_lease_ms))retire();
-    if(request.action!=InputAction::switch_stance || request.input_sequence!=request.trigger.press.sequence ||
+    if(input.active() && (skater!=owner || !current(skater,native,now,true) ||
+       now<last_poll || now-last_poll>InputTiming::native_sample_lease_ms ||
+       !input.observe(native,now,true)))retire();
+    if(!hook_ready || request.action!=InputAction::switch_stance || request.input_sequence!=request.trigger.press.sequence ||
        !current(skater,native,now) || !input.start(request.trigger,native,now))return false;
-    owner=skater;last_poll=now;return true;
+    owner=skater;latest_native=native;last_poll=now;++serial;return true;
 }
 StanceControl controls(const NoBailSkater& skater,const InputNativeContext& native,std::uint64_t now,std::uint64_t tick) noexcept {
     std::lock_guard lock(mutex);
     if(!input.active())return {};
     if(skater!=owner || !current(skater,native,now,true)){retire();return {};}
-    last_poll=now;
-    const auto control=input.controls(native,now,tick);
-    if(!input.active())retire();
-    return control;
+    (void)tick;
+    last_poll=now;latest_native=native;
+    if(!input.observe(native,now,true)){retire();return {};}
+    // Reserve neutral face output while native EAT consumes the request and
+    // changes feet. No synthetic B gesture competes with that animation.
+    return {true,0,serial,5};
 }
 void delivered(const NoBailSkater& skater,const InputNativeContext& native,StanceControl control,
                std::uint16_t final_buttons,std::uint64_t now,std::uint64_t tick) noexcept {
     std::lock_guard lock(mutex);
+    (void)tick;
     const bool neutral_observation=control.owned && control.phase==5 && !control.buttons && !final_buttons;
     if(skater!=owner || !current(skater,native,now,neutral_observation) ||
-       !input.delivered(native,control,final_buttons,now,tick))retire();
+       !input.active() || control.serial!=serial || !neutral_observation)retire();
 }
 void cancel() noexcept {std::lock_guard lock(mutex);retire();}
 }

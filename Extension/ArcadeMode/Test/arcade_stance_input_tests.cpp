@@ -1,5 +1,7 @@
 #include "Extension/ArcadeMode/arcade_stance_input.h"
 #include "Extension/ArcadeMode/arcade_native_asset_cache.h"
+#include "Extension/ArcadeMode/arcade_stance_transition_scope.h"
+#include <map>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -16,6 +18,76 @@ InputNativeContext frame(std::uint64_t at=10,std::uint64_t step=1,unsigned stanc
 TriggerPress press(InputNativeContext native=frame()) {
     return {{{InputSource::triggers,1,InputEdge::press},10,1},{},InputContext::ground,
         native,TriggerOwner::switch_stance,160};
+}
+struct ScopeMemory {
+    std::map<std::uintptr_t,std::uint8_t> bytes;
+    template<class T> void put(std::uintptr_t at,const T& value) {
+        const auto* data=reinterpret_cast<const std::uint8_t*>(&value);
+        for(std::size_t i=0;i<sizeof(T);++i)bytes[at+i]=data[i];
+    }
+    template<class T> bool read(std::uintptr_t at,T& value) const {
+        auto* data=reinterpret_cast<std::uint8_t*>(&value);
+        for(std::size_t i=0;i<sizeof(T);++i) {
+            const auto found=bytes.find(at+i);if(found==bytes.end())return false;
+            data[i]=found->second;
+        }
+        return true;
+    }
+};
+void native_transition_scope() {
+    namespace c=dingosdk::game::build::v20260929::arcade_stance;
+    namespace e=dingosdk::game::build::v20260929::arcade_fingerflip;
+    constexpr std::uintptr_t image=0x10000000,vm=0x2000,instance=0x3000,resource=0x4000,
+        arguments=0x5000,reference=0x6000,key=0x12340001,registry=0x7000,entries=0x8000,
+        entity=0x9000,context=0xa000,predicates=0xb000,constants=0xc000,
+        asset=0x20000,graph=0x30000,wrapper=0x40000;
+    for(unsigned fault=0;fault<17;++fault) {
+        ScopeMemory m;
+        m.put(vm+e::vm_instance,instance);m.put(vm+e::vm_resource,resource);m.put(instance,resource);
+        m.put(resource+e::resource_key,c::regular_transition_key);m.put(resource+e::resource_layout,c::regular_transition_layout);
+        m.put(asset-c::asset_guid_prefix,c::transition_asset.guid);m.put(asset+c::expression_graph,graph);
+        m.put(graph+c::graph_resource_wrapper,wrapper);m.put(wrapper+c::wrapper_resource,resource);
+        const auto pages=instance+64;
+        m.put(pages+c::transition_context_page,context);m.put(pages+c::transition_predicate_page,predicates);
+        m.put(pages+c::transition_flags_page,constants);m.put(pages+e::argument_page,arguments);
+        m.put(arguments+e::context_argument,reference);m.put(reference,key);
+        m.put(image+e::context_registry,registry);m.put(registry+e::registry_entries,entries);
+        m.put(registry+e::registry_mask,std::uint32_t{15});
+        const auto entry=entries+(key&15)*e::registry_entry_size;
+        m.put(entry,key);m.put(entry+e::registry_entity,entity);
+        auto call_context=context,call_predicate=predicates+c::transition_predicate_offset,
+            call_flags=constants+c::transition_flags_offset;
+        if(fault==1)m.put(resource+e::resource_key,c::regular_transition_key+1);
+        if(fault==2){auto layout=c::regular_transition_layout;++layout[1];m.put(resource+e::resource_layout,layout);}
+        if(fault==3)m.put(instance,resource+8);
+        if(fault==4)++call_context;
+        if(fault==5)++call_predicate;
+        if(fault==6)++call_flags;
+        if(fault==7)m.put(entry+e::registry_entity,entity+8);
+        if(fault==8)m.put(entry,key+16);
+        if(fault==9)m.put(registry+e::registry_mask,std::uint32_t{0xffffffff});
+        if(fault==10)m.bytes.erase(reference);
+        if(fault==11)m.put(arguments+e::context_argument,std::uintptr_t{});
+        if(fault==12)m.put(pages+c::transition_context_page,std::uintptr_t{});
+        if(fault==13)m.put(vm+e::vm_instance,std::uintptr_t{});
+        if(fault==14){auto guid=c::transition_asset.guid;guid[0]^=1;m.put(asset-c::asset_guid_prefix,guid);}
+        if(fault==15)m.put(wrapper+c::wrapper_resource,resource+8);
+        if(fault==16)m.put(graph+c::graph_resource_wrapper,std::uintptr_t{});
+        check(native_stance::transition_scope([&](auto at,auto& value){return m.read(at,value);},
+            image,vm,call_context,call_predicate,call_flags,entity,asset)==(fault==0),
+            "native transition accepts only exact Regular expression, call arguments and local context generation");
+    }
+    for(unsigned cadence:{8u,17u,33u}) {
+        StanceInputLease lease;
+        check(lease.start(press(),frame(),10),"fresh RT starts native transition lease");
+        const auto issued=frame(10+cadence,2);
+        check(lease.issued(issued,issued.sampled_at),"actual consumer invocation marks delivery");
+        check(!lease.issued(issued,issued.sampled_at),"one physical RT cannot invoke a second transition");
+        check(lease.observe(frame(10+2*cadence,3),10+2*cadence,true)&&!lease.observed_change(),
+            "native callback delivery does not prove foot change");
+        check(!lease.observe(frame(10+3*cadence,4,0x20),10+3*cadence,true)&&lease.observed_change(),
+            "later native foot observation completes delivery without synthetic B input");
+    }
 }
 void exported_asset_identity() {
     namespace contract=dingosdk::game::build::v20260929::arcade_stance;
@@ -348,4 +420,4 @@ void awaiting_acknowledgement_reserves_neutral() {
 }
 
 }
-int main(){awaiting_acknowledgement_reserves_neutral();exported_asset_identity();original_edge_and_delivery();interruptions();denied_sources();finite_double_tap();packet_and_phase_guards();completion_requires_release();lifecycle_and_journal();transient_acknowledgement();std::printf("stance input: %u checks passed\n",checks);}
+int main(){native_transition_scope();awaiting_acknowledgement_reserves_neutral();exported_asset_identity();original_edge_and_delivery();interruptions();denied_sources();finite_double_tap();packet_and_phase_guards();completion_requires_release();lifecycle_and_journal();transient_acknowledgement();std::printf("stance input: %u checks passed\n",checks);}

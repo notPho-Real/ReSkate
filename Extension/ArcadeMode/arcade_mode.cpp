@@ -3006,8 +3006,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             if (!result.authored_playback && !result.manual.owns && !action.pad.owns_right_stick && !rail_pad.owns_right_stick && !grind_pad.owns)
                 result.right_x = result.right_y = 0;
         }
-        // Only the qualified native stance producer may publish this B bit.
-        // It owns no movement axes, orientation, velocity or other face button.
+        // A pending native stance transition reserves neutral B while its EAT
+        // actor changes feet. It owns no movement axes, orientation or velocity.
         if(owns_controls && stance_pad.owned)
             result.buttons=static_cast<std::uint16_t>((result.buttons&~0x2000u)|stance_pad.buttons);
         // Controller route final_controls publication end.
