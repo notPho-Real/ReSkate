@@ -3,7 +3,21 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current engineering build **a235c2782027b63539ea63e506e4cb735831ab92** passes
+Current completion work (November23): native Switch uses the authenticated
+Regular transition consumer instead of the unsuccessful B gesture. Native
+Switch remains unverified. The eaa93467 diagnostic DLL recognizes real vert
+takeoff and natural supported return; fresh LT exposed a stale-plan velocity
+rejection. Source now discards that plan while retaining native flight and the
+original input deadline, and preserves the descending AIR witness through the
+brief vertical-lip contact before curved support. Collision, Revert-support and
+freshness limits are unchanged. Focused replay covers both trigger channels.
+**Mandatory owner-ready gate:** genuine Vert → physical landing Revert →
+continuous physical Manual/Nose Manual → Ollie → ascending Kickflip → supported
+landing and authoritative native bank of the entire line. This sequence has not
+yet passed native acceptance. Preserve the verified Manual/Pivot chain below.
+Native Switch, camera orbit/OFF and exact integrated acceptance also remain open.
+
+Last fully green compiled checkpoint **a235c2782027b63539ea63e506e4cb735831ab92** passes
 all nine required gates in [CI 45241154647](https://github.com/notPho-Real/ReSkate/actions/runs/45241154647),
 including 148 Windows preflight and 137 integration tests. Runtime SHA256:
 `de9dde688560c167f2e80999616ef57ff4d09b6e63fd996808a1c8c3ca807241`.

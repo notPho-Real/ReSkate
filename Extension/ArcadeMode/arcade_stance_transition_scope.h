@@ -31,7 +31,7 @@ bool transition_scope(Read&& read,std::uintptr_t image,std::uintptr_t vm,
        predicate_page+c::transition_predicate_offset!=predicate ||
        !read(pages+c::transition_flags_page,flags_page) || !flags_page ||
        flags_page+c::transition_flags_offset!=flags)return false;
-    std::uintptr_t arguments{},reference{},context_key{},registry{},entries{},registered{},owner{};
+    std::uintptr_t arguments{},reference{},context_key{},registry{},entries{},registered{},registered_entity{};
     std::uint32_t mask{};
     if(!read(pages+e::argument_page,arguments) || !arguments ||
        !read(arguments+e::context_argument,reference) || !reference ||
@@ -41,6 +41,6 @@ bool transition_scope(Read&& read,std::uintptr_t image,std::uintptr_t vm,
        !read(registry+e::registry_mask,mask) || mask>0xffffff)return false;
     const auto entry=entries+(context_key&mask)*e::registry_entry_size;
     return read(entry,registered) && registered==context_key &&
-        read(entry+e::registry_entity,owner) && owner==entity;
+        read(entry+e::registry_entity,registered_entity) && registered_entity==entity;
 }
 }

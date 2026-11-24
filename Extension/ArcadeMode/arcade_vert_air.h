@@ -126,9 +126,14 @@ public:
         // A curved transition can carry speed mostly vertically at touchdown.
         // Require motion along its actual support plane, not world-horizontal
         // speed or impact velocity into that plane (5f9 original callback6672).
-        if((f.state!=100 && f.state!=103) || !unit(normal) || normal[1]<.1f ||
+        if((f.state!=100 && f.state!=103) || !unit(normal) || normal[1]<-.01f ||
            dot(value.up,normal)<.5f || length(sub(value.velocity,scale(normal,dot(value.velocity,normal))))<1 ||
            !value.contacted_shape.world) {reset();return;}
+        // Returning vert wheels can first touch the vertical lip, then the
+        // curved ramp within a few original steps (eaa93467 native capture).
+        // Keep the last descending AIR witness, without refreshing its100ms
+        // lifetime. Vertical support never grants Revert execution authority.
+        if(normal[1]<.1f)return;
         contact_=f;
     }
     bool approach(const NativeInputFrame& source,const VertPatch& patch) noexcept {
