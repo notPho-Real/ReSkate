@@ -658,9 +658,74 @@ void vertical_lip_return() {
         ++x.o.native.physics_step;x.o.native.sampled_at=air.sampled_at+dt;x.c.observe(x.o);
         check(!x.c.landing().ready(x.o.native,x.o.native.sampled_at),"vertical wall cannot renew landing authority");
     }
-    ++x.o.native.physics_step;x.o.native.sampled_at=air.sampled_at+101;
+    ++x.o.native.physics_step;x.o.native.sampled_at=air.sampled_at+118;
     x.o.contact_normal=x.o.up={0,.2f,.9797959f};x.c.observe(x.o);
-    check(!x.c.landing().ready(x.o.native,x.o.native.sampled_at),"late curved support cannot revive expired vert flight");
+    check(!x.c.landing().ready(x.o.native,x.o.native.sampled_at),"late curved support cannot renew the first lip contact deadline");
+}
+void recorded_lip_contact_handoff() {
+    // p7b: last admitted descending AIR at1933093201, vertical wheel support
+    // at3263, near-vertical support at3296, curved support at3320. The last
+    // two contacts are fresh physical evidence, not a renewed AIR observation.
+    for(unsigned fault=0;fault<10;++fault) {
+        LandingFixture x(60,false);const auto air=x.o.native;
+        x.o.native.airborne=false;x.o.native.state=100;x.o.native.mode=1;
+        ++x.o.native.air_departure;x.o.native.contacts=0x8000;
+        x.o.supported=true;x.o.support={};x.o.native_ramp={};
+        x.o.contact_normal=x.o.up={0,0,1};x.o.contacted_shape={7,8,9};
+        x.o.velocity={-.08196188f,-8.657209f,.13127665f};
+        x.o.native.physics_step=air.physics_step+2;x.o.native.sampled_at=air.sampled_at+62;
+        if(fault==1)x.o.supported=false;
+        if(fault==2)x.o.contacted_shape={};
+        if(fault==3)x.o.native.sampled_at=air.sampled_at+101;
+        x.c.observe(x.o);
+        check(!x.c.landing().ready(x.o.native,x.o.native.sampled_at),"physical lip contact cannot execute Revert");
+        ++x.o.native.physics_step;x.o.native.sampled_at=air.sampled_at+95;
+        x.o.contact_normal=x.o.up={0,.049068645f,.99879545f};
+        // Missing first support must not be replaced by a later vertical hit.
+        if(fault==1)x.o.supported=false;
+        x.c.observe(x.o);
+        const auto lip=InputNativeContext::from_frame(x.o.native);
+        for(unsigned channel=0;channel<2;++channel) {
+            TriggerPress press;press.press.sequence=channel+1;press.press.at=lip.sampled_at;
+            press.press.token={InputSource::triggers,static_cast<std::int16_t>(channel),InputEdge::press};
+            press.context=InputContext::ground;press.native=lip;
+            const auto result=qualify_vert_trigger(x.c,press,lip,lip.sampled_at);
+            check(!result.ready,"lip contact reserves input without executing Revert");
+            if(!fault)check(result.owner==TriggerOwner::landing_revert,
+                "LT/RT landing reservation survives actual lip contact before curved support");
+        }
+        ++x.o.native.physics_step;x.o.native.sampled_at=air.sampled_at+119;
+        x.o.native.contacts=0xc000;x.o.supported=true;
+        x.o.contact_normal=x.o.up={0,.14673097f,.98917645f};
+        x.o.velocity={.004216517f,-8.964952f,1.9855186f};
+        if(fault==4)++x.o.native.owner_generation;
+        if(fault==5)++x.o.native.airborne_episode;
+        if(fault==6)x.o.native.sampled_at=air.sampled_at+163;
+        if(fault==7)x.o.up={0,1,0};
+        if(fault==8)x.o.native.state=402;
+        if(fault==9)x.o.contact_normal=x.o.up={0,.049068645f,.99879545f};
+        x.c.observe(x.o);
+        for(unsigned channel=0;channel<2;++channel) {
+            TriggerPress press;press.press.sequence=channel+1;press.press.at=lip.sampled_at;
+            press.press.token={InputSource::triggers,static_cast<std::int16_t>(channel),InputEdge::press};
+            press.context=InputContext::ground;press.native=lip;press.owner=TriggerOwner::landing_revert;
+            const auto current=InputNativeContext::from_frame(x.o.native);
+            const auto result=qualify_vert_trigger(x.c,press,current,current.sampled_at);
+            check((result.owner==TriggerOwner::landing_revert && result.ready)==(fault==0),
+                "fresh physical lip-to-ramp handoff retains one LT/RT edge without reviving expired flight");
+            if(!fault)check(result.deadline==air.sampled_at+62+VertLandingWindow::after_ms,
+                "landing window starts at first physical contact, not delayed curved support");
+            if(!fault) {
+                press.press.at=current.sampled_at;press.native=current;press.owner=TriggerOwner::none;
+                const auto fresh=qualify_vert_trigger(x.c,press,current,current.sampled_at);
+                check(fresh.ready && fresh.owner==TriggerOwner::landing_revert,
+                    "fresh physical touchdown edge qualifies after the lip handoff");
+                press.owner=TriggerOwner::transfer;
+                check(qualify_vert_trigger(x.c,press,current,current.sampled_at).owner==TriggerOwner::none,
+                    "consumed transfer edge cannot replay through the lip handoff");
+            }
+        }
+    }
 }
 void landing_contact_boundary() {
     for(unsigned rate:{30u,60u,120u})for(bool released:{false,true})for(unsigned fault=0;fault<13;++fault) {
@@ -1650,4 +1715,4 @@ void input_edges() {
     }
 }
 }
-int main(){recorded_takeoff_skipped_air_publication();recorded_takeoff_idle_push_clear();vertical_lip_return();recorded_stale_plan_recovery();recorded_short_takeoff_confirmation();confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){recorded_lip_contact_handoff();recorded_takeoff_skipped_air_publication();recorded_takeoff_idle_push_clear();vertical_lip_return();recorded_stale_plan_recovery();recorded_short_takeoff_confirmation();confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

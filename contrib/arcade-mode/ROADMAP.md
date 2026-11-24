@@ -3,7 +3,23 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current completion work (November24): `f10bb23c` keeps neutral input through
+Current completion work (November24): `6d77be83` is compiled and native-tested,
+but is **not owner-ready**. A corrected approach fixture releases forward input
+on physical ramp contact before takeoff; all captured AIR packets are neutral.
+Its3,072-event capture loses no records. The return proves vertical lip contact
+62ms after the last admitted descending AIR observation, then qualifying curved
+support119ms after AIR. RT reaches game input but the expired AIR witness prevents
+Revert actuation. Source now retains a separate100ms handoff from the first proven
+lip contact, without renewing it or granting vertical-contact execution authority.
+The250ms landing window starts at that first contact. The retained-shape regression
+fails before this change;7,555 vert checks,6,710 session checks and LT/RT handoff
+tests pass afterward. Physical Revert and the full native bank still need acceptance.
+Independent OFF capture retains3,100 events with no drops; button/steering packets
+pass through and180 native camera ticks have zero Arcade writes. LT/RT reach SDL
+but are zero before Arcade remapping in this OFF trial; trigger restoration is not
+claimed from those packets. All167 rollback snapshots are preserved; game closed.
+
+`f10bb23c` keeps neutral input through
 native stance preparation, but its complete604-event RT capture still shows no
 leading-foot or foot-placement change after native queue admission. Switch is
 not accepted; do not repeat the same input timing experiment.
@@ -13,14 +29,15 @@ platform contact has partial truck support, followed by four-wheel ramp support
 at4.468s without bail. The added passive observer records the selected native
 landing curve; this representative result does not establish universal landing reliability.
 The mandatory Revert/Manual trial fails earlier than its balance stop: the
-complete680ms LS recipe produces only about45degrees of board/body rotation and
+complete680ms LS recipe produces only about45degrees of board/core-heading rotation and
 no fakie change. Manual then slows below0.5m/s before the three-second gate; no
 Ollie, full combo or native bank is accepted. Source now restores the retained
 stock landing trajectory's40ms neutral ramp,200ms bottom crossing,310ms opposite
 endpoint and580ms release into neutral. The established Manual/Pivot recipe is
 unchanged.6,748 actuator checks,6,710 production-session checks and LT/RT landing
-handoff/parity cases pass; changed landing actuation still requires a build and
-native physical180-degree evidence. No vert controller or scoring thresholds changed.
+handoff/parity cases pass. Compiled `6d77be83` still lacks native physical180-degree
+evidence. The prior core-heading measurement was not an independent hips measurement;
+subsequent captures include the physical hips basis. Scoring thresholds are unchanged.
 
 Prior checkpoints: `dbc0ca44` verifies genuine vert takeoff,
 natural four-wheel return and LT Level Out in native gameplay. Its complete
@@ -67,17 +84,17 @@ landing and authoritative native bank of the entire line. This sequence has not
 yet passed native acceptance. Preserve the verified Manual/Pivot chain below.
 Native Switch and exact integrated acceptance also remain open.
 
-Last fully green compiled checkpoint **f10bb23c2326825bcb9b6cdfa9459074f27a1e2c** passes
-all required gates in [CI 45365240692](https://github.com/notPho-Real/ReSkate/actions/runs/45365240692),
+Last fully green compiled checkpoint **6d77be83cc323a9c016e0eceb885b4b4ef036bbc** passes
+all required gates in [CI 45374980359](https://github.com/notPho-Real/ReSkate/actions/runs/45374980359),
 including148 Windows preflight and137 integration tests.
-Runtime SHA256: `23f5f0e176008054fee141d4a1d3ab7a0fe7ab1d2fa410c185d023848b387201`.
+Runtime SHA256: `4d3fd516c4f7cd89c14cdf2dee8517fd1c3eea9e50d6947e93e33973b0852c83`.
 Switch and the full Revert/Manual line remain unaccepted.
 Preserved `cb368987` camera evidence now establishes actual orbit both directions
 and neutral recentering to4.96degrees:175 complete ON ticks,161 returned Arcade
 camera writes,180 complete OFF ticks with zero Arcade writes, and native camera
 restoration on console focus withdrawal. Neither capture lost records. Console
 focus released the camera before OFF, so direct OFF of an active lease and
-Switch-follow remain unverified. The game is closed; all166 rollback snapshots
+Switch-follow remain unverified. The game is closed; all167 rollback snapshots
 and the score pack are verified, and hardware is released.
 
 Preserved native Manual/Pivot evidence: **a235c2782027b63539ea63e506e4cb735831ab92** passes

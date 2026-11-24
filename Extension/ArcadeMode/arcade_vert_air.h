@@ -114,10 +114,11 @@ public:
         if(f.airborne_episode!=previous.airborne_episode || f.air_departure!=previous.air_departure+1 ||
            (f.state!=100 && f.state!=103 && f.state!=101)) {reset();return;}
         if(contact_.valid) {
-            if(f.sampled_at-contact_.sampled_at>after_ms)reset();
+            if(f.sampled_at-contact_started_at()>after_ms)reset();
             return;
         }
-        if(f.sampled_at-previous.sampled_at>100 || f.sampled_at-takeoff_.native.sampled_at<150 ||
+        const auto witness=lip_contact_.valid?lip_contact_.sampled_at:previous.sampled_at;
+        if(f.sampled_at<witness || f.sampled_at-witness>100 || f.sampled_at-takeoff_.native.sampled_at<150 ||
            last_air_.velocity[1]>=-.1f) {reset();return;}
         // State publication may lead contact by an original step. It cannot
         // extend the last AIR timestamp or establish landing by itself.
@@ -131,9 +132,15 @@ public:
            !value.contacted_shape.world) {reset();return;}
         // Returning vert wheels can first touch the vertical lip, then the
         // curved ramp within a few original steps (eaa93467 native capture).
-        // Keep the last descending AIR witness, without refreshing its100ms
-        // lifetime. Vertical support never grants Revert execution authority.
-        if(normal[1]<.1f)return;
+        // The p7b return first proves vertical wheel support62ms after AIR,
+        // then curved support119ms after AIR. Once physical contact is proven,
+        // its own bounded handoff replaces the flight witness. Anchor it once:
+        // repeated wall contacts cannot renew either deadline. Vertical support
+        // still cannot execute Revert or rearm airborne transfer authority.
+        if(normal[1]<.1f) {
+            if(!lip_contact_.valid)lip_contact_=f;
+            return;
+        }
         contact_=f;
     }
     bool approach(const NativeInputFrame& source,const VertPatch& patch) noexcept {
@@ -155,7 +162,7 @@ public:
         if(contact_.valid)return !current.airborne && current.physics_step>=contact_.physics_step &&
             current.airborne_episode==contact_.airborne_episode && current.air_departure==contact_.air_departure &&
             (current.state==100 || current.state==103 || current.state==101) &&
-            now>=contact_.sampled_at && now-contact_.sampled_at<=after_ms;
+            now>=contact_.sampled_at && now-contact_started_at()<=after_ms;
         return flight(current) && approach_.valid && now>=approach_.sampled_at &&
             now-approach_.sampled_at<=100 && current.physics_step>=approach_.physics_step;
     }
@@ -171,9 +178,10 @@ public:
         } else if(!contact_.valid || origin.air_departure!=contact_.air_departure ||
                   (origin.flip.state!=100 && origin.flip.state!=103))return 0;
         if(contact_.valid) {
-            if((edge<contact_.sampled_at && contact_.sampled_at-edge>before_ms) ||
-               (edge>=contact_.sampled_at && edge-contact_.sampled_at>after_ms))return 0;
-            return std::min(edge+before_ms+after_ms,contact_.sampled_at+after_ms);
+            const auto started=contact_started_at();
+            if((edge<started && started-edge>before_ms) ||
+               (edge>=started && edge-started>after_ms))return 0;
+            return std::min(edge+before_ms+after_ms,started+after_ms);
         }
         // Reserve only a fresh AIR edge near the corroborated approach. Its
         // bounded expiry belongs to that original press, never to a later poll.
@@ -182,10 +190,14 @@ public:
     }
     bool contact_publication_pending(const InputNativeContext& current,std::uint64_t now) const noexcept {
         const auto& air=last_air_.native;
-        return !contact_.valid && air.valid && current.fresh(now) && !current.airborne && !current.rail_family &&
+        const auto& witness=lip_contact_.valid?lip_contact_:air;
+        const bool pending=lip_contact_.valid ?
+            current.physics_step>=witness.physics_step && now>=witness.sampled_at && now-witness.sampled_at<=100 :
+            current.physics_step>air.physics_step && current.physics_step-air.physics_step<=2 &&
+            current.sampled_at>=air.sampled_at && current.sampled_at-air.sampled_at<=100;
+        return !contact_.valid && air.valid && pending && current.fresh(now) && !current.airborne && !current.rail_family &&
             current.generations.owner==air.owner_generation && current.physics_step>air.physics_step &&
-            current.physics_step-air.physics_step<=2 && current.sampled_at>=air.sampled_at &&
-            current.sampled_at-air.sampled_at<=100 && current.airborne_episode==air.airborne_episode &&
+            current.airborne_episode==air.airborne_episode &&
             current.air_departure==air.air_departure+1 && (current.flip.state==100 || current.flip.state==103) &&
             current.flip.mode<=2 && last_air_.velocity[1]<-.1f &&
             current.sampled_at-takeoff_.native.sampled_at>=150;
@@ -198,8 +210,11 @@ public:
     const NativeInputFrame& contact() const noexcept {return contact_;}
     const NativeInputFrame& approach_frame() const noexcept {return approach_;}
 private:
+    std::uint64_t contact_started_at() const noexcept {
+        return lip_contact_.valid?lip_contact_.sampled_at:contact_.sampled_at;
+    }
     VertObservation takeoff_{},last_air_{};
-    NativeInputFrame approach_{},contact_{};
+    NativeInputFrame approach_{},contact_{},lip_contact_{};
 };
 struct VertPlan {
     VertAction action{};
