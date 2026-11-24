@@ -115,7 +115,54 @@ void vert_runtime_mode_gap_checks() {
         }
     }
 }
+void vert_runtime_ramp_publication_checks() {
+    for(unsigned fault=0;fault<3;++fault) {
+        vert_runtime::cancel();Fixture f;f.allow_world_owner=f.unknown=true;
+        VertObservation o;o.enabled=o.supported=true;o.native.valid=true;o.native.owner={1,2,3,4,5};
+        o.native.owner_generation=o.native.contact_generation=o.native.action_generation=o.native.mode_generation=1;
+        o.native.flip_known=true;o.native.flip_id=-1;o.native.selection_object=99;
+        o.native.physics_seconds=1.f/60;o.native.state=100;o.native.mode=1;o.native.contacts=0xc000;
+        o.native.sampled_at=1000;
+        const auto contacts=[&] {
+            std::array<VertRampContact,2> hits;
+            for(unsigned i=0;i<2;++i)
+                hits[i]={vert_math::add(o.position,{0,0,i?.22f:-.22f}),o.up,{7,1,9},f.world_owner};
+            o.native_ramp=vert_ramp_contacts(hits,o.position,o.up);
+        };
+        const auto advance=[&] {
+            ++o.native.physics_step;o.native.sampled_at+=17;
+            f.time=o.native.sampled_at;f.live.native=InputNativeContext::from_frame(o.native);
+        };
+        for(float angle:{.8f,1.1f,1.3f}) {
+            advance();o.position={4*std::sin(angle),4*(1-std::cos(angle)),0};
+            o.up={-std::sin(angle),std::cos(angle),0};o.velocity={8*std::cos(angle),8*std::sin(angle),0};contacts();
+            (void)vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        }
+        for(unsigned i=0;i<8;++i) {
+            advance();o.native.contacts=i%2?0x8000:0xc000;++o.native.contact_generation;
+            o.position[1]+=.12f;contacts();
+            auto physical=o;physical.native={};
+            if(fault==1)physical.native_ramp={};
+            if(fault==2)physical.native_ramp.contacts[1].owner.generation++;
+            NativeInputCorrelation diagnostic{o.native,NativeInputCorrelation::contacts_changed};
+            NativeRequestSample live{};live.valid=true;live.state=100;live.crouch_mode=1;
+            live.words[1]=o.native.contacts==0xc000?0x8000:0xc000;
+            const auto motion=vert_runtime::step(physical,f.time+1,o.native.owner,"frame_correlation",&diagnostic,&live);
+            check(!motion.plan && !motion.native_flight && !motion.aligning &&
+                  !vert_runtime::surface(f.time+1,o.native,{}).can_transfer,
+                "runtime physical ramp continuation never publishes flight or motion authority");
+            if(!fault)check(motion.preserve_native,"runtime keeps original ramp physics through fresh contact churn");
+        }
+        advance();o.native.state=200;o.native.contacts=0;o.native.airborne=true;
+        o.native.airborne_episode=1;o.native.airborne_started_known=true;o.native.airborne_started_at=o.native.sampled_at;
+        o.supported=false;o.native_ramp={};f.live.native=InputNativeContext::from_frame(o.native);
+        const auto flight=vert_runtime::step(o,f.time,o.native.owner,"frame_valid");
+        check(flight.native_flight==!fault && !flight.plan,
+            "runtime admits subsequent native takeoff only after fresh same-owner physical ramp contacts");
+    }
+}
 void vert_runtime_scene_checks() {
+    vert_runtime_ramp_publication_checks();
     vert_runtime_mode_gap_checks();
     for(unsigned scenario=0;scenario<30;++scenario) {
         const unsigned fault=scenario<5?scenario:scenario==11?5:0;

@@ -75,6 +75,17 @@ Motion step(VertObservation observation,std::uint64_t now,const NativeInputOwner
         const auto retained_live=controller.publication_sample();
 #endif
         const char* gap_rejection="not_correlation";
+        if(frame_reason && std::strcmp(frame_reason,"frame_correlation")==0 && correlation && live &&
+           controller.observe_ramp_publication(observation,*correlation,*live,physical_owner,now)) {
+#if defined(DINGOSDK_DEV_TOOLS)
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE VERT RAMP CONTACT: ms={} original_ms={} step={} previous_ms={} original_contacts={} live_contacts={} normal={},{},{} input_authority=false.",
+                now,correlation->observed.sampled_at,correlation->observed.physics_step,previous.sampled_at,
+                correlation->observed.contacts,live->words[1]&0xc000u,
+                observation.native_ramp.normal[0],observation.native_ramp.normal[1],observation.native_ramp.normal[2]);
+#endif
+            return {{},false,false,true};
+        }
         const bool transition=frame_reason && std::strcmp(frame_reason,"frame_correlation")==0 &&
             correlation && live && controller.publication_gap(*correlation,*live,physical_owner,now,&gap_rejection);
         if(transition || (frame_reason && std::strcmp(frame_reason,"frame_lock_busy")==0))

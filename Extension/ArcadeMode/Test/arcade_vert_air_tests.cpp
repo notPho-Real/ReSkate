@@ -168,6 +168,87 @@ struct PushBoundaryFixture {
         check(controller.phase()==VertPhase::rising_support,"synthetic curvature establishes real support before the recorded push/contact boundary");
     }
 };
+void recorded_ramp_contact_churn() {
+    // p9 retained fresh original ground frames and physical ramp support,
+    // but repeated original/live wheel-mask differences aged the last admitted
+    // support past100ms. Use its publication pattern with mathematical wheel
+    // fixtures; these are not claims of atomic native geometry capture.
+    for(unsigned rate:{30u,60u,120u})for(unsigned skip:{1u,2u,3u}) {
+        if(rate==30 && skip==3)continue; // Three rounded34ms steps exceed100ms.
+        PushBoundaryFixture x(rate,false);
+        auto old_path=x.controller;
+        const unsigned samples=(120+x.dt*skip-1)/(x.dt*skip);
+        for(unsigned i=0;i<samples;++i) {
+            const auto prior=x.o.native;
+            const auto now=prior.sampled_at+x.dt*skip;
+            for(unsigned step=1;step<=skip;++step)
+                x.o.native=x.publisher.observe(prior.sampled_at+x.dt*step,prior.owner,x.live,{true,-1,99},false,1.f/static_cast<float>(rate));
+            const float angle=1.3f+.005f*static_cast<float>(i);
+            x.o.position[1]+=.07f;x.o.up={0,std::cos(angle),std::sin(angle)};
+            x.o.velocity={0,8*std::sin(angle),-8*std::cos(angle)};
+            std::array<VertRampContact,2> contacts;
+            for(unsigned j=0;j<2;++j) {
+                contacts[j]={add(x.o.position,{j?.22f:-.22f,0,0}),x.o.up,{7,8,9},{}};
+                contacts[j].owner.value=10;
+            }
+            x.o.native_ramp=vert_ramp_contacts(contacts,x.o.position,x.o.up);
+            x.live.words[1]=x.o.native.contacts==0xc000?0x8000:0xc000;
+            NativeInputCorrelation d{};
+            check(!x.publisher.correlate(now+1,prior.owner,x.live,&d).valid,
+                "recorded wheel-mask churn still withholds native input authority");
+            auto physical=x.o;physical.native={};
+            if(i==0)for(unsigned fault=1;fault<=24;++fault) {
+                auto rejected=x.controller;auto bad=d;auto body=x.live;auto geometry=physical;auto at=now+1;
+                if(fault==1)++bad.observed.owner_generation;
+                if(fault==2)++bad.observed.airborne_episode;
+                if(fault==3)++bad.observed.air_departure;
+                if(fault==4)++bad.observed.selection_object;
+                if(fault==5)bad.observed.flip_id=3;
+                if(fault==6)body.words[0]=0x20;
+                if(fault==7)body.words[1]=0;
+                if(fault==8)bad.observed.contacts=0;
+                if(fault==9)body.state=201;
+                if(fault==10)body.crouch_mode=2;
+                if(fault==11)bad.observed.physics_seconds*=2;
+                if(fault==12)bad.observed.physics_step+=100;
+                if(fault==13)at=prior.sampled_at+101;
+                if(fault==14)geometry.supported=false;
+                if(fault==15)geometry.native_ramp.valid=false;
+                if(fault==16)geometry.contested=true;
+                if(fault==17)geometry.enabled=false;
+                if(fault==18)geometry.native_ramp.contacts[1].owner.value++;
+                if(fault==19)geometry.native_ramp.contacts[1].shape.generation++;
+                if(fault==20)geometry.velocity[1]=-3;
+                if(fault==21)geometry.up={0,-1,0};
+                if(fault==22)geometry.position[0]+=4;
+                if(fault==23)++bad.observed.action_generation;
+                if(fault==24)bad.observed.contact_generation=0;
+                check(!rejected.observe_ramp_publication(geometry,bad,body,prior.owner,at),
+                    "ramp continuation rejects missing physical proof, changed ownership/actions and stale publications");
+            }
+            // Retain the old runtime's path as the regression's negative control.
+            if(old_path.publication_gap(d,x.live,prior.owner,now+1))old_path.unavailable(now+1,prior.owner,true,false);
+            else old_path.observe(physical);
+            check(x.controller.observe_ramp_publication(physical,d,x.live,prior.owner,now+1),
+                "fresh same-ramp wheel geometry continues recognition across publication churn");
+            check(!x.controller.eligible(x.o.native,now+1) &&
+                  !x.controller.consume(x.o.native,now+1,x.o.velocity) &&
+                  !x.controller.landing().takeoff().valid,
+                "ramp history never admits flight input, motion or landing");
+        }
+        check(old_path.phase()!=VertPhase::rising_support,
+            "without fresh physical support the recorded long contact churn loses takeoff qualification");
+        // Resume from the last physical support with an actual original AIR.
+        const auto supported=x.controller.observation();
+        x.live.state=200;x.live.words[1]=0;
+        x.o=supported;x.o.native=x.publisher.observe(supported.native.sampled_at+x.dt,
+            supported.native.owner,x.live,{true,-1,99},false,1.f/static_cast<float>(rate));
+        x.o.supported=false;x.o.native_ramp={};x.o.support={};
+        x.controller.observe(x.o);
+        check(x.controller.eligible(x.o.native,x.o.native.sampled_at),
+            "only a subsequent original AIR frame admits the continued ramp takeoff");
+    }
+}
 void push_clear_boundary() {
     for(bool pushing:{false,true})for(unsigned rate:{30u,60u,120u})for(unsigned fault=0;fault<17;++fault) {
         PushBoundaryFixture x(rate,pushing);auto now=x.o.native.sampled_at+1;auto owner=x.o.native.owner;
@@ -1788,4 +1869,4 @@ void input_edges() {
     }
 }
 }
-int main(){recorded_landing_contact_churn();recorded_lip_contact_handoff();recorded_takeoff_skipped_air_publication();recorded_takeoff_idle_push_clear();vertical_lip_return();recorded_stale_plan_recovery();recorded_short_takeoff_confirmation();confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}
+int main(){recorded_ramp_contact_churn();recorded_landing_contact_churn();recorded_lip_contact_handoff();recorded_takeoff_skipped_air_publication();recorded_takeoff_idle_push_clear();vertical_lip_return();recorded_stale_plan_recovery();recorded_short_takeoff_confirmation();confirmed_takeoff_publication();recorded_curved_landing_speed();native_level_out_handoff();recorded_contact_publications();publication_rejection_evidence();direct_landing_contact_boundary();recorded_push_onset_takeoff();landing_contact_boundary();push_clear_boundary();idle_air_mode_boundary();publication_contact_boundary();retained_rear_wheel();original_contact_support();trigger_qualification();landing_windows();low_speed_level_out();lifecycle();contact_departure_delay();unavailable_snapshots();released_snapshot_gaps();occupied_actor_expiry();destinations();staged_races_and_orientation();destination_contact_landing();unchanged_motion();session_trigger_ownership();transfer_preserves_grab_producer();vert_trigger_manual_entry();held_transfer_intent();input_edges();std::cout<<checks<<" vert checks passed\n";}

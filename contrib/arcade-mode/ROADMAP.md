@@ -3,20 +3,37 @@
 Current work: `arcade-stage-rc51-core-20261122`, based on integrated
 `6d8dda8f9431aef21268c74455a5f1ec930df8d8` (official upstream `8515e164`).
 Supported game: **20260929**. Experimental only; the accepted channel is unchanged.
-Current completion work (November24): `627f8b15` passes full CI45387795422
-(148 preflight and137 integration tests), but is **not owner-ready**. Its native
+Current completion work (November24): `70e31bb6` passes full CI45398102756
+(148 preflight and137 integration tests), but is **not owner-ready**. The retained native
 Switch capture observes ChangeStance graph entry through SwitchFromFakie, then
 exit with inactive push selectors and no foot change. Repeating trigger timing
 is not the next action; resolve the native actor/selector boundary.
-The mandatory vert chain still fails before Revert/Manual. Its retained original
+The exact candidate's mandatory vert trial fails earlier: fresh original/live
+ground wheel-mask changes age the last admitted ramp observation past100ms.
+Rising support is cancelled before native AIR, so landing RT cannot execute Revert.
+The trace retains3,071/3,071 input events without drops; its complete-source flag
+is false. No physical Manual, Revert or full combo bank is accepted.
+Source now continues only an already recognized ramp using fresh native wheel
+geometry, unchanged owner/action lineage and the existing100ms time bounds.
+This history does not admit input, a landing, takeoff or a motion command; a
+subsequent fully correlated AIR observation remains required.7,962 controller
+checks and95,477 dev runtime/geometry checks pass, including the old-path failure
+and missing/stale/unrelated support controls. Native verification remains pending.
+The paired ON/OFF diagnostic observes no analog values in either original game
+capture, while OFF A/X pass through. It therefore does not establish an OFF-specific
+regression or analog restoration. Both captures retain all events with no drops,
+but their complete-source flags are false. All169 rollback snapshots are preserved;
+game closed and hardware authority revoked.
+
+Prior `627f8b15` mandatory vert evidence fails before Revert/Manual. Its original
 frames show touchdown followed by rear/both/front wheel-contact publication changes.
 An offline replay reproduces loss of the landing reservation against the older
-AIR clock. Source now retains the first authenticated live-touchdown timestamp
+AIR clock. Integrated source retains the first authenticated live-touchdown timestamp
 through a bounded100ms publication handoff. Only fresh physical curved support
 permits execution, and neither contact churn nor input polling renews the deadline.
 7,605 vert checks,6,710 session checks and LT/RT handoff tests pass; native physical
 Revert, sustained successor Manual and full combo banking remain unverified.
-All168 rollback snapshots are preserved; game closed and hardware authority revoked.
+That session preserved all168 rollback snapshots.
 
 Prior `6d77be83` evidence: a corrected approach fixture releases forward input
 on physical ramp contact before takeoff; all captured AIR packets are neutral.
@@ -28,8 +45,9 @@ lip contact, without renewing it or granting vertical-contact execution authorit
 The250ms landing window starts at that first contact. The retained-shape regression
 fails before this change;7,555 vert checks,6,710 session checks and LT/RT handoff
 tests pass afterward. Physical Revert and the full native bank still need acceptance.
-Independent OFF capture retains3,100 events with no drops; button/steering packets
-pass through and180 native camera ticks have zero Arcade writes. LT/RT reach SDL
+Independent OFF capture retains3,100 events with no drops; A/X button packets
+pass through and180 native camera ticks have zero Arcade writes. Steering is not
+established by that capture. LT/RT reach SDL
 but are zero before Arcade remapping in this OFF trial; trigger restoration is not
 claimed from those packets. All167 rollback snapshots are preserved; game closed.
 
@@ -98,10 +116,10 @@ landing and authoritative native bank of the entire line. This sequence has not
 yet passed native acceptance. Preserve the verified Manual/Pivot chain below.
 Native Switch and exact integrated acceptance also remain open.
 
-Last fully green compiled checkpoint **6d77be83cc323a9c016e0eceb885b4b4ef036bbc** passes
-all required gates in [CI 45374980359](https://github.com/notPho-Real/ReSkate/actions/runs/45374980359),
+Last fully green compiled checkpoint **70e31bb6691b29e6a786bec083e04140c160bb85** passes
+all required gates in [CI 45398102756](https://github.com/notPho-Real/ReSkate/actions/runs/45398102756),
 including148 Windows preflight and137 integration tests.
-Runtime SHA256: `4d3fd516c4f7cd89c14cdf2dee8517fd1c3eea9e50d6947e93e33973b0852c83`.
+Runtime SHA256: `98d4b800de16697710f267119c336cab51737ef4e2d9a9d3fd819aed2058d93b`.
 Switch and the full Revert/Manual line remain unaccepted.
 Preserved `cb368987` camera evidence now establishes actual orbit both directions
 and neutral recentering to4.96degrees:175 complete ON ticks,161 returned Arcade

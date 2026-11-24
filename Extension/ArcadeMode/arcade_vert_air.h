@@ -324,6 +324,60 @@ public:
         } else if(phase_==VertPhase::released)suspended_=true;
     }
     // The native publisher and body writer can straddle a contact/state edge.
+    // Fresh wheel geometry can continue an already recognized ramp while only
+    // its wheel mask changes. This is support history, never an admitted input
+    // frame, landing, takeoff or motion command. Query-cache support alone does
+    // not qualify: the caller must have validated original native contacts.
+    bool observe_ramp_publication(const VertObservation& value,const NativeInputCorrelation& correlation,
+            const NativeRequestSample& live,const NativeInputOwner& owner,std::uint64_t now) noexcept {
+        using namespace vert_math;
+        const auto& f=correlation.observed;
+        const auto& prior=previous_.native;
+        const auto& ramp=value.native_ramp;
+        if(phase_!=VertPhase::rising_support || !prior.valid || !lip_.native.valid || !origin_.valid ||
+           takeoff_gap_frame_.valid || landing_gap_frame_.valid ||
+           correlation.mismatches!=NativeInputCorrelation::contacts_changed ||
+           !value.enabled || value.contested || !value.supported || !ramp.valid ||
+           !f.valid || !live.valid || !owner.valid() || owner!=f.owner || owner!=prior.owner ||
+           f.owner_generation!=prior.owner_generation || f.airborne || prior.airborne || f.rail_family ||
+           f.state!=prior.state || live.state!=f.state || !vert_riding_contact_mask(f.state,f.contacts) ||
+           !vert_riding_contact_mask(live.state,live.words[1]&0xc000u) ||
+           (live.words[1]&0xc000u)==f.contacts || f.mode!=1 || prior.mode!=1 || live.crouch_mode!=1 ||
+           f.stance_and_push!=prior.stance_and_push || (live.words[0]&0x60u)!=f.stance_and_push ||
+           !f.flip_known || f.flip_id!=-1 || !prior.flip_known || prior.flip_id!=-1 ||
+           !f.selection_object || f.selection_object!=prior.selection_object ||
+           f.action_generation!=prior.action_generation || f.mode_generation!=prior.mode_generation ||
+           f.flip_wait_generation!=prior.flip_wait_generation ||
+           f.airborne_episode!=prior.airborne_episode || f.air_departure!=prior.air_departure ||
+           f.physics_step<=prior.physics_step ||
+           static_cast<double>(f.physics_step-prior.physics_step)*f.physics_seconds>.100001 ||
+           f.contact_generation<prior.contact_generation ||
+           f.contact_generation-prior.contact_generation>f.physics_step-prior.physics_step ||
+           (f.contacts!=prior.contacts && f.contact_generation==prior.contact_generation) ||
+           f.sampled_at<=prior.sampled_at || f.sampled_at-prior.sampled_at>100 ||
+           now<prior.sampled_at || now-prior.sampled_at>100 ||
+           now<f.sampled_at || now-f.sampled_at>100 || f.sampled_at<=unavailable_at_ ||
+           !std::isfinite(f.physics_seconds) || std::abs(f.physics_seconds-prior.physics_seconds)>=.00001f ||
+           !transition_at_ || f.sampled_at<transition_at_ || f.sampled_at-transition_at_>500 ||
+           !finite(value.position) || !finite(value.velocity) || !finite(value.up) ||
+           !finite(ramp.normal) || std::abs(dot(ramp.normal,ramp.normal)-1)>.02f ||
+           ramp.normal[1]<-.01f || ramp.normal[1]>=.55f || value.velocity[1]<=2 ||
+           dot(value.up,ramp.normal)<=.7f || std::abs(dot(value.velocity,ramp.normal))>=2 ||
+           length(sub(value.position,previous_.position))>=3 || dot(ramp.normal,origin_.normal)<=.9f)
+            return false;
+        // Both independent wheel contacts must belong to the proven ramp's
+        // current static incarnations. Adjacent unrelated geometry cannot
+        // renew support simply because it has a similar normal.
+        for(const auto& contact:ramp.contacts)
+            if(!std::any_of(origin_.contacts.begin(),origin_.contacts.end(),[&](const auto& original) {
+                return contact.shape==original.shape && contact.owner==original.owner;
+            }))return false;
+        auto support=value;support.native=f;
+        previous_=lip_=support;origin_=ramp;
+        publication_frame_={};
+        return true;
+    }
+    // The native publisher and body writer can straddle a contact/state edge.
     // This retains history only. It cannot manufacture an admitted input frame,
     // refresh a launch deadline, execute a plan, or establish a landing.
     bool publication_gap(const NativeInputCorrelation& correlation,const NativeRequestSample& live,
